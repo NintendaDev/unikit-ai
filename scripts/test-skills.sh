@@ -12616,16 +12616,17 @@ fi
 
 # >>> UQ block
 # ─────────────────────────────────────────────
-# Part 7g3b: UQ-1…UQ-7 — the user-questions contract and its pointer
+# Part 7g3b: UQ-1…UQ-8 — the user-questions contract and its pointer
 # ─────────────────────────────────────────────
 # One flat contract, data/user-questions.md, says how every question to the user is asked and
 # waited for. A skill moved onto it carries ONE pointer line, right above its first `## ` heading,
 # names the tool only as "the question tool of your agent (`AskUserQuestion`)" and restates none
-# of the contract. The pilot moves unikit-plan alone (UQ_MOVED); every other rule is written over
-# "each skill that carries the pointer", so the next skill joins by carrying it. Own accumulators
-# UQ_*, own pass/fail; every grep inside $( … ) is wrapped in { … || true; } — under `set -e` an
-# empty match would abort the suite. Texts are read as whitespace-normalized streams, so a
-# reflowed paragraph does not hide a formulation.
+# of the contract. Which skills are moved is not a list kept here: every skill whose frontmatter
+# grants the tool (UQ_MOVED) and every agent file whose `tools:` list holds it (UQ_AGENT_FILES)
+# carries the pointer, and every other rule is written over "each file that carries the pointer".
+# Own accumulators UQ_*, own pass/fail; every grep inside $( … ) is wrapped in { … || true; } —
+# under `set -e` an empty match would abort the suite. Texts are read as whitespace-normalized
+# streams, so a reflowed paragraph does not hide a formulation.
 echo -e "\n${BOLD}Part 7g3b: the user-questions contract and its pointer (UQ)${NC}"
 
 UQ_WHY=""
@@ -12633,22 +12634,33 @@ UQ_CHK=0
 UQ_FILE="$ROOT_DIR/data/user-questions.md"
 UQ_POINTER='**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.'
 UQ_CANON='question tool of your agent (`AskUserQuestion`)'
+
+# The grant is the frontmatter line `  - AskUserQuestion` (skills: allowed-tools, agent files: tools).
+uq_grants() { awk 'NR==1 && /^---$/ {f=1; next} f && /^---$/ {exit} f && /^  - AskUserQuestion$/ {c++} END {exit (c > 0 ? 0 : 1)}' "$1"; }
+# Which files carry the pointer is kept as a list while the skills move one group at a time (the last
+# phase derives it from the grants).
 UQ_MOVED=(unikit-plan)
+UQ_AGENT_FILES=()
+# every file that has to carry the pointer: the SKILL.md of each moved skill, then the agent files
+UQ_CARRIERS=()
+for uq_s in ${UQ_MOVED[@]+"${UQ_MOVED[@]}"}; do UQ_CARRIERS+=("$ROOT_DIR/skills/$uq_s/SKILL.md"); done
+for uq_f in ${UQ_AGENT_FILES[@]+"${UQ_AGENT_FILES[@]}"}; do UQ_CARRIERS+=("$uq_f"); done
 
 uq_stream() { tr '\n' ' ' < "$1" | tr -s ' '; }
 uq_body_stream() { awk 'NR==1 && /^---$/ {f=1; next} f && /^---$/ {f=0; b=1; next} b' "$1" | tr '\n' ' ' | tr -s ' '; }
-uq_count() { # <text> <literal> → number of occurrences
-    local n
-    n="$(printf '%s' "$1" | grep -oF -- "$2" | wc -l | tr -d ' ')" || n=0
-    printf '%s' "$n"
+uq_occ() { # <text> <literal> → UQ_N = number of occurrences; pure bash, so a check starts no process
+    local rest="${1//"$2"/}"
+    UQ_N=$(( (${#1} - ${#rest}) / ${#2} ))
 }
 uq_has() { # <reason key> <literal> <file>
     UQ_CHK=$((UQ_CHK + 1))
-    [[ "$(uq_count "$(uq_stream "$3")" "$2")" -gt 0 ]] || UQ_WHY+=" $1"
+    uq_occ "$(uq_stream "$3")" "$2"
+    [[ "$UQ_N" -gt 0 ]] || UQ_WHY+=" $1"
 }
 uq_lacks() { # <reason key> <literal> <file>
     UQ_CHK=$((UQ_CHK + 1))
-    [[ "$(uq_count "$(uq_stream "$3")" "$2")" -eq 0 ]] || UQ_WHY+=" $1"
+    uq_occ "$(uq_stream "$3")" "$2"
+    [[ "$UQ_N" -eq 0 ]] || UQ_WHY+=" $1"
 }
 
 # (UQ-1) the contract: flat, its formulations in place, universal — no agent and no other tool
@@ -12691,16 +12703,17 @@ else
         ! grep -qF -- "$uq_ban" "$UQ_FILE" || UQ_WHY+=" UQ-1:names($uq_ban)"
     done
     UQ_CHK=$((UQ_CHK + 1))
-    uq_n=$(uq_count "$(uq_stream "$UQ_FILE")" 'AskUserQuestion')
-    [[ "$uq_n" -eq 1 ]] || UQ_WHY+=" UQ-1:tool-named(x$uq_n)"
+    uq_occ "$(uq_stream "$UQ_FILE")" 'AskUserQuestion'
+    [[ "$UQ_N" -eq 1 ]] || UQ_WHY+=" UQ-1:tool-named(x$UQ_N)"
     uq_has "UQ-1:example-not-in-brackets" '(`AskUserQuestion`)' "$UQ_FILE"
 fi
 
-# (UQ-2) the pointer: at most once in a SKILL.md and nowhere else, only in a skill whose
-#        frontmatter allows the tool, as the paragraph right above the first `## ` heading of
-#        the body (before any question the skill asks); every moved skill carries it
+# (UQ-2) the pointer: at most once in a SKILL.md or an agent file and nowhere else, only where
+#        the frontmatter grants the tool, as the paragraph right above the first `## ` heading
+#        of the body (before any question is asked); every file that grants the tool carries it
+UQ_SCAN=("$ROOT_DIR"/skills/*/SKILL.md "$ROOT_DIR"/subagents/*.md)
 UQ_PTR_N=0
-for uq_f in "$ROOT_DIR"/skills/*/SKILL.md; do
+for uq_f in "${UQ_SCAN[@]}"; do
     uq_n=$( { grep -cF '**User questions.**' "$uq_f" || true; } )
     [[ "${uq_n:-0}" -eq 0 ]] && continue
     uq_rel="${uq_f#"$ROOT_DIR"/}"
@@ -12712,45 +12725,58 @@ for uq_f in "$ROOT_DIR"/skills/*/SKILL.md; do
     uq_place=$(awk 'NR==1 && /^---$/ {f=1; next} f && /^---$/ {f=0; b=1; next} b && /^## / {print ((p2 ~ /^\*\*User questions\.\*\*/ && p1 == "") ? "ok" : "off"); exit} {p2=p1; p1=$0}' "$uq_f")
     [[ "$uq_place" == "ok" ]] || UQ_WHY+=" UQ-2:pointer-not-above-first-heading:$uq_rel"
 done
-for uq_s in "${UQ_MOVED[@]}"; do
+for uq_c in ${UQ_CARRIERS[@]+"${UQ_CARRIERS[@]}"}; do
     UQ_CHK=$((UQ_CHK + 1))
-    grep -qF '**User questions.**' "$ROOT_DIR/skills/$uq_s/SKILL.md" || UQ_WHY+=" UQ-2:moved-skill-without-pointer:$uq_s"
+    grep -qF '**User questions.**' "$uq_c" || UQ_WHY+=" UQ-2:grant-without-pointer:${uq_c#"$ROOT_DIR"/}"
 done
 [[ "$UQ_PTR_N" -gt 0 ]] || UQ_WHY+=" UQ-2:no-pointer"
 UQ_CHK=$((UQ_CHK + 1))
-uq_stray=$( { grep -rlF '**User questions.**' "$ROOT_DIR/skills" "$ROOT_DIR/data" "$ROOT_DIR/subagents" 2>/dev/null || true; } | { grep -v '/SKILL\.md$' || true; } | wc -l | tr -d ' ')
-[[ "$uq_stray" -eq 0 ]] || UQ_WHY+=" UQ-2:pointer-outside-SKILL.md(x$uq_stray)"
+uq_stray=$( { grep -rlF '**User questions.**' "$ROOT_DIR/skills" "$ROOT_DIR/data" "$ROOT_DIR/subagents" 2>/dev/null || true; } | { grep -v '/SKILL\.md$' || true; } | { grep -v '/subagents/[^/]*\.md$' || true; } | wc -l | tr -d ' ')
+[[ "$uq_stray" -eq 0 ]] || UQ_WHY+=" UQ-2:pointer-outside-SKILL.md-and-agent-files(x$uq_stray)"
 
 # (UQ-3) every pointer is the one pinned line, byte for byte
-for uq_f in "$ROOT_DIR"/skills/*/SKILL.md; do
+for uq_f in "${UQ_SCAN[@]}"; do
     grep -qF '**User questions.**' "$uq_f" || continue
     UQ_CHK=$((UQ_CHK + 1))
     uq_line=$( { grep -F '**User questions.**' "$uq_f" || true; } | head -n 1 | tr -d '\r')
     [[ "$uq_line" == "$UQ_POINTER" ]] || UQ_WHY+=" UQ-3:pointer-text:${uq_f#"$ROOT_DIR"/}"
 done
 
-# (UQ-4) a skill that carries the pointer names the tool only in the canonical form, in the body
-#        of SKILL.md and in every reference (the frontmatter tool list is a permission, not text)
-for uq_f in "$ROOT_DIR"/skills/*/SKILL.md; do
+# (UQ-4) a file that carries the pointer names the tool only in the canonical form: in the body
+#        of SKILL.md and in every reference of the skill, in the body of an agent file (the
+#        frontmatter tool list is a permission, not text)
+for uq_f in "${UQ_SCAN[@]}"; do
     grep -qF '**User questions.**' "$uq_f" || continue
+    if [[ "$uq_f" == */SKILL.md ]]; then
+        uq_docs="$( { find "$(dirname "$uq_f")" -name '*.md' -type f || true; } | sort)"
+    else
+        uq_docs="$uq_f"
+    fi
     while IFS= read -r uq_doc; do
         [[ -n "$uq_doc" ]] || continue
-        if [[ "$uq_doc" == */SKILL.md ]]; then uq_txt="$(uq_body_stream "$uq_doc")"; else uq_txt="$(uq_stream "$uq_doc")"; fi
-        uq_all=$(uq_count "$uq_txt" 'AskUserQuestion')
-        uq_can=$(uq_count "$uq_txt" "$UQ_CANON")
+        if [[ "$uq_doc" == */SKILL.md || "$uq_doc" == */subagents/*.md ]]; then uq_txt="$(uq_body_stream "$uq_doc")"; else uq_txt="$(uq_stream "$uq_doc")"; fi
+        uq_occ "$uq_txt" 'AskUserQuestion'; uq_all=$UQ_N
+        uq_occ "$uq_txt" "$UQ_CANON"; uq_can=$UQ_N
         UQ_CHK=$((UQ_CHK + 1))
         [[ "$uq_all" -eq "$uq_can" ]] || UQ_WHY+=" UQ-4:bare-name(${uq_all}/${uq_can}):${uq_doc#"$ROOT_DIR"/}"
-    done < <( { find "$(dirname "$uq_f")" -name '*.md' -type f || true; } | sort)
+    done <<< "$uq_docs"
 done
 
-# (UQ-5) a skill that carries the pointer restates none of the contract: no copy of its clause,
-#        no text tier and no turn rule of its own
-for uq_f in "$ROOT_DIR"/skills/*/SKILL.md; do
+# (UQ-5) a file that carries the pointer restates none of the contract and asks in no way the
+#        contract retired: no copy of its clause, no text tier, no turn rule of its own, no
+#        plain-text prompt and no wait without a question
+for uq_f in "${UQ_SCAN[@]}"; do
     grep -qF '**User questions.**' "$uq_f" || continue
-    uq_all_txt="$( { find "$(dirname "$uq_f")" -name '*.md' -type f -exec cat {} + || true; } | tr '\n' ' ' | tr -s ' ')"
-    for uq_lit in 'carries the options and nothing else' 'numbered text' 'question widget' 'structured-question tool' 'end your turn' 'end the turn'; do
+    if [[ "$uq_f" == */SKILL.md ]]; then
+        uq_all_txt="$( { find "$(dirname "$uq_f")" -name '*.md' -type f -exec cat {} + || true; } | tr '\n' ' ' | tr -s ' ')"
+    else
+        uq_all_txt="$(uq_stream "$uq_f")"
+    fi
+    for uq_lit in 'carries the options and nothing else' 'numbered text' 'question widget' 'structured-question tool' 'end your turn' 'end the turn' \
+                  '[y/N]' 'Wait for user response' 'wait for user to specify' 'ask once, as plain text' 'Agents without a question tool'; do
         UQ_CHK=$((UQ_CHK + 1))
-        [[ "$(uq_count "$uq_all_txt" "$uq_lit")" -eq 0 ]] || UQ_WHY+=" UQ-5:restated(${uq_lit:0:24}):${uq_f#"$ROOT_DIR"/}"
+        uq_occ "$uq_all_txt" "$uq_lit"
+        [[ "$UQ_N" -eq 0 ]] || UQ_WHY+=" UQ-5:restated(${uq_lit:0:24}):${uq_f#"$ROOT_DIR"/}"
     done
 done
 
@@ -12777,11 +12803,28 @@ uq_has "UQ-7:configuration-tree" 'user-questions.md # How a skill asks you a que
 uq_has "UQ-7:skills-page" '- **Questions** - every question the planner asks follows `.unikit/system/user-questions.md`' "$ROOT_DIR/docs/skills.md"
 uq_has "UQ-7:help-index" '- `user-questions.md` — how a skill asks you a question' "$ROOT_DIR/skills/unikit-help/references/knowledge-base.md"
 
+# (UQ-8) the shared texts under data/ say what to ask, never how: besides the contract no file there
+#        names the tool, restates the contract or tells agents without the tool what to do
+UQ_DATA_N=0
+while IFS= read -r uq_doc; do
+    [[ -n "$uq_doc" && "$uq_doc" != "$UQ_FILE" ]] || continue
+    UQ_DATA_N=$((UQ_DATA_N + 1))
+    uq_txt="$(uq_stream "$uq_doc")"
+    for uq_lit in 'AskUserQuestion' 'carries the options and nothing else' 'numbered text' 'question widget' 'structured-question tool' 'structured question' 'end your turn' 'end the turn'; do
+        UQ_CHK=$((UQ_CHK + 1))
+        uq_occ "$uq_txt" "$uq_lit"
+        [[ "$UQ_N" -eq 0 ]] || UQ_WHY+=" UQ-8:data-restates(${uq_lit:0:24}):${uq_doc#"$ROOT_DIR"/}"
+    done
+done < <( { find "$ROOT_DIR/data" -name '*.md' -type f || true; } | sort)
+UQ_CHK=$((UQ_CHK + 1))
+[[ "$UQ_DATA_N" -gt 0 ]] || UQ_WHY+=" UQ-8:no-data-file-scanned"
+uq_lacks "UQ-8:agent-named-in-the-principles" 'on Claude Code' "$ROOT_DIR/data/gamedesign/gd-principles.md"
+
 (( UQ_CHK > 0 )) || UQ_WHY+=" UQ-1:nothing-checked"
 if [[ -z "$UQ_WHY" ]]; then
-    pass "UQ-1…UQ-7 user questions: the contract file, the pointer as one line above the first heading, the canonical tool name, no restated rule, the planner's question sites, the docs (${UQ_CHK} checks)"
+    pass "UQ-1…UQ-8 user questions: the contract file, the pointer as one line above the first heading in every file that grants the tool, the canonical tool name, no restated or retired way of asking, the shared texts, the settled sites, the docs (${UQ_CHK} checks)"
 else
-    fail "UQ-1…UQ-7 user questions:$UQ_WHY"
+    fail "UQ-1…UQ-8 user questions:$UQ_WHY"
 fi
 # <<< UQ block
 

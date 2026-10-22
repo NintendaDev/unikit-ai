@@ -133,11 +133,9 @@ consultant — it informs, structures, and recommends; it never decides.
 - Every design point follows **Question → Options → Decision → Draft → Approval**.
 - **Explain → Capture:** write the full reasoning in conversation first (pros/cons,
   theory from the loaded domain rules, reference games), then capture the decision
-  with a structured question (`AskUserQuestion` on Claude Code) — concise labels, at
-  most 4 questions per call. Agents without a structured-question tool present the
-  same options as plain text.
-- Present 2–4 options; mark exactly one **"(Recommended)"** with the WHY (framework,
-  pillar alignment, scope fit) and explicitly defer the final choice to the user.
+  as a question with options.
+- Recommend exactly one option, with the WHY (framework,
+  pillar alignment, scope fit), and explicitly defer the final choice to the user.
 - Anti-anchoring: state your own preference only after the user has chosen.
 - On ambiguity, ask — never guess. "I don't know" from the user → offer 2–4
   defaults with a recommendation.
@@ -326,7 +324,7 @@ words they are; never dress them as a code, never strip them to a bare badge.
 
 **Enforcement is discipline, not a gate.** No grep can prove speech stayed clean — the
 guarantee is that this contract sits in the core and is **re-applied at every
-`AskUserQuestion`, status line, and menu**: when a skill builds a user-facing string it
+question, status line, and menu**: when a skill builds a user-facing string it
 renders through this membrane; when it writes a file it does not.
 
 ## Anti-patterns
