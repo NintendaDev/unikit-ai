@@ -39,7 +39,7 @@ INFO [plan] resolved: <path> (<reason>)
 `branch match: <branch>` · `latest fallback`. This is plain output, never the payload of an
 interactive question.
 2. Both exist → ask user which to modify. Print both plan paths with their `Updated:` to the
-   screen as plain markdown first — the question mechanism carries the options and nothing else.
+   screen as plain markdown first.
 3. Only one exists → use it
 4. No plan found → tell user to create one first, **STOP**
 
@@ -88,4 +88,4 @@ Apply changes with Edit tool, preserving unaffected content (this list applies t
 
 ### Add Step 3: Confirm
 
-Show: plan path, what changed, updated effort. When `engine_rules_loaded = false`, also show the line `Engine rules: ENGINE_RULES.md not found, Editor: fields skipped` — Add mode never reaches Step 6, so this is its **only** confirmation point for the skipped editor fields. Ask if anything needs adjustment. **STOP after confirmation.**
+Show: plan path, what changed, updated effort. When `engine_rules_loaded = false`, also show the line `Engine rules: ENGINE_RULES.md not found, Editor: fields skipped` — Add mode never reaches Step 6, so this is its **only** confirmation point for the skipped editor fields. Then print the next steps of Step 6 item 7 and **STOP**.

@@ -51,7 +51,7 @@ All blocking: exactly one `Hand-back:` task and it is the last; every `Measure:`
 ## Where the plan goes, and no branch
 
 - `fast` writes `.unikit/code/PLAN.md`. `full` and `ultra` write the folder `.unikit/code/plans/balance-<slug>-bch-<n>/` and do not touch the plan of the current branch. `<slug>` is the name of the document's folder under `.unikit/gamedesign/balance/` in lowercase by the rule of `merge-plan.md` (runs outside `[a-z0-9]` become one `-`, ends trimmed, at most 40 characters; a name with nothing left becomes `doc`); `<n>` is the number from the point's `BCH-<n>`. This name replaces the "invent a name" of Step 1; the collision check of Step 1 holds for `full` and `ultra` unchanged.
-- `fast` skips the collision check, so this file asks: `.unikit/code/PLAN.md` exists and still has `- [ ]` tasks → `AskUserQuestion`: overwrite it, or take `full`.
+- `fast` skips the collision check, so this file asks: `.unikit/code/PLAN.md` exists and still has `- [ ]` tasks → ask with the question tool of your agent (`AskUserQuestion`): overwrite it, or take `full`.
 - Never create or switch a branch: the branch step of every mode is skipped, whatever `git.create_branches` says; the work goes on in the current branch.
 
 ## The closing message

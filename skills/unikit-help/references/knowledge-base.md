@@ -100,6 +100,9 @@ Relevant to the dev pipeline:
   read by the skills that launch a subagent, and by the two coordinators, before their first launch.
 - `subagent-roles.md` — which role (reader, validator or executor) each subagent launch has, so that its
   model and effort are read from the right config key; read together with `subagent-arguments.md`.
+- `user-questions.md` — how a skill asks you a question (what is chosen and what each option changes
+  printed first, then the question tool of your agent, the run waiting in the same turn for your
+  answer, numbered text only without that tool); read by `/unikit-plan` before its first question.
 
 ---
 

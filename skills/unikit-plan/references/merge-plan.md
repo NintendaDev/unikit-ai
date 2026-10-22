@@ -6,7 +6,7 @@ The planner does the analysis itself, by `.unikit/system/merge-analysis.md`, and
 
 ## Trigger
 
-A request to merge a **named** branch into the current one. Three things are not merges in this sense — **rebase**, **cherry-pick**, and merging by a pull request number. Say so in one line and offer an ordinary plan instead. The branch is not named → ask which one with `AskUserQuestion` (options from `git for-each-ref`).
+A request to merge a **named** branch into the current one. Three things are not merges in this sense — **rebase**, **cherry-pick**, and merging by a pull request number. Say so in one line and offer an ordinary plan instead. The branch is not named → ask which one with the question tool of your agent (`AskUserQuestion`), its options from `git for-each-ref`.
 
 There are three modes — `fast`, `full`, `ultra`. `add` does not apply to a merge.
 
@@ -48,7 +48,7 @@ The question has three options, in this order: fast, full, ultra.
 
 - `fast` writes `.unikit/code/PLAN.md`. `full` and `ultra` write the folder `.unikit/code/plans/merge-<slug>/` and do not touch the plan of the current branch.
 - `<slug>` is the merged branch's name in lowercase, each run of characters outside `[a-z0-9]` replaced with one `-`, the ends trimmed, at most 40 characters. This name replaces the "invent a name" of Step 1; the collision check of Step 1 holds for `full` and `ultra` unchanged.
-- `fast` skips the collision check, so this file asks: `.unikit/code/PLAN.md` exists and still has `- [ ]` tasks → `AskUserQuestion`: overwrite it, or take `full` instead.
+- `fast` skips the collision check, so this file asks: `.unikit/code/PLAN.md` exists and still has `- [ ]` tasks → ask with the question tool of your agent (`AskUserQuestion`): overwrite it, or take `full` instead.
 - Never create or switch a branch: the branch step of every mode is skipped. That is Step A of `full` and Step A of `ultra`, whatever `git.create_branches` says; the work goes on in the current branch.
 
 ## Layout

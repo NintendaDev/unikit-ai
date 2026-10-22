@@ -3,7 +3,7 @@
 // Same shape as the wrappers there: a flat copy from `data/` into `.unikit/system/` with NO
 // substitution, NOT hash-tracked — every init/update rewrites it. The next flat contract goes here too.
 
-import { SUBAGENT_ARGUMENTS_FILE, SUBAGENT_ROLES_FILE } from '../constants.js';
+import { SUBAGENT_ARGUMENTS_FILE, SUBAGENT_ROLES_FILE, USER_QUESTIONS_FILE } from '../constants.js';
 import { installFlatSystemAsset } from './shared.js';
 
 /**
@@ -27,4 +27,14 @@ export async function installSubagentArgumentsContract(projectDir: string): Prom
  */
 export async function installSubagentRolesContract(projectDir: string): Promise<void> {
   await installFlatSystemAsset(projectDir, SUBAGENT_ROLES_FILE, 'installSubagentRolesContract');
+}
+
+/**
+ * The user-questions contract — a flat copy from `data/user-questions.md`, NO substitution, NOT hash-tracked.
+ * How a skill asks the user: the explanation printed first, the question tool of the agent, the turn that stays
+ * open while a question waits, numbered text only without that tool. A system asset because every skill that asks
+ * reads one text — a copy per skill drifts — and the text names no agent, so one file serves every runtime.
+ */
+export async function installUserQuestionsContract(projectDir: string): Promise<void> {
+  await installFlatSystemAsset(projectDir, USER_QUESTIONS_FILE, 'installUserQuestionsContract');
 }

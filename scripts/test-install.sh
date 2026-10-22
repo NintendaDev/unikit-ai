@@ -322,6 +322,23 @@ assert_not_contains "$SUBAGENT_ROLES_PATH" '\{\{' \
   "subagent-roles.md is a flat copy — no unresolved {{vars}}"
 
 # ─────────────────────────────────────────────────────
+# Test 1b-uq: user-questions.md installed as a system asset (flat copy, no vars)
+# Read before the first question by the skills that carry its pointer; a system asset so that it reaches
+# a project whichever skills the wizard installed. Update-path coverage is test-update.sh 30u; the init.ts
+# call site is SA-1's job. assert_contains is grep -E: the [questions] tag is escaped.
+# ─────────────────────────────────────────────────────
+USER_QUESTIONS_PATH="$CLAUDE_DIR/.unikit/system/user-questions.md"
+assert_exists "$USER_QUESTIONS_PATH" "user-questions.md created in .unikit/system/"
+assert_contains "$USER_QUESTIONS_PATH" '^## How to ask$' \
+  "user-questions.md carries the section that says how a question is asked"
+assert_contains "$USER_QUESTIONS_PATH" '^## A question with no fixed answers$' \
+  "user-questions.md carries the section on a question answered in words"
+assert_contains "$USER_QUESTIONS_PATH" 'WARN \[questions\] no question tool' \
+  "user-questions.md carries the canonical WARN [questions] label of the text tier"
+assert_not_contains "$USER_QUESTIONS_PATH" '\{\{' \
+  "user-questions.md is a flat copy — no unresolved {{vars}}"
+
+# ─────────────────────────────────────────────────────
 # Test 1b-mcp: engine-mcp shard EMPTY branch — this fixture selects zero MCP
 # servers (mcp.servers = {}), so nothing contributes a shard and the directory
 # must NOT be created. installEngineMcpShards treats an empty set as a normal

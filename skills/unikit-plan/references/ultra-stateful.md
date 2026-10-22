@@ -188,8 +188,8 @@ For each phase, in order:
 The path is in every progress line: after a compaction it is the line that leads back to the
 state.
 
-A gap in a contract is closed here, by the session itself (through `AskUserQuestion` when it
-needs the user), and the decision goes straight into `## Contracts`.
+A gap in a contract is closed here, by the session itself — through the question tool of your agent (`AskUserQuestion`) when it
+needs the user — and the decision goes straight into `## Contracts`.
 
 ## Resume
 

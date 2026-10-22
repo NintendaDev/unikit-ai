@@ -38,7 +38,7 @@ Step A0 is the first action of an ultra run — before Step A, before any reconn
 - Otherwise ask:
 
   ```
-  AskUserQuestion: How should this ultra plan be written?
+  The question tool of your agent (`AskUserQuestion`): How should this ultra plan be written?
 
   Options:
   1. Standard (Recommended) — the session writes the whole plan in one go; the fastest; a context compaction may lose details of early decisions
@@ -122,7 +122,7 @@ The standard protocol and more phases than the threshold this line names → pri
 and ask:
 
 ```
-AskUserQuestion: The plan has <N> phases. Switch to writing with saved state?
+The question tool of your agent (`AskUserQuestion`): The plan has <N> phases. Switch to writing with saved state?
 
 Options:
 1. Switch to saved state (Recommended) — what is decided so far goes to disk now, the rest as it appears

@@ -46,7 +46,7 @@ This replaces `### Step A` of full and ultra; fast gets the same mechanics.
 
 ## The plan folder and the closing message
 
-- `fast` writes `.unikit/code/PLAN.md`; `full` and `ultra` write the folder `.unikit/code/plans/experiment-<topic>/` (literally `experiment-<topic>`, without a date). This name replaces "invent a name" of Step 1; the collision check of Step 1 for `full` and `ultra` works unchanged. `fast` skips the collision check, so this file asks: `.unikit/code/PLAN.md` exists and holds `- [ ]` → `AskUserQuestion`: overwrite or take `full`.
+- `fast` writes `.unikit/code/PLAN.md`; `full` and `ultra` write the folder `.unikit/code/plans/experiment-<topic>/` (literally `experiment-<topic>`, without a date). This name replaces "invent a name" of Step 1; the collision check of Step 1 for `full` and `ultra` works unchanged. `fast` skips the collision check, so this file asks: `.unikit/code/PLAN.md` exists and holds `- [ ]` → ask with the question tool of your agent (`AskUserQuestion`): overwrite or take `full`.
 - The branch name with a date does not match the folder name, so `/unikit-implement` and `/unikit-verify` will not find the plan by branch. The closing message (Step 6) names the folder explicitly: `full` and `ultra` — `/unikit-implement experiment-<topic>`, and the verify command and the others with the same folder name; `fast` — `/unikit-implement` (a fast plan is found first by auto-detection). The plan's branch and base are named in the message.
 
 ## One plan for a set
