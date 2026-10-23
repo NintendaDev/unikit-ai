@@ -391,7 +391,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **When:** "the first minutes are boring, what can we test", "design an experiment", "compare
   three hints", "here is the playtest feedback", "which experiments failed".
 - **In:** nothing (a short conversation), a design problem, a chosen idea, pasted feedback or a
-  file, a list request, an experiment named in words ("the latest", "the one about onboarding" — found by its `lookup.md` reference, which the planner and both explorations read too), or a path to a balance `CHECKPOINTS.md`. The intent is read from the
+  file, a game-design research (a path or words — a card is built from it), a list request, an experiment named in words ("the latest", "the one about onboarding" — found by its `lookup.md` reference, which the planner and both explorations read too), or a path to a balance `CHECKPOINTS.md`. The intent is read from the
   request; no flags.
 - **Out:** `.unikit/gamedesign/experiments/` — `index.md` and per experiment
   `EXP-<nnn>-<slug>/{experiment,feedback,results}.md`; the last block of a save is the ready

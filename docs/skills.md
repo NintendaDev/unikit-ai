@@ -471,10 +471,12 @@ genre-profile seed layer, and the brownfield recon/code-lens/docs boundary.
 /unikit-gd-experiment                                    # a short conversation: what to test (nothing is saved)
 /unikit-gd-experiment the first five minutes are boring  # at least five ideas, a table, a choice
 /unikit-gd-experiment <pasted feedback or a file path>   # attribute, keep the originals, assess
+/unikit-gd-experiment <a design research: path or words>  # a card from it; what the test judges is asked first
 /unikit-gd-experiment list                               # the catalog (also: untested, best, failed, retest, archive)
 /unikit-gd-experiment <path to CHECKPOINTS.md>           # experiments for the current balance checkpoint
 ```
 - Four modes read from the request, no flags: **Discover** (at least five ideas that differ by hypothesis), **Specify** (the card a planner can build from), **Evaluate** (feedback in any form, several experiments and rounds at once; originals kept verbatim, doubtful comments stay unassigned until confirmed, a score always has a source and a basis) and **Manage** (list, filters, compare, best, failed, retest, edit, archive)
+- Given a game-design research (a path or words naming it) it reads the summary, the brief and your original request, prints where each decision went, and asks once what the test should show - before it asks how the test is run; the draft is a headline of up to five lines and a table of short rows, one idea each
 - Owns `.unikit/gamedesign/experiments/` - `index.md` and per experiment `EXP-<nnn>-<slug>/{experiment,feedback,results}.md`; nothing is saved before you approve it, and an experiment is not registered in `GD-IDS.yaml`
 - Reads the named slice of the project read-only (`recon-agent`) only to learn what the game already does, and writes it down in the designer's words - never class names, code or file paths; a GDD is not required
 - The last block of a save is the ready `/unikit-plan <path to experiment.md>` command for cards marked ready; after an evaluation of a card that came from a balance checkpoint it is the return command `/unikit-gd-balance <slug> "<path to results.md>"`

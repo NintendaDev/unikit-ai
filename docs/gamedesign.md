@@ -386,6 +386,11 @@ nothing; the intent is read from the request, in four modes:
   tested, the design and the flow, the variants, the minimum interface, the minimum scope (Must
   Have / Can Be Simplified / Out of Scope), how to test, success criteria (preliminary targets, not
   facts), risks, follow-up decisions and an evaluation summary. Nothing is saved before you approve.
+  A card can also be built from a game-design research, named by a path or in words: the skill
+  reads its summary, its brief and your original request, prints where each decision went, and
+  asks what the test should show - understood, enjoyed, better than now - before it asks how the
+  test is run. The draft is a headline of up to five lines and a table of short rows, one idea
+  each; section 4 keeps one question and gains a `Judged on:` line.
 - **Evaluate** - takes feedback in any form: pasted text, a forwarded chat, a file; several
   experiments and several rounds at once. A comment is attributed only by explicit signs, a doubtful
   one waits in `unassigned-feedback.md` until you confirm it, and the originals are kept verbatim,
