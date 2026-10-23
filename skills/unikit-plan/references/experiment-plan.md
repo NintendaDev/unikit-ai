@@ -9,6 +9,7 @@ Read **only** when the input is an experiment: `EXP-<nnn>`, a path to an `experi
 - A card is not found → `ERROR [experiment] <selector>: no such card — plan not built; see /unikit-gd-experiment` and **STOP**. Two folders with one number → the same, with the explanation (the experiment skill blocks such numbers).
 - Every `experiment.md` is read **in full**. `feedback.md` and `results.md` are not read unless the user asks. The experiments store is never written.
 - The plan description comes from the cards: the search over `researches/INDEX.md` (Step 0.2) does not run. Step 4.5 does not run: a plan of an experiment has no `## Design`, `## Flow Context` or `## Content Context`, and a prototype does not feed `implemented_version`. Step 2 does not match researches by topic either: a research reaches the plan only by an `Experiment:` line, see `## The snapshot comes first`.
+- Not a card: an experiment request whose source is a design research, a file or a description, or that names no source, is resolved by `{{skills_dir}}/{{self_name}}/references/experiment-source.md`, read at once; it replaces `## Checking the cards`, `## The snapshot comes first` and `## One plan for a set` and leaves the rest of this file in force.
 
 ## Checking the cards
 
@@ -61,6 +62,6 @@ It adds no acceptance phases, no task kinds (`Measure:`, `Item:` and `Hand-back:
 
 ## Self-check before saving
 
-(a) The manifest has exactly one `## Experiment Context` section before `## Settings`, the lines `Branch:` and `Base:` are in place, and every card has the snapshot of sections 2-11. (b) `Testing` and `Docs` follow `## Settings`. (c) There is no `PR checkpoints:` line and no `Hand-back:` or `Measure:` task. (d) The mode question was shown. (e) The folder name is `experiment-<topic>`. (f) The commands name the folder. (g) A card the user named in words was confirmed through the lookup before anything of it was read. (h) A research was linked to a card only by its `Experiment:` line or by the user's answer to the candidate question. A violation is fixed before saving.
+(a) The manifest has exactly one `## Experiment Context` section before `## Settings`, the lines `Branch:` and `Base:` are in place, and every card has the snapshot of sections 2-11. (b) `Testing` and `Docs` follow `## Settings`. (c) There is no `PR checkpoints:` line and no `Hand-back:` or `Measure:` task. (d) The mode question was shown. (e) The folder name is `experiment-<topic>`. (f) The commands name the folder. (g) A card the user named in words was confirmed through the lookup before anything of it was read. (h) A research was linked to a card only by its `Experiment:` line or by the user's answer to the candidate question. (i) Without cards, the checks of `experiment-source.md` ran in place of (a), (g) and (h). A violation is fixed before saving.
 
 Missing or unreadable file → the line of `SKILL.md` (`WARN [experiment] experiment-plan reference missing — …`) and an ordinary plan.

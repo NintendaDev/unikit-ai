@@ -11025,7 +11025,7 @@ else
     exp_ok "EXP-P:X1-32" '## Experiment Context' "$ROOT_DIR/skills/unikit-plan/references/TASK-FORMAT.md"
     exp_ok "EXP-P:X1-33" 'Branch: <the plan'\''s branch name | none>' "$ROOT_DIR/skills/unikit-plan/references/TASK-FORMAT.md"
     exp_ok "EXP-P:X1-34" 'A path without the content is not a snapshot' "$ROOT_DIR/skills/unikit-plan/references/TASK-FORMAT.md"
-    exp_ok "EXP-P:X1-35" '## Experiment Context   (only for a plan built from experiment cards)' "$ROOT_DIR/skills/unikit-plan/references/ULTRA-PLAN-FORMAT.md"
+    exp_ok "EXP-P:X1-35" '## Experiment Context   (only for an experiment plan)' "$ROOT_DIR/skills/unikit-plan/references/ULTRA-PLAN-FORMAT.md"
     exp_ok "EXP-P:X1-36" 'T30 experiment-context-after-balance-context-before-settings' "$ROOT_DIR/scripts/test-ultra-plan-contract.mjs"
     exp_ok "EXP-P:X1-51" 'experiment_branch_prefix: experiment/' "$ROOT_DIR/skills/unikit/references/config-template.yaml"
     exp_ok "EXP-P:X1-52" 'experiment_branch_prefix' "$ROOT_DIR/docs/configuration.md"
