@@ -13,7 +13,7 @@ description: >-
   experiment", "compare three hints", "here is the playtest feedback", "which experiments
   failed". To build a card use /unikit-plan; to tune numbers by measurement use
   /unikit-gd-balance.
-argument-hint: "[<design problem or idea> | <playtest feedback: pasted text or a file path> | <experiment title or number> | <path to CHECKPOINTS.md> | list]  (intent read from the request; no flags)"
+argument-hint: "[<design problem or idea> | <playtest feedback: pasted text or a file path> | <experiment title or number> | <design research: a path or words naming it> | <path to CHECKPOINTS.md> | list]  (intent read from the request; no flags)"
 allowed-tools:
   - Read
   - Write
@@ -129,6 +129,7 @@ reference files named below from `{{skills_dir}}/{{self_name}}/references/` and 
 | A bare call, or a request too vague to understand | none — hold a short conversation: one to three short questions in plain language (what feels weak, or which hypothesis the designer wants to test), each asked with the question tool of your agent (`AskUserQuestion`), not a questionnaire; the options are the likely answers drawn from the request and the GDD, or two short examples, and the designer writes their own in the free-text answer |
 | A design problem to explore: "what can we test for…", "the first minutes are boring" | `mode-discover.md` |
 | An idea was chosen; a direct request for a specification; a request to compare variants of one question; edit a draft | `mode-specify.md`, `template-experiment.md`, `card-draft-view.md`, `storage-and-index.md` |
+| A card is wanted and a game-design research is named or attached: a path, "the research about …" | `from-research.md`, then `mode-specify.md`, `template-experiment.md`, `card-draft-view.md`, `storage-and-index.md` |
 | Feedback from real play: pasted text, a forwarded chat, a file; "evaluate", "re-evaluate", "score" | `mode-evaluate.md`, `storage-and-index.md` |
 | List, filter, compare, best, failed, retest, update, archive, lessons across several, repair the index | `mode-manage.md`, `storage-and-index.md` |
 | An experiment is named by words instead of a number: "the latest", "the one about onboarding" | `lookup.md` |
@@ -195,6 +196,7 @@ interface language; the command itself carries only paths.
 /unikit-gd-experiment                                    → a short conversation: what to test (nothing is saved)
 /unikit-gd-experiment the first five minutes are boring  → ideas: at least five distinct hypotheses, a table, a choice
 /unikit-gd-experiment <an idea, or a request to specify> → write the experiment card
+/unikit-gd-experiment <a design research: a path or words> → a card from it; what the test judges is asked first
 /unikit-gd-experiment <pasted feedback or a file path>   → evaluate: attribute, keep the originals, assess
 /unikit-gd-experiment list                               → the catalog (also: untested, best, failed, retest, archive)
 /unikit-gd-experiment <path to CHECKPOINTS.md>           → experiments for the current balance checkpoint

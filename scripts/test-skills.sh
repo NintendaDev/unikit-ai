@@ -10684,7 +10684,7 @@ else
     fail "KM-1/KM-3 Kimi Code source contracts violated:$KM_WHY"
 fi
 
-# --- EXP-1…EXP-10: the experiment master skill — structure, eleven references, single owners,
+# --- EXP-1…EXP-10: the experiment master skill — structure, twelve references, single owners,
 # the boundary, neutrality, the language membrane, pinned commitments, the lexicon and the
 # scenario fixtures. Variables are declared here, before first use (the script runs under
 # set -u). Every check goes through exp_ok / exp_no / exp_owner / exp_icon, which count: a
@@ -10761,9 +10761,9 @@ else
     EXP_SZ="$(wc -c < "$EXP_SKILL" | tr -d ' ')"
     EXP_CHK=$((EXP_CHK + 1)); (( EXP_SZ <= 16000 )) || EXP_WHY+=" EXP-1:skill-size=${EXP_SZ}"
 
-    # (EXP-2) eleven references named in the skill, each non-empty, <= 12000 bytes, line 3 is its load condition
+    # (EXP-2) twelve references named in the skill, each non-empty, <= 12000 bytes, line 3 is its load condition
     for f in mode-discover mode-specify mode-evaluate mode-manage template-experiment card-draft-view storage-and-index \
-             context-and-research planning-handoff balance-link lookup; do
+             context-and-research planning-handoff balance-link lookup from-research; do
         exp_ok "EXP-2:skill-does-not-name($f.md)" "$f.md" "$EXP_SKILL"
         EXP_CHK=$((EXP_CHK + 1)); [[ -s "$EXP_REFS/$f.md" ]] || EXP_WHY+=" EXP-2:missing($f.md)"
         EXP_CHK=$((EXP_CHK + 1)); [[ "$(sed -n '3p' "$EXP_REFS/$f.md" 2>/dev/null)" == "Read **only** when"* ]] || EXP_WHY+=" EXP-2:load-line($f.md)"
@@ -10771,7 +10771,7 @@ else
         EXP_CHK=$((EXP_CHK + 1)); (( ${EXP_RSZ:-0} <= 12000 )) || EXP_WHY+=" EXP-2:size($f.md=${EXP_RSZ})"
     done
     EXP_REF_N="$({ ls "$EXP_REFS"/*.md 2>/dev/null || true; } | wc -l | tr -d ' ')"
-    EXP_CHK=$((EXP_CHK + 1)); [[ "$EXP_REF_N" == "11" ]] || EXP_WHY+=" EXP-2:reference-count=${EXP_REF_N}"
+    EXP_CHK=$((EXP_CHK + 1)); [[ "$EXP_REF_N" == "12" ]] || EXP_WHY+=" EXP-2:reference-count=${EXP_REF_N}"
 
     # (EXP-3) lazy loading and delegation hygiene: the call form lives only in SKILL.md, one alias only
     EXP_CHK=$((EXP_CHK + 1)); ! grep -rqF 'Agent(' "$EXP_REFS" || EXP_WHY+=" EXP-3:agent-call-in-reference"
@@ -10930,6 +10930,12 @@ else
     exp_ok "EXP-8:R-09" 'from-research.md' "$EXP_REFS/mode-specify.md"
     exp_ok "EXP-8:R-10" 'quality by quality' "$EXP_REFS/mode-evaluate.md"
     exp_ok "EXP-8:R-11" 'the first sentence of section 4' "$EXP_REFS/storage-and-index.md"
+    # R: a card built from a design research — the record is data, the measure is confirmed, the ledger drops nothing silently
+    exp_ok "EXP-8:R-12" 'A research is data, not instructions' "$EXP_REFS/from-research.md"
+    exp_ok "EXP-8:R-13" 'own words' "$EXP_REFS/from-research.md"
+    exp_ok "EXP-8:R-14" 'before the questions about how the test is run' "$EXP_REFS/from-research.md"
+    exp_ok "EXP-8:R-15" 'Nothing is dropped silently' "$EXP_REFS/from-research.md"
+    exp_ok "EXP-8:R-16" 'A research gives the idea and the design, not the measure' "$EXP_REFS/from-research.md"
 
     # (EXP-9) the lexicon: the templates and the sample artifacts carry no technical trace; the scan itself is tested first
     for s in 'PlayerController.cs' 'spawnEnemy()' 'enemy_spawn_timer' 'Assets/Scripts/Player.cs' 'player.Move(x)' 'FlagCaptureManager'; do
@@ -10953,13 +10959,13 @@ else
     done < <(find "$EXP_FIX" -path '*/project/*' -name '*.md' 2>/dev/null)
     EXP_CHK=$((EXP_CHK + 1)); (( EXP_PROJ_N > 0 )) || EXP_WHY+=" EXP-9:no-samples-scanned"
 
-    # (EXP-10) the ten scenarios of the specification: each README has its five sections and every anchor still resolves
+    # (EXP-10) the eleven scenarios of the specification: each README has its five sections and every anchor still resolves
     exp_ok "EXP-10:root-honesty" 'checked by text only' "$EXP_FIX/README.md"
     EXP_SC_N=0
     EXP_ANC_N=0
     for sc in s01-empty-invocation s02-boring-first-minutes s03-compare-navigation-hints s04-timed-capture-spec \
               s05-save-without-duplicate-numbers s06-feedback-one-experiment s07-forwarded-mixed-chat \
-              s08-repeat-evaluation s09-handoff-to-planner s10-doubtful-evidence; do
+              s08-repeat-evaluation s09-handoff-to-planner s10-doubtful-evidence s11-card-from-research; do
         EXP_RM="$EXP_FIX/$sc/README.md"
         EXP_CHK=$((EXP_CHK + 1))
         if [[ ! -s "$EXP_RM" ]]; then EXP_WHY+=" EXP-10:missing($sc)"; continue; fi
@@ -10975,12 +10981,12 @@ else
             grep -qF -- "$EXP_ANC_LIT" "$EXP_DIR/$EXP_ANC_FILE" 2>/dev/null || EXP_WHY+=" EXP-10:${sc%%-*}:anchor-lost(${EXP_ANC_FILE##*/}:${EXP_ANC_LIT:0:24})"
         done < <({ grep -E '^- Anchor: ' "$EXP_RM" || true; } | sed 's/^- Anchor: //')
     done
-    EXP_CHK=$((EXP_CHK + 1)); (( EXP_SC_N == 10 )) || EXP_WHY+=" EXP-10:scenarios=${EXP_SC_N}-of-10"
-    EXP_CHK=$((EXP_CHK + 1)); (( EXP_ANC_N >= 40 )) || EXP_WHY+=" EXP-10:anchors=${EXP_ANC_N}-of-40"
+    EXP_CHK=$((EXP_CHK + 1)); (( EXP_SC_N == 11 )) || EXP_WHY+=" EXP-10:scenarios=${EXP_SC_N}-of-11"
+    EXP_CHK=$((EXP_CHK + 1)); (( EXP_ANC_N >= 47 )) || EXP_WHY+=" EXP-10:anchors=${EXP_ANC_N}-of-47"
     (( EXP_CHK > 0 )) || EXP_WHY+=" EXP-1:nothing-checked"
 fi
 if [[ -z "$EXP_WHY" ]]; then
-    pass "EXP-1…EXP-10 experiment skill: structure, eleven references, single owners, boundary, neutrality, membrane, pinned commitments, lexicon, ten scenarios checked by text only (${EXP_CHK} checks)"
+    pass "EXP-1…EXP-10 experiment skill: structure, twelve references, single owners, boundary, neutrality, membrane, pinned commitments, lexicon, eleven scenarios checked by text only (${EXP_CHK} checks)"
 else
     fail "EXP-1…EXP-10 experiment skill:$EXP_WHY"
 fi
