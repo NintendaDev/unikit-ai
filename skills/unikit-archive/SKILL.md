@@ -158,20 +158,19 @@ Glob `.unikit/code/archive/plans/*/`. None → `Archive is empty — no plan has
 
 ### interactive
 
-1. Classify every folder in `.unikit/code/plans/` and print a table as your own message, one row per folder: # · folder · verdict · created · last change, the oldest last change first — a plan nobody has touched for weeks is what the user is deciding about. `#` numbers the rows for the question below: ask it only once the whole table is on screen — the options name rows by `#`, and without the table the user chooses blind.
+1. Classify every folder in `.unikit/code/plans/` and print a table as your own message, one row per folder: # · folder · verdict · created · last change, the oldest last change first — a plan nobody has touched for weeks is what the user is deciding about. `#` numbers the rows for the question below: ask it only once the whole table is on screen — the user names rows by `#`, and without the table the user chooses blind.
 2. No folder is `completed` or `incomplete` → `No plan can be archived now.` and stop.
-3. Ask which plans. A plan with follow-ups is marked in the table with them, e.g. `(2 MCP findings not transferred, 1 open rule candidate)`.
+3. Ask which plans. A plan with follow-ups is marked in the table with them, e.g. `(2 MCP findings not transferred, 1 open rule candidate)`. Under the table, in the same message, one line: `To choose yourself, write row numbers (3, 5-7) or a date rule (created on or before 2026-09-14, not changed since 2026-09-01) in your own answer.`
 
    ```
    The question tool of your agent (`AskUserQuestion`): Archive which plans?
 
    Options:
-   1. All <n> completed — only when there are completed plans
-   2. Choose by number or date — type it: "3, 5-7", "created on or before 2026-09-14", "not changed since 2026-09-01"
-   3. Cancel
+   1. All <n> completed — only when there are completed plans; with none, All <n> unfinished
+   2. Cancel
    ```
 
-   Option 2 asks the user to type: say its label by that meaning, never as "the listed ones". Its answer arrives as the free-text answer; picked without any text → ask once with the question tool of your agent (`AskUserQuestion`), its options two short examples of the answer (`3, 5-7`, `not changed since 2026-09-01`) — the user writes their own in the free-text answer. A date rule is matched against the table's `created` or `last change` column, the given day included; print the folders it selects before anything moves.
+   There is no option for typing a choice and no second question for it: what the user writes in their own answer is the choice, read as row numbers or a date rule. A date rule is matched against the table's `created` or `last change` column, the given day included; print the folders it selects before anything moves. An answer that is neither → say what was not understood and ask this question again.
 4. Chosen `incomplete` plans → [the unfinished question](#the-unfinished-question). Chosen `completed` plans with follow-ups → [the follow-up question](#the-follow-up-question).
 5. Archive the chosen folders (Step 4).
 

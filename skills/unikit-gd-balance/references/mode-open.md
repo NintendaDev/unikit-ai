@@ -9,8 +9,8 @@ the files.
 1. **Input.** A topic from the request and/or a path to `researches/<slug>/RESEARCH_RESULT.md`.
    From a research read only the `## Active Summary` region and `## Findings` as needed; a
    record with no summary is read as text. Neither a topic nor a path (the branch was reached
-   from an empty status) → ask once, with the question tool of your agent (`AskUserQuestion`): the topic in a few words, or the
-   path of a research; its options are two short example topics, and the user writes their own topic or path in the free-text answer.
+   from an empty status) → ask once, in a message of your own, with no options: the topic in a few words, or the
+   path of a research.
 2. **Slug.** ASCII kebab-case of the topic (translate or transliterate its words), at most 40
    characters, no date. If
    `balance/<slug>/` already exists, ask: continue it (the revise branch) or another name. An

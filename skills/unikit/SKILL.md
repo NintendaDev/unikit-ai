@@ -230,8 +230,8 @@ Check $ARGUMENTS:
 
 If no arguments:
 
-The question tool of your agent (`AskUserQuestion`): What kind of game are you building? Briefly describe the genre and core idea.
-Options: two or three short examples of the expected answer — "2D mobile tycoon game where you run a pawnshop", "3D first-person horror", "top-down RPG with crafting"; the user picks one or writes their own description in the free-text answer.
+Ask in a message of your own, with no options: What kind of game are you building? Briefly describe the genre and core idea.
+(e.g., "2D mobile tycoon game where you run a pawnshop", "3D first-person horror", "top-down RPG with crafting")
 
 Save the user's answer as project description, then proceed to Step 5.
 
@@ -396,7 +396,7 @@ Based on choice:
 **7. Additional engine-specific sections** — scan `{{skills_dir}}/{{self_name}}/references/ENGINE_RULES.md` for a block delimited by `<!-- unikit-additional-sections -->` and `<!-- /unikit-additional-sections -->` HTML comments. If the opening tag is absent — or the block between the tags has no subsections — skip this step silently and move to step 9. Otherwise, for every subsection (`### …`) inside that block that contains a markdown table with a `| # | Option | Description |` header, ask the subsection as a separate question with the question tool of your agent (`AskUserQuestion`) in the order it appears in the file. Subsections without such a table are skipped silently.
 
 - **Default rendering (single-select):** one numbered option per table row. User picks exactly one.
-- **Multi-select rendering:** if the subsection body starts with `**Presentation:** numbered-multi-select`, present two-step interaction. **Step 1** — a single question with the question tool of your agent (`AskUserQuestion`) with three options: `All` (select every row), `Select some` (pick specific numbers), `Skip` (select none). **Step 2** — only if the user chose `Select some`: a second question with the same tool asking for the list of row numbers: its options are two example lists (`1, 3` and `2, 5, 9`), and the user writes their own list in the free-text answer. Parse comma-separated integers, look up each corresponding row's `Option` column, and treat every resolved option as a selected value.
+- **Multi-select rendering:** if the subsection body starts with `**Presentation:** numbered-multi-select`, present two-step interaction. **Step 1** — a single question with the question tool of your agent (`AskUserQuestion`) with three options: `All` (select every row), `Select some` (pick specific numbers), `Skip` (select none). **Step 2** — only if the user chose `Select some`: ask for the list of row numbers in a message of your own, with no options. Parse comma-separated integers, look up each corresponding row's `Option` column, and treat every resolved option as a selected value.
 - Every selected option (single- or multi-select) is added to the required set directly with its label as-is; `Package Display Names` is consulted only for short aliases of UPM-package rows from the Step 6 scan.
 
 **8. Additional frameworks and plugins?**
@@ -618,7 +618,7 @@ Options:
 
 Based on choice, build the `targets` list:
 - **Skip** → `targets = ∅`, jump to Step 9.9.
-- **Select** → ask which items with the question tool of your agent (`AskUserQuestion`): its options are two example lists (`1, 2` and `1, 3, 5`), and the user writes their own list of numbers in the free-text answer; parse the comma-separated numbers as one continuous range across whichever blocks were rendered; `targets` = the chosen subset (display-raw labels preserved).
+- **Select** → ask which items in a message of your own, with no options; parse the comma-separated numbers as one continuous range across whichever blocks were rendered; `targets` = the chosen subset (display-raw labels preserved).
 - **All** → `targets` = the full missing list.
 
 #### 9.5: Registry lookup — semantic matching

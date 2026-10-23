@@ -185,7 +185,7 @@ Options:
 ```
 
 - Option 1 → `pathArg = "./rules-registry"`. Pass this verbatim to the CLI in `create.2`. `rulesRegistryInitCommand` in `src/cli/commands/rules.ts` resolves it against `process.cwd()` and auto-creates the target directory via `fs.ensureDir`.
-- Option 2 → ask a follow-up question with the question tool of your agent (`AskUserQuestion`) for the path — its options are two example paths (`../shared-rules-registry`, `/absolute/path/to/rules-registry`) and the user writes the real one in the free-text answer. Trim the input; if the result is empty, re-prompt the same text input. Then compute the absolute path via `path.resolve(<cwd>, <trimmed-input>)` **for display only** and ask a second question with the question tool of your agent (`AskUserQuestion`) of this shape:
+- Option 2 → ask for the path in a message of your own, with no options. Trim the input; if the result is empty, ask again the same way. Then compute the absolute path via `path.resolve(<cwd>, <trimmed-input>)` **for display only** and ask a second question with the question tool of your agent (`AskUserQuestion`) of this shape:
   - Question: `Target directory will be: <resolved-absolute-path>. Proceed?`
   - Options: `Yes, proceed` / `No, enter a different path` / `Cancel`
   - Yes → use the original (pre-resolve) input string as `pathArg` in `create.2`.

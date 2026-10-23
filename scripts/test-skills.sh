@@ -9195,9 +9195,11 @@ if [[ -z "$AR_WHY" ]]; then
     grep -qF 'An archived plan whose `Archived:` line ends in' "$AR_DESIGN_CTX" || AR_WHY+=" AR-16:fallback-reads-unfinished"
     grep -qF 'was dropped part-way' "$AR_EXPLORE" || AR_WHY+=" AR-16:explore-reads-unfinished-as-built"
     # (AR-17) the plans are chosen by row number or by a date rule on the table's own columns,
-    # and the typing option never reads as "the listed ones" (the prune trap, PRT-10).
-    grep -qF 'Choose by number or date' "$AR_SKILL" || AR_WHY+=" AR-17:no-choice-by-date"
-    grep -qF 'never as "the listed ones"' "$AR_SKILL" || AR_WHY+=" AR-17:choice-translation-trap"
+    # written in the user's own answer: no option for typing a choice and no second question with
+    # example answers (a user found those examples strange).
+    grep -qF 'write row numbers (3, 5-7) or a date rule' "$AR_SKILL" || AR_WHY+=" AR-17:no-choice-by-date"
+    if grep -qF 'Choose by number or date' "$AR_SKILL"; then AR_WHY+=" AR-17:typing-option-returned"; fi
+    if grep -qF 'two short examples of the answer' "$AR_SKILL"; then AR_WHY+=" AR-17:example-options-returned"; fi
     grep -qF 'A date rule is matched against the table' "$AR_SKILL" || AR_WHY+=" AR-17:date-rule-unbound"
     # (AR-18) the table reaches the screen: a real interactive run classified ten plans with a
     # script, left the table and every INFO line inside the folded tool output, printed one
@@ -12842,7 +12844,8 @@ uq_has "UQ-9:spec-menu-has-a-recommended-first" '1. Edit GAME.md content — cha
 uq_lacks "UQ-9:spec-menu-has-five-options" '5. Import a different GDD' "$ROOT_DIR/skills/unikit-gd-spec/SKILL.md"
 uq_has "UQ-9:audit-consent-through-the-tool" '`Editor ready?`, with the options' "$ROOT_DIR/skills/unikit-mcp-audit/SKILL.md"
 uq_has "UQ-9:trap-review-through-the-tool" 'ask once with the question tool of your agent (`AskUserQuestion`): `Review them?`' "$ROOT_DIR/skills/unikit-mcp-trap/SKILL.md"
-uq_has "UQ-9:rules-mode-b-through-the-tool" 'What rule or convention would you like to add?' "$ROOT_DIR/skills/unikit-rules/SKILL.md"
+uq_has "UQ-9:rules-mode-b-asks-the-open-question" 'What rule or convention would you like to add?' "$ROOT_DIR/skills/unikit-rules/SKILL.md"
+uq_lacks "UQ-9:rules-mode-b-invents-rules" 'Never use var — always declare explicit types' "$ROOT_DIR/skills/unikit-rules/SKILL.md"
 uq_has "UQ-9:roadmap-asks-after-the-report" 'Then the question, with the question tool of your agent (`AskUserQuestion`): `Mark them as completed`' "$ROOT_DIR/skills/unikit-roadmap/SKILL.md"
 uq_has "UQ-9:balance-documents-are-four-options" 'the four latest as the options' "$ROOT_DIR/skills/unikit-gd-balance/references/resolve-target.md"
 uq_has "UQ-9:experiment-balance-link-four-options" 'the four latest as the options' "$ROOT_DIR/skills/unikit-gd-experiment/references/balance-link.md"

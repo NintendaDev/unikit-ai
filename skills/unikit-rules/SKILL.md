@@ -162,13 +162,9 @@ Run Steps 2-5 per rule and report all of them together in Step 6. One rule and N
 differ only in how many rows the report carries.
 
 **Mode B** — no arguments:
-→ Ask the user what rule to add; once the rule arrives, continue as Mode A, its announcement included. The answer is the user's own words, so the options are two short example rules for {{engine_name}}/{{engine_code_language}} and the user writes their own in the free-text answer:
+→ Ask the user what rule to add; once the rule arrives, continue as Mode A, its announcement included. The answer is the user's own words and nothing in the project suggests one, so offer no options — a rule made up as an option is a rule nobody asked for. Ask it in a message of your own, without the question tool, and wait for the reply:
 ```
-The question tool of your agent (`AskUserQuestion`): What rule or convention would you like to add?
-
-Options:
-- Never use var — always declare explicit types
-- All async methods must accept CancellationToken as last parameter
+What rule or convention would you like to add?
 ```
 
 ### Step 2: Cross-Check Against Knowledge Base

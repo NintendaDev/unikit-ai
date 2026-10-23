@@ -96,7 +96,7 @@ The labels are said in `language.ui` by their meaning. `Choose by id` asks the u
 
 An `undecided` conflict is never resolved by `Resolve as proposed`: it gets its own follow-up question — `Keep C<n>a` / `Keep C<n>b` / `Leave both`.
 
-Ask with the question tool of your agent (`AskUserQuestion`) — ids arrive as the free-text answer. `Choose by id` picked without any id → ask for the ids again with the question tool, its options two example selections from the preview (`P1`, `P1, P2`); the user writes their own ids in the free-text answer. The two answers are independent: `Delete nothing` still lets the conflicts be resolved, and `Leave the conflicts` still lets the candidates go. No answer, or both declined → nothing is deleted or changed: `INFO [rules] prune: nothing deleted — file unchanged`. An id that is not in the preview is ignored and named in the report.
+Ask with the question tool of your agent (`AskUserQuestion`) — ids arrive as the free-text answer. `Choose by id` picked without any id → ask for the ids again in a message of your own, with no options. The two answers are independent: `Delete nothing` still lets the conflicts be resolved, and `Leave the conflicts` still lets the candidates go. No answer, or both declined → nothing is deleted or changed: `INFO [rules] prune: nothing deleted — file unchanged`. An id that is not in the preview is ignored and named in the report.
 
 ## E.5 Delete and resolve
 

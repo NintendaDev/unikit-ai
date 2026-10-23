@@ -171,7 +171,7 @@ Remove all completed tasks (`- [x]`) from the TODO file to keep it clean.
 
 #### Mode: Interactive
 
-No arguments were provided. Ask what task they'd like to add with the question tool of your agent (`AskUserQuestion`): its options are two short examples of a task (`Fix item duplication in inventory on rapid sell button clicks`, `Refactor the save system to async`), and the user writes their own task in the free-text answer. Then proceed as Mode: Add.
+No arguments were provided. Ask what task they'd like to add in a message of your own, with no options. Then proceed as Mode: Add.
 
 ## Date Handling
 
