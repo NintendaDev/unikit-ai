@@ -11052,6 +11052,98 @@ else
     fail "EXP-P1…EXP-P4 experiment plan, planner side:$EXP_WHY"
 fi
 
+# --- EXP-S1…EXP-S4: the experiment plan without cards — one more conditional reference next to
+# experiment-plan.md (which sits at its size ceiling), the request recognised in SKILL.md and never
+# inferred (so the description gains no trigger, like MA-7 for merge), the snapshot form without
+# cards, the profile reading the brief as the card, the docs and the delivery. Source assertions,
+# like EXP-P; the helpers and accumulators of the EXP block are reused after a reset.
+EXP_WHY=""
+EXP_CHK=0
+EXPS_REF="$ROOT_DIR/skills/unikit-plan/references/experiment-source.md"
+EXPS_PLAN="$ROOT_DIR/skills/unikit-plan/SKILL.md"
+EXPS_PLAN_REF="$ROOT_DIR/skills/unikit-plan/references/experiment-plan.md"
+EXPS_TASKFMT="$ROOT_DIR/skills/unikit-plan/references/TASK-FORMAT.md"
+EXPS_PROFILE="$ROOT_DIR/data/prototype-profile.md"
+if [[ ! -s "$EXPS_REF" ]]; then
+    EXP_WHY+=" EXP-S1:missing-reference"
+else
+    # (EXP-S1) the reference: load line, size, neutrality, the one way of naming the question tool
+    EXP_CHK=$((EXP_CHK + 1)); [[ "$(sed -n '3p' "$EXPS_REF")" == "Read **only** when"* ]] || EXP_WHY+=" EXP-S1:load-line"
+    EXPS_SZ="$(wc -c < "$EXPS_REF" | tr -d ' ')"
+    EXP_CHK=$((EXP_CHK + 1)); (( EXPS_SZ <= 12000 )) || EXP_WHY+=" EXP-S1:size=${EXPS_SZ}"
+    EXP_CHK=$((EXP_CHK + 1)); ! grep -qwE 'Unity|Godot|Unreal|GDScript' "$EXPS_REF" || EXP_WHY+=" EXP-S1:engine-word"
+    exp_no "EXP-S1:agent-variable" '{{agent_' "$EXPS_REF"
+    exp_no "EXP-S1:agent-call" 'Agent(' "$EXPS_REF"
+    exp_no "EXP-S1:maintainer-record-pointer" '.ai-factory' "$EXPS_REF"
+    exp_no "EXP-S1:agent-filter-marker" '<!-- unikit:agents' "$EXPS_REF"
+    EXPS_Q_ALL="$({ grep -cF 'AskUserQuestion' "$EXPS_REF" || true; })"
+    EXPS_Q_OK="$({ grep -cF 'the question tool of your agent (`AskUserQuestion`)' "$EXPS_REF" || true; })"
+    EXP_CHK=$((EXP_CHK + 1)); (( EXPS_Q_ALL >= 1 && EXPS_Q_ALL == EXPS_Q_OK )) || EXP_WHY+=" EXP-S1:question-tool-x${EXPS_Q_OK}-of-${EXPS_Q_ALL}"
+    # (EXP-S2) pinned formulations of the reference: the request, the principle, the store, the latest,
+    # the confirmation, the route to a card, the brief, the snapshot, the mode question, the hint
+    EXPS_PINS=(
+        'An experiment request is a request addressed to the planner'
+        'The planner builds what the source says and invents no game idea'
+        'A path is a selector: no search and no confirmation line'
+        'The folders and the records are the source of truth'
+        'The latest design research is the one with the latest Updated line among the completed records'
+        'the user sees one line before anything else is loaded'
+        'WARN [experiment] researches index out of date — not repaired'
+        'INFO [experiment] <title> is grounded on EXP-<nnn> — planning from the card'
+        'ERROR [experiment] <source>: nothing to build from — plan not built'
+        'not stated'
+        '.unikit/gamedesign/researches/'
+        'RESEARCH_RESULT.md'
+        'a URL is not fetched'
+        'The snapshot is taken before any git command'
+        'ultra only when the user named it'
+        'the planner does not create the card'
+    )
+    EXPS_I=0
+    for exps_pin in "${EXPS_PINS[@]}"; do
+        EXPS_I=$((EXPS_I + 1))
+        exp_ok "$(printf 'EXP-S2:%02d' "$EXPS_I")" "$exps_pin" "$EXPS_REF"
+    done
+    # (EXP-S3) the wiring: the request in SKILL.md, the pointer in experiment-plan.md, the snapshot form
+    # without cards, the profile reading the brief as the card
+    exp_ok "EXP-S3:01" '**An experiment request**' "$EXPS_PLAN"
+    exp_ok "EXP-S3:02" '{{skills_dir}}/{{self_name}}/references/experiment-source.md' "$EXPS_PLAN"
+    exp_ok "EXP-S3:03" 'WARN [experiment] experiment-source reference missing' "$EXPS_PLAN"
+    exp_ok "EXP-S3:04" 'a feature that is about experiments (an A/B switch, an experiment framework)' "$EXPS_PLAN"
+    exp_ok "EXP-S3:05" 'For an experiment request the source is resolved by' "$EXPS_PLAN"
+    exp_ok "EXP-S3:06" 'it never falls back to the code researches index above' "$EXPS_PLAN"
+    exp_ok "EXP-S3:07" 'The word "experiment" in free text is not a selector' "$EXPS_PLAN"
+    # the description gains no experiment trigger (DEC-5, as MA-7 for merge); plain -qi, never -iF
+    EXPS_PFM="$(awk '/^---$/{n++; next} n==1' "$EXPS_PLAN")"
+    EXPS_DESC="$(awk '/^description:/{f=1;print;next} f&&/^[a-z-]+:/{exit} f' <<< "$EXPS_PFM" | tr '\n' ' ' | tr -s ' ')"
+    EXP_CHK=$((EXP_CHK + 1)); [[ -n "$EXPS_DESC" ]] || EXP_WHY+=" EXP-S3:08-description-not-read"
+    EXP_CHK=$((EXP_CHK + 1)); ! grep -qi 'experiment' <<< "$EXPS_DESC" || EXP_WHY+=" EXP-S3:09-description-gained-an-experiment-trigger"
+    exp_ok "EXP-S3:10" 'experiment-source.md' "$EXPS_PLAN_REF"
+    exp_ok "EXP-S3:11" '(i) Without cards, the checks of `experiment-source.md` ran in place of (a), (g) and (h)' "$EXPS_PLAN_REF"
+    exp_ok "EXP-S3:12" 'another experiment source' "$ROOT_DIR/skills/unikit-plan/references/mode-full.md"
+    exp_ok "EXP-S3:13" '**Without cards.**' "$EXPS_TASKFMT"
+    exp_ok "EXP-S3:14" 'Input: research | file | request | session' "$EXPS_TASKFMT"
+    exp_ok "EXP-S3:15" '### Prototype brief' "$EXPS_TASKFMT"
+    exp_ok "EXP-S3:16" 'is written only when there is no `Cards:` list' "$EXPS_TASKFMT"
+    # NM-2 stays true: the grammar block is indented, no line of the file starts with a field name
+    EXP_CHK=$((EXP_CHK + 1)); ! grep -qE '^(Branch|Input|Sources):' "$EXPS_TASKFMT" || EXP_WHY+=" EXP-S3:17-field-at-margin"
+    exp_ok "EXP-S3:18" 'Wherever this file says "the card", it means that brief' "$EXPS_PROFILE"
+    exp_ok "EXP-S3:19" '`### Prototype brief`' "$EXPS_PROFILE"
+    exp_ok "EXP-S3:20" "the card's (or the brief's) \`Out of Scope\`" "$EXPS_PROFILE"
+    # (EXP-S4) the docs and the help describe the request, and the install test asserts the delivery
+    exp_ok "EXP-S4:docs(skills.md)" 'experiment-source.md' "$ROOT_DIR/docs/skills.md"
+    exp_ok "EXP-S4:docs(plan-files.md)" 'experiment-source.md' "$ROOT_DIR/docs/plan-files.md"
+    exp_ok "EXP-S4:docs(workflow.md)" 'Experiment plan without cards' "$ROOT_DIR/docs/workflow.md"
+    exp_ok "EXP-S4:help(skill-map.md)" 'Experiment plan without cards' "$ROOT_DIR/skills/unikit-help/references/skill-map.md"
+    exp_ok "EXP-S4:install-test" 'unikit-plan experiment-source.md reference installed' "$ROOT_DIR/scripts/test-install.sh"
+    (( EXP_CHK > 0 )) || EXP_WHY+=" EXP-S1:nothing-checked"
+fi
+if [[ -z "$EXP_WHY" ]]; then
+    pass "EXP-S1…EXP-S4 experiment plan without cards: one conditional reference, the request in SKILL.md and never inferred, the snapshot form, the profile reading the brief, docs and delivery (${EXP_CHK} checks)"
+else
+    fail "EXP-S1…EXP-S4 experiment plan without cards:$EXP_WHY"
+fi
+
 # --- EXP-R1…EXP-R4: the prototype-profile contract — one flat asset, ten sections, neutral, not
 # restated, delivered. Source assertions, like HB-1…HB-4 for the hand-back contract.
 EXP_WHY=""

@@ -398,6 +398,10 @@ assert_exists "$CLAUDE_DIR/.claude/skills/unikit-plan/references/merge-plan.md" 
 # cannot see a missing delivery, so the files are asserted here.
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-plan/references/balance-plan.md" \
   "unikit-plan balance-plan.md reference installed"
+# The experiment plan without cards reads experiment-source.md only on an experiment request; the
+# same reasoning applies — a content test cannot see a file that was never delivered.
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-plan/references/experiment-source.md" \
+  "unikit-plan experiment-source.md reference installed"
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-implement/references/balance-measure.md" \
   "unikit-implement balance-measure.md reference installed"
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-verify/references/balance-checks.md" \
