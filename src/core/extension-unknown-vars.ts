@@ -1,7 +1,9 @@
-// The warning for a `{{name}}` in the text of an extension that this build of unikit-ai does not
+// The note for a `{{name}}` in the text of an extension that this build of unikit-ai does not
 // substitute. The token stays in the installed text exactly as written and the install goes on — an
-// extension written for a newer unikit-ai still installs on an older one — but the author or the
-// user hears about it, with the file and the names.
+// extension written for a newer unikit-ai still installs on an older one. The note (file and names) is
+// printed at INFO level, i.e. under `--verbose` only: the framework cannot tell such a name from a
+// runtime slot of the extension's own templates, so a warning would be noise for every extension that
+// ships templates.
 //
 // The scan reads the SOURCES of the extension's enabled items once per project pass (see
 // `applyExtensionInjections`), not the three render pipelines once per agent: no repeats for eight
@@ -115,7 +117,7 @@ export async function findUnknownVarsInExtension(extensionDir: string, manifest:
 }
 
 /**
- * The warning lines for one extension: one per file, then one line for the files beyond
+ * The note lines for one extension: one per file, then one line for the files beyond
  * `EXTENSION_UNKNOWN_VARS_MAX_FILES`. Names and paths only — never the content of a file.
  */
 export function formatUnknownVars(extension: string, findings: UnknownVarFinding[]): string[] {
