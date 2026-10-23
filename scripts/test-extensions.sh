@@ -2189,5 +2189,134 @@ assert_same_sha "$SKILL41H" "$SHA_41H_BEFORE" "41h: removing both forms gives th
 
 echo "  ✓ extension points: append and point entries coexist and both come out byte-exact"
 
+# ─────────────────────────────────────────────────────
+# Test 42: system-file path variables in the text of an extension
+# ─────────────────────────────────────────────────────
+# The order that asked for {{user_questions_contract}}: an extension names a framework file by a
+# variable instead of writing `.unikit/system/…` out. The value does not depend on the agent, so the
+# same text must come out the same in an injection block, in a reference file of an extension point,
+# in a skill an extension adds and in a subagent it adds — and the rewrite Codex applies to
+# `/unikit-…` invocations must not touch it.
+
+SV42_QUESTIONS='.unikit/system/user-questions.md'
+SV42_PRINCIPLES='.unikit/system/gamedesign/gd-principles.md'
+SV42_SYSTEM_DIR='.unikit/system'
+
+# The paths as regular expressions: assert_contains takes `grep -E`, where a bare `.` matches anything.
+re_escape() { printf '%s' "$1" | sed 's/[.[\*^$]/\\&/g'; }
+SV42_QUESTIONS_RE=$(re_escape "$SV42_QUESTIONS")
+SV42_PRINCIPLES_RE=$(re_escape "$SV42_PRINCIPLES")
+
+# The text between the markers of one point block: <skill file> <extension name> <injection id>.
+block_of() {
+  awk -v s="unikit-ext:$2:unikit:bootstrap:$3:start -->" -v e="unikit-ext:$2:unikit:bootstrap:$3:end -->" \
+    'index($0, s) { f = 1; next } index($0, e) { f = 0 } f' "$1"
+}
+
+# 42a / 42b — the block and the reference of an extension point, lifecycle included
+check_sysvar_point() {   # <label> <agent id> <skills dir> <subagents dir>
+  local label="$1" agent="$2" skills="$3" agents="$4"
+  local name="unikit-ext-sysvars-$agent"
+  local project="$TMPDIR/sysvars-$agent" ext="$TMPDIR/$name"
+  local body='Contract: {{user_questions_contract}}'
+  local ref='{{user_questions_contract}} · {{gd_principles}} · {{system_dir}}'
+  make_points_project "$project" "$agent" "$skills" "$agents"
+  make_points_extension "$ext" "$name" 1.0.0 contract-line "$body" "$ref"
+  local skill="$project/$skills/unikit/SKILL.md"
+  local sha_before
+  sha_before=$(sha_of "$skill")
+
+  ext_add "$project" "$ext" "$TMPDIR/$label-add.log"
+  local block
+  block=$(block_of "$skill" "$name" contract-line)
+  if [[ "$block" != *"Contract: $SV42_QUESTIONS"* || "$block" == *'{{'* ]]; then
+    echo "Assertion failed: $label: the block must carry the path of the contract and no variable"
+    echo "Block: $block"; exit 1
+  fi
+  local ref_file="$project/$skills/unikit/references/ext/$name/notes.md"
+  assert_exists "$ref_file" "$label: the reference file is delivered"
+  if ! grep -qxF "$SV42_QUESTIONS · $SV42_PRINCIPLES · $SV42_SYSTEM_DIR" "$ref_file"; then
+    echo "Assertion failed: $label: the reference must hold the three paths on one line"
+    cat "$ref_file"; exit 1
+  fi
+  assert_not_contains "$ref_file" '\{\{' "$label: no variable is left in the reference"
+
+  (cd "$project" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/$label-update.log" 2>&1)
+  assert_not_contains "$TMPDIR/$label-update.log" 'Local modifications detected' "$label: update right after add reports no drift"
+  if [[ "$(block_of "$skill" "$name" contract-line)" != "$block" ]]; then
+    echo "Assertion failed: $label: update must render the block the same way"; exit 1
+  fi
+
+  (cd "$project" && node "$ROOT_DIR/dist/cli/index.js" extension remove "$name" > "$TMPDIR/$label-remove.log" 2>&1)
+  assert_same_sha "$skill" "$sha_before" "$label: removal gives the file back byte for byte"
+  assert_not_exists "$project/$skills/unikit/references/ext" "$label: the reference directory is gone"
+}
+
+check_sysvar_point 42a claude .claude/skills .claude/agents
+echo "  ✓ system variables: Claude gets the paths in the block and the reference, no drift, byte-exact removal"
+
+check_sysvar_point 42b codex .codex/skills .codex/agents
+echo "  ✓ system variables: Codex gets the same paths (its invocation rewrite leaves them alone)"
+
+# 42c — a skill an extension adds: SKILL.md and its references/
+P42C="$TMPDIR/sysvars-skill"
+EXT42C="$TMPDIR/unikit-ext-sysvars-skill"
+make_points_project "$P42C" claude .claude/skills .claude/agents
+mkdir -p "$EXT42C/skills/sysvars-skill/references"
+cat > "$EXT42C/extension.json" << 'EOF'
+{ "name": "unikit-ext-sysvars-skill", "version": "1.0.0", "skills": ["skills/sysvars-skill"] }
+EOF
+cat > "$EXT42C/skills/sysvars-skill/SKILL.md" << 'EOF'
+---
+name: sysvars-skill
+description: A skill from an extension that points at a system file
+---
+
+Read {{user_questions_contract}} before you ask the user.
+EOF
+printf 'Contracts: {{user_questions_contract}} and {{gd_principles}}.\n' > "$EXT42C/skills/sysvars-skill/references/notes.md"
+ext_add "$P42C" "$EXT42C" "$TMPDIR/p42c-add.log"
+SKILL42C="$P42C/.claude/skills/sysvars-skill/SKILL.md"
+REF42C="$P42C/.claude/skills/sysvars-skill/references/notes.md"
+assert_exists "$SKILL42C" "42c: the extension skill is installed"
+assert_contains "$SKILL42C" "^Read ${SV42_QUESTIONS_RE} before you ask the user\.$" "42c: SKILL.md of the extension skill carries the path"
+assert_exists "$REF42C" "42c: the reference of the extension skill is installed"
+assert_contains "$REF42C" "^Contracts: ${SV42_QUESTIONS_RE} and ${SV42_PRINCIPLES_RE}\.$" "42c: the reference of the extension skill carries both paths"
+assert_not_contains "$SKILL42C" '\{\{' "42c: no variable is left in SKILL.md"
+assert_not_contains "$REF42C" '\{\{' "42c: no variable is left in the reference"
+
+echo "  ✓ system variables: a skill an extension adds gets the paths in SKILL.md and in references/"
+
+# 42d — a subagent an extension adds, on Claude and on Kimi (its adapter runs after the substitution)
+EXT42D="$TMPDIR/unikit-ext-sysvars-agent"
+mkdir -p "$EXT42D/subagents"
+cat > "$EXT42D/extension.json" << 'EOF'
+{ "name": "unikit-ext-sysvars-agent", "version": "1.0.0", "subagents": ["subagents/sysvars-agent.md"] }
+EOF
+cat > "$EXT42D/subagents/sysvars-agent.md" << 'EOF'
+---
+name: sysvars-agent
+description: A subagent from an extension that points at a system file
+tools:
+  - Read
+model: inherit
+---
+
+Read {{user_questions_contract}} before you ask the user.
+EOF
+P42D_CLAUDE="$TMPDIR/sysvars-agent-claude"
+P42D_KIMI="$TMPDIR/sysvars-agent-kimi"
+make_points_project "$P42D_CLAUDE" claude .claude/skills .claude/agents
+make_points_project "$P42D_KIMI" kimi .kimi-code/skills .kimi-code/agents
+ext_add "$P42D_CLAUDE" "$EXT42D" "$TMPDIR/p42d-claude-add.log"
+ext_add "$P42D_KIMI" "$EXT42D" "$TMPDIR/p42d-kimi-add.log"
+for AGENT42D in "$P42D_CLAUDE/.claude/agents/sysvars-agent.md" "$P42D_KIMI/.kimi-code/agents/sysvars-agent.md"; do
+  assert_exists "$AGENT42D" "42d: the extension subagent is installed ($AGENT42D)"
+  assert_contains "$AGENT42D" "^Read ${SV42_QUESTIONS_RE} before you ask the user\.$" "42d: the subagent file carries the path ($AGENT42D)"
+  assert_not_contains "$AGENT42D" '\{\{' "42d: no variable is left in the subagent file ($AGENT42D)"
+done
+
+echo "  ✓ system variables: a subagent an extension adds gets the path, on Claude and on Kimi"
+
 echo ""
 echo "extension smoke tests passed"

@@ -83,6 +83,7 @@
       "scripts/test-extension-selection.mjs",
       "scripts/test-kimi-transform.mjs",
       "scripts/test-reference-paths.mjs",
+    "scripts/test-system-vars.mjs",
       "scripts/test-ultra-plan-contract.mjs",
       "scripts/validate-agent-markers.mjs",
       "skills/unikit-rules/scripts/rules-layout.mjs",

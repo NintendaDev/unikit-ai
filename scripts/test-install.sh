@@ -37,6 +37,22 @@ run_update() {
   (cd "$project" && node "$ROOT_DIR/dist/cli/index.js" update > /dev/null 2>&1)
 }
 
+# assert_system_tree <project dir> <yes|no> <label>
+#
+# SV-3 (registry <=> delivered tree): every file init/update wrote under .unikit/system has a registry
+# row with the same path, and every row the CLI always delivers has its file. `yes` when the project
+# selected an engine MCP server that ships a rules tree, `no` otherwise. The guards that need no
+# installed project (SV-1, SV-2, SV-4...SV-8) run from test-skills.sh Part 7f7.
+assert_system_tree() {
+  local project="$1" engine_tree="$2" label="$3" out
+  if ! out=$(node "$ROOT_DIR/scripts/test-system-vars.mjs" --tree "$(normalize_path_for_json "$project")" --engine-tree "$engine_tree" 2>&1); then
+    echo "Assertion failed: $label: the delivered .unikit/system tree and the variable registry differ"
+    echo "$out"
+    exit 1
+  fi
+  echo "  ✓ $label: $(printf '%s\n' "$out" | { grep -m1 '^Tree check' || true; } | sed 's/^.*: \([0-9][0-9]* files, .*\)$/\1/')"
+}
+
 # assert_contains / assert_not_contains / assert_exists / assert_not_exists /
 # assert_file_content / seed_rule now live in test-fixtures.sh (sourced above).
 
@@ -442,6 +458,12 @@ assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-content/references/mode-auth
   "unikit-gd-content extracted mode reference (mode-author.md) travels under references/ (non-flat copyDirectory)"
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-verify/references/axis-checks.md" \
   "unikit-gd-verify extracted axis-checks.md travels under references/ (non-flat copyDirectory)"
+
+# ─────────────────────────────────────────────────────
+# Test 1b-sv: SV-3 — everything the first install wrote under .unikit/system is a registry row
+# (and the other way round), with no engine MCP server selected, so no rules tree.
+# ─────────────────────────────────────────────────────
+assert_system_tree "$CLAUDE_DIR" no "system tree matches the variable registry (first install, no engine MCP tree)"
 
 # ─────────────────────────────────────────────────────
 # Test 1c: supportsSubagents:false skip-path
@@ -2139,6 +2161,10 @@ assert_not_contains "$MCP_RULES_INDEX" '^version:' \
 assert_not_contains "$MCP_RULES_INDEX" '^delivered:' \
   "no delivery date in the delivery stamp"
 
+# SV-3 with a tree: engine-mcp/INDEX.md and verification.md are the rows engine_mcp_rules_index and
+# engine_mcp_rules_verification, and they exist exactly because this project selected a server with one.
+assert_system_tree "$MCP_SHARDS_DIR" yes "system tree matches the variable registry (engine MCP rules tree delivered)"
+
 echo "  ✓ engine-mcp: biome rules tree delivered (INDEX + verification), stamped with the server id alone, no counters"
 
 # ─────────────────────────────────────────────────────
@@ -2241,6 +2267,9 @@ if ! MCP_NOTREE_TREED_JSON="$MCP_NOTREE_TREED_JSON" node -e "
 fi
 
 unuse_fake_mcp_catalog
+
+# SV-3 after `update` with a treeless server: the engine-mcp rows must be absent with the directory.
+assert_system_tree "$MCP_NOTREE_DIR" no "system tree matches the variable registry (treeless engine MCP server, after update)"
 echo "  ✓ engine-mcp: a server with no rules tree degrades nothing (grants, layer A, skill assets)"
 
 # ─────────────────────────────────────────────────────
