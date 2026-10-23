@@ -625,10 +625,20 @@ if (!treeMode) {
             samples++;
             assertEq('SV-self', what, actual, expected);
         };
-        const messages = (text) => findLiterals(text).map((literal) => classifyLiteral(literal, rows)).filter(Boolean);
+        // A fixed sample registry, not the live one: a detector's self-check must not turn red because a
+        // file was renamed on purpose (that is SV-3/SV-4/SV-5's business). Same shapes as the real rows.
+        const sampleRows = [
+            { name: 'sample_dir', kind: DIR_KIND, delivery: DELIVERY_CLI, value: '.unikit/system' },
+            { name: 'sample_file', kind: FILE_KIND, delivery: DELIVERY_CLI, value: '.unikit/system/sample.md' },
+            { name: 'sample_gd_dir', kind: DIR_KIND, delivery: DELIVERY_CLI, value: '.unikit/system/gamedesign' },
+            { name: 'sample_gd_file', kind: FILE_KIND, delivery: DELIVERY_CLI, value: '.unikit/system/gamedesign/sample-gd.md' },
+            { name: 'sample_free_tree', kind: DIR_KIND, delivery: DELIVERY_CONDITIONAL, value: '.unikit/system/engine-mcp' },
+            { name: 'sample_genres', kind: DIR_KIND, delivery: DELIVERY_CONDITIONAL, value: '.unikit/system/gamedesign/genres' },
+        ];
+        const messages = (text) => findLiterals(text).map((literal) => classifyLiteral(literal, sampleRows)).filter(Boolean);
 
-        check('literal: a registry path is allowed', messages('Read `.unikit/system/user-questions.md` first.'), []);
-        check('literal: a path with trailing punctuation is allowed', messages('See .unikit/system/prototype-profile.md.'), []);
+        check('literal: a registry path is allowed', messages('Read `.unikit/system/sample.md` first.'), []);
+        check('literal: a path with trailing punctuation is allowed', messages('See .unikit/system/gamedesign/sample-gd.md.'), []);
         check('literal: the directory with a trailing slash is allowed', messages('The `.unikit/system/` directory.'), []);
         check('literal: a file inside a free tree is allowed', messages('.unikit/system/engine-mcp/anything.md and .unikit/system/gamedesign/genres/x.json'), []);
         check('literal: a glob and a placeholder are prose', messages('`.unikit/system/**` and `.unikit/system/gamedesign/genres/<id>.json`'), []);
