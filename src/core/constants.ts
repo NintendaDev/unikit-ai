@@ -89,11 +89,11 @@ export const REFERENCES_DIR_NAME = 'references';
  * later the `gd-principles` shards in plan (b)). It matches the module id by
  * construction, so it sources the literal from {@link GAMEDESIGN_MODULE_ID}
  * rather than re-hardcoding it. Distinct concept from the memory/data
- * `gamedesign` dirs — this is the system-asset home. Module-local (only
- * {@link systemGamedesignDir} consumes it) so it does not duplicate the
- * `GAMEDESIGN_MODULE_ID` export.
+ * `gamedesign` dirs — this is the system-asset home. Read by {@link systemGamedesignDir}
+ * and by `constants-template.ts`, hence exported; the tag below keeps knip from reading it as a duplicate.
+ * @alias
  */
-const SYSTEM_GAMEDESIGN_DIR_NAME = GAMEDESIGN_MODULE_ID;
+export const SYSTEM_GAMEDESIGN_DIR_NAME = GAMEDESIGN_MODULE_ID;
 
 /**
  * Name of the `genres` subdir under both `data/gamedesign/` (the bundled
