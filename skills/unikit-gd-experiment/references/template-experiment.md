@@ -27,6 +27,7 @@ Read **only** when a card is being created or edited, or checked for readiness f
 
 ## 4. What We Test
 <One sentence: the single question the evidence must answer.>
+Judged on: <two to four qualities the evidence is read against, each a few words in the designer's words; the question alone when it is one>
 
 ## 5. Design
 <The experience in the designer's words: what the player sees, does and gets; the rules; the parameters that differ between variants.>
@@ -82,18 +83,19 @@ The card describes a disposable prototype, not production-ready functionality.
 ## What each section must hold
 
 - **Hypothesis** — testable; one changed factor, or the reason why several move together is named.
+- **What We Test** — its first sentence is the question; `index.md` and the lookup read only that sentence. `Judged on:` names the qualities that sentence covers (for example understood, enjoyed, better than the present start), never more than four; a card saved before this line existed is read as judged on its question alone and is not rewritten to add it.
 - **Design** — the player's experience in the designer's words; it does not prescribe engine classes, architecture, dependency injection, code files or implementation details. The sentence "The card describes a disposable prototype, not production-ready functionality" is the last line of section 5 of every card, so the planner tells a prototype from finished functionality; the specify branch keeps it in every card it writes.
 - **Gameplay Flow** — visible: goal, progress, success, failure and the next action.
 - **Interface and Feedback** — visual readability is essential; the key elements that must read at a glance are named.
 - **How to Test** — a concrete protocol; the duration is chosen by the card: do not force every experiment to last five minutes.
-- **Success Criteria** — any threshold is marked as a set of preliminary acceptance targets and is never presented as a fact.
-- **Problem, What We Test, Variants, Minimum Scope, Risks, Follow-up Decisions** — as the line of the template says.
+- **Success Criteria** — any threshold is marked as a set of preliminary acceptance targets and is never presented as a fact. When `Judged on:` names several qualities, each gets its own signals for every outcome, and Partially Supported means some qualities held and others did not (the card says which).
+- **Problem, Variants, Minimum Scope, Risks, Follow-up Decisions** — as the line of the template says.
 
 ## Readiness for planning
 
 Ready for Planning is set only when the planner could build the prototype without asking the designer about a rule that matters. The card is independently understandable: it does not lean on a hidden conversation context. Eight yes/no checks:
 
-1. The hypothesis is testable, and the factor is one or the reason for several is named.
+1. The hypothesis is testable, the factor is one or the reason for several is named, and `Judged on:` says what the evidence is read against.
 2. It is clear what to build — sections 5 and 6 describe the whole experience.
 3. The parameters that differ between variants are named.
 4. The minimum interface covers goal, progress, success, failure and the next action.

@@ -10787,6 +10787,7 @@ else
     exp_owner "EXP-4:traces-list-owner" '## Technical traces: self-check before every write' storage-and-index.md
     exp_owner "EXP-4:origin-block-owner" 'Balance document:' balance-link.md
     exp_owner "EXP-4:idea-table-owner" '| ID | Experiment | Hypothesis | What We Test | Prototype Cost | Learning Value |' mode-discover.md
+    exp_owner "EXP-4:judged-on-owner" 'Judged on: <' template-experiment.md
 
     # (EXP-5) the boundary: the write scope, the reading boundary, the shared contracts name the skill
     EXP_OWN="$({ awk '/^## Ownership Boundaries/{f=1;next} /^## /{f=0} f' "$EXP_SKILL" || true; })"
@@ -10917,6 +10918,18 @@ else
     exp_ok "EXP-8:S-11" 'Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.' "$EXP_SKILL"
     exp_ok "EXP-8:S-12" 'nothing after it' "$EXP_SKILL"
     exp_ok "EXP-8:S-13" 'there is no `Skill` tool' "$EXP_SKILL"
+    # R: the row budget of the card draft, the Judged on line, the first sentence of the index cell
+    exp_ok "EXP-8:R-01" 'A row holds one idea' "$EXP_REFS/card-draft-view.md"
+    exp_ok "EXP-8:R-02" 'continues in the next row with the same №' "$EXP_REFS/card-draft-view.md"
+    exp_ok "EXP-8:R-03" '## The headline' "$EXP_REFS/card-draft-view.md"
+    exp_ok "EXP-8:R-04" 'draws the table as `Header: value` blocks' "$EXP_REFS/card-draft-view.md"
+    exp_ok "EXP-8:R-05" 'Judged on:' "$EXP_REFS/template-experiment.md"
+    exp_ok "EXP-8:R-06" 'is read as judged on its question alone' "$EXP_REFS/template-experiment.md"
+    exp_ok "EXP-8:R-07" 'each gets its own signals for every outcome' "$EXP_REFS/template-experiment.md"
+    exp_ok "EXP-8:R-08" 'never taken as known' "$EXP_REFS/mode-specify.md"
+    exp_ok "EXP-8:R-09" 'from-research.md' "$EXP_REFS/mode-specify.md"
+    exp_ok "EXP-8:R-10" 'quality by quality' "$EXP_REFS/mode-evaluate.md"
+    exp_ok "EXP-8:R-11" 'the first sentence of section 4' "$EXP_REFS/storage-and-index.md"
 
     # (EXP-9) the lexicon: the templates and the sample artifacts carry no technical trace; the scan itself is tested first
     for s in 'PlayerController.cs' 'spawnEnemy()' 'enemy_spawn_timer' 'Assets/Scripts/Player.cs' 'player.Move(x)' 'FlagCaptureManager'; do
