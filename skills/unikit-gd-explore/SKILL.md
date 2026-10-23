@@ -52,6 +52,8 @@ write `GAME.md`, system GDDs, or concepts — that is `unikit-gd-spec` /
 `unikit-gd-system` / `unikit-gd-brainstorm`. If the user wants to *create*, point
 them at the owner skill and stop researching.
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md`
@@ -250,7 +252,7 @@ question but the *cut* is unclear and the two readings mean materially different
 work, ask **one** question — not one per ambiguous prompt:
 
 ```
-AskUserQuestion: What kind of read do you want?
+The question tool of your agent (`AskUserQuestion`): What kind of read do you want?
 Options:
 1. Design dissection (recommended)
 2. Market viability
@@ -391,7 +393,7 @@ tagged identically whichever of them — recon, this lens, the balance skill or 
 surfaced it. Say it on entry, as the
 internal-design lens does: *"I'll read how it's built and hand you a brief — I won't edit
 the GDD or the code."* Its routing is the internal-design lens's (the slice's
-`doc_status` picks the owner); in **subagent mode** every interactive `AskUserQuestion`
+`doc_status` picks the owner); in **subagent mode** every interactive call of the question tool of your agent (`AskUserQuestion`)
 is bypassed, the same as the internal-design lens.
 
 ## Input modes — develop a review file or a RECON reconstruction
@@ -422,7 +424,7 @@ marker** — the prompt contains, verbatim, on one line:
 Detection is by this **exact phrase**, not a loose reading. On a match, **load
 `{{skills_dir}}/{{self_name}}/references/delegation-contract.md`** (this skill's own spec — provider-owns-spec; the
 engine behavior is `references/market-scan.md` → "Subagent mode") and follow it: run
-**deterministically**, **bypass every interactive `AskUserQuestion`** (the lens
+**deterministically**, **bypass every interactive call of the question tool of your agent (`AskUserQuestion`)** (the lens
 tie-breaker above, the save-offer under "Saving Research Results", and the
 internal-design / code-grounded closure passes — a subagent would hang on any prompt),
 run the **market lens** (per-concept `market_signal` + `validation_confidence` +

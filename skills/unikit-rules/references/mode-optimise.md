@@ -61,7 +61,7 @@ Every item stands in exactly one `assign` list or in `attach`; a list takes ids 
 
 ## D.3 Preview
 
-Run `apply --dry-run`. Exit `2` → correct the plan by the reasons it printed and run it again; never work around it by hand. Exit `0` → print its output as your own message, in full, before any question — the question carries the options and nothing else. It has this shape:
+Run `apply --dry-run`. Exit `2` → correct the plan by the reasons it printed and run it again; never work around it by hand. Exit `0` → print its output as your own message, in full, before any question. It has this shape:
 
 ```markdown
 ## Proposed layout — <T> topics, <C> common rules, <N> rules
@@ -82,7 +82,7 @@ Run `apply --dry-run`. Exit `2` → correct the plan by the reasons it printed a
 
 ## D.4 Ask (explicit call)
 
-One question: `Apply` / `Cancel` — with `AskUserQuestion`; without it, the two options as numbered text: print them, then end your turn and wait for the answer. `Cancel`, or no answer → run `discard`; nothing is written: `INFO [rules] optimise: cancelled, file unchanged`.
+One question: `Apply` / `Cancel` — with the question tool of your agent (`AskUserQuestion`). `Cancel`, or no answer → run `discard`; nothing is written: `INFO [rules] optimise: cancelled, file unchanged`.
 
 ## D.5 Write
 
@@ -107,7 +107,7 @@ Run by SKILL.md Step 6 after the report of an add, and by Mode C before compacti
    - `Apply` — D.5 and D.6: the file takes the topic layout.
    - `Keep the flat format` — run `discard`, insert the marker line (SKILL.md → `## Layout of the rule files`) and nothing else; print `INFO [rules] layout: flat marker written — /unikit-rules optimise reorganizes later`. The refusal is final: the offer is never made for this file again.
    - `Not now` — run `discard`; nothing is written; the offer returns on the next call that finds the file `legacy`.
-3. Ask with `AskUserQuestion`; without it, the same three options as numbered text — print them, then end your turn and wait for the answer. No answer → `Not now`.
+3. Ask with the question tool of your agent (`AskUserQuestion`). No answer → `Not now`.
 
 ## By hand
 

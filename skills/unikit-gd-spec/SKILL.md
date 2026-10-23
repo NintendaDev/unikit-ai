@@ -55,6 +55,8 @@ Optionally it produces **`PITCH.md`**. Per-system detail (`systems/<slug>.md`) i
 **single writer of the system roster**: a flow's `GOAL → SYS` or a content type's
 `belongs_to` that needs a missing system routes back here for add-system.
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md`
@@ -145,15 +147,16 @@ prompt** (`gd-principles` "never guess" rule). Resolve in this order:
 7. **`GAME.md` exists** and the intent is none of the above → **ambiguous**. Ask:
 
    ```
-   AskUserQuestion: GAME.md already exists. What do you want to do?
+   The question tool of your agent (`AskUserQuestion`): GAME.md already exists. What do you want to do?
 
    Options:
-   1. Edit GAME.md content — change a pillar / fantasy / loop / stance
+   1. Edit GAME.md content — change a pillar / fantasy / loop / stance (Recommended)
    2. Rebuild the system map — re-derive the roster from GAME.md
    3. Add one system to the map
    4. Create a pitch (PITCH.md)
-   5. Import a different GDD — give me the path/URL
    ```
+
+   Importing a different GDD is not an option here: an argument that is a path or a URL already selects Import (Step 0 item 1), and anything else the user wants goes in the free-text answer.
 
 Announce the resolved mode in one line, then proceed to Step 2 (load the matching mode body).
 

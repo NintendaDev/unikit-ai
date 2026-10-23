@@ -4,7 +4,7 @@ Read **only** when the request is a path to a CHECKPOINTS.md file (or a balance 
 
 ## Entry
 
-The input is a path to `CHECKPOINTS.md`, a balance document folder, or a slug under `.unikit/gamedesign/balance/` (the same forms the planner accepts: `{{skills_dir}}/unikit-plan/references/balance-plan.md` → `Resolving the input`). A slug without a file → `Glob` `.unikit/gamedesign/balance/*/CHECKPOINTS.md`, show the five latest by `Updated` (read only the first 12 lines of each) and ask once. Nothing found → say "there is no balance document: /unikit-gd-balance" and stop.
+The input is a path to `CHECKPOINTS.md`, a balance document folder, or a slug under `.unikit/gamedesign/balance/` (the same forms the planner accepts: `{{skills_dir}}/unikit-plan/references/balance-plan.md` → `Resolving the input`). A slug without a file → `Glob` `.unikit/gamedesign/balance/*/CHECKPOINTS.md`, show the five latest by `Updated` (read only the first 12 lines of each) and ask once with the question tool of your agent (`AskUserQuestion`): the four latest as the options, the recommended one first; the fifth is named in the free-text answer. Nothing found → say "there is no balance document: /unikit-gd-balance" and stop.
 
 ## Reading the checkpoint
 

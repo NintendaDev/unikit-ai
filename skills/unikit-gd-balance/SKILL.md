@@ -47,6 +47,8 @@ the next decisions. The roadmap describes later checkpoints coarsely; only the c
 detailed, because the data it returns may change what comes next. This skill issues exactly one
 detailed checkpoint at a time.
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md`
@@ -127,12 +129,12 @@ file named below from `{{skills_dir}}/{{self_name}}/references/` and follow it:
 | Called with no arguments | `mode-status.md` (with the next action offered) |
 
 A slug without a verb is read as status. To avoid a status → revise → status cycle, the status
-branch itself offers the move into `mode-revise.md` (through `AskUserQuestion`) for a document
+branch itself offers the move into `mode-revise.md` (through the question tool of your agent (`AskUserQuestion`)) for a document
 with no current point, for a closed one and for a file error; requests such as "issue the next
 point", "add a point", "close it", "reopen the document" or "repair it", said directly, are read
 as revise and never return to status.
 
-**Ambiguity.** A request that reads as two branches gets one `AskUserQuestion`, the recommended
+**Ambiguity.** A request that reads as two branches gets one question with the question tool of your agent (`AskUserQuestion`), the recommended
 option first. Do not guess. Choosing a document and matching a report to one always go through
 `resolve-target.md`; investigation is `investigation.md` (loaded by the open branch, and
 by ingest and revise when facts from code or data are needed to compose a point); the closing

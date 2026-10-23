@@ -11,7 +11,7 @@ Read **only when the plan's `## Settings` says `Testing: yes`**, once, at plan l
 5. **Fewer than two → nothing to merge:** mark nothing and ask nothing.
 6. **Two or more → one decision for this call:**
    - **`$ARGUMENTS` carries a test-run instruction** (Step 0.1) that names the end of the scope, its last point, or every point → it is the answer; nothing is asked. An instruction naming another point is no answer — ask.
-   - **Otherwise ask once**, in the same `AskUserQuestion` call as the Step 0.2 question when there is one. Before the call, print the points as plain markdown in a block of their own:
+   - **Otherwise ask once**, in the same call of the question tool of your agent (`AskUserQuestion`) as the Step 0.2 question when there is one. Before the call, print the points as plain markdown in a block of their own:
 
      ```
      Test runs in this scope: <k> points
@@ -20,7 +20,6 @@ Read **only when the plan's `## Settings` says `Testing: yes`**, once, at plan l
      ```
 
      Two options: `One run at the end — task <N.M>` (the last point) · `At every point, as planned`.
-   - **No `AskUserQuestion`** → the same two options as a numbered text question; end your turn and wait for the number.
    - **No answer** — a non-interactive run, or a reply that picks neither option → the points run as written.
 7. **The answer holds for this call only.** On disk it survives solely as the `⏭️ MERGED` marks.
 8. **One run at the end → mark first, then execute.** Carry out the Step 0.2 answer first (a stash must not take the marks with it; after a stash the manifest was re-read and items 1–5 recounted — a recount that leaves fewer than two points drops the answer: nothing is marked, and the INFO line says `nothing to merge`). Then, in a single `Edit` over the manifest, append `⏭️ MERGED → task <N.M>` to every point except the last one (item 4), leaving each checkbox `- [ ]`. The last point's coverage at run time is the **union** of everything merged into it (Step 3.2).

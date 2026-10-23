@@ -9,15 +9,15 @@ the files.
 1. **Input.** A topic from the request and/or a path to `researches/<slug>/RESEARCH_RESULT.md`.
    From a research read only the `## Active Summary` region and `## Findings` as needed; a
    record with no summary is read as text. Neither a topic nor a path (the branch was reached
-   from an empty status) → ask once, with `AskUserQuestion`: the topic in a few words, or the
+   from an empty status) → ask once, in a message of your own, with no options: the topic in a few words, or the
    path of a research.
 2. **Slug.** ASCII kebab-case of the topic (translate or transliterate its words), at most 40
    characters, no date. If
    `balance/<slug>/` already exists, ask: continue it (the revise branch) or another name. An
    automatic suffix is forbidden. `resolve-target.md` owns the list.
 3. **Investigation** — `investigation.md`, when facts from code or data are needed.
-4. **Interview** by `closure-set.md`, in the order Q1–Q5. Decisions go through
-   `AskUserQuestion`, the recommended option first; each answer carries a source tag.
+4. **Interview** by `closure-set.md`, in the order Q1–Q5. Every question goes through
+   the question tool of your agent (`AskUserQuestion`), the recommended option first; each answer carries a source tag.
 5. **Draft** `BALANCE.md` from `template-balance.md`, and a coarse `## Roadmap`. Slicing
    principle: a point ends where the nearest data may change the decision; it holds the minimum
    of work for that data plus what does not depend on the unknown; later points are rows of the
@@ -31,8 +31,8 @@ the files.
 8. **Approve, then write.** Show the draft in the interface language — the subject, the
    decisions with their sources, the roadmap as goals, the issued point's goal, its work and its
    route — and
-   ask once (`AskUserQuestion`, the recommended option first): `1.` write it · `2.` change
-   something · `3.` stop. Nothing is written before the answer (`gd-principles` → Collaborative
+   ask once, with the question tool of your agent (`AskUserQuestion`), the recommended option first: `1.` write it · `2.` change
+   something (the user writes what in the free-text answer) · `3.` stop. Nothing is written before the answer (`gd-principles` → Collaborative
    Protocol). On `1.`, in this order: `mkdir -p .unikit/gamedesign/balance/<slug>/results` →
    `BALANCE.md` → `CHECKPOINTS.md` (`Status: open`, `Current: BCH-1`, `Updated` from
    `Bash(date *)`; on the experiment route its log holds the entry of `experiment-route.md` →

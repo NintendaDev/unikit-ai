@@ -31,6 +31,8 @@ Add short, actionable rules to `.unikit/RULES.md` and to the topic files it list
 
 Before adding any rule, cross-check it against RULES_INDEX.md to avoid duplicating what's already covered in the knowledge base. If a rule is already covered — tell the user and skip. If the rule contradicts or extends an existing knowledge base rule — add it as an explicit override to RULES.md with a note about what it overrides.
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md`
@@ -160,16 +162,9 @@ Run Steps 2-5 per rule and report all of them together in Step 6. One rule and N
 differ only in how many rows the report carries.
 
 **Mode B** — no arguments:
-→ Ask the user what rule to add; once the rule arrives, continue as Mode A, its announcement included. Offer examples relevant to {{engine_name}}/{{engine_code_language}}:
+→ Ask the user what rule to add; once the rule arrives, continue as Mode A, its announcement included. The answer is the user's own words and nothing in the project suggests one, so offer no options — a rule made up as an option is a rule nobody asked for. Ask it in a message of your own, without the question tool, and wait for the reply:
 ```
 What rule or convention would you like to add?
-
-Examples:
-- Never use var — always declare explicit types
-- MonoBehaviour injection via public Construct() with [Inject]
-- All async methods must accept CancellationToken as last parameter
-- Use canvas.enabled instead of SetActive for UI toggling
-- Factory classes instead of Zenject PlaceholderFactory
 ```
 
 ### Step 2: Cross-Check Against Knowledge Base
@@ -296,8 +291,8 @@ A retro mode. It edits a file inside the user's project, so it runs **only on co
    - **`shorten`** — it reduces to one directive without losing knowledge: prepare the short wording. A trailing `<!-- @no-migrate -->` stays verbatim at the end of the shortened rule;
    - **`keep`** — it does not reduce: it stays exactly as it stands. That is not a defect, and it is not marked;
    - **`flatten-only`** — the rule is already one line; only its place changes, because the section around it is going away.
-4. **Print the preview as plain markdown, in a block of its own** — before the question: one line per rule, in the form `before → after` for `shorten`, a single line for the rest. The question mechanism carries the options and nothing else. With topics, the preview is grouped by file: the root first, then the topic files in table order.
-5. Ask once: **apply everything / apply only the `shorten` set / cancel**. Without an answer the file is not touched.
+4. **Print the preview as plain markdown, in a block of its own** — before the question: one line per rule, in the form `before → after` for `shorten`, a single line for the rest. With topics, the preview is grouped by file: the root first, then the topic files in table order.
+5. Ask once, with the question tool of your agent (`AskUserQuestion`): `Apply everything` (Recommended) · `Apply only the shorten set` · `Cancel`. Without an answer the file is not touched.
 6. Write it with `Edit`, file by file: every list flat, the order of the rules preserved, legacy section headings removed, the structure untouched. **No rule is deleted** — under any outcome. The order is kept by stripping headings rather than by re-sorting: re-sorting would shuffle rules whose sequence the user chose.
 7. Report how many `shorten`, how many `keep`, how many `flatten-only`. **Not one line about length in characters**, and no suggestion to move anything into the knowledge base.
 

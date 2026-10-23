@@ -37,6 +37,8 @@ metadata:
 
 Fix a specific bug or problem in the codebase. Supports two modes: immediate fix or plan-first approach.
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md`
@@ -235,10 +237,9 @@ From `$ARGUMENTS`, identify:
 - Steps to reproduce (if provided)
 - {{engine_name}} console output (errors, warnings, stack traces)
 
-If unclear, ask:
+If unclear, ask — each question with its likely answers as the options:
 ```
-To fix this efficiently, I need more context:
-
+The question tool of your agent (`AskUserQuestion`):
 1. What is the expected behavior?
 2. What actually happens?
 3. Is there a stack trace or {{engine_name}} Console log?

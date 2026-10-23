@@ -50,6 +50,8 @@ not mixed.
 feels weak, or which hypothesis the designer wants to test. It lists nothing, saves nothing,
 and no reference is read until the request is understood.
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md`
@@ -124,7 +126,7 @@ reference files named below from `{{skills_dir}}/{{self_name}}/references/` and 
 
 | Intent (from the request and any attachment) | Reference files |
 |---|---|
-| A bare call, or a request too vague to understand | none — hold the short conversation described above |
+| A bare call, or a request too vague to understand | none — hold a short conversation: one to three short questions in plain language (what feels weak, or which hypothesis the designer wants to test), each asked with the question tool of your agent (`AskUserQuestion`), not a questionnaire; the options are the likely answers drawn from the request and the GDD, or two short examples, and the designer writes their own in the free-text answer |
 | A design problem to explore: "what can we test for…", "the first minutes are boring" | `mode-discover.md` |
 | An idea was chosen; a direct request for a specification; a request to compare variants of one question; edit a draft | `mode-specify.md`, `template-experiment.md`, `card-draft-view.md`, `storage-and-index.md` |
 | Feedback from real play: pasted text, a forwarded chat, a file; "evaluate", "re-evaluate", "score" | `mode-evaluate.md`, `storage-and-index.md` |
@@ -136,7 +138,7 @@ reference files named below from `{{skills_dir}}/{{self_name}}/references/` and 
 
 **Readers outside this skill.** `lookup.md` is also read — through its path, `{{skills_dir}}/{{self_name}}/references/lookup.md` — by the planner and by the code and design explorations when a request names an experiment by words; each of them words the confirmation in its own voice and keeps no matching of its own.
 
-**Ambiguity.** A request that reads as two branches gets one `AskUserQuestion`, the
+**Ambiguity.** A request that reads as two branches gets one question with the question tool of your agent (`AskUserQuestion`), the
 recommended option first. Do not guess. A reference that cannot be read: print
 `WARN [experiment] <file> missing — run unikit-ai update`, do not invent its format, and
 write nothing that depends on it.

@@ -42,7 +42,7 @@ Recon for this plan (<n> files):
 ```
 
 ```
-AskUserQuestion: What should this pass improve?
+The question tool of your agent (`AskUserQuestion`): What should this pass improve?
 
 Options:
 1. All fresh topics with open tasks (Recommended)
@@ -51,12 +51,12 @@ Options:
 4. Cancel
 ```
 
-- `Topics by number` → the numbers arrive as text in the next message: a plan can hold more topics
-  than a question has options.
+- `Topics by number` → ask which ones with the question tool of your agent (`AskUserQuestion`): its
+  options are the likely sets (the fresh topics with open tasks first), the user writes their own
+  numbers (`1, 3`) in the free-text answer — a plan can hold more topics than a question has options.
 - `Whole plan — standard pass` → the pass runs as without `recon/`.
 - An answer already given in the arguments ("topics 1 and 3", "the whole plan") counts, and nothing
   is asked.
-- Without a question widget, print the options as a numbered list and end the turn.
 
 ## Scope with a prompt
 

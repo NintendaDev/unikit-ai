@@ -24,6 +24,8 @@ allowed-tools:
 
 One author of pull requests: this skill. It writes the title and the text, pushes the branch, opens or updates the branch's pull request, and — only when allowed and only when it is safe — merges it. It writes nothing into a plan and commits nothing.
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md`
@@ -86,7 +88,7 @@ The pull request is the current state — `HEAD` — unless the user chooses oth
 - **Inside a module of a plan with PR checkpoints** — the contract's `## Push target` says when `HEAD` is inside a module: not every task is `[x]`, and `HEAD` is not the `## Last completed boundary`. Inside a module the skill asks — it never cuts the PR silently. Before any text is written (Step 2 depends on the range), print `WARN [pr] HEAD is inside module <name> — a PR up to now carries its unfinished part into an open PR of <previous module>, if there is one`, then ask:
 
   ```
-  AskUserQuestion: Where should the pull request end?
+  The question tool of your agent (`AskUserQuestion`): Where should the pull request end?
 
   Options:
   1. PR everything up to now (HEAD)
@@ -114,7 +116,7 @@ Print the title, the body, the push command `git push origin <end>:refs/heads/<b
 Ask once:
 
 ```
-AskUserQuestion: Push <end short> to origin/<branch> and open or update the PR?
+The question tool of your agent (`AskUserQuestion`): Push <end short> to origin/<branch> and open or update the PR?
 
 Options:
 1. Push and open/update

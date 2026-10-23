@@ -40,7 +40,7 @@ tables. A missing item is described in words by its expected result, not by its 
 7. **`BALANCE.md`:** move the rows into the tables, judge them against the bands (`in` /
    `out` / `n-a`; `valid = no` is not admitted into conclusions), revise the diagnosis by layer and
    the levers, update `Unverified and conflicts`.
-8. **Decision.** One `AskUserQuestion`, the recommended option first: the next point of the
+8. **Decision.** One question with the question tool of your agent (`AskUserQuestion`), the recommended option first: the next point of the
    roadmap · revise the roadmap · close the document · repeat the point (the data is invalid).
    The options are outcomes; the next point is named by its goal.
 9. **`CHECKPOINTS.md`.** One entry in `## Balance Checkpoint Log` per decision (date · point ·

@@ -8,7 +8,7 @@ The exploration stays what it is — a thinking partner that writes nothing befo
 
 A request to merge a **named** branch into the current one. Three things are not merges in this sense — **rebase**, **cherry-pick**, and merging by a pull request number. Say so in one line and offer an ordinary exploration instead.
 
-The branch is not named → ask which one with `AskUserQuestion` (options from `git for-each-ref`), and go on with the answer.
+The branch is not named → ask which one with the question tool of your agent (`AskUserQuestion`) (options from `git for-each-ref`), and go on with the answer.
 
 ## Bootstrap
 

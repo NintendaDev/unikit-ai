@@ -18,7 +18,7 @@ The primary flow: no `GAME.md` yet. Build it, then decompose into a map.
    `drafted`/`approved` concept matches the description, offer it:
 
    ```
-   AskUserQuestion: Found concept "<title>" (<date>). Use it as the seed for GAME.md?
+   The question tool of your agent (`AskUserQuestion`): Found concept "<title>" (<date>). Use it as the seed for GAME.md?
    Options: 1. Yes — build from this concept   2. No — I'll describe the game now
    ```
 3. Else use the free-form description, or ask for one if empty.
@@ -82,7 +82,7 @@ a page, it is not yet sharp). Author it section by section using the
 skeleton first (one approval), then per section: Context → Questions → Options
 (2–4, pros/cons, theory from the loaded `frameworks`/`player-motivation` rules,
 one **(Recommended)** with the WHY) → Decision (Explain → Capture via
-`AskUserQuestion`) → **Draft + Approval in the same reply** → Write (Edit anchored
+the question tool of your agent (`AskUserQuestion`)) → **Draft + Approval in the same reply** → Write (Edit anchored
 on the unique heading). Persist each approved section immediately.
 
 Author these sections (this is the GAME.md structure — do not invent others; the

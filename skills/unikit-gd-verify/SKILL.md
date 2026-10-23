@@ -64,6 +64,8 @@ Verification is **offline and reproducible**: no web research, no expert judgmen
 no LLM guessing where a grep will do. The same inputs always yield the same result
 (idempotent).
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md`
@@ -333,11 +335,10 @@ into one of **four tracks**:
    `GOAL → SYS` / `AC`** fixable three ways across three zones, a **roster ↔ disk** mismatch
    (register vs delete), an **unregistered cross-doc `FORM-`/`ENT-`** (register vs remove).
    The user picks the **direction** — never *whether* to act (decline-vs-direction,
-   `gd-critique`). The interview is **direction-only** and batched (`AskUserQuestion`, ≤ 4
-   per call); it is **suppressed under the in-apply flag** (Phase 1 sentinel):
+   `gd-critique`). The interview is **direction-only** and batched, asked with the question tool of your agent (`AskUserQuestion`); it is **suppressed under the in-apply flag** (Phase 1 sentinel):
 
    ```
-   AskUserQuestion: CONFLICT — <doc/section> vs GD-IDS: <the disagreement>. Which direction?
+   The question tool of your agent (`AskUserQuestion`): CONFLICT — <doc/section> vs GD-IDS: <the disagreement>. Which direction?
    Options:
    1. Fix as A — e.g. registry is right → correct the document
    2. Fix as B — e.g. document is right → update GD-IDS to <X> (with approval; record it)

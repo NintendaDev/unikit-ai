@@ -26,6 +26,8 @@ version: "2.1"
 
 Generate `.unikit/ARCHITECTURE.md` with architecture decisions tailored to the game project.
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md`
@@ -113,7 +115,7 @@ Look for architectural pattern indicators. These patterns are largely engine-agn
 **If the project already has code and patterns are detectable from Step 2:**
 - Summarize what you found and confirm with the user
 
-**If the project is new or patterns are unclear**, ask via `AskUserQuestion`:
+**If the project is new or patterns are unclear**, print the message below as plain markdown first, then ask its last question with the question tool of your agent (`AskUserQuestion`): the options are the pattern the scan and the Quick Decision Guide point to (recommended), one or two other likely patterns from the list, and `Document what I found as-is`; the user writes any other pattern or a combination in the free-text answer:
 
 ```
 Based on the project scan, I found:
@@ -130,7 +132,6 @@ Common game architecture patterns:
 6. Component-based — engine's native component architecture without extra layers
 
 You can combine patterns (e.g., "Modular Monolith + MVVM for UI").
-Or skip this question and I'll document what I found as-is.
 ```
 
 ### Step 4: Generate .unikit/ARCHITECTURE.md

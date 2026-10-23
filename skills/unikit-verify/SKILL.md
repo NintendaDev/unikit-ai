@@ -37,6 +37,8 @@ Verify that the implementation matches the plan, nothing was missed, and the cod
 
 This skill runs after `/unikit-implement` or manually at any time.
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md`
@@ -152,7 +154,7 @@ Options:
 
 Based on choice:
 - Branch diff → gather `CHANGED_FILES` via `git diff --name-only $BASE_BRANCH...HEAD`. Skip Step 1 (Task Completion Audit — no plan exists). Execute Step 2 (Code Quality) and Step 3 (Consistency Checks) on collected files. In the report (Step 4), use header: `### Standalone verification (no plan)` instead of `### Feature: ...`
-- Last N commits → ask user for the number of commits via AskUserQuestion. Gather files via `git diff --name-only HEAD~N..HEAD`. Skip Step 1. Execute Steps 2-3 on collected files. Same standalone report header.
+- Last N commits → ask user for the number of commits via the question tool of your agent (`AskUserQuestion`). Gather files via `git diff --name-only HEAD~N..HEAD`. Skip Step 1. Execute Steps 2-3 on collected files. Same standalone report header.
 - Cancel → **STOP**
 
 **If both `.unikit/code/PLAN.md` and a matching folder plan exist**, ask the user which one to verify.
@@ -413,7 +415,7 @@ Options:
 2. Leave it — strict verification fails
 ```
 
-- No `AskUserQuestion` → the same two options as a numbered text question; end your turn and wait for the number. A non-interactive run, or a reply that picks neither option → no answer, and no run.
+- A non-interactive run, or a reply that picks neither option → no answer, and no run.
 - **Run the full suite now** → run every test in the project, in one run, through MCP server `{{engine_mcp_tool}}`, and wait for the result. Green — a readable result with a test count above zero, the bar `verification.md` names for this gate — → by one `Edit`, append `<date> · plan · all tests, /unikit-verify --strict · passed N/N · tree-sha256 <hash>` to `## Test Runs` and rewrite its anchor line as `Full run: <date> · all tests · passed N/N · tree-sha256 <hash>`; `<date>` from `Bash(date *)`, `<hash>` by the command of item 3. This edit touches `## Test Runs` and nothing else in the manifest. Red → the failing tests go into the report, and strict verification fails.
 - **Leave it**, or no answer → strict verification fails on this finding.
 - MCP server `{{engine_mcp_tool}}` unavailable → skip and note: `Test run: engine MCP unavailable, skipped`. The run is attempted and no affordance answers it → **GATE LIFTED**, skip and note: `Test run: gate lifted — <the observation that established it>`; a run that reports success over zero tests has not closed the gate. In both cases the finding stays a warning, exactly as the compilation gate behaves when it cannot run.

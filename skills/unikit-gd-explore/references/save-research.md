@@ -11,7 +11,7 @@ lists are owned by `{{skills_dir}}/{{self_name}}/references/internal-design-lens
 When the conversation crystallizes, **offer** to save (never auto-save):
 
 ```
-AskUserQuestion: Save this research to .unikit/gamedesign/researches/?
+The question tool of your agent (`AskUserQuestion`): Save this research to .unikit/gamedesign/researches/?
 Research name: <kebab-slug>
 Options: 1. 💾 Yes — save   2. 🚫 No
 ```
@@ -22,7 +22,7 @@ folder, or it observes a directory it just made and fires every time.
 **Collision — the slug already exists.** A folder `researches/<slug>/` is already there → ask, never decide it yourself:
 
 ```
-AskUserQuestion: A research named "<slug>" already exists.
+The question tool of your agent (`AskUserQuestion`): A research named "<slug>" already exists.
 
 Options:
 1. Update it — rewrite in place; `Updated:` moves, `Date:` is left alone

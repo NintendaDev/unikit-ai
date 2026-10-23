@@ -95,7 +95,7 @@ RECON.md's `## Explorations` (the asymmetry with review-file mode).
 
 Read the behavioural **domain** from the target's name and Overview (the behaviour it
 drives), **not** from the coarse `GD-IDS` `category`; on an ambiguous or coarse
-category, confirm the domain with one `AskUserQuestion`. Load the matching core rules
+category, confirm the domain with one question, asked with the question tool of your agent (`AskUserQuestion`). Load the matching core rules
 (plus any studio `library` rule on the topic) so options carry theory. Domains are
 opt-in and combinable — this is the **same keying vocabulary** `unikit-gd-system` uses
 in its Phase 0 table (kept in sync, not byte-identical — this table loads rules to
@@ -132,7 +132,7 @@ in its Phase 0 table (kept in sync, not byte-identical — this table loads rule
 3. **Open-questions registry + closure pass.** Maintain a lightweight registry of the
    open questions the lens raises. Then run a **closure pass**: take each open
    question in turn → present 2–4 options + one (Recommended) → capture the user's
-   decision (`AskUserQuestion`) → mark it closed. Repeat until the registry is empty,
+   decision with the question tool of your agent (`AskUserQuestion`) → mark it closed. Repeat until the registry is empty,
    or the user explicitly defers the rest — unresolved items then ride into the
    brief's "Open questions" so they are not lost across a `/clear`. When evidence is
    thin for a question, a `WebSearch` is allowed (Explore only) before re-offering.

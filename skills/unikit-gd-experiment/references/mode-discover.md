@@ -4,7 +4,7 @@ Read **only** when the request is a normal ask for experiment ideas — a design
 
 ## Understand the problem first
 
-- When the problem, the audience or the goal is unclear, ask one to three short questions in plain language (what feels weak, for whom, what was tried already). This is not a questionnaire: keep the briefing conversational. Once the answer is enough, move on.
+- When the problem, the audience or the goal is unclear, ask one to three short questions in plain language (what feels weak, for whom, what was tried already) with the question tool of your agent (`AskUserQuestion`); the options of each are the likely answers drawn from the request and the GDD, or two short examples, and the designer writes their own in the free-text answer. This is not a questionnaire: ask only what is still unclear. Once the answer is enough, move on.
 - Context when it exists: if `.unikit/gamedesign/GAME.md` and `GD-IDS.yaml` are there, read them read-only (pillars, systems); a GDD is not required. Domain rules are taken by their `Load when` line from `RULES_INDEX.md` (`ux-onboarding`, `core-loops`, `player-motivation`, `frameworks`, `level-design`, `accessibility`, `balance`, `progression`), without walking the rules tree. Facts about what the game **already** does come only through `{{skills_dir}}/{{self_name}}/references/context-and-research.md`.
 
 ## What to produce
@@ -29,4 +29,4 @@ Read **only** when the request is a normal ask for experiment ideas — a design
 
 - One or several chosen → `mode-specify.md` for each, in the user's order. A number is assigned only when a card is saved.
 - "Search more" → a new table of ideas that do not repeat the earlier ones, with a note on how they differ.
-- The choice is asked as one question (`AskUserQuestion`, the recommended option first): choose one · choose several · combine or change · search more. Agents without a question tool print the same options as text.
+- The choice is asked as one question with the question tool of your agent (`AskUserQuestion`), the recommended option first: choose one · choose several · combine or change · search more. For the first three the designer writes the row numbers, or the change, in the free-text answer.

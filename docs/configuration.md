@@ -723,7 +723,7 @@ your-unity-project/
 │   │   ├── prototype-profile.md   # How a plan built from experiment cards is executed - read by implement, verify, pr, improve, review, fix, devcontext, commit and their subagents
 │   │   ├── subagent-arguments.md  # How the model and the effort of a subagent launch are settled - read by every skill that can launch a subagent and by the two coordinators
 │   │   ├── subagent-roles.md      # Which role (reader, validator, executor) each subagent launch has - read with subagent-arguments.md
-│   │   ├── user-questions.md      # How a skill asks you a question and waits for the answer - read before the first question by the skills that carry its pointer (today: unikit-plan)
+│   │   ├── user-questions.md      # How a skill asks you a question and waits for the answer - read before the first question by every skill and agent file that can ask you one
 │   │   ├── gamedesign/            # Game-design system assets
 │   │   │   ├── gd-principles.md    # The design working contract - slim core
 │   │   │   ├── gd-authoring.md     # + 6 shards, each read only by the skills that need it

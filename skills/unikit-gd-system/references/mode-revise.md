@@ -33,7 +33,7 @@ new state → Rework), ask rather than assume.
 **Tuning / Tweak — targeted edit**
 1. Show the **old → new** for each value/rule changing, with the WHY (theory from
    the loaded rules, pillar alignment) — Explain → Capture.
-2. Get **one approval** (`AskUserQuestion`).
+2. Get **one approval** with the question tool of your agent (`AskUserQuestion`).
 3. `Edit` the affected section(s) anchored on the unique heading. Approved text
    elsewhere is never touched.
 

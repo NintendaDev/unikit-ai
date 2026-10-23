@@ -47,6 +47,8 @@ never from this paragraph. The router is written so additional modules can be
 registered later with no change to this file — only a new `modules.yml` entry and a
 new `module-<id>.md` contract.
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## What Belongs Here
 
 - Content that belongs to one of the registered modules' tiers, as defined by that
@@ -133,10 +135,10 @@ guess silently when the target is ambiguous.
    - Valid → set `moduleId = <id>`, strip the `--module <id>` tokens from
      `$ARGUMENTS`, and skip the remaining resolution steps.
    - Invalid (no such module) → report the unknown id and the list of registered
-     module ids via `AskUserQuestion` (options = registered modules), then use the
+     module ids via the question tool of your agent (`AskUserQuestion`) (options = registered modules), then use the
      chosen id. Strip the flag tokens regardless.
      Print the module ids with their one-line domain summaries to the screen as plain
-     markdown first — the question mechanism carries the options and nothing else.
+     markdown first.
 2. **No flag → infer from prompt context.** Match the request (rule content, URL,
    file path, stated intent) against each registered module's **domain**. The
    domain of a module is described in its contract file
@@ -149,11 +151,11 @@ guess silently when the target is ambiguous.
    resolves silently to `code`.
 4. **Ambiguity → ALWAYS ask.** If zero modules fit, the content fits none of the
    registered modules, or two or more modules are plausible, ask the user via
-   `AskUserQuestion`. Options = every registered module id (with a one-line domain
+   the question tool of your agent (`AskUserQuestion`). Options = every registered module id (with a one-line domain
    summary) + a final "help me choose — I'll describe what this is" option. Never
    fall back to a default module to avoid the question.
    Print the module ids with their one-line domain summaries to the screen as plain
-   markdown first — the question mechanism carries the options and nothing else.
+   markdown first.
    - Edge case with a single registered module: a request that is **explicitly not
      about that module's domain** (and fits no registered module) must still trigger
      the question — do not dump unrelated content into `code` just because it is the
@@ -324,14 +326,14 @@ For each candidate, look it up in `status.rules[]` by `name` (case-insensitive):
 Match result?
 ├── Exactly 1 match + already installed
 │   → Inform user: "{name} is already installed (source={source}, v{version})"
-│   → AskUserQuestion: What should we do?
+│   → the question tool of your agent (`AskUserQuestion`): What should we do?
 │   │  Options:
 │   │  1. Leave as is         → STOP
 │   │  2. Edit manually       → Continue to Step 2
 │   │  3. Reinstall from registry → Bash: unikit-ai rules install <id> --force → STOP
 │
 ├── Exactly 1 match + NOT installed
-│   → AskUserQuestion: Matching rule "{name}" v{version} found in registry. Install it?
+│   → the question tool of your agent (`AskUserQuestion`): Matching rule "{name}" v{version} found in registry. Install it?
 │   │  Options:
 │   │  1. Yes, install from registry  → install path (below)
 │   │  2. Preview before deciding     → preview path (below)
@@ -346,12 +348,12 @@ Match result?
 │       Bash: unikit-ai rules show <id> --module <moduleId> --references
 │       (rules show is module-agnostic: a bare id that collides across modules
 │        exits 3, so the already-resolved router always scopes with --module)
-│       → Show content to user, then AskUserQuestion again:
+│       → Show content to user, then ask again with the question tool of your agent (`AskUserQuestion`):
 │         1. Install → install path above
 │         2. Generate a new rule → Step 2
 │
 ├── Multiple matches
-│   → AskUserQuestion: present all candidates + a "none of these, generate a new rule" option
+│   → the question tool of your agent (`AskUserQuestion`): present all candidates + a "none of these, generate a new rule" option
 │   → If user picks a candidate → treat as "exactly 1 match" (installed or not)
 │   → If "none" → Continue to Step 2
 │
@@ -360,7 +362,7 @@ Match result?
 ```
 
 **Key behavior guarantees:**
-- The `Multiple matches` branch prints the candidates (name, version, module) to the screen as plain markdown first — the question mechanism carries the options and nothing else.
+- The `Multiple matches` branch prints the candidates (name, version, module) to the screen as plain markdown first.
 - Agreeing to install always ends with `rules install <id>` and terminates the skill. The content in the registry is the source of truth; the skill does not second-guess it.
 - Declining the registry version always routes to Step 2, where the skill generates the rule from the user's description, URL, or file input as usual. No partial install, no mix of registry + local content.
 
@@ -444,7 +446,7 @@ Before appending, compare the new content against existing rules:
 **If contradictions found:**
 
 - Report **each** contradiction to the user, quoting both the new statement and the existing rule with its source file.
-- For each contradiction, ask via `AskUserQuestion` (batch up to 3 contradictions per question):
+- For each contradiction, ask via the question tool of your agent (`AskUserQuestion`) (batch up to 3 contradictions per question):
 
   Options:
   1. Replace — update existing rule with new formulation
@@ -470,7 +472,7 @@ Before appending, compare the new content against existing rules:
 
 ### A.4: Ask About Research (research-eligible tier, no existing file)
 
-Ask the user: *"I don't have a rules file for {framework/topic} yet. Would you like me to research this and create a comprehensive document, or just save your rule as-is?"*
+Ask the user with the question tool of your agent (`AskUserQuestion`): *"I don't have a rules file for {framework/topic} yet. Research this and create a comprehensive document, or save your rule as-is?"* Options: `Research it` (Recommended) · `Save my rule as-is`.
 
 ```
 User answer?
@@ -573,7 +575,7 @@ consumed in Phase A):
 - **Named rules present** (e.g. `optimise dotween zenject`) → that is the scope.
   Resolve each name to a file under `.unikit/memory/<module>/<tier>/` (match against
   `RULES_INDEX.md`; ask if a name is ambiguous).
-- **No names** → `AskUserQuestion`:
+- **No names** → the question tool of your agent (`AskUserQuestion`):
 
   Options:
   1. Specific rules — I'll name them → ask which, then resolve as above
@@ -600,7 +602,7 @@ For each rule in the current batch:
 
 Present the candidates per rule, grouped into **Tier 1** and **Tier 2** (each with
 which signals fired and the target
-`.unikit/memory/<module>/<tier>/references/{file}.md`), then `AskUserQuestion`
+`.unikit/memory/<module>/<tier>/references/{file}.md`), then ask with the question tool of your agent (`AskUserQuestion`)
 exactly as B.3.5 does:
 
 Options:
@@ -737,10 +739,10 @@ If the just-completed branch was **Branch A** (Add Rule), **Branch B** (Research
 unikit-ai rules registry show --json
 ```
 
-Parse the JSON. If `.kind == "local"`, ask the user whether to promote the memory changes into the registry **now** via `AskUserQuestion`:
+Parse the JSON. If `.kind == "local"`, ask the user whether to promote the memory changes into the registry **now** via the question tool of your agent (`AskUserQuestion`):
 
 ```
-AskUserQuestion: A local rules registry is configured at <.url from the JSON>.
+The question tool of your agent (`AskUserQuestion`): A local rules registry is configured at <.url from the JSON>.
 Promote the memory changes into the registry now by running /unikit-rules-registry update?
 
 Options:

@@ -58,6 +58,8 @@ never authors a flow, never edits the `GAME.md` one-pager content, and never add
 system to the roster — those are `unikit-gd-system`, `unikit-gd-flow`, and
 `unikit-gd-spec`.
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md`
@@ -105,7 +107,7 @@ Silently load — do not narrate:
    for this type's **purpose**, on demand by `Load When`, plus any studio `library`
    rule on the same topic. Read the purpose from the type's name and Overview (what
    the units are), **not** from a coarse label; when the purpose is ambiguous, confirm
-   the domain with one `AskUserQuestion` rather than guessing. Domains are opt-in and
+   the domain with one question, asked with the question tool of your agent (`AskUserQuestion`), rather than guessing. Domains are opt-in and
    combinable — a content type may match more than one:
 
    | Content purpose | Core rules to load |
@@ -187,9 +189,9 @@ prompt:
 4. **Exists, complete, no change described** → authoring is done; nothing to write.
    Offer review / verify (Handoff) and stop.
 
-If the type name is ambiguous (matches several entries, or none) → `AskUserQuestion`
+If the type name is ambiguous (matches several entries, or none) → the question tool of your agent (`AskUserQuestion`)
 listing candidates. Never guess the target. Print the candidates to the screen as plain
-markdown first — the question mechanism carries the options and nothing else.
+markdown first.
 
 > **Catalog churn is not an Edit here.** Adding, removing, or editing the individual
 > content **units** — a `curated` row's field values, a `bulk` type's `count` — is
@@ -203,7 +205,7 @@ depth picker — the named tiers `core/standard/full`, each with what it adds, n
 letters:
 
 ```
-AskUserQuestion: How deep should this pass go?
+The question tool of your agent (`AskUserQuestion`): How deep should this pass go?
 Options:
 1. core (recommended) — the floor that gets the type to a solid, usable base: Overview,
    Schema (CT.fields), Scale & Generation.

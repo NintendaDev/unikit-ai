@@ -84,8 +84,7 @@ does that in the interview.
 
 Everything not entailed is triaged WITH the user (the room has no authority).
 One **per-run** choice up front — **[Run the interview]** or **[Send everything
-to research]** — then, when interviewing, findings are presented in **batches**
-(`AskUserQuestion`, ≤ 4 questions per call). The interview **classifies** each
+to research]** — then, when interviewing, findings are presented in **batches**. The interview **classifies** each
 finding and records the user's decision text; it writes **nothing** to the GDD
 (review stays non-authoring, verify stays consistency-only). It captures the
 "needs a decision but not research" case — the answer already in the user's head

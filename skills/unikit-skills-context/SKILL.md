@@ -33,6 +33,8 @@ Add workflow rules to `.unikit/skill-context/<skill>/SKILL.md`. These are projec
 - **RULES.md** (via `/unikit-rules`) — coding conventions: HOW to write code (naming, patterns, style)
 - **Skill-context** (this skill) — workflow overrides: HOW a skill should work (priorities, steps, guards)
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md`
@@ -95,17 +97,16 @@ Proceed to Step 1 with resolved skill name and rule text.
 
 No arguments provided.
 
-AskUserQuestion: Which skill do you want to customize, and what rule should be added?
+Explain first (plain markdown): skill-context rules change HOW a skill works — priorities, steps, guards. For coding conventions (naming, patterns), use /unikit-rules instead.
 
-Skill-context rules change HOW a skill works — priorities, steps, guards.
-For coding conventions (naming, patterns), use /unikit-rules instead.
+The question tool of your agent (`AskUserQuestion`): Which skill do you want to customize, and what rule should be added?
 
-Examples:
+Options — the likely answers (the user writes their own skill and rule in the free-text answer):
 - review "Always check null-check symmetry first"
 - fix "When fixing async bugs, check cancellation cleanup"
 - implement "Compile after each file change"
 
-After user responds, parse skill name and rule text, then proceed to Step 1.
+After the user responds, parse skill name and rule text, then proceed to Step 1.
 
 ---
 
@@ -233,7 +234,7 @@ For each stale rule:
 
 ### Step V4: Collect Decisions
 
-Use `AskUserQuestion` in batches of up to 3:
+Ask each finding with the question tool of your agent (`AskUserQuestion`):
 
 **Case A:**
 
@@ -313,5 +314,6 @@ After applying:
 >
 > ✅ /unikit-review — No overlap: all 3 rules are project-specific
 >
-> ⚠️ 1 stale rule found. Remove? (Yes / Keep)
+> ⚠️ 1 stale rule found.
+> [question] Remove it? — Remove / Keep
 ```

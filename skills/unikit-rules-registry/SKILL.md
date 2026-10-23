@@ -37,6 +37,8 @@ modules (`.unikit/memory/<module>/<tier>`), and this skill iterates over the
 modules registered in `.unikit/system/modules.yml`. It never hardcodes a module
 id, a tier name, or a registry layout — those come from `modules.yml`.
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Boundaries
 
 **This skill MUST NOT:**
@@ -71,13 +73,13 @@ $ARGUMENTS (after stripping --module <id>)?
 ├── "create"  → Mode: create
 ├── "update"  → Mode: update
 ├── "sync"    → Mode: sync
-└── empty or unrecognized → AskUserQuestion
+└── empty or unrecognized → the question tool of your agent (`AskUserQuestion`)
 ```
 
 When the mode is missing, ask the user:
 
 ```
-AskUserQuestion: Which registry operation should run?
+The question tool of your agent (`AskUserQuestion`): Which registry operation should run?
 
 Options:
 1. Create — scaffold a new local rules registry and seed it from .unikit/memory/
@@ -110,16 +112,16 @@ never to derive registry paths.
 
 1. **Explicit `--module <id>`** in `$ARGUMENTS` → validate against the parsed ids.
    Valid → operate on that single module; strip the flag. Invalid → ask via
-   `AskUserQuestion` (options = registered module ids), then use the chosen id.
+   the question tool of your agent (`AskUserQuestion`) (options = registered module ids), then use the chosen id.
    Print the module ids with their one-line domain summaries to the screen as plain
-   markdown first — the question mechanism carries the options and nothing else.
+   markdown first.
 2. **No flag, neutral operation** (a plain create/update/sync) → operate on **all**
    registered modules (read from `modules.yml`).
 3. **Context narrows to one module ambiguously** (e.g. the prompt clearly targets
-   one module but another is plausible) → ask via `AskUserQuestion` (options =
+   one module but another is plausible) → ask via the question tool of your agent (`AskUserQuestion`) (options =
    registered module ids + "all modules"). Never guess.
    Print the module ids with their one-line domain summaries to the screen as plain
-   markdown first — the question mechanism carries the options and nothing else.
+   markdown first.
 
 Everywhere below, "for each module" means "for each resolved target module", and
 "for each tier" means "for each tier of that module from `modules.yml`".
@@ -157,7 +159,7 @@ schema > latest). Branch on the result:
 |-----------|---------|--------|
 | exit 2 / `schema == null` | unreachable | Report `registry unreachable` and **stop**. A write mode cannot proceed against a registry it cannot read. |
 | exit 5 / `readable == false` (schema > latest) | unsupported schema | Report `registry schema is newer than this CLI — upgrade unikit-ai`, then **stop**. |
-| `kind == "local"` and `isLatestSchema == false` | local, behind latest schema | Offer to migrate: `AskUserQuestion` → run `unikit-ai rules registry migrate <target>` on yes, then **re-run `rules registry status --json`** and re-evaluate. On no → **stop** (writing schema:2 layout into a schema:1 registry would corrupt it). |
+| `kind == "local"` and `isLatestSchema == false` | local, behind latest schema | Offer to migrate: the question tool of your agent (`AskUserQuestion`) → run `unikit-ai rules registry migrate <target>` on yes, then **re-run `rules registry status --json`** and re-evaluate. On no → **stop** (writing schema:2 layout into a schema:1 registry would corrupt it). |
 | `kind == "remote"` and `isLatestSchema == false` | outdated remote | `migrate` cannot write a remote registry. Report that the user must clone the registry, run `rules registry migrate` on the clone, open a PR upstream, then point the project at a writable copy. **Stop.** |
 | `kind == "remote"` and `isLatestSchema == true` | remote, read-only via CLI | A write mode needs a local registry. For `update`, this duplicates the `update.1` guard — report `update requires a local registry` and **stop**. (create scaffolds a fresh local target, so this row should not occur there.) |
 | `kind == "local"` and `isLatestSchema == true` (`writable == true`) | up to date and writable | Proceed to the mode body. |
@@ -174,7 +176,7 @@ Scaffold a new local registry and seed it with the rules currently installed in 
 ### create.1: Ask for target path
 
 ```
-AskUserQuestion: Where should the new rules registry be created?
+The question tool of your agent (`AskUserQuestion`): Where should the new rules registry be created?
 
 Options:
 1. Project subfolder — ./rules-registry
@@ -183,7 +185,7 @@ Options:
 ```
 
 - Option 1 → `pathArg = "./rules-registry"`. Pass this verbatim to the CLI in `create.2`. `rulesRegistryInitCommand` in `src/cli/commands/rules.ts` resolves it against `process.cwd()` and auto-creates the target directory via `fs.ensureDir`.
-- Option 2 → ask a follow-up `AskUserQuestion` for the path as free-form text input. Trim the input; if the result is empty, re-prompt the same text input. Then compute the absolute path via `path.resolve(<cwd>, <trimmed-input>)` **for display only** and ask a second `AskUserQuestion` of this shape:
+- Option 2 → ask for the path in a message of your own, with no options. Trim the input; if the result is empty, ask again the same way. Then compute the absolute path via `path.resolve(<cwd>, <trimmed-input>)` **for display only** and ask a second question with the question tool of your agent (`AskUserQuestion`) of this shape:
   - Question: `Target directory will be: <resolved-absolute-path>. Proceed?`
   - Options: `Yes, proceed` / `No, enter a different path` / `Cancel`
   - Yes → use the original (pre-resolve) input string as `pathArg` in `create.2`.
@@ -208,7 +210,7 @@ Exit-code handling:
 | 0 | Scaffold OK | Continue to create.2b |
 | 3 | INVALID_ARGS (relative path, etc.) | Report stderr and stop |
 | 5 | VALIDATION_FAILED (build-manifest.js failed) | Report stderr and stop |
-| 6 | REGISTRY_ALREADY_INITIALIZED | Ask the user: `reuse existing scaffold and continue?` → Yes proceeds to create.2b, No stops |
+| 6 | REGISTRY_ALREADY_INITIALIZED | Ask with the question tool of your agent (`AskUserQuestion`): `Reuse the existing scaffold and continue` (Recommended) · `Stop` → reuse proceeds to create.2b, stop ends the skill |
 | 7 | PATH_OCCUPIED | Report `target path is not empty and is not a registry`, stop |
 | other | Unexpected | Report stderr and stop |
 
@@ -266,7 +268,7 @@ The scaffold mirrors `.unikit/memory/` bit-for-bit on disk — content-wise the 
 To make the switch complete, the skill pairs `registry set` with a follow-up `rules sync --replace --prune`. `--replace` bypasses the `source !== 'registry'` guard in `syncRulesState` so installer-sourced rules get walked; the sync loop rewrites `source`, `version`, `installed_hash`, and `origin` (via `HybridRegistry.getResolvedOrigin()`) against the new primary registry. `--prune` removes obsolete stack rules that are not in the new manifest. The HARD GUARD in `syncRulesState` still prevents discovery of previously-uninstalled rules — only already-installed entries get reclassified.
 
 ```
-AskUserQuestion: Switch the current project to this new registry now?
+The question tool of your agent (`AskUserQuestion`): Switch the current project to this new registry now?
 
 Options:
 1. Yes — point .unikit.json at the new registry and reclassify installed rules as primary
@@ -590,7 +592,7 @@ The CLI exposes two composable flags that used to live behind the single `--forc
 The question below maps each user choice to a concrete flag combination.
 
 ```
-AskUserQuestion: How should the sync run?
+The question tool of your agent (`AskUserQuestion`): How should the sync run?
 
 Options:
 1. Safe — update rules already marked source: registry whose version changed (no rewrite of local modifications, no prune)

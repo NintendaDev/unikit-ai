@@ -32,6 +32,8 @@ metadata:
 
 Generate, maintain, and improve documentation for game projects following a landing-page README + detailed docs/ structure.
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Core Principles
 
 1. **README is a landing page, not a manual.** ~80-120 lines. First impression, tech stack, quick start, links to details.
@@ -228,15 +230,18 @@ Documents:
   🔍 networking — suggested (Mirror detected)
   ⚠️ docs/save-system.md — exists but removed from config
 
-Apply suggestions?
+```
+
+Then ask with the question tool of your agent (`AskUserQuestion`): Apply suggestions?
+
+Options:
 1. Apply all
 2. Let me pick
 3. Skip — use config as-is
-```
 
 Based on choice:
 - Apply all → update `docs-config.json` with all suggestions, proceed to Step 1.6
-- Let me pick → present each suggestion individually for approval, apply selected
+- Let me pick → ask for each suggestion with the question tool of your agent (`AskUserQuestion`): `Apply` (recommended) or `Skip`; apply the selected
 - Skip → use config as-is, proceed to Step 1.6
 
 After reconciliation, update `docs-config.json` with confirmed changes and proceed to Step 1.5.
@@ -381,16 +386,19 @@ Conditional documents (detected):
   ✅ docs/testing.md — test infrastructure
   ❌ docs/networking.md — no networking framework detected
 
+```
+
+Then ask with the question tool of your agent (`AskUserQuestion`): Which documents should be generated?
+
 Options:
 1. Generate all detected
 2. Let me pick
 3. Add more topics
-```
 
 Based on choice:
 - Generate all detected → proceed to Step 3.2 with full document list
-- Let me pick → present each document individually for approval, generate only selected
-- Add more topics → ask user for additional topics via AskUserQuestion, merge with detected list, re-confirm
+- Let me pick → ask for each document with the question tool of your agent (`AskUserQuestion`): `Generate` (recommended) or `Skip`; generate only the selected
+- Add more topics → ask for the additional topics with the question tool of your agent (`AskUserQuestion`): its options are the conditional documents of the Step 1.4 table that were not detected, and the user writes their own topics in the free-text answer; merge with the detected list, re-confirm
 
 ##### 3.2: Generate README.md
 

@@ -44,7 +44,7 @@ row of `## Roadmap`: the header's `Current` and the block's `Point` must equal i
 (`template-checkpoints.md` → `Allowed header combinations`). Read `CHECKPOINTS.md` whole once, say
 in words what disagrees (points by their goals, never by a code), and fix it by `Edit`: `Current`
 and `Point` take the one `current` row, or the none-form when there is none. Several `current`
-rows, or none while the header names one, is one `AskUserQuestion`: which point is the current
+rows, or none while the header names one, is one question with the question tool of your agent (`AskUserQuestion`): which point is the current
 one — the one the header names first. A `closed` document with a `current` or `planned` row asks
 before any row is dropped. The log gets one entry; `## Every write` applies; the outcome is told
 as `## End` says.

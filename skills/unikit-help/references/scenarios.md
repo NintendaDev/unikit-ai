@@ -7,8 +7,8 @@ intent and a concrete next step, plus worked examples and the fallback for the u
 
 ## The diagnostic tree (no-args / "I'm lost")
 
-When the user gives nothing concrete, ask **one** `AskUserQuestion` with four buckets (the
-tool always adds a free-text "Other"):
+When the user gives nothing concrete, ask **one** question with the question tool of your agent
+(`AskUserQuestion`), four buckets:
 
 ```
 "What are you trying to figure out right now?"
@@ -157,7 +157,7 @@ Clarify if unknown: genre? target emotion? hard constraints? reference games?
 
 ## Fallback behaviour (intent unclear or out of scope)
 
-- **Unclear intent** → don't guess. Run the diagnostic (one `AskUserQuestion`).
+- **Unclear intent** → don't guess. Run the diagnostic: one question with the question tool of your agent (`AskUserQuestion`).
 - **Spans several intents** → name the 2-3 routes and ask which they want first; or give the
   natural order (e.g. "design first, then plan, then implement").
 - **No matching skill** → say so honestly and offer the closest fit. Known gaps to be honest about:

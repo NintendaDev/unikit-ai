@@ -305,7 +305,7 @@ delegation by the **canonical marker** the contract requires in the prompt:
 
 In this mode, **deterministically**:
 
-- **Skip every `AskUserQuestion`** — the market lens is already mandated by the
+- **Skip every call of the question tool of your agent (`AskUserQuestion`)** — the market lens is already mandated by the
   prompt (the contract requires the prompt be phrased as an explicit commercial
   question), so there is no lens tie-breaker to resolve and no save-offer to make. A
   subagent is non-interactive; a prompt would hang it.

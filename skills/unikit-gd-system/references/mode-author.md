@@ -58,8 +58,8 @@ partiality stays honest.
 
 ### Phase 4 — Decision Interview + Generation
 
-**Decision interview.** Ask **only the real forks**, batched (1–2 `AskUserQuestion`
-rounds) — never one gate per section. Options are **grounded** in the loaded
+**Decision interview.** Ask **only the real forks**, batched (1–2 rounds of the question tool of your agent (`AskUserQuestion`))
+— never one gate per section. Options are **grounded** in the loaded
 `balance` / `frameworks` theory, the pillars, and neighbours, **never a blank page**:
 "which damage curve?" offers grounded **forms** (linear / diminishing / threshold) +
 an open **"my own — I'll describe it"**. A truly-blank section with no grounded option
@@ -112,7 +112,7 @@ the card, surfaced to the user on `ru`; no duplication). Each group closes with 
 structural group gate** over the whole group:
 
 ```
-AskUserQuestion: <group> review — <n>/<m> sections done.
+The question tool of your agent (`AskUserQuestion`): <group> review — <n>/<m> sections done.
 Options: Accept & continue · Fix this · Defer this · Accept all the rest
 ```
 

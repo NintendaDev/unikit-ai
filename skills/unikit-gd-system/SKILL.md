@@ -46,6 +46,8 @@ Tweak / Rework) under the delta discipline. There is no separate editor skill.
 It never creates the master spec or the map, and never edits `GAME.md` content —
 that is `unikit-gd-spec`; player-action flows are `unikit-gd-flow`'s.
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md`
@@ -88,7 +90,7 @@ Silently load — do not narrate:
    `category`. When the behaviour is **unambiguous**, attach the matching domain
    automatically (its section-pack rides along — auto-attached with a veto, see item 6
    and Phase 4); when it is **ambiguous** or the category is coarse (Gameplay / Meta),
-   settle it with one plain `AskUserQuestion` — framed as an outcome, no codes — rather
+   settle it with one plain question, asked with the question tool of your agent (`AskUserQuestion`) — framed as an outcome, no codes — rather
    than guessing. A system may match more than one domain; they combine:
 
    | Domain | Core rules to load | Section-pack |
@@ -190,15 +192,15 @@ Check `.unikit/gamedesign/systems/SYS-<slug>.md` and read the intent in the prom
    Offer review / verify (Phase 6) and stop.
 
 If the system name is ambiguous (matches several entries, or none) →
-`AskUserQuestion` listing candidates. Never guess the target. Print the candidates to the screen as plain
-markdown first — the question mechanism carries the options and nothing else.
+the question tool of your agent (`AskUserQuestion`) listing candidates. Never guess the target. Print the candidates to the screen as plain
+markdown first.
 
 **Depth gate (Create / Fill only).** Once the mode is Create or Fill, present **one**
 depth picker — the named tiers `core/standard/full`, each with what it adds, not bare
 letters:
 
 ```
-AskUserQuestion: How deep should this pass go?
+The question tool of your agent (`AskUserQuestion`): How deep should this pass go?
 Options:
 1. core (recommended) — the floor that gets the doc to a solid, usable base: Overview,
    Player Fantasy, Detailed Design, Formulas, Acceptance Criteria.
