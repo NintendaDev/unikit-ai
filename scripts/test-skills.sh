@@ -12208,6 +12208,27 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# Part 7f8: system-file variable registry guards (SV-1, SV-2, SV-4…SV-9)
+# The registry in src/core/constants-template.ts against the files, the texts and the docs that name
+# its entries (scripts/test-system-vars.mjs). SV-3 (registry ⇔ delivered tree) needs an installed
+# project and runs from test-install.sh (Part 9).
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 7f8: system-file variable registry guards (SV-1, SV-2, SV-4…SV-9)${NC}"
+
+set +e
+SYSTEM_VARS_OUTPUT=$(node "$ROOT_DIR/scripts/test-system-vars.mjs" 2>&1)
+SYSTEM_VARS_EXIT=$?
+set -e
+
+if [[ $SYSTEM_VARS_EXIT -eq 0 ]]; then
+    pass "System-file variable registry guards"
+    echo "$SYSTEM_VARS_OUTPUT" | tail -1 | sed 's/^/    /'
+else
+    fail "System-file variable registry guards"
+    echo "$SYSTEM_VARS_OUTPUT" | sed 's/^/      /'
+fi
+
+# ─────────────────────────────────────────────
 # Part 7g: validate <!-- unikit:agents --> markers in skills/subagents
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Part 7g: agent-marker validation${NC}"

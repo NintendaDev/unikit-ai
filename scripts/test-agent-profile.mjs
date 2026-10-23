@@ -16,6 +16,7 @@ const dist = (rel) => pathToFileURL(path.join(ROOT, 'dist', rel)).href;
 const { AGENT_REGISTRY } = await import(dist('core/agents.js'));
 const { buildTemplateVars, processTemplate } = await import(dist('core/template.js'));
 const { buildSubagentTemplateVars } = await import(dist('core/installer/shared.js'));
+const { TEMPLATE_VAR_NAMES } = await import(dist('core/constants-template.js'));
 const { computeSourceHashWithTemplate, computeSubagentSourceHash, profileHashComponent, transformRevisionComponent } = await import(dist('core/installer/hashing.js'));
 const { installSkills } = await import(dist('core/installer/skills.js'));
 const { getTransformer, getAgentOnboarding } = await import(dist('core/transformer.js'));
@@ -152,6 +153,11 @@ await group('P', async () => {
 
 const PROFILE_VARS = ['agent_id', 'agent_reader_type', 'agent_worker_type', 'agent_model_default'];
 
+// Written out by hand and equal to the registry value to the character: a difference is a red test,
+// never a reason to edit the test to match the code.
+const USER_QUESTIONS_CONTRACT_PROBE = '{{user_questions_contract}}';
+const USER_QUESTIONS_CONTRACT_PATH = '.unikit/system/user-questions.md';
+
 await group('V', async () => {
     const kimiVars = buildTemplateVars(AGENT_REGISTRY.kimi);
     assertEq(
@@ -184,6 +190,22 @@ await group('V', async () => {
     // The path to the skills is empty in an agent file by design, so a path built from it would lose its
     // prefix without a sound: the sources keep `{{skills_dir}}` out of subagents/ and data/ (AP-12).
     assertEq('V3c an agent file renders {{skills_dir}} empty', neutral.skills_dir, '');
+
+    // V5: a system-file variable depends on neither agent nor engine — the same string for every agent
+    // and for a subagent file or system asset (which gets empty agent_* slots, but not an empty path).
+    // The walk over every registry name is SV-2 in test-system-vars.mjs; this is the probe the order names.
+    for (const agent of Object.values(AGENT_REGISTRY)) {
+        assertEq(
+            `V5 ${agent.id}: ${USER_QUESTIONS_CONTRACT_PROBE} resolves to the contract path`,
+            processTemplate(USER_QUESTIONS_CONTRACT_PROBE, buildTemplateVars(agent)),
+            USER_QUESTIONS_CONTRACT_PATH,
+        );
+    }
+    assertEq(
+        `V5 subagent files and system assets: ${USER_QUESTIONS_CONTRACT_PROBE} resolves to the contract path`,
+        processTemplate(USER_QUESTIONS_CONTRACT_PROBE, neutral),
+        USER_QUESTIONS_CONTRACT_PATH,
+    );
 });
 
 await group('V4', async () => {
@@ -464,12 +486,15 @@ const INSTALL_SKILLS = ['unikit', 'unikit-explore', 'unikit-plan', 'unikit-gd-re
 // `{{skills_dir}}/unikit-…` path before its pattern learned `}`; the third is the dead call key; the
 // fourth is an unresolved variable; the fifth is the retired Qwen invocation form — Qwen Code starts a
 // skill as `/<name>`.
+// The unresolved-variable form is built from the registry's one list of names (the agent_* profile
+// variables, the engine words and the system-file paths), not from a copy of it.
+const UNRESOLVED_VAR_RE = new RegExp(`\\{\\{(${TEMPLATE_VAR_NAMES.join('|')})\\}\\}`);
 const DAMAGED_FORMS = [
     ['skills$unikit-', (text) => text.includes('skills$unikit-')],
     ['skills/skills unikit-', (text) => text.includes('skills/skills unikit-')],
     ['a skills: [...] key', (text) => /^\s*skills:\s*\[/m.test(text)],
     ['the retired /skills unikit form', (text) => text.includes('/skills unikit')],
-    ['an unresolved path or engine variable', (text) => /\{\{(skills_dir|home_skills_dir|settings_file|self_name|skills_cli_agent_flag|engine_name|engine_code_language|engine_mcp_tool)\}\}/.test(text)],
+    ['an unresolved path or engine variable', (text) => UNRESOLVED_VAR_RE.test(text)],
 ];
 const countOf = (text, needle) => text.split(needle).length - 1;
 

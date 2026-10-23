@@ -12,6 +12,7 @@ import { createHash } from 'crypto';
 import path from 'path';
 import { readSourceForAgent } from '../agent-filter.js';
 import { systemDir } from '../constants.js';
+import { SYSTEM_PATH_VARS } from '../constants-template.js';
 import { buildEngineVars, processTemplate } from '../template.js';
 import type { TemplateVars } from '../template.js';
 import { getTransformer } from '../transformer.js';
@@ -43,7 +44,9 @@ export function stripMdExtension(file: string): string {
  * Build the TemplateVars used for subagents and system assets. All agent-level
  * slots are blank (subagents/system files are agent-agnostic); when an engine
  * id is supplied the engine vars are layered on top. `selfName` is the
- * `{{self_name}}` identity for the rendered artifact.
+ * `{{self_name}}` identity for the rendered artifact. The system-file paths are
+ * the exception to "blank": they depend on neither agent nor engine, so a
+ * subagent file or `dev-principles.md` gets the same value as a skill does.
  */
 export function buildSubagentTemplateVars(
   selfName: string,
@@ -68,6 +71,7 @@ export function buildSubagentTemplateVars(
     agent_call_worker: '',
     agent_call_worker_quoted: '',
     agent_skill_call_form: '',
+    ...SYSTEM_PATH_VARS,
   };
   if (engineId) {
     Object.assign(vars, buildEngineVars(engineId, engineMcpKey));

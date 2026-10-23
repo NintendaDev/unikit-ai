@@ -4,10 +4,17 @@ import type { AgentConfig } from './agents.js';
 import { getEngineConfig } from './engines.js';
 import { expandSkillCalls, renderCallHead } from './skill-call.js';
 import type { SkillCallForm } from './constants-skill-call.js';
+import { SYSTEM_PATH_VARS, TEMPLATE_VAR_NAMES } from './constants-template.js';
+import type { SystemTemplateVars } from './constants-template.js';
 
 const DEFAULT_ENGINE_MCP_TOOL = 'EngineMCP';
 
-export interface TemplateVars {
+/**
+ * The fields below are the ones that depend on an agent or an engine. The paths of the system files
+ * (`user_questions_contract`, `gd_principles`, …) come from the registry in `constants-template.ts`
+ * through {@link SystemTemplateVars}: one table, one field per row, none declared by hand.
+ */
+export interface TemplateVars extends SystemTemplateVars {
   skills_dir: string;
   home_skills_dir: string;
   settings_file: string;
@@ -55,14 +62,20 @@ export function buildTemplateVars(agent: AgentConfig): TemplateVars {
     agent_call_worker: renderCallHead(agent.subagentProfile, 'worker', false),
     agent_call_worker_quoted: renderCallHead(agent.subagentProfile, 'worker', true),
     agent_skill_call_form: agent.subagentProfile.skillCall,
+    ...SYSTEM_PATH_VARS,
   };
 }
 
+// Built once from the one list of names (`TEMPLATE_VAR_NAMES`): the names are `[a-z0-9_]`, nothing to escape.
+const TEMPLATE_VAR_PATTERN = new RegExp(`\\{\\{(${TEMPLATE_VAR_NAMES.join('|')})\\}\\}`, 'g');
+
 // An unknown `{{name}}` stays in the text as written — which is why a live `{{agent_` outside
 // the skills is guarded against (a subagent file or system asset would ship it unreplaced).
+// The system-file names substitute wherever this function runs — skills and their references,
+// extension text, subagent files, `dev-principles.md` — to the same path for every agent.
 // `{{agent_skill_call:<skill>}}` is expanded by a second pass, by the form of the agent.
 export function processTemplate(content: string, vars: TemplateVars): string {
-  const named = content.replace(/\{\{(skills_dir|home_skills_dir|settings_file|skills_cli_agent_flag|self_name|engine_name|engine_code_language|engine_mcp_tool|agent_id|agent_reader_type|agent_worker_type|agent_model_default|agent_call_reader|agent_call_worker_quoted|agent_call_worker)\}\}/g, (_, key: string) => {
+  const named = content.replace(TEMPLATE_VAR_PATTERN, (_, key: string) => {
     return vars[key as keyof TemplateVars];
   });
   return expandSkillCalls(named, vars.agent_skill_call_form, vars.skills_dir);

@@ -28,9 +28,29 @@ trap 'AIF_EXIT_CODE=$?; if [[ $AIF_EXIT_CODE -ne 0 ]]; then dump_mcp_state "$TMP
 # Ensure dist/ is up to date (skipped when a parent runner already built).
 ensure_build
 
+# Every name `processTemplate` substitutes, as one ERE alternation — the leak checks below are built
+# from it (a name added to the registry is checked here without touching this file).
+TEMPLATE_NAMES_ERE="$(template_var_names_ere)"
+
 run_update() {
   local project="$1"
   (cd "$project" && node "$ROOT_DIR/dist/cli/index.js" update > /dev/null 2>&1)
+}
+
+# assert_system_tree <project dir> <yes|no> <label>
+#
+# SV-3 (registry <=> delivered tree): every file init/update wrote under .unikit/system has a registry
+# row with the same path, and every row the CLI always delivers has its file. `yes` when the project
+# selected an engine MCP server that ships a rules tree, `no` otherwise. The guards that need no
+# installed project (SV-1, SV-2, SV-4...SV-8) run from test-skills.sh Part 7f7.
+assert_system_tree() {
+  local project="$1" engine_tree="$2" label="$3" out
+  if ! out=$(node "$ROOT_DIR/scripts/test-system-vars.mjs" --tree "$(normalize_path_for_json "$project")" --engine-tree "$engine_tree" 2>&1); then
+    echo "Assertion failed: $label: the delivered .unikit/system tree and the variable registry differ"
+    echo "$out"
+    exit 1
+  fi
+  echo "  ✓ $label: $(printf '%s\n' "$out" | { grep -m1 '^Tree check' || true; } | sed 's/^.*: \([0-9][0-9]* files, .*\)$/\1/')"
 }
 
 # assert_contains / assert_not_contains / assert_exists / assert_not_exists /
@@ -82,14 +102,14 @@ run_update "$CLAUDE_DIR"
 assert_exists "$CLAUDE_DIR/.claude/agents/unikit-architecture-sidecar.md" "subagent files must be installed for claude"
 
 # Check no template placeholders remain in installed skills
-TEMPLATE_HITS=$(grep -r '{{skills_dir}}\|{{settings_file}}\|{{home_skills_dir}}\|{{skills_cli_agent_flag}}\|{{self_name}}' \
+TEMPLATE_HITS=$(grep -rE "\{\{($TEMPLATE_NAMES_ERE)\}\}" \
   "$CLAUDE_DIR/.claude/skills/" --include='*.md' 2>/dev/null | wc -l | tr -d ' ' || true)
 
 if [[ "$TEMPLATE_HITS" -eq 0 ]]; then
   echo "  ✓ template substitution: no {{...}} placeholders in installed skills"
 else
   echo "Assertion failed: found $TEMPLATE_HITS unresolved template placeholders"
-  grep -r '{{skills_dir}}\|{{settings_file}}\|{{home_skills_dir}}\|{{skills_cli_agent_flag}}\|{{self_name}}' \
+  grep -rE "\{\{($TEMPLATE_NAMES_ERE)\}\}" \
     "$CLAUDE_DIR/.claude/skills/" --include='*.md' | head -5
   exit 1
 fi
@@ -440,6 +460,12 @@ assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-verify/references/axis-check
   "unikit-gd-verify extracted axis-checks.md travels under references/ (non-flat copyDirectory)"
 
 # ─────────────────────────────────────────────────────
+# Test 1b-sv: SV-3 — everything the first install wrote under .unikit/system is a registry row
+# (and the other way round), with no engine MCP server selected, so no rules tree.
+# ─────────────────────────────────────────────────────
+assert_system_tree "$CLAUDE_DIR" no "system tree matches the variable registry (first install, no engine MCP tree)"
+
+# ─────────────────────────────────────────────────────
 # Test 1c: supportsSubagents:false skip-path
 # Even when a subagent is explicitly listed in installedSubagents,
 # agents with supportsSubagents:false must not materialize the file on disk.
@@ -774,14 +800,14 @@ assert_not_exists "$ANTIGRAVITY_DIR/.agents/agents/unikit-architecture-sidecar.m
 # No {{...}} template tokens leak into skills or the rules file. {{settings_file}}
 # now renders to the literal '.agents/mcp_config.json' (settingsFile is no longer
 # null); {{skills_cli_agent_flag}} → "--agent antigravity". None stay raw.
-ANTIGRAVITY_TOKEN_HITS=$(grep -r '{{skills_dir}}\|{{settings_file}}\|{{home_skills_dir}}\|{{skills_cli_agent_flag}}\|{{self_name}}' \
+ANTIGRAVITY_TOKEN_HITS=$(grep -rE "\{\{($TEMPLATE_NAMES_ERE)\}\}" \
   "$ANTIGRAVITY_DIR/.agents/skills/" "$ANTIGRAVITY_DIR/.agents/rules/" --include='*.md' 2>/dev/null | wc -l | tr -d ' ' || true)
 
 if [[ "$ANTIGRAVITY_TOKEN_HITS" -eq 0 ]]; then
   echo "  ✓ antigravity: skills-only install (references kept), postInstall rules, no subagents, no {{...}} leak"
 else
   echo "Assertion failed: antigravity install leaked $ANTIGRAVITY_TOKEN_HITS template placeholder(s)"
-  grep -r '{{skills_dir}}\|{{settings_file}}\|{{home_skills_dir}}\|{{skills_cli_agent_flag}}\|{{self_name}}' \
+  grep -rE "\{\{($TEMPLATE_NAMES_ERE)\}\}" \
     "$ANTIGRAVITY_DIR/.agents/skills/" "$ANTIGRAVITY_DIR/.agents/rules/" --include='*.md' | head -5
   exit 1
 fi
@@ -878,7 +904,7 @@ assert_contains "$KIMI_SKILLS/unikit-implement/SKILL.md" '\.kimi-code/mcp\.json'
   "kimi: {{settings_file}} renders to .kimi-code/mcp.json"
 assert_not_contains "$KIMI_SKILLS/unikit-implement/SKILL.md" '\.agents/mcp_config\.json' \
   "kimi: no Antigravity settings path in a Kimi skill"
-KIMI_TOKEN_RE='\{\{(skills_dir|settings_file|home_skills_dir|skills_cli_agent_flag|self_name|engine_name|engine_code_language|engine_mcp_tool|agent_id|agent_reader_type|agent_worker_type|agent_model_default|agent_call_reader|agent_call_worker_quoted|agent_call_worker)\}\}|\{\{agent_skill_call:'
+KIMI_TOKEN_RE="\{\{($TEMPLATE_NAMES_ERE)\}\}|\{\{agent_skill_call:"
 KIMI_TOKEN_HITS=$(grep -rE "$KIMI_TOKEN_RE" "$KIMI_DIR/.kimi-code" --include='*.md' 2>/dev/null | wc -l | tr -d ' ' || true)
 if [[ "$KIMI_TOKEN_HITS" -ne 0 ]]; then
   echo "Assertion failed: kimi install leaked $KIMI_TOKEN_HITS template placeholder(s)"
@@ -1074,7 +1100,7 @@ assert_contains "$UNIVERSAL_SKILLS/unikit-explore/SKILL.md" 'built-in model of a
   "universal: the built-in model default is inherit (no model argument)"
 assert_not_contains "$UNIVERSAL_SKILLS/unikit-explore/SKILL.md" 'Subagent Delegation.*BLOCKING PRE-REQUISITE' \
   "universal: no Codex ask-the-user block (DEC-008)"
-UNIVERSAL_TOKEN_RE='\{\{(skills_dir|settings_file|home_skills_dir|skills_cli_agent_flag|self_name|engine_name|engine_code_language|engine_mcp_tool|agent_id|agent_reader_type|agent_worker_type|agent_model_default|agent_call_reader|agent_call_worker_quoted|agent_call_worker)\}\}|\{\{agent_skill_call:'
+UNIVERSAL_TOKEN_RE="\{\{($TEMPLATE_NAMES_ERE)\}\}|\{\{agent_skill_call:"
 UNIVERSAL_TOKEN_HITS=$(grep -rE "$UNIVERSAL_TOKEN_RE" "$UNIVERSAL_DIR/.agents" --include='*.md' 2>/dev/null | wc -l | tr -d ' ' || true)
 if [[ "$UNIVERSAL_TOKEN_HITS" -ne 0 ]]; then
   echo "Assertion failed: universal install leaked $UNIVERSAL_TOKEN_HITS template placeholder(s)"
@@ -1440,14 +1466,14 @@ echo "  ✓ MCP config: claude agent setup works with the key→code servers map
 echo "  ✓ managedSubagents: hash tracking persisted for claude subagents"
 
 # Check no template placeholders remain in installed subagents
-SUBAGENT_TEMPLATE_HITS=$(grep -r '{{self_name}}\|{{engine_name}}\|{{engine_code_language}}\|{{engine_mcp_tool}}' \
+SUBAGENT_TEMPLATE_HITS=$(grep -rE "\{\{($TEMPLATE_NAMES_ERE)\}\}" \
   "$MCP_DIR/.claude/agents/" --include='*.md' 2>/dev/null | wc -l | tr -d ' ' || true)
 
 if [[ "$SUBAGENT_TEMPLATE_HITS" -eq 0 ]]; then
   echo "  ✓ template substitution: no {{...}} placeholders in installed subagents"
 else
   echo "Assertion failed: found $SUBAGENT_TEMPLATE_HITS unresolved template placeholders in subagents"
-  grep -r '{{self_name}}\|{{engine_name}}\|{{engine_code_language}}\|{{engine_mcp_tool}}' \
+  grep -rE "\{\{($TEMPLATE_NAMES_ERE)\}\}" \
     "$MCP_DIR/.claude/agents/" --include='*.md' | head -5
   exit 1
 fi
@@ -2135,6 +2161,10 @@ assert_not_contains "$MCP_RULES_INDEX" '^version:' \
 assert_not_contains "$MCP_RULES_INDEX" '^delivered:' \
   "no delivery date in the delivery stamp"
 
+# SV-3 with a tree: engine-mcp/INDEX.md and verification.md are the rows engine_mcp_rules_index and
+# engine_mcp_rules_verification, and they exist exactly because this project selected a server with one.
+assert_system_tree "$MCP_SHARDS_DIR" yes "system tree matches the variable registry (engine MCP rules tree delivered)"
+
 echo "  ✓ engine-mcp: biome rules tree delivered (INDEX + verification), stamped with the server id alone, no counters"
 
 # ─────────────────────────────────────────────────────
@@ -2237,6 +2267,9 @@ if ! MCP_NOTREE_TREED_JSON="$MCP_NOTREE_TREED_JSON" node -e "
 fi
 
 unuse_fake_mcp_catalog
+
+# SV-3 after `update` with a treeless server: the engine-mcp rows must be absent with the directory.
+assert_system_tree "$MCP_NOTREE_DIR" no "system tree matches the variable registry (treeless engine MCP server, after update)"
 echo "  ✓ engine-mcp: a server with no rules tree degrades nothing (grants, layer A, skill assets)"
 
 # ─────────────────────────────────────────────────────

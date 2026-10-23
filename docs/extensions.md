@@ -783,11 +783,54 @@ Extension skills and subagents can use template variables that are substituted a
 | `{{agent_call_worker_quoted}}` | `subagent_type: "general-purpose",` | The same, with the type in quotes (the spelling of multi-line call blocks) |
 | `{{agent_skill_call:<skill>}}` | `Call the Skill tool with skill "<skill>" and …` | At the start of a `prompt: "…"` line: makes the subagent load the skill; the text after it up to the closing quote is the skill's arguments. Claude Code: a Skill-tool call; every other agent: a read of `<skills dir>/<skill>/SKILL.md` |
 
-The `{{agent_*}}` variables are substituted in skills only (`SKILL.md` and `references/`); in subagent files and system assets they are empty, and `{{agent_skill_call:…}}` stays as written (a guard keeps it out of those files). They come from the agent profile - see [Subagents](subagents.md#subagent-profile-per-agent).
+The `{{agent_*}}` variables are substituted in skills only (`SKILL.md` and `references/`); in subagent files and system assets they are empty, and `{{agent_skill_call:…}}` stays as written (a guard keeps it out of those files). They come from the agent profile - see [Subagents](subagents.md#subagent-profile-per-agent). The system-file variables further down are the opposite: they depend on neither the agent nor the engine, so they are substituted everywhere the template runs - in skills and their `references/`, in the text of extensions (injection blocks, reference files, and the skills and subagents an extension adds), in subagent files and in `dev-principles.md`. The other system files (the flat contracts, the `gamedesign/` files and the `engine-mcp/` tree) are copied without any substitution.
 
 The same variables are available in the text of an injection and in the `.md` reference files of an extension point; `{{self_name}}` is the name of the target skill, and `{{agent_skill_call:<skill>}}` in the text of an injection expands as it does in a skill.
 
-Use these in SKILL.md files to write agent-agnostic skills:
+**System files.** Every file the framework puts under `.unikit/system/` has a variable that holds its path from the project root, so an extension names the file without writing the path out. The value is the same for every agent and for subagent files:
+
+| Variable | Value | Present |
+|----------|-------|---------|
+| `{{system_dir}}` | `.unikit/system` | always |
+| `{{system_gamedesign_dir}}` | `.unikit/system/gamedesign` | always |
+| `{{system_genres_dir}}` | `.unikit/system/gamedesign/genres` | selective: appears with `unikit-ai genres install` and holds only the genre profiles the project installed |
+| `{{system_engine_mcp_dir}}` | `.unikit/system/engine-mcp` | when the selected engine MCP server ships a rules tree |
+| `{{cli_contract}}` | `.unikit/system/cli-contract.md` | always |
+| `{{dev_principles}}` | `.unikit/system/dev-principles.md` | always |
+| `{{modules_yml}}` | `.unikit/system/modules.yml` | always |
+| `{{gate_result_contract}}` | `.unikit/system/gate-result-contract.md` | always |
+| `{{ultra_plan_read_contract}}` | `.unikit/system/ultra-plan-read.md` | always |
+| `{{research_link_contract}}` | `.unikit/system/research-link.md` | always |
+| `{{plan_boundaries_contract}}` | `.unikit/system/plan-boundaries.md` | always |
+| `{{merge_analysis_contract}}` | `.unikit/system/merge-analysis.md` | always |
+| `{{balance_handback_contract}}` | `.unikit/system/balance-handback.md` | always |
+| `{{prototype_profile_contract}}` | `.unikit/system/prototype-profile.md` | always |
+| `{{subagent_arguments_contract}}` | `.unikit/system/subagent-arguments.md` | always |
+| `{{subagent_roles_contract}}` | `.unikit/system/subagent-roles.md` | always |
+| `{{user_questions_contract}}` | `.unikit/system/user-questions.md` | always |
+| `{{gd_principles}}` | `.unikit/system/gamedesign/gd-principles.md` | always |
+| `{{gd_authoring}}` | `.unikit/system/gamedesign/gd-authoring.md` | always |
+| `{{gd_lifecycle}}` | `.unikit/system/gamedesign/gd-lifecycle.md` | always |
+| `{{gd_flow_axis}}` | `.unikit/system/gamedesign/gd-flow-axis.md` | always |
+| `{{gd_content_axis}}` | `.unikit/system/gamedesign/gd-content-axis.md` | always |
+| `{{gd_provenance}}` | `.unikit/system/gamedesign/gd-provenance.md` | always |
+| `{{gd_critique}}` | `.unikit/system/gamedesign/gd-critique.md` | always |
+| `{{design_read_contract}}` | `.unikit/system/gamedesign/design-read.md` | always |
+| `{{engine_mcp_rules_index}}` | `.unikit/system/engine-mcp/INDEX.md` | when the selected engine MCP server ships a rules tree |
+| `{{engine_mcp_rules_verification}}` | `.unikit/system/engine-mcp/verification.md` | when the selected engine MCP server ships a rules tree |
+| `{{language_rules}}` | `.unikit/system/LANGUAGE_RULES.md` | after the `/unikit` skill has written it |
+
+The names of these variables are public API of extensions, on a par with the extension-point anchors in the base skills: when the framework moves a file the value follows it and the name stays. A name is renamed or removed only after a release that warns about it.
+
+A variable whose file is not always there (`{{system_genres_dir}}`, `{{system_engine_mcp_dir}}`, `{{engine_mcp_rules_index}}`, `{{engine_mcp_rules_verification}}`, `{{language_rules}}`) still resolves to its path, but the file may be missing; write the extension text so that it also works when the file is not there. A `{{…}}` token that the installed build of unikit-ai does not know stays in the text exactly as written and does not stop the install.
+
+Such a token is not reported by default. A slot of your own that is meant for the runtime - a lower-case `{{…}}` in a template that your skill fills in - has exactly the form of a variable that a newer build might add, so the installer cannot tell the two apart, and an extension full of templates would repeat the same lines on every `update`. To see which tokens a build leaves as written, run `unikit-ai --verbose init`, `unikit-ai --verbose update` or `unikit-ai --verbose extension add|update|remove|select` (the extension commands re-apply the text; `update` only when it updated something): every file of the extension that holds such a token is listed at INFO level with the names, nothing of the content. Name the unikit-ai version your extension needs in its README.
+
+```markdown
+Before you ask the user anything, read `{{user_questions_contract}}`.
+```
+
+Use the variables in SKILL.md files to write agent-agnostic skills:
 
 ```markdown
 Read the project rules from `{{skills_dir}}/unikit/SKILL.md`.

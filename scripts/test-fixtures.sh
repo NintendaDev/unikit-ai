@@ -491,6 +491,25 @@ fake_mcp_catalog_path() {
     normalize_path_for_json "$ROOT_DIR/scripts/test-fixtures/mcp/$name"
 }
 
+# template_var_names_ere
+#
+# Prints the names `processTemplate` substitutes, joined with `|` — the ONE list of names, read from
+# the build (`TEMPLATE_VAR_NAMES` in dist/core/constants-template.js). No test keeps a copy of it:
+# a check that looks for a token that was left unsubstituted builds its pattern from this, e.g.
+#   NAMES="$(template_var_names_ere)"; grep -rE "\{\{($NAMES)\}\}" <dir>
+# One `node` start (~40 ms on Windows): a suite calls it once and keeps the result in a variable.
+# Fails (non-zero, nothing printed) on an empty list — an empty alternation would match `{{}}`
+# and a leak check built from it would pass for the wrong reason. Needs $ROOT_DIR and a built dist/.
+template_var_names_ere() {
+    (cd "$ROOT_DIR" && node -e "
+        import(require('url').pathToFileURL('dist/core/constants-template.js').href).then((m) => {
+            const names = m.TEMPLATE_VAR_NAMES.join('|');
+            if (!names) process.exit(1);
+            process.stdout.write(names);
+        });
+    ")
+}
+
 # use_fake_mcp_catalog <fixture_name>
 #
 # Exports UNIKIT_MCP_DIR at the fixture catalog so the installer discovers fixture
