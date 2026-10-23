@@ -409,7 +409,8 @@ paths, engine terms and architecture words from the artifacts. A GDD is not requ
 **Planning.** `/unikit-plan <path to experiment.md>` plans a card - or a set of cards, as **one**
 plan - from a `## Experiment Context` snapshot, on a separate branch, with `Testing: no` and
 `Docs: no` by default; see **Experiment plan** under `/unikit-plan` in [Workflow](workflow.md).
-The executors of such a plan read the disposable-prototype profile,
+An explicit request for an experiment plan can also name a design research, a file or a description
+instead of cards. The executors of such a plan read the disposable-prototype profile,
 `.unikit/system/prototype-profile.md`: the prototype must build, run and stay legible, its
 architecture and error handling are softened, and the project documents, the roadmap and the TODO
 list are left alone.

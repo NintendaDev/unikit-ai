@@ -370,7 +370,7 @@ Inside a phase: ordinary tasks → the phase's `Test checkpoint:` → `Measure:`
 
 ## Experiment plans
 
-A plan built from experiment cards (`/unikit-plan <path to experiment.md>`, printed by `/unikit-gd-experiment`) is an ordinary plan plus one section. `unikit-plan/references/TASK-FORMAT.md` → `### Experiment context section` is the only owner of its form; this page describes it.
+A plan built from experiment cards (`/unikit-plan <path to experiment.md>`, printed by `/unikit-gd-experiment`) is an ordinary plan plus one section. A plan built from another source named by an explicit experiment request - a design research, a file, a description or the session (`unikit-plan/references/experiment-source.md`) - has the same section with a brief in place of the cards. `unikit-plan/references/TASK-FORMAT.md` → `### Experiment context section` is the only owner of its form; this page describes it.
 
 ### `## Experiment Context` — the snapshot
 
@@ -391,6 +391,29 @@ Cards:
 ```
 
 `Branch:` is the branch the plan lives on (`none` when git is off) and `Base:` the branch it was cut from (`none` when none was cut): the executors compare the current branch with `Branch:` before they write and take the base of every diff and check from `Base:`. Sections 2-11 of each card are copied in full with their headings lowered two levels, so a card is never read by the executors; the card's `Out of Scope` is repeated in `### OUT OF SCOPE` of `## Technical Context`. Nothing else is special: no new task kinds, phases or checks, no `Measure:` or `Hand-back:`, no PR checkpoint tasks. A design research whose summary names a card by an `Experiment:` line is copied as one more block of that card (`#### Design research · <folder> (names v<k>)`, after section 11) with no hash and no drift tracking; a code research is linked under `## Based on` instead.
+
+Without cards the section has no `Cards:` list; `Input:` says where the plan came from, `Sources:` lists the sources, and a prototype brief stands in place of the card sections:
+
+```markdown
+## Experiment Context
+Branch: experiment/2026-10-23-onboarding-hint
+Base: development
+Input: research
+Sources:
+- research · .unikit/gamedesign/researches/onboarding-first-minutes/RESEARCH_RESULT.md · Updated: 2026-10-20
+
+### Prototype brief
+#### What is tested
+…
+#### Must Have
+…
+#### Out of Scope
+…
+#### Source · onboarding-first-minutes
+…
+```
+
+Every field of the brief comes from the source or says `not stated`; the planner invents no game idea, and when the source does not say what to test or what to build it asks one question and stops if there is still no answer. `Branch:` and `Base:` mean what they mean in a plan with cards, so the executors and the plan lookup by branch work the same; the prototype profile reads "the card" as this brief. Such a plan has no card, so a playtest result has nothing to attach to: ask `/unikit-gd-experiment` to write the card if you want the record.
 
 ### What an executor does differently
 

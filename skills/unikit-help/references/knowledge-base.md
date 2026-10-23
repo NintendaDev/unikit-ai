@@ -91,7 +91,7 @@ Relevant to the dev pipeline:
 - `balance-handback.md` — the format of the report that carries a balance checkpoint's measurements
   back (header, table, matching keys, receiving), read by `/unikit-plan`, `/unikit-implement`,
   `/unikit-verify` and `/unikit-gd-balance`.
-- `prototype-profile.md` — how a plan built from experiment cards is executed (what stays
+- `prototype-profile.md` — how a plan built from experiment cards or another experiment source is executed (what stays
   mandatory, what is softened, what is switched off, the branch check), read by `/unikit-implement`,
   `/unikit-verify`, `/unikit-pr`, `/unikit-improve`, `/unikit-review`, `/unikit-fix`,
   `/unikit-devcontext`, `/unikit-commit` and their subagents, only when the plan has `## Experiment Context`.
