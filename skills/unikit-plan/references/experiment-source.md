@@ -61,6 +61,7 @@ The snapshot is taken before any git command, for the reason `experiment-plan.md
 - Not applied: `## Checking the cards` (a source has no status; a research that is not completed is named in the confirmation line), `## The snapshot comes first`, `## One plan for a set` (a source is one plan, with no module per card).
 - The mode question is the ordinary one of Step 0.2: `fast` and `full`, `full` recommended, ultra only when the user named it. A mode named in the request is not asked again.
 - `<topic>` of the branch and of the folder `experiment-<topic>`: a short English name (2-4 words) of what `What is tested` asks.
+- The brief's `Out of Scope` is the boundary of the prototype and goes into `### OUT OF SCOPE` of `## Technical Context`; the `WHY:` of a task names `What is tested`. The implementation (files, symbols) is found by the planner itself in Step 4: a source holds no pointers into the code.
 - Step 4.5 does not run, as for cards. Step 2 runs no topic matching; a code research chosen as the source is read there as a pre-linked one.
 - The closing message is the one of `experiment-plan.md`, plus one line: this plan has no card, so what the players show has nothing to be attached to; to keep the record, ask `/unikit-gd-experiment` to write one. The line is printed, not asked, and the planner does not create the card.
 

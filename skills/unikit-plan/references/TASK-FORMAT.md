@@ -457,7 +457,7 @@ The block above is shown indented by two spaces only so that this file carries n
 
 `Branch:` and `Base:` are the first lines, as in a plan with cards, and mean the same. `Input:` is written only when there is no `Cards:` list; a plan with `Cards:` has no `Input:` line, so plans written before this form existed read as before. Each field of the brief is filled from the source or says `not stated`; `How to test` is kept only when the source states it. Wherever the prototype profile (`.unikit/system/prototype-profile.md`) says "the card", it means this brief. The same rules of mutability and of what stays out apply.
 
-**What stays out.** Technical decisions: they belong to `## Technical Context`, where the planner reads the code itself. The card's `Out of Scope` is the boundary of the prototype and is repeated in `### OUT OF SCOPE` of `## Technical Context`.
+**What stays out.** Technical decisions: they belong to `## Technical Context`, where the planner reads the code itself. The card's (or the brief's) `Out of Scope` is the boundary of the prototype and is repeated in `### OUT OF SCOPE` of `## Technical Context`.
 
 **Mutability.** The section is written once by the planner. `/unikit-implement`, `/unikit-verify`, `/unikit-improve` and `add` mode never rewrite it.
 

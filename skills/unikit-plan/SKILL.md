@@ -185,7 +185,7 @@ For a merge request the mode question is the one in `merge-plan.md`; `ultra` app
 
 For an experiment input the mode question is the one in `experiment-plan.md`: `fast`, `full` and `ultra` are all shown, and `ultra` is recommended for a set of two or more cards — the user's own word still decides.
 
-For an experiment request the source is resolved by `{{skills_dir}}/{{self_name}}/references/experiment-source.md` → `## The source`, which replaces this step; it never falls back to the code researches index above.
+For an experiment request the source is resolved by `{{skills_dir}}/{{self_name}}/references/experiment-source.md` → `## The source`, which replaces the description part of this step — the session context, the researches index and the description question; it never falls back to the code researches index above. The mode question stays, as for any plan.
 
 ### Step 0.5: Bootstrap Context (MANDATORY — all modes except List)
 
@@ -521,7 +521,7 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
 
    **`## Balance Context`** — only for a plan built from a Balance Checkpoints file (`references/balance-plan.md`): the snapshot of the point, placed after `## Based on` and after any of the three snapshots above, directly before `## Settings`; omitted in every other plan. What it carries is `TASK-FORMAT.md`'s (`### Balance checkpoint grammar`).
 
-   **`## Experiment Context`** — only for an experiment plan, built from experiment cards (`references/experiment-plan.md`): the snapshot of the cards (and of the design researches that name them), or from another source (`references/experiment-source.md`): a brief of that source; and the lines `Branch:` and `Base:`, placed in the slot of `## Balance Context` (a plan has one of them), directly before `## Settings`; omitted in every other plan. What it carries is `TASK-FORMAT.md`'s (`### Experiment context section`).
+   **`## Experiment Context`** — only for an experiment plan: the snapshot of the cards (and of the design researches that name them) when it was built from experiment cards (`references/experiment-plan.md`), or a brief of the source when it was built from another one (`references/experiment-source.md`); and the lines `Branch:` and `Base:`, placed in the slot of `## Balance Context` (a plan has one of them), directly before `## Settings`; omitted in every other plan. What it carries is `TASK-FORMAT.md`'s (`### Experiment context section`).
 
 3. **`## Settings`** — User preferences (`/unikit-implement` reads this):
    - `Testing: yes/no` — whether tests are written at all: tests for logic and system values (`dev-principles.md` item 5)
