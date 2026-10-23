@@ -187,3 +187,6 @@ export const EXTENSION_UNKNOWN_VARS_REASON = 'not template variables of this bui
 
 /** Closing line when more than `EXTENSION_UNKNOWN_VARS_MAX_FILES` files carry unknown names; `%d` is the rest. */
 export const EXTENSION_UNKNOWN_VARS_MORE = 'and %d more file(s) with names this build does not substitute';
+
+/** What the pass says when the scan itself fails (an unreadable directory): the scan is advice, never a reason to stop the pass. */
+export const EXTENSION_UNKNOWN_VARS_SCAN_FAILED = 'could not scan its text for unknown template variables';

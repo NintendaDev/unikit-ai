@@ -17,6 +17,7 @@ import {
   TEMPLATE_VAR_NAMES,
   TEMPLATE_VAR_NAME_SHAPE,
 } from './constants-template.js';
+import { isInsideDirectory } from './extension-injections-schema.js';
 import type { ExtensionManifest } from './extensions.js';
 import { isMarkdownFile } from './installer/shared.js';
 
@@ -61,22 +62,36 @@ export function unknownTemplateVarNames(text: string): string[] {
 }
 
 /**
+ * A manifest path that leaves the extension directory is neither read nor mentioned — the rule the
+ * injection pass applies to every file it takes from an extension. `skills` and `subagents` are
+ * checked by `validateManifest` for their type only, so the confinement has to be made here.
+ */
+function insideExtension(extensionDir: string, relative: string): boolean {
+  return isInsideDirectory(extensionDir, path.join(extensionDir, relative));
+}
+
+/**
  * Every source file of the enabled items of one extension: all `.md` under each skill directory
  * (`SKILL.md` and `references/`, replacement skills included), each subagent file, the `file` of
- * every injection and the `references[]` of the point injections. Paths as written in the manifest.
+ * every injection and the `references[]` of the point injections. Paths as written in the manifest;
+ * those that leave the extension directory are left out.
  */
 async function sourceFilesOf(extensionDir: string, manifest: ExtensionManifest): Promise<string[]> {
   const files = new Set<string>();
+  const addFile = (relative: string): void => {
+    if (insideExtension(extensionDir, relative)) files.add(toPosix(path.normalize(relative)));
+  };
   const skillDirs = [...(manifest.skills ?? []), ...Object.keys(manifest.replaces ?? {})];
   for (const skillDir of skillDirs) {
+    if (!insideExtension(extensionDir, skillDir)) continue;
     for (const file of await listFilesRecursive(path.join(extensionDir, skillDir))) {
       if (isMarkdownFile(file)) files.add(toPosix(path.relative(extensionDir, file)));
     }
   }
-  for (const subagent of manifest.subagents ?? []) files.add(toPosix(path.normalize(subagent)));
+  for (const subagent of manifest.subagents ?? []) addFile(subagent);
   for (const injection of manifest.injections ?? []) {
-    files.add(toPosix(path.normalize(injection.file)));
-    for (const reference of injection.references ?? []) files.add(toPosix(path.normalize(reference)));
+    addFile(injection.file);
+    for (const reference of injection.references ?? []) addFile(reference);
   }
   return [...files].sort(compareCodeUnits);
 }

@@ -6,8 +6,12 @@
 //
 // Every guard counts what it looked at; a guard that looked at nothing fails ("scanned nothing"),
 // because a scan that finds nothing is indistinguishable from a scan that is broken.
+//
+// Debugging: `SV_VERBOSE=1 node scripts/test-system-vars.mjs` makes SV-5 list every distinct
+// `.unikit/system…` literal it met in skills/, subagents/ and data/, with its number of occurrences.
 
 import path from 'path';
+import os from 'os';
 import fs from 'fs/promises';
 import { fileURLToPath, pathToFileURL } from 'url';
 
@@ -38,6 +42,14 @@ const REGISTRY_IMPORT_ALLOWED = ['./constants.js'];
 const INJECTIONS_FILE = 'src/core/extension-injections.ts';
 const UNKNOWN_VARS_FILE = 'src/core/extension-unknown-vars.ts';
 const UNKNOWN_VARS_CALLS = ['findUnknownVarsInExtension', 'formatUnknownVars'];
+// The scan is advice: the pass catches its failure (one warning, constant below) and the module keeps
+// every manifest path inside the extension directory.
+const UNKNOWN_VARS_FAILURE_CONSTANT = 'EXTENSION_UNKNOWN_VARS_SCAN_FAILED';
+// The constant must stand in the body of a `catch` (not only in the import line, which would keep a
+// removed `catch` green): a bounded window after `catch (…) {`.
+const UNKNOWN_VARS_CATCH_RE = new RegExp(`catch\\s*\\([^)]*\\)\\s*\\{[\\s\\S]{0,300}?\\b${UNKNOWN_VARS_FAILURE_CONSTANT}\\b`);
+const UNKNOWN_VARS_CONFINEMENT_CALL = 'isInsideDirectory(';
+const UNKNOWN_VARS_SANDBOX_PREFIX = 'sv9-';
 const UNKNOWN_VARS_REASON_PART = 'not template variables of this build';
 const CLI_IMPORT_RE = /(^|\/)cli(\/|$)/;
 const REGISTRY_MODULE_NAME = 'constants-template';
@@ -599,6 +611,47 @@ if (!treeMode) {
             [manyLines.length, manyLines.at(-1).includes(`${extra} more`)],
             [EXTENSION_UNKNOWN_VARS_MAX_FILES + 1, true],
         );
+        // The sources of an extension: which files are read, and nothing outside its directory.
+        const sandbox = await fs.mkdtemp(path.join(os.tmpdir(), UNKNOWN_VARS_SANDBOX_PREFIX));
+        try {
+            const put = async (relative, text) => {
+                const file = path.join(sandbox, relative);
+                await fs.mkdir(path.dirname(file), { recursive: true });
+                await fs.writeFile(file, text);
+            };
+            await put('ext/skills/a/SKILL.md', '{{skill_name_x}}');
+            await put('ext/skills/a/references/r.md', '{{skill_ref_x}}');
+            await put('ext/skills/a/notes.txt', '{{not_markdown_x}}');
+            await put('ext/skills/repl/SKILL.md', '{{replaced_x}}');
+            await put('ext/agents/helper.md', '{{agent_x}}');
+            await put('ext/injections/i.md', '{{inj_x}}');
+            await put('ext/references/n.md', '{{inj_ref_x}}');
+            await put('outside/SKILL.md', '{{outside_skill_x}}');
+            await put('outside.md', '{{outside_file_x}}');
+            const manifest = {
+                name: 'demo',
+                version: '1.0.0',
+                skills: ['skills/a', '../outside'],
+                replaces: { 'skills/repl': 'unikit-fix' },
+                subagents: ['agents/helper.md', '../outside.md'],
+                injections: [
+                    { id: 'i', target: 'unikit', targetType: 'skill', point: 'bootstrap', file: './injections/i.md', references: ['./references/n.md', '../outside.md'] },
+                    { position: 'append', target: 'unikit', targetType: 'skill', file: '../outside.md' },
+                ],
+            };
+            const scan = await unknown.findUnknownVarsInExtension(path.join(sandbox, 'ext'), manifest);
+            const names = scan.findings.flatMap((finding) => finding.names);
+            check(
+                'every kind of source is read: a skill, its references, a replacement skill, a subagent, an injection and its reference',
+                scan.findings.map((finding) => finding.file),
+                ['agents/helper.md', 'injections/i.md', 'references/n.md', 'skills/a/SKILL.md', 'skills/a/references/r.md', 'skills/repl/SKILL.md'],
+            );
+            check('only markdown is read inside a skill directory', names.includes('not_markdown_x'), false);
+            check('a path that leaves the extension directory is neither read nor reported', names.filter((name) => name.startsWith('outside')), []);
+            check('every file read here carried a name', scan.scanned, scan.findings.length);
+        } finally {
+            await fs.rm(sandbox, { recursive: true, force: true });
+        }
         console.log(`  SV-9: ${samples} sample(s) checked`);
     });
 
@@ -614,7 +667,9 @@ if (!treeMode) {
         for (const specifier of imports) {
             if (CLI_IMPORT_RE.test(specifier)) violations.push(`${UNKNOWN_VARS_FILE} imports "${specifier}" — it must not know the CLI`);
         }
-        report('SV-9b', 'the warning is called from the project pass and the module stays below cli/', imports.length + UNKNOWN_VARS_CALLS.length, violations);
+        if (!UNKNOWN_VARS_CATCH_RE.test(injectionsText)) violations.push(`${INJECTIONS_FILE}: the pass does not catch a failing scan (${UNKNOWN_VARS_FAILURE_CONSTANT} is not used in a catch block)`);
+        if (!moduleText.includes(UNKNOWN_VARS_CONFINEMENT_CALL)) violations.push(`${UNKNOWN_VARS_FILE}: no ${UNKNOWN_VARS_CONFINEMENT_CALL}) — manifest paths are not confined to the extension directory`);
+        report('SV-9b', 'the warning is called from the project pass, caught there, confined to the extension, and the module stays below cli/', imports.length + UNKNOWN_VARS_CALLS.length + 2, violations);
     });
 
     // ── Detector self-checks: a good sample passes, a bad one gives exactly one message ──
@@ -655,6 +710,9 @@ if (!treeMode) {
         check('registry import: a comment that names the file is allowed', REGISTRY_IMPORT_STATEMENT_RE.test(' * and by `constants-template.ts`, hence exported'), false);
         check('registry import: an export-star from it is flagged', REGISTRY_IMPORT_STATEMENT_RE.test("export * from './constants-template.js';"), true);
         check('registry import: a dynamic import of it is flagged', REGISTRY_IMPORT_STATEMENT_RE.test("await import('./constants-template.js')"), true);
+
+        check('scan-failed pin: the constant in a catch block passes', UNKNOWN_VARS_CATCH_RE.test(`import { ${UNKNOWN_VARS_FAILURE_CONSTANT} } from './x.js';\ntry { go(); } catch (error) {\n  logWarn(c, \`\${${UNKNOWN_VARS_FAILURE_CONSTANT}} \${error}\`);\n}`), true);
+        check('scan-failed pin: the constant only in the import line does not', UNKNOWN_VARS_CATCH_RE.test(`import { ${UNKNOWN_VARS_FAILURE_CONSTANT} } from './x.js';\ntry { go(); } catch (error) {\n  logWarn(c, 'scan failed');\n}`), false);
 
         const doc = ['intro', '| `{{skills_dir}}` | a | b |', '| `{{agent_skill_call:<skill>}}` | a | b |', 'text `{{other_name}}` here'].join('\n');
         const parsed = docsVarNames(doc);

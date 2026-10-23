@@ -18,6 +18,7 @@ import {
 } from './extension-markers.js';
 import { renderExtensionText, type RenderContext } from './extension-render.js';
 import { disabledOwnTargets, filterManifest } from './extension-selection.js';
+import { EXTENSION_UNKNOWN_VARS_SCAN_FAILED } from './constants-template.js';
 import { findUnknownVarsInExtension, formatUnknownVars } from './extension-unknown-vars.js';
 import { extensionSlug, loadExtensionPointRegistry, registeredPoints } from './extension-points.js';
 import { resolveSkillPaths } from './installer/hashing.js';
@@ -321,14 +322,19 @@ export async function applyExtensionInjections(input: ExtensionInjectionInput): 
 
   // A `{{name}}` this build does not know stays in the installed text as written; the extension's
   // author and the user hear about it. Scanned once per extension from its enabled sources — not
-  // once per agent — and it never changes the text, the report or the exit code.
+  // once per agent — and it never changes the text, the report or the exit code. The scan is advice:
+  // a directory it cannot read is one warning, never a reason to stop the pass that installs the text.
   for (const ext of loaded) {
-    const { scanned, findings } = await findUnknownVarsInExtension(
-      ext.dir,
-      filterManifest(ext.manifest, recordByName.get(ext.name)?.selection),
-    );
-    logInfo(LOG_COMPONENT, `scanned ${scanned} file(s) of extension "${ext.name}" for unknown template variables`);
-    for (const line of formatUnknownVars(ext.name, findings)) logWarn(LOG_COMPONENT, line);
+    try {
+      const { scanned, findings } = await findUnknownVarsInExtension(
+        ext.dir,
+        filterManifest(ext.manifest, recordByName.get(ext.name)?.selection),
+      );
+      logInfo(LOG_COMPONENT, `scanned ${scanned} file(s) of extension "${ext.name}" for unknown template variables`);
+      for (const line of formatUnknownVars(ext.name, findings)) logWarn(LOG_COMPONENT, line);
+    } catch (error) {
+      logWarn(LOG_COMPONENT, `extension "${ext.name}": ${EXTENSION_UNKNOWN_VARS_SCAN_FAILED} (${error instanceof Error ? error.message : String(error)})`);
+    }
   }
 
   const pointEntries: PointEntry[] = [];

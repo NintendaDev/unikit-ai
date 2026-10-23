@@ -2398,6 +2398,17 @@ write_42e_manifest 1.1.0
 assert_contains "$TMPDIR/p42e-extupdate.log" 'Updated: unikit-ext-sysvars-unknown' "42e: extension update took the new version, so its pass ran"
 assert_unknown_var_warnings "42e (extension update to a new version)" "$TMPDIR/p42e-extupdate.log"
 
+# Items the user switched off are not scanned: the skill and the subagent stay out of the warnings
+# while the enabled injection and its reference are still named (the lines above are the positive control).
+P42E_SKIP="$TMPDIR/sysvars-unknown-skip"
+make_points_project "$P42E_SKIP" claude .claude/skills .claude/agents
+(cd "$P42E_SKIP" && node "$ROOT_DIR/dist/cli/index.js" extension add "$EXT42E" --skip-skills unknown-skill --skip-subagents unknown-agent > "$TMPDIR/p42e-skip-add.log" 2>&1)
+assert_contains "$TMPDIR/p42e-skip-add.log" 'injections/unknown-line\.md uses \{\{no_such_variable\}\}' "42e: the enabled injection is still scanned"
+assert_contains "$TMPDIR/p42e-skip-add.log" 'references/notes\.md uses \{\{other_missing_name\}\}' "42e: the enabled reference is still scanned"
+assert_not_contains "$TMPDIR/p42e-skip-add.log" 'skills/unknown-skill/' "42e: a skill the user switched off is not scanned"
+assert_not_contains "$TMPDIR/p42e-skip-add.log" 'subagents/unknown-agent' "42e: a subagent the user switched off is not scanned"
+assert_not_exists "$P42E_SKIP/.claude/skills/unknown-skill" "42e: the switched-off skill is not installed either"
+
 # The extensions of 42a and 42b hold only known names: no pass over them says anything of the kind.
 for LOG42E in "$TMPDIR/42a-add.log" "$TMPDIR/42a-update.log" "$TMPDIR/42b-add.log" "$TMPDIR/42b-update.log"; do
   assert_not_contains "$LOG42E" 'not template variables of this build' "42e: no warning for known names ($LOG42E)"
