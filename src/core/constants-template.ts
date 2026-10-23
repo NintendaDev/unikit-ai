@@ -168,3 +168,22 @@ export const FIXED_TEMPLATE_VAR_NAMES = [
  * and every "an unresolved token is left" check are built from it (tests read it from the build).
  */
 export const TEMPLATE_VAR_NAMES: readonly string[] = [...FIXED_TEMPLATE_VAR_NAMES, ...SYSTEM_VAR_NAMES];
+
+// --- A name this build does not know, in the text of an extension ---
+
+/**
+ * The shape of a template variable name, as a regular-expression source: lower-case words joined
+ * by underscores. The ONE definition — the warning for unknown names (`extension-unknown-vars.ts`)
+ * and guard SV-1 on the registry names are both built from it. A `{{token}}` with a colon
+ * (`ext_reference:…`, `agent_skill_call:…`) or an upper-case letter does not have this shape.
+ */
+export const TEMPLATE_VAR_NAME_SHAPE = '[a-z][a-z0-9_]*';
+
+/** How many files one warning round names for an extension; the rest are counted on one closing line. */
+export const EXTENSION_UNKNOWN_VARS_MAX_FILES = 10;
+
+/** What the warning says about the names it lists (the token stays as written; nothing is blocked). */
+export const EXTENSION_UNKNOWN_VARS_REASON = 'not template variables of this build, left as written (an extension written for a newer unikit-ai, or a runtime placeholder)';
+
+/** Closing line when more than `EXTENSION_UNKNOWN_VARS_MAX_FILES` files carry unknown names; `%d` is the rest. */
+export const EXTENSION_UNKNOWN_VARS_MORE = 'and %d more file(s) with names this build does not substitute';

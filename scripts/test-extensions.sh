@@ -2318,5 +2318,92 @@ done
 
 echo "  ✓ system variables: a subagent an extension adds gets the path, on Claude and on Kimi"
 
+# 42e — a name this build does not know: left as written in the installed text, named in a warning
+# (file and name, no content) on every pass over the extensions, never named for a known variable
+P42E="$TMPDIR/sysvars-unknown"
+EXT42E="$TMPDIR/unikit-ext-sysvars-unknown"
+make_points_project "$P42E" claude .claude/skills .claude/agents
+mkdir -p "$EXT42E/injections" "$EXT42E/references" "$EXT42E/skills/unknown-skill/references" "$EXT42E/subagents"
+printf 'Contract: {{user_questions_contract}} and {{no_such_variable}}.\n' > "$EXT42E/injections/unknown-line.md"
+printf 'Notes: {{other_missing_name}}.\n' > "$EXT42E/references/notes.md"
+cat > "$EXT42E/skills/unknown-skill/SKILL.md" << 'EOF'
+---
+name: unknown-skill
+description: A skill from an extension that uses a name this build does not know
+---
+
+Skill body: {{skill_missing_name}}
+EOF
+printf 'Skill reference: {{skill_ref_missing_name}}\n' > "$EXT42E/skills/unknown-skill/references/notes.md"
+cat > "$EXT42E/subagents/unknown-agent.md" << 'EOF'
+---
+name: unknown-agent
+description: A subagent from an extension that uses a name this build does not know
+tools:
+  - Read
+model: inherit
+---
+
+Agent body: {{agent_missing_name}}
+EOF
+write_42e_manifest() {   # <version> — a new version is what makes `extension update` run its pass
+  cat > "$EXT42E/extension.json" << EOF
+{ "name": "unikit-ext-sysvars-unknown", "version": "$1",
+  "skills": ["skills/unknown-skill"], "subagents": ["subagents/unknown-agent.md"],
+  "injections": [ { "id": "unknown-line", "target": "unikit", "targetType": "skill", "point": "bootstrap",
+                    "file": "./injections/unknown-line.md", "references": ["./references/notes.md"] } ] }
+EOF
+}
+
+# Each unknown name is named in a [WARN] line together with the file that holds it and the reason;
+# the known contract name is named in none.
+assert_unknown_var_warnings() {   # <label> <log>
+  local label="$1" log="$2" pair file name
+  for pair in "injections/unknown-line.md:no_such_variable" "references/notes.md:other_missing_name" \
+              "skills/unknown-skill/SKILL.md:skill_missing_name" "skills/unknown-skill/references/notes.md:skill_ref_missing_name" \
+              "subagents/unknown-agent.md:agent_missing_name"; do
+    file="${pair%%:*}"; name="${pair##*:}"
+    if ! { grep -F '[WARN]' "$log" || true; } | grep -F "$file uses" | grep -F "{{$name}}" | grep -qF 'not template variables of this build'; then
+      echo "Assertion failed: $label: a warning must name $file and {{$name}}"
+      cat "$log"; exit 1
+    fi
+  done
+  if { grep -F '[WARN]' "$log" || true; } | grep -qF '{{user_questions_contract}}'; then
+    echo "Assertion failed: $label: a known variable must not be named in a warning"
+    cat "$log"; exit 1
+  fi
+}
+
+write_42e_manifest 1.0.0
+if ! ext_add "$P42E" "$EXT42E" "$TMPDIR/p42e-add.log"; then
+  echo "Assertion failed: 42e: extension add must succeed although the text holds unknown names"
+  cat "$TMPDIR/p42e-add.log"; exit 1
+fi
+assert_unknown_var_warnings "42e (extension add)" "$TMPDIR/p42e-add.log"
+
+SKILL42E="$P42E/.claude/skills/unikit/SKILL.md"
+BLOCK42E=$(block_of "$SKILL42E" unikit-ext-sysvars-unknown unknown-line)
+if [[ "$BLOCK42E" != *"Contract: $SV42_QUESTIONS and {{no_such_variable}}."* ]]; then
+  echo "Assertion failed: 42e: the known name must be replaced and the unknown one left as written"
+  echo "Block: $BLOCK42E"; exit 1
+fi
+assert_contains "$P42E/.claude/skills/unknown-skill/SKILL.md" '\{\{skill_missing_name\}\}' "42e: the unknown name stays in the installed skill"
+assert_contains "$P42E/.claude/agents/unknown-agent.md" '\{\{agent_missing_name\}\}' "42e: the unknown name stays in the installed subagent"
+
+(cd "$P42E" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/p42e-update.log" 2>&1)
+assert_unknown_var_warnings "42e (plain update, extension unchanged)" "$TMPDIR/p42e-update.log"
+
+write_42e_manifest 1.1.0
+(cd "$P42E" && node "$ROOT_DIR/dist/cli/index.js" extension update > "$TMPDIR/p42e-extupdate.log" 2>&1)
+assert_contains "$TMPDIR/p42e-extupdate.log" 'Updated: unikit-ext-sysvars-unknown' "42e: extension update took the new version, so its pass ran"
+assert_unknown_var_warnings "42e (extension update to a new version)" "$TMPDIR/p42e-extupdate.log"
+
+# The extensions of 42a and 42b hold only known names: no pass over them says anything of the kind.
+for LOG42E in "$TMPDIR/42a-add.log" "$TMPDIR/42a-update.log" "$TMPDIR/42b-add.log" "$TMPDIR/42b-update.log"; do
+  assert_not_contains "$LOG42E" 'not template variables of this build' "42e: no warning for known names ($LOG42E)"
+done
+
+echo "  ✓ system variables: an unknown name stays as written, a warning names the file and the name on every pass, known names are silent"
+
 echo ""
 echo "extension smoke tests passed"

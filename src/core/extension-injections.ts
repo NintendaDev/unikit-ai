@@ -17,7 +17,8 @@ import {
   countAnchors, insertAtAnchor, pointBlockKey, removePointBlocks, renderBlockRegion,
 } from './extension-markers.js';
 import { renderExtensionText, type RenderContext } from './extension-render.js';
-import { disabledOwnTargets } from './extension-selection.js';
+import { disabledOwnTargets, filterManifest } from './extension-selection.js';
+import { findUnknownVarsInExtension, formatUnknownVars } from './extension-unknown-vars.js';
 import { extensionSlug, loadExtensionPointRegistry, registeredPoints } from './extension-points.js';
 import { resolveSkillPaths } from './installer/hashing.js';
 import { isMarkdownFile } from './installer/shared.js';
@@ -317,6 +318,19 @@ export async function applyExtensionInjections(input: ExtensionInjectionInput): 
   }
 
   const recordByName = new Map(input.extensions.map(ext => [ext.name, ext]));
+
+  // A `{{name}}` this build does not know stays in the installed text as written; the extension's
+  // author and the user hear about it. Scanned once per extension from its enabled sources — not
+  // once per agent — and it never changes the text, the report or the exit code.
+  for (const ext of loaded) {
+    const { scanned, findings } = await findUnknownVarsInExtension(
+      ext.dir,
+      filterManifest(ext.manifest, recordByName.get(ext.name)?.selection),
+    );
+    logInfo(LOG_COMPONENT, `scanned ${scanned} file(s) of extension "${ext.name}" for unknown template variables`);
+    for (const line of formatUnknownVars(ext.name, findings)) logWarn(LOG_COMPONENT, line);
+  }
+
   const pointEntries: PointEntry[] = [];
   const positionEntries: Array<{
     extName: string;

@@ -18,6 +18,13 @@ const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, '..');
 const dist = (rel) => pathToFileURL(path.join(ROOT, 'dist', rel)).href;
 
+// The registry comes first: the shape of a name below is the registry's own, not a second copy of it.
+const registry = await import(dist('core/constants-template.js'));
+const {
+    SYSTEM_FILE_VARS, SYSTEM_PATH_VARS, SYSTEM_VAR_NAMES, TEMPLATE_VAR_NAMES, FIXED_TEMPLATE_VAR_NAMES,
+    TEMPLATE_VAR_NAME_SHAPE, EXTENSION_UNKNOWN_VARS_MAX_FILES,
+} = registry;
+
 const SELF_FILE = path.basename(__filename);
 const TREE_FLAG = '--tree';
 const ENGINE_TREE_FLAG = '--engine-tree';
@@ -27,6 +34,12 @@ const FRAMEWORK_DIR = '.unikit';
 const CONSTANTS_FILE = 'src/core/constants.ts';
 const REGISTRY_FILE = 'src/core/constants-template.ts';
 const REGISTRY_IMPORT_ALLOWED = ['./constants.js'];
+// SV-9b: where the warning for an unknown name is called from, and the module it lives in.
+const INJECTIONS_FILE = 'src/core/extension-injections.ts';
+const UNKNOWN_VARS_FILE = 'src/core/extension-unknown-vars.ts';
+const UNKNOWN_VARS_CALLS = ['findUnknownVarsInExtension', 'formatUnknownVars'];
+const UNKNOWN_VARS_REASON_PART = 'not template variables of this build';
+const CLI_IMPORT_RE = /(^|\/)cli(\/|$)/;
 const REGISTRY_MODULE_NAME = 'constants-template';
 // An import, re-export or dynamic import of the registry module. A comment may name the file; a statement may not.
 const REGISTRY_IMPORT_STATEMENT_RE = new RegExp(`(?:\\bfrom\\s+|\\bimport\\s*\\(\\s*)['"][^'"]*${REGISTRY_MODULE_NAME}[^'"]*['"]`);
@@ -54,7 +67,7 @@ const EXTENSION_NAME_ROOTS = ['docs', 'skills', 'subagents', 'data', 'src'];
 const EXTENSION_NAME_FILES = ['README.md'];
 
 // Shapes. A name is lower-case words joined by underscores; the docs table cell is `{{name}}`.
-const NAME_SHAPE = /^[a-z][a-z0-9_]*$/;
+const NAME_SHAPE = new RegExp(`^${TEMPLATE_VAR_NAME_SHAPE}$`);
 const NAME_CHAR = '[A-Za-z0-9_]';
 const SYSTEM_LITERAL_RE = /\.unikit\/system(?:\/[^\s`'"()\[\]{}|,;]*)?/g;
 const LITERAL_TRAILING_PUNCTUATION = /[.:]+$/;
@@ -63,9 +76,9 @@ const LITERAL_TRAILING_SLASH = /\/+$/;
 // not a path: it is skipped, never compared.
 const LITERAL_PATTERN_CHARS = /[<>*]/;
 const VALUE_BAD_SEGMENT = /(^|\/)\.{1,2}(\/|$)/;
-const DOCS_TABLE_NAME_RE = /^\|\s*`\{\{([a-z][a-z0-9_]*)\}\}`\s*\|/;
-const DOCS_ANY_NAME_RE = /`\{\{([a-z][a-z0-9_]*)\}\}`/g;
-const TEMPLATE_TOKEN_RE = /\{\{([a-z][a-z0-9_]*)\}\}/g;
+const DOCS_TABLE_NAME_RE = new RegExp(`^\\|\\s*\`\\{\\{(${TEMPLATE_VAR_NAME_SHAPE})\\}\\}\`\\s*\\|`);
+const DOCS_ANY_NAME_RE = new RegExp(`\`\\{\\{(${TEMPLATE_VAR_NAME_SHAPE})\\}\\}\``, 'g');
+const TEMPLATE_TOKEN_RE = new RegExp(`\\{\\{(${TEMPLATE_VAR_NAME_SHAPE})\\}\\}`, 'g');
 const ALTERNATION_MIN_NAMES = 3;
 const VERBOSE_ENV = 'SV_VERBOSE';
 
@@ -249,9 +262,7 @@ function docsVarNames(section) {
 
 // ── Registry ─────────────────────────────────────────────────────────────────
 
-const registry = await import(dist('core/constants-template.js'));
-const { SYSTEM_FILE_VARS, SYSTEM_PATH_VARS, SYSTEM_VAR_NAMES, TEMPLATE_VAR_NAMES, FIXED_TEMPLATE_VAR_NAMES } = registry;
-const rows = SYSTEM_FILE_VARS.map((row) => ({ ...row, value: SYSTEM_PATH_VARS[row.name] }));
+const rows =SYSTEM_FILE_VARS.map((row) => ({ ...row, value: SYSTEM_PATH_VARS[row.name] }));
 const rowByName = new Map(rows.map((row) => [row.name, row]));
 const dirValue = (name) => rowByName.get(name)?.value;
 const parentOf = (value) => path.posix.dirname(value);
@@ -553,6 +564,57 @@ if (!treeMode) {
             }
         }
         report('SV-8', 'base skills, subagents and flat contracts carry no registry names', scanned, violations);
+    });
+
+    // ── SV-9: the warning for a name this build does not know ───────────────
+
+    await group('SV-9', async () => {
+        const unknown = await import(dist('core/extension-unknown-vars.js'));
+        let samples = 0;
+        const check = (what, actual, expected) => {
+            samples++;
+            assertEq('SV-9', what, actual, expected);
+        };
+        const tokens = (names) => names.map((name) => `{{${name}}}`).join(' ');
+
+        check('every registry name is known', unknown.unknownTemplateVarNames(tokens(TEMPLATE_VAR_NAMES)), []);
+        check('an unknown name is reported', unknown.unknownTemplateVarNames('{{no_such_name}}'), ['no_such_name']);
+        check('a repeated unknown name is reported once', unknown.unknownTemplateVarNames('{{a_x}} and {{a_x}}'), ['a_x']);
+        check('a token with a colon is not a candidate', unknown.unknownTemplateVarNames('{{ext_reference:x}} {{agent_skill_call:x}}'), []);
+        check('an upper-case token is not a candidate', unknown.unknownTemplateVarNames('{{PROJECT_CONTEXT}}'), []);
+        check('a name with a digit is a candidate', unknown.unknownTemplateVarNames('{{a1}}'), ['a1']);
+        check('names come out sorted', unknown.unknownTemplateVarNames('{{zeta}} {{alpha}}'), ['alpha', 'zeta']);
+
+        const lines = unknown.formatUnknownVars('demo', [{ file: 'a.md', names: ['x', 'y'] }]);
+        check(
+            'one finding is one line with the file, the names and the reason',
+            [lines.length, lines[0].includes('a.md'), lines[0].includes('{{x}}, {{y}}'), lines[0].includes(UNKNOWN_VARS_REASON_PART)],
+            [1, true, true, true],
+        );
+        const extra = 2;
+        const many = Array.from({ length: EXTENSION_UNKNOWN_VARS_MAX_FILES + extra }, (_, i) => ({ file: `f${i}.md`, names: ['n'] }));
+        const manyLines = unknown.formatUnknownVars('demo', many);
+        check(
+            'files beyond the limit are counted on one closing line',
+            [manyLines.length, manyLines.at(-1).includes(`${extra} more`)],
+            [EXTENSION_UNKNOWN_VARS_MAX_FILES + 1, true],
+        );
+        console.log(`  SV-9: ${samples} sample(s) checked`);
+    });
+
+    // SV-9b: the warning is called from the project pass, and the module knows nothing of the CLI.
+    await group('SV-9b', async () => {
+        const injectionsText = await read(path.join(ROOT, INJECTIONS_FILE));
+        const moduleText = await read(path.join(ROOT, UNKNOWN_VARS_FILE));
+        const violations = [];
+        for (const call of UNKNOWN_VARS_CALLS) {
+            if (!new RegExp(`\\b${call}\\(`).test(injectionsText)) violations.push(`${INJECTIONS_FILE}: no call of ${call}()`);
+        }
+        const imports = [...moduleText.matchAll(/\bfrom\s+['"]([^'"]+)['"]/g)].map((match) => match[1]);
+        for (const specifier of imports) {
+            if (CLI_IMPORT_RE.test(specifier)) violations.push(`${UNKNOWN_VARS_FILE} imports "${specifier}" — it must not know the CLI`);
+        }
+        report('SV-9b', 'the warning is called from the project pass and the module stays below cli/', imports.length + UNKNOWN_VARS_CALLS.length, violations);
     });
 
     // ── Detector self-checks: a good sample passes, a bad one gives exactly one message ──

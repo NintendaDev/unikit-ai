@@ -824,6 +824,8 @@ The names of these variables are public API of extensions, on a par with the ext
 
 A variable whose file is not always there (`{{system_genres_dir}}`, `{{system_engine_mcp_dir}}`, `{{engine_mcp_rules_index}}`, `{{engine_mcp_rules_verification}}`, `{{language_rules}}`) still resolves to its path, but the file may be missing; write the extension text so that it also works when the file is not there. A `{{…}}` token that the installed build of unikit-ai does not know stays in the text exactly as written and does not stop the install.
 
+The commands that re-apply extension text - `unikit-ai init`, `unikit-ai update`, `extension add`, `extension update` (when it updated something), `extension remove` and `extension select` - print a warning for such a token: the file of the extension and the names, nothing of the content. The warning repeats on every one of those commands until the build knows the name or the text stops using it. A slot of your own that is meant for the runtime and is written in the same lower-case form is named too; that is only a warning. Name the unikit-ai version your extension needs in its README.
+
 ```markdown
 Before you ask the user anything, read `{{user_questions_contract}}`.
 ```
