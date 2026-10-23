@@ -28,6 +28,10 @@ trap 'AIF_EXIT_CODE=$?; if [[ $AIF_EXIT_CODE -ne 0 ]]; then dump_mcp_state "$TMP
 # Ensure dist/ is up to date (skipped when a parent runner already built).
 ensure_build
 
+# Every name `processTemplate` substitutes, as one ERE alternation — the leak checks below are built
+# from it (a name added to the registry is checked here without touching this file).
+TEMPLATE_NAMES_ERE="$(template_var_names_ere)"
+
 run_update() {
   local project="$1"
   (cd "$project" && node "$ROOT_DIR/dist/cli/index.js" update > /dev/null 2>&1)
@@ -82,14 +86,14 @@ run_update "$CLAUDE_DIR"
 assert_exists "$CLAUDE_DIR/.claude/agents/unikit-architecture-sidecar.md" "subagent files must be installed for claude"
 
 # Check no template placeholders remain in installed skills
-TEMPLATE_HITS=$(grep -r '{{skills_dir}}\|{{settings_file}}\|{{home_skills_dir}}\|{{skills_cli_agent_flag}}\|{{self_name}}' \
+TEMPLATE_HITS=$(grep -rE "\{\{($TEMPLATE_NAMES_ERE)\}\}" \
   "$CLAUDE_DIR/.claude/skills/" --include='*.md' 2>/dev/null | wc -l | tr -d ' ' || true)
 
 if [[ "$TEMPLATE_HITS" -eq 0 ]]; then
   echo "  ✓ template substitution: no {{...}} placeholders in installed skills"
 else
   echo "Assertion failed: found $TEMPLATE_HITS unresolved template placeholders"
-  grep -r '{{skills_dir}}\|{{settings_file}}\|{{home_skills_dir}}\|{{skills_cli_agent_flag}}\|{{self_name}}' \
+  grep -rE "\{\{($TEMPLATE_NAMES_ERE)\}\}" \
     "$CLAUDE_DIR/.claude/skills/" --include='*.md' | head -5
   exit 1
 fi
@@ -774,14 +778,14 @@ assert_not_exists "$ANTIGRAVITY_DIR/.agents/agents/unikit-architecture-sidecar.m
 # No {{...}} template tokens leak into skills or the rules file. {{settings_file}}
 # now renders to the literal '.agents/mcp_config.json' (settingsFile is no longer
 # null); {{skills_cli_agent_flag}} → "--agent antigravity". None stay raw.
-ANTIGRAVITY_TOKEN_HITS=$(grep -r '{{skills_dir}}\|{{settings_file}}\|{{home_skills_dir}}\|{{skills_cli_agent_flag}}\|{{self_name}}' \
+ANTIGRAVITY_TOKEN_HITS=$(grep -rE "\{\{($TEMPLATE_NAMES_ERE)\}\}" \
   "$ANTIGRAVITY_DIR/.agents/skills/" "$ANTIGRAVITY_DIR/.agents/rules/" --include='*.md' 2>/dev/null | wc -l | tr -d ' ' || true)
 
 if [[ "$ANTIGRAVITY_TOKEN_HITS" -eq 0 ]]; then
   echo "  ✓ antigravity: skills-only install (references kept), postInstall rules, no subagents, no {{...}} leak"
 else
   echo "Assertion failed: antigravity install leaked $ANTIGRAVITY_TOKEN_HITS template placeholder(s)"
-  grep -r '{{skills_dir}}\|{{settings_file}}\|{{home_skills_dir}}\|{{skills_cli_agent_flag}}\|{{self_name}}' \
+  grep -rE "\{\{($TEMPLATE_NAMES_ERE)\}\}" \
     "$ANTIGRAVITY_DIR/.agents/skills/" "$ANTIGRAVITY_DIR/.agents/rules/" --include='*.md' | head -5
   exit 1
 fi
@@ -878,7 +882,7 @@ assert_contains "$KIMI_SKILLS/unikit-implement/SKILL.md" '\.kimi-code/mcp\.json'
   "kimi: {{settings_file}} renders to .kimi-code/mcp.json"
 assert_not_contains "$KIMI_SKILLS/unikit-implement/SKILL.md" '\.agents/mcp_config\.json' \
   "kimi: no Antigravity settings path in a Kimi skill"
-KIMI_TOKEN_RE='\{\{(skills_dir|settings_file|home_skills_dir|skills_cli_agent_flag|self_name|engine_name|engine_code_language|engine_mcp_tool|agent_id|agent_reader_type|agent_worker_type|agent_model_default|agent_call_reader|agent_call_worker_quoted|agent_call_worker)\}\}|\{\{agent_skill_call:'
+KIMI_TOKEN_RE="\{\{($TEMPLATE_NAMES_ERE)\}\}|\{\{agent_skill_call:"
 KIMI_TOKEN_HITS=$(grep -rE "$KIMI_TOKEN_RE" "$KIMI_DIR/.kimi-code" --include='*.md' 2>/dev/null | wc -l | tr -d ' ' || true)
 if [[ "$KIMI_TOKEN_HITS" -ne 0 ]]; then
   echo "Assertion failed: kimi install leaked $KIMI_TOKEN_HITS template placeholder(s)"
@@ -1074,7 +1078,7 @@ assert_contains "$UNIVERSAL_SKILLS/unikit-explore/SKILL.md" 'built-in model of a
   "universal: the built-in model default is inherit (no model argument)"
 assert_not_contains "$UNIVERSAL_SKILLS/unikit-explore/SKILL.md" 'Subagent Delegation.*BLOCKING PRE-REQUISITE' \
   "universal: no Codex ask-the-user block (DEC-008)"
-UNIVERSAL_TOKEN_RE='\{\{(skills_dir|settings_file|home_skills_dir|skills_cli_agent_flag|self_name|engine_name|engine_code_language|engine_mcp_tool|agent_id|agent_reader_type|agent_worker_type|agent_model_default|agent_call_reader|agent_call_worker_quoted|agent_call_worker)\}\}|\{\{agent_skill_call:'
+UNIVERSAL_TOKEN_RE="\{\{($TEMPLATE_NAMES_ERE)\}\}|\{\{agent_skill_call:"
 UNIVERSAL_TOKEN_HITS=$(grep -rE "$UNIVERSAL_TOKEN_RE" "$UNIVERSAL_DIR/.agents" --include='*.md' 2>/dev/null | wc -l | tr -d ' ' || true)
 if [[ "$UNIVERSAL_TOKEN_HITS" -ne 0 ]]; then
   echo "Assertion failed: universal install leaked $UNIVERSAL_TOKEN_HITS template placeholder(s)"
@@ -1440,14 +1444,14 @@ echo "  ✓ MCP config: claude agent setup works with the key→code servers map
 echo "  ✓ managedSubagents: hash tracking persisted for claude subagents"
 
 # Check no template placeholders remain in installed subagents
-SUBAGENT_TEMPLATE_HITS=$(grep -r '{{self_name}}\|{{engine_name}}\|{{engine_code_language}}\|{{engine_mcp_tool}}' \
+SUBAGENT_TEMPLATE_HITS=$(grep -rE "\{\{($TEMPLATE_NAMES_ERE)\}\}" \
   "$MCP_DIR/.claude/agents/" --include='*.md' 2>/dev/null | wc -l | tr -d ' ' || true)
 
 if [[ "$SUBAGENT_TEMPLATE_HITS" -eq 0 ]]; then
   echo "  ✓ template substitution: no {{...}} placeholders in installed subagents"
 else
   echo "Assertion failed: found $SUBAGENT_TEMPLATE_HITS unresolved template placeholders in subagents"
-  grep -r '{{self_name}}\|{{engine_name}}\|{{engine_code_language}}\|{{engine_mcp_tool}}' \
+  grep -rE "\{\{($TEMPLATE_NAMES_ERE)\}\}" \
     "$MCP_DIR/.claude/agents/" --include='*.md' | head -5
   exit 1
 fi
