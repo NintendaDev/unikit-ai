@@ -11098,6 +11098,7 @@ else
         'The snapshot is taken before any git command'
         'ultra only when the user named it'
         'the planner does not create the card'
+        'the conversation itself is the source'
     )
     EXPS_I=0
     for exps_pin in "${EXPS_PINS[@]}"; do
