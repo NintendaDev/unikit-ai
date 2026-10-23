@@ -9434,7 +9434,8 @@ if [[ -z "$BX_WHY" ]]; then
     (( BX_FO >= 2 )) || BX_WHY+=" BC-1:fan-out-exclusions=${BX_FO}"
     for f in "${BAL_GRAMMAR_FORMS[@]}"; do bx_lacks "BC-1:form-restated-in-skill(${f})" "$f" "$UNIKIT_VERIFY_SKILL"; done
     # 65000 -> 65400: unikit-verify gained the 397-byte user-questions pointer and lost its inline text tier
-    bx_max "BC-1:skill-size" 65400 "$UNIKIT_VERIFY_SKILL"
+    # 65400 -> 65800: the branch match gained the 380-byte rule that finds an experiment plan by its own record (EXP-K1)
+    bx_max "BC-1:skill-size" 65800 "$UNIKIT_VERIFY_SKILL"
 
     # (BC-2) verify's branch: headings, the two level sentences, and the one place of suggested_next
     BX_CHK=$((BX_CHK + 1))
@@ -9516,7 +9517,8 @@ if [[ -z "$BX_WHY" ]]; then
     bx_has "BM-6:coordinator-layer-order" 'the test-checkpoint tasks of the layer → the `Measure:` tasks' "$TC_COORD"
     # 52600 -> 53100: unikit-implement gained the 552-byte subagent-arguments pointer (it had none)
     # 53100 -> 53200: it gained the 397-byte user-questions pointer and lost its inline text tier
-    bx_max "BM-6:implement-skill-size" 53200 "$UNIKIT_IMPLEMENT_SKILL"
+    # 53200 -> 53600: the branch match gained the 380-byte rule that finds an experiment plan by its own record (EXP-K1)
+    bx_max "BM-6:implement-skill-size" 53600 "$UNIKIT_IMPLEMENT_SKILL"
     # (BC-4) a measurement the user skipped is a skipped row, not a blocker
     bx_has "BC-4:skipped-measure-is-a-blocker" '⏭️ SKIPPED' "$BC_REF"
     # (BC-5) a name stated in ## Not measured is accounted for — a measurement the user skipped is not a blocker
@@ -11417,7 +11419,7 @@ else
     exp_ok "EXP-L2:11" 'with no hash and no drift tracking' "$EXPL_PLAN_REF"
     exp_ok "EXP-L2:12" 'WARN [experiment] <folder> was written against v<k> of the card' "$EXPL_PLAN_REF"
     exp_ok "EXP-L2:13" 'Step 2 does not match researches by topic either' "$EXPL_PLAN_REF"
-    exp_ok "EXP-L2:14" '(h) A research was linked to a card only by its `Experiment:` line' "$EXPL_PLAN_REF"
+    exp_ok "EXP-L2:14" '(h) A research was linked to a card only by its `Experiment:` line or by the user'\''s answer to the candidate question' "$EXPL_PLAN_REF"
     exp_ok "EXP-L2:21" 'a hit outside the markers does not count' "$EXPL_PLAN_REF"
     exp_ok "EXP-L2:15" '**An experiment plan** runs no topic matching in this step' "$EXPL_PLAN"
     exp_ok "EXP-L2:16" 'the snapshot of the cards (and of the design researches that name them)' "$EXPL_PLAN"
@@ -11476,6 +11478,51 @@ if [[ -z "$EXP_WHY" ]]; then
     pass "EXP-L1…EXP-L6 experiment lookup: one owner, the planner and both explorations point at it, the help and the docs describe it (${EXP_CHK} checks)"
 else
     fail "EXP-L1…EXP-L6 experiment lookup:$EXP_WHY"
+fi
+
+# --- EXP-K1…EXP-K5: the experiment plan is found by its own record, and a research that names no card
+# is reported instead of skipped. K1 — the five resolvers that CHOOSE a plan by branch (and the list label)
+# add the folders whose `## Experiment Context` has the current branch as `Branch:` (the folder name
+# `experiment-<topic>` does not carry the dated branch name). K2 — the planner's reference says so, and
+# says what it does when no research names a card. K3 — both explorations keep the card for the `Experiment:`
+# line and treat it as mandatory in a grounded research. K4 — the question points of the experiment skill
+# name the question tool. K5 — the discovery order is described in the docs. Source assertions, like EXP-L.
+EXP_WHY=""
+EXP_CHK=0
+EXPK_FRAG='a `Branch:` line equal to the current branch and a `Base:` other than `none`'
+for f in skills/unikit-implement/SKILL.md skills/unikit-verify/SKILL.md skills/unikit-improve/SKILL.md \
+         skills/unikit-plan/references/mode-add.md subagents/unikit-implement-coordinator.md \
+         skills/unikit-implement/references/mode-list.md; do
+    # (EXP-K1) the resolvers
+    exp_ok "EXP-K1:no-record-match($f)" "$EXPK_FRAG" "$ROOT_DIR/$f"
+done
+# (EXP-K2) the planner's reference
+exp_ok "EXP-K2:01" 'find the plan by its own record' "$EXPP_REF"
+exp_no "EXP-K2:02-old-claim" 'will not find the plan by branch' "$EXPP_REF"
+exp_ok "EXP-K2:03" '**No research names the card.**' "$EXPP_REF"
+exp_ok "EXP-K2:04" 'INFO [experiment] <title>: no research names this card' "$EXPP_REF"
+exp_ok "EXP-K2:05" 'Link <title>' "$EXPP_REF"
+exp_ok "EXP-K2:06" "(h) A research was linked to a card only by its \`Experiment:\` line or by the user's answer to the candidate question" "$EXPP_REF"
+exp_ok "EXP-K2:07" 'Nothing is linked by topic' "$EXPP_REF"
+# (EXP-K3) the explorations
+exp_ok "EXP-K3:01" 'they make the `Experiment:` line of the saved summary' "$ROOT_DIR/skills/unikit-explore/SKILL.md"
+exp_ok "EXP-K3:02" 'In a grounded research it is **not optional**' "$ROOT_DIR/skills/unikit-explore/SKILL.md"
+exp_ok "EXP-K3:03" 'they make the `Experiment:` line of the saved summary' "$ROOT_DIR/skills/unikit-gd-explore/SKILL.md"
+exp_ok "EXP-K3:04" 'In a grounded research it is **not optional**' "$ROOT_DIR/skills/unikit-gd-explore/references/save-research.md"
+# (EXP-K4) the question points name the tool
+exp_ok "EXP-K4:01" 'Every question in this file is asked with the question tool of your agent (`AskUserQuestion`)' "$EXPL_REF"
+for kf in mode-evaluate.md balance-link.md; do
+    EXPK_N="$({ grep -cF 'AskUserQuestion' "$EXP_REFS/$kf" || true; })"
+    EXP_CHK=$((EXP_CHK + 1)); (( EXPK_N >= 3 )) || EXP_WHY+=" EXP-K4:$kf-tool-x${EXPK_N}-of-3"
+done
+# (EXP-K5) the docs
+exp_ok "EXP-K5:01" 'finds an experiment plan by its own record' "$ROOT_DIR/docs/plan-files.md"
+exp_ok "EXP-K5:02" 'find the plan by its own record' "$ROOT_DIR/docs/workflow.md"
+(( EXP_CHK > 0 )) || EXP_WHY+=" EXP-K1:nothing-checked"
+if [[ -z "$EXP_WHY" ]]; then
+    pass "EXP-K1…EXP-K5 experiment plan found by its own record, a research naming no card reported, the explorations keep the line, the question points name the tool (${EXP_CHK} checks)"
+else
+    fail "EXP-K1…EXP-K5 experiment link:$EXP_WHY"
 fi
 
 # ─────────────────────────────────────────────

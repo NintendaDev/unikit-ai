@@ -11,7 +11,7 @@ The input is a path to `CHECKPOINTS.md`, a balance document folder, or a slug un
 - Read **only** the first 12 lines (the header: `Slug`, `Status`, `Current`, `Updated`), the `## Roadmap` section and the `## Current Balance Checkpoint` section. BALANCE.md and results/ are read only when the user asks. The code workspace `.unikit/code/` is not scanned.
 - The point is current when `Status: open`, `Current: BCH-<n>`, `## Roadmap` has exactly one `current` row with the same id, and the block's `Point:` matches. `Status: closed`, `Current: none` or a mismatch → create no cards, say it in words (the point is named by its goal, not by its code), point to `/unikit-gd-balance <slug>` and stop.
 - Cards are designed from `Why` (which decisions the data will change), `Constraints` and `Not in this point`. `Work` items of the kinds tool, stand, data-edit and measure are the language of the direct route and are **not** carried into cards. The rule: one card per independent hypothesis; dependent future points do not enter the cards.
-- Cards of this point that already exist (their origin block carries the same `Point:` and `Checkpoints updated:`; found by `Grep` over the experiments folder) are shown first, and the skill asks once: continue with them (the Manage and Evaluate branches) or design further experiments for the point (Specify). A repeated call with the same path — the command the balance skill also prints for a point already waiting for results — therefore creates no duplicates.
+- Cards of this point that already exist (their origin block carries the same `Point:` and `Checkpoints updated:`; found by `Grep` over the experiments folder) are shown first, and the skill asks once, with the question tool of your agent (`AskUserQuestion`): continue with them (the Manage and Evaluate branches) or design further experiments for the point (Specify). A repeated call with the same path — the command the balance skill also prints for a point already waiting for results — therefore creates no duplicates.
 
 ## The origin block
 
@@ -36,7 +36,7 @@ After an evaluation the skill prints **one** command as the last block (Handoff 
 🧭 /unikit-gd-balance <slug> "<path to results.md>"
 ```
 
-With several results (a set of cards of one point) all paths are arguments of the same single command. Before the command the skill looks (`Grep`, as in `## Entry`) for cards with the same `Point:` and `Checkpoints updated:` that are not yet evaluated; if there are some, it says so in one line and asks whether to evaluate them first — otherwise the second card reaches the balance skill as late data and the rule "all results of a point in one command" is not met. A report and, when needed, an explanation come before the command; nothing comes after.
+With several results (a set of cards of one point) all paths are arguments of the same single command. Before the command the skill looks (`Grep`, as in `## Entry`) for cards with the same `Point:` and `Checkpoints updated:` that are not yet evaluated; if there are some, it says so in one line and asks, with the question tool of your agent (`AskUserQuestion`), whether to evaluate them first — otherwise the second card reaches the balance skill as late data and the rule "all results of a point in one command" is not met. A report and, when needed, an explanation come before the command; nothing comes after.
 
 ## When it is not a balance request
 

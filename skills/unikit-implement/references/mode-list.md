@@ -11,7 +11,7 @@ Read-only plan discovery: nothing is executed and no file is modified.
 2. Scan `.unikit/code/plans/` for all feature folders
 3. Check existence of `.unikit/code/FIX_PLAN.md`
 4. For each feature folder, read its manifest (`.unikit/code/plans/<folder>/PLAN.md`) and count completed/total tasks
-5. Print the plan availability summary — a branch match uses the three name formats of Step 0.1, and the other plans are ordered newest first by the manifest's `Updated:`:
+5. Print the plan availability summary — a branch match uses the three name formats of Step 0.1 and, for an experiment plan, its own record: a manifest with, inside `## Experiment Context`, a `Branch:` line equal to the current branch and a `Base:` other than `none`. The other plans are ordered newest first by the manifest's `Updated:`:
 
 ```
 Available plans in .unikit/code/plans/:

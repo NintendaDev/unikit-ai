@@ -87,7 +87,7 @@ mkdir -p .unikit/gamedesign/researches/<slug>
    The text after each `—` in the template is a note to you; it is not copied into the
    record.
 
-   **The `Experiment:` line** is written only by a research grounded on a card (`SKILL.md`, Bootstrap Context → Experiment grounding), one line per card. `EXP-<nnn>` is defined by the card, not by the record, so the coherence gate does not look for it. A planner picks the research up by this line and reads its Active Summary as context; the routing row for an experiment card, below, outranks the lens rows.
+   **The `Experiment:` line** is written only by a research grounded on a card (`SKILL.md`, Bootstrap Context → Experiment grounding), one line per card. `EXP-<nnn>` is defined by the card, not by the record, so the coherence gate does not look for it. A planner picks the research up by this line and reads its Active Summary as context; the routing row for an experiment card, below, outranks the lens rows. In a grounded research it is **not optional**: before the gate runs, check that the summary holds one such line per card read, because a research without it is invisible to the planner.
 
    The Table of Contents is **mandatory** and reflects the real sections. The
    **`Target:` / `Kind:`** lines are written **only** by the internal design lens

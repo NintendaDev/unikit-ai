@@ -47,6 +47,7 @@ Whatever was found, even one card, the user sees one line before anything else i
 - A caller that only prints a result — a list, a comparison — skips the line; a caller that acts on the card or changes course keeps it.
 - A card that is not ready for planning says so in the line. When the caller plans and a ready card exists, an option offers the latest ready card by its title; whether a card that is not ready may be planned is the planner's decision, the lookup only finds.
 - Options: yes (recommended) · another experiment (show the titles, ask again) · not a saved experiment (the request goes the ordinary way).
+- Every question in this file is asked with the question tool of your agent (`AskUserQuestion`), the recommended option first.
 
 ## The result
 
