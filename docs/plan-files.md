@@ -388,13 +388,17 @@ Cards:
 …
 #### 11. Success Criteria
 …
+#### Rationale
+…
 #### Reference · research · Timer hint (updated 2026-10-12)
+…
+#### Reference · notes · Timer hint (updated 2026-10-13)
 …
 ```
 
-`Branch:` is the branch the plan lives on (`none` when git is off) and `Base:` the branch it was cut from (`none` when none was cut): the executors compare the current branch with `Branch:` before they write and take the base of every diff and check from `Base:`. Sections 2-11 of each card are copied in full with their headings lowered two levels, so a card is never read by the executors; the card's `Out of Scope` is repeated in `### OUT OF SCOPE` of `## Technical Context`. Nothing else is special: no new task kinds, phases or checks, no `Measure:` or `Hand-back:`, no PR checkpoint tasks. A design research whose summary names a card by an `Experiment:` line is copied as one more block of that card (`#### Design research · <folder> (names v<k>)`, after section 11) with no hash and no drift tracking; a code research is linked under `## Based on` instead.
+`Branch:` is the branch the plan lives on (`none` when git is off) and `Base:` the branch it was cut from (`none` when none was cut): the executors compare the current branch with `Branch:` before they write and take the base of every diff and check from `Base:`. Sections 2-11 of each card are copied in full with their headings lowered two levels, so a card is never read by the executors; the card's `Out of Scope` is repeated in `### OUT OF SCOPE` of `## Technical Context`. Nothing else is special: no new task kinds, phases or checks, no `Measure:` or `Hand-back:`, no PR checkpoint tasks. The card's Rationale, when it has one, follows section 11 as `#### Rationale`; an older card has none and the snapshot asks for no empty block. A design research whose summary names a card by an `Experiment:` line is copied as one more block of that card (`#### Design research · <folder> (names v<k>)`, after section 11) with no hash and no drift tracking; a code research is linked under `## Based on` instead.
 
-**References.** A card whose `Based on:` line names a design research or a balance document is planned with every document it names (`unikit-plan/references/experiment-references.md`): each one is read, none is skipped silently, and a `#### Reference` block holding its Active Summary or its current point is added to the card's part of the snapshot. What the documents decide is carried into the text of the tasks that need it. A document that cannot be read gives a `WARN` and the plan is built from the card alone; a document that changed after the card was written gives a `WARN`, and the card wins where they differ.
+**References.** A card whose `Based on:` line names a design research, a balance document or the `notes.md` of its own deep pass is planned with every document it names (`unikit-plan/references/experiment-references.md`): each one is read, none is skipped silently, and a `#### Reference` block holding its Active Summary, its current point or the frame, risks and questions of the notes is added to the card's part of the snapshot. An `assumption` in the Rationale is a risk the prototype has to make observable. What the documents decide is carried into the text of the tasks that need it. A document that cannot be read gives a `WARN` and the plan is built from the card alone; a document that changed after the card was written gives a `WARN`, and the card wins where they differ.
 
 Without cards the section has no `Cards:` list; `Input:` says where the plan came from, `Sources:` lists the sources, and a prototype brief stands in place of the card sections:
 

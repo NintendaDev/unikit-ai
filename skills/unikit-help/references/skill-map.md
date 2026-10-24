@@ -385,17 +385,20 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 ### unikit-gd-experiment
 - **Purpose:** The experiment partner — turns a design problem into cheap, testable experiments
   and keeps an honest record of what real play showed. It finds ideas (at least five distinct
-  hypotheses), writes a specification card a planner can build from, evaluates player feedback
-  (pasted text, a forwarded chat, files; several experiments and several rounds) and manages
-  the catalog. It reads the project only to learn what the game already does, never writes it
-  down in development terms, and never edits the GDD or code.
-- **When:** "the first minutes are boring, what can we test", "design an experiment", "compare
-  three hints", "here is the playtest feedback", "which experiments failed".
+  hypotheses), thinks an experiment through (a quick or a deep pass: a frame, options,
+  precedents from the web with their sources, how a test can mislead, a `notes.md` after a deep
+  pass), writes a specification card a planner can build from (it ends with a Rationale),
+  evaluates player feedback (pasted text, a forwarded chat, files; several experiments and
+  several rounds) and manages the catalog. It reads the project only to learn what the game
+  already does, never writes it down in development terms, and never edits the GDD or code.
+- **When:** "the first minutes are boring, what can we test", "design an experiment", "think
+  through an experiment for this idea", "compare three hints", "here is the playtest feedback",
+  "which experiments failed".
 - **In:** nothing (a short conversation), a design problem, a chosen idea, pasted feedback or a
   file, a game-design research (a path or words — a card is built from it), a list request, an experiment named in words ("the latest", "the one about onboarding" — found by its `lookup.md` reference, which the planner and both explorations read too), or a path to a balance `CHECKPOINTS.md`. The intent is read from the
   request; no flags.
 - **Out:** `.unikit/gamedesign/experiments/` — `index.md` and per experiment
-  `EXP-<nnn>-<slug>/{experiment,feedback,results}.md`; the last block of a save is the ready
+  `EXP-<nnn>-<slug>/{experiment,feedback,results}.md` (and `notes.md` after a deep pass); the last block of a save is the ready
   `/unikit-plan <path to experiment.md>` command for cards marked ready.
 - **Optional (experiment loop).** Next: `/unikit-plan` → `/unikit-implement` → `/unikit-verify`,
   play the prototype, then back to `/unikit-gd-experiment` with the feedback.

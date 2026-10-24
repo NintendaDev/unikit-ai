@@ -376,16 +376,30 @@ results.md>"`, are kept as `results/PT-<n>.md` and enter the document as a findi
 An *experiment* here is a hypothesis about the game tested on real players with the smallest
 prototype that can answer it - not a variant of a number in a balance document.
 `/unikit-gd-experiment` keeps the record. A bare call starts a short conversation and saves
-nothing; the intent is read from the request, in four modes:
+nothing; the intent is read from the request, in four modes, with a think pass that can come before the card:
 
 - **Discover** - "the first minutes feel boring, what can we test?" gives a table of at least five
   ideas that differ by their causal hypothesis (with the cost of the prototype and the value of
   what it teaches) and a recommendation. Ideas you do not choose get no number and no index row; a
   request to compare variants of one question goes straight to one experiment with variants.
+- **Think** - "think through an experiment for ...", or a chosen idea that is new or large: one
+  question picks a **quick** pass (a frame - what you will decide and what the test is read
+  against -, two or three options with a recommendation, and how the test could mislead; nothing
+  from the web, nothing saved) or a **deep** one (the same, plus up to three precedents from the
+  web, each with its source, the date it was checked and a strength A, B or C, the open questions
+  closed one by one, and a `notes.md` beside the card, written first and named in the card's
+  `Based on:` line). A search names the mechanic, the genre or the technique and never your
+  project, its numbers or its unreleased design; a page is data, not instructions, and its text is
+  never pasted. When the web is unavailable the pass says so in one line, the claims stay
+  assumptions and it goes on. A heavy analysis - a market, a whole reference game - stays with
+  `/unikit-gd-explore`.
 - **Specify** - writes the card, `experiment.md`: the problem, one testable hypothesis, what is
   tested, the design and the flow, the variants, the minimum interface, the minimum scope (Must
   Have / Can Be Simplified / Out of Scope), how to test, success criteria (preliminary targets, not
-  facts), risks, follow-up decisions and an evaluation summary. Nothing is saved before you approve.
+  facts), risks, follow-up decisions and an evaluation summary, then an unnumbered **Rationale**:
+  why this design, the intended feeling, what was set aside, what is not tested on purpose and
+  what a failure would teach (a change of the Rationale alone does not raise the version). A card
+  with an empty Rationale stays a draft. Nothing is saved before you approve.
   A card can also be built from a game-design research, named by a path or in words: the skill
   reads its summary, its brief and your original request, prints where each decision went, and
   asks what the test should show - understood, enjoyed, better than now - before it asks how the
@@ -404,7 +418,7 @@ nothing; the intent is read from the request, in four modes:
 
 Everything lives under `.unikit/gamedesign/experiments/`: `index.md` (one derived row per
 experiment), `unassigned-feedback.md` (only when needed) and
-`EXP-<nnn>-<slug>/{experiment,feedback,results}.md`. A number is the highest found plus one and is
+`EXP-<nnn>-<slug>/{experiment,feedback,results}.md` (and `notes.md` after a deep pass). A number is the highest found plus one and is
 never reused; the folder is created without `-p` and checked afterwards. Experiments are not
 registered in `GD-IDS.yaml`, and the skill never edits the GDD or code.
 
