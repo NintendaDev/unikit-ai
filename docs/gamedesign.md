@@ -390,7 +390,9 @@ nothing; the intent is read from the request, in four modes:
   reads its summary, its brief and your original request, prints where each decision went, and
   asks what the test should show - understood, enjoyed, better than now - before it asks how the
   test is run. The draft is a headline of up to five lines and a table of short rows, one idea
-  each; section 4 keeps one question and gains a `Judged on:` line.
+  each; section 4 keeps one question and gains a `Judged on:` line. The card always names the
+  research it was built from - or the balance document, when the balance skill called the
+  experiment skill - in a `Based on:` line, and the plan reads that document.
 - **Evaluate** - takes feedback in any form: pasted text, a forwarded chat, a file; several
   experiments and several rounds at once. A comment is attributed only by explicit signs, a doubtful
   one waits in `unassigned-feedback.md` until you confirm it, and the originals are kept verbatim,
