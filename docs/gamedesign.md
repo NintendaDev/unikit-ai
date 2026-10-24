@@ -145,6 +145,7 @@ from skipping to implementation.
 | A GDD, want to detail a system | `/unikit-gd-system <system>` | `/unikit-gd-review` / `/unikit-gd-verify` |
 | A GDD, want a new mechanic | `/unikit-gd-explore <mechanic>` (routes onward) | spec add-system → system |
 | A named slice of the code, want to know how it is actually built (a GDD is not required) | `/unikit-gd-explore <system> in the code` (code lens, read-only) | the routed owner |
+| A test to design for a slice of the game, with precedents and risks, before any card (a GDD is not required) | `/unikit-gd-explore design a test for <slice>` (experiment lens, read-only) | `/unikit-gd-experiment <research>` |
 | A subject whose numbers need tuning (a GDD is not required) | `/unikit-gd-balance <topic>` | `/unikit-plan full <path to CHECKPOINTS.md>` |
 | A design problem or a hypothesis to test on real players (a GDD is not required) | `/unikit-gd-experiment <problem>` | `/unikit-plan <path to experiment.md>` |
 | A GDD, several decided edits across zones | `/unikit-gd-apply "<the edits>"` | `/unikit-gd-verify` |
@@ -733,6 +734,19 @@ a GDD — such as "how is *our* X actually built?", the explore lens reads the n
 folds the findings into a research brief, tagged the same `provenance: extracted from code`.
 Recon and this lens share one extraction engine (`unikit-gd-recon/references/code-recon.md`)
 so the heuristics never diverge.
+
+**The experiment lens.** When the request asks to design a test, an experiment, a prototype or a
+playtest for a slice of the game, explore works out the test instead of the design - with or
+without a GDD: the decision and the qualities the test is read against, precedents with their
+sources, two to four options with a recommendation, how the test could mislead, and the open
+questions closed one by one. The record is tagged `Kind: experiment` (no `Target:`) and the
+brief ends with an `## Experiment Plan` block that `/unikit-gd-experiment` reads first when it
+builds the card: the judged qualities with their signals, the reasons of the design, the
+rejected alternatives and the risks of a misleading test go into the card and its Rationale.
+The lens is inferred from the request and never writes a card or an experiment number; a web
+query names the mechanic, the genre or the technique and never the project. A designer who
+wants the card straight away does not need it: `/unikit-gd-experiment` thinks an experiment
+through itself, quickly or deeply.
 
 Every saved research carries an `## Active Summary` (goal, scope, the decisions, risks and
 open questions it cites by id — `F-<n>`, `DEC-<n>`, `RISK-<n>`, `OQ-<n>` — never their values)

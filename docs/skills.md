@@ -398,11 +398,13 @@ genre-profile seed layer, and the brownfield recon/code-lens/docs boundary.
 /unikit-gd-explore how do roguelike deckbuilders handle run-modifiers
 /unikit-gd-explore improve the crafting system                    # internal-design lens
 /unikit-gd-explore how is the inventory system actually built in the code   # code-grounded lens (no GDD needed)
+/unikit-gd-explore design a test for our tutorial hint            # experiment design lens (no GDD needed)
 /unikit-gd-explore ultra the progression of our economy           # pinned log + artifacts + coherence gate
 /unikit-gd-explore init                                           # rebuild researches index
 ```
 - Read-only research partner - studies references, market fit, or the existing GDD/code; **never authors** the design itself
-- Four lenses: reference & market (dissection, market signal), internal design (improve a system / work out a new mechanic, closes with a mode-aware brief), code-grounded (the sanctioned one-way-boundary exception - reads a named code slice with or without a GDD, tags findings `provenance: extracted from code`), and research-bucket (develops a review's open questions in place)
+- Five lenses: reference & market (dissection, market signal), internal design (improve a system / work out a new mechanic, closes with a mode-aware brief), code-grounded (the sanctioned one-way-boundary exception - reads a named code slice with or without a GDD, tags findings `provenance: extracted from code`), experiment design (a test to run - the frame, precedents with sources, options with a recommendation, how the test could mislead; runs with or without a GDD, tags the record `Kind: experiment` and leaves an `## Experiment Plan` block in the brief for `/unikit-gd-experiment`), and research-bucket (develops a review's open questions in place)
+- The experiment lens is inferred from the prompt, never a flag; a web query names the mechanic, the genre or the technique and never your project, its numbers or its unreleased design. A research about a mechanic or a player flow that did not use the lens offers the block once at the save (the default is no)
 - Every saved research has an `## Active Summary` (ids cited, values never repeated) and an append-only `## Sessions` log, and ends with a fresh-context coherence gate (`check-agent`, at most two passes, verdict in `Gate:`)
 - `ultra` (named by the user, never inferred) also pins the dialogue log to `SOURCE.md` as you talk and saves adaptive artifacts with an `## Artifact Index` and integrity checks
 - Saves to `.unikit/gamedesign/researches/<slug>/`; a review file is mutated in place instead of getting a new folder

@@ -266,7 +266,8 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   (internal-design lens) work out how to improve a system or invent a new mechanic for *this* game.
   Never authors the GDD; it researches, then routes you onward.
 - **When:** "is there a market for X", "break down the combat of <game>", "find a new mechanic",
-  "how could we improve our economy".
+  "how could we improve our economy", "design a test for this hint" (experiment lens: with or
+  without a GDD; the brief ends with an `## Experiment Plan` block for `/unikit-gd-experiment`).
 - **In:** a topic / game reference / URL / design question; `ultra <topic>` (pinned dialogue
   log + adaptive artifacts; named by the user, never inferred); a `reviews/*_review-*.md` report
   (develop its research bucket); or a `RECON.md` (work a pre-GDD reconstruction). `init`
