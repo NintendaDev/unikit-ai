@@ -11681,6 +11681,7 @@ else
     exp_ok "EXP-RF2:07" 'joins `### OUT OF SCOPE`' "$EXPRF_REF"
     exp_ok "EXP-RF2:08" 'the card wins, because the designer approved it' "$EXPRF_REF"
     exp_ok "EXP-RF2:09" 'Every `Based on:` entry has its `#### Reference` block or a `WARN` line' "$EXPRF_REF"
+    exp_ok "EXP-RF2:10" '`## Findings` for the passages that the summary, a conclusion or a `Must Have` of the card rests on' "$EXPRF_REF"
     # (EXP-RF3) the wiring
     exp_ok "EXP-RF3:01" 'references/experiment-references.md' "$EXPP_REF"
     exp_ok "EXP-RF3:02" 'a `Based on:` entry or an `Experiment:` line' "$EXPP_REF"
