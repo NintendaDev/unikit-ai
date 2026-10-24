@@ -1,8 +1,8 @@
 # Think — an experiment is thought through before its card is written
 
-Read **only** when an experiment is to be thought through — the designer asks to think it through or to research how others did it, or a chosen idea is new or large — before the card is drafted. Load also `{{skills_dir}}/{{self_name}}/references/mode-specify.md` in the same turn: the pass ends in a card. The pass prints and asks; it writes nothing, and what it finds is saved only when the card is approved.
+Read **only** when an experiment is to be thought through — the designer asks to think it through or to research how others did it, an idea was chosen from a table of ideas, or a direct request names an idea that is new or large — before the card is drafted. Load also `{{skills_dir}}/{{self_name}}/references/mode-specify.md` in the same turn: the pass ends in a card. The pass prints and asks; it writes nothing, and what it finds is saved only when the card is approved.
 
-The pass gives the card its reasons: why this design, what was set aside, how the test could mislead. It stays inside one experiment. The order is the depth question, the frame, the precedents (deep), the options, how the test could mislead, the closing of the questions (deep), then the card.
+The pass gives the card its reasons: why this design, what was set aside, how the test could mislead. It stays inside one experiment. The order is the depth question, the frame, the precedents (deep), the options, how the test could mislead, the closing of the questions (deep), then the card. When a design research is named as well, `from-research.md` goes first: its decisions and its frame are not asked again, and the pass covers only what the research lacks.
 
 ## The depth question
 
