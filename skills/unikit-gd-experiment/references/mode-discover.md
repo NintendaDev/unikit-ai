@@ -27,6 +27,6 @@ Read **only** when the request is a normal ask for experiment ideas — a design
 
 ## After the choice
 
-- One or several chosen → `mode-specify.md` for each, in the user's order. A number is assigned only when a card is saved.
+- One or several chosen → each goes to `mode-think.md` for the depth question first, then to `mode-specify.md`, in the user's order. A number is assigned only when a card is saved.
 - "Search more" → a new table of ideas that do not repeat the earlier ones, with a note on how they differ.
 - The choice is asked as one question with the question tool of your agent (`AskUserQuestion`), the recommended option first: choose one · choose several · combine or change · search more. For the first three the designer writes the row numbers, or the change, in the free-text answer.

@@ -10,11 +10,12 @@ Read **only** when a file under .unikit/gamedesign/experiments/ is about to be c
 ├── unassigned-feedback.md        only when a comment cannot be attributed
 └── EXP-<nnn>-<slug>/
     ├── experiment.md             the card (template-experiment.md owns its format)
+    ├── notes.md                  only after a deep pass (design-notes.md owns it)
     ├── feedback.md               original feedback, append-only
     └── results.md                rounds and assessments
 ```
 
-This skill writes only here. `unassigned-feedback.md` is the one file beyond the three per experiment; it is created only when needed.
+This skill writes only here. `unassigned-feedback.md` is the one file beyond the three per experiment (apart from `notes.md`); it is created only when needed.
 
 ## Numbers
 
@@ -140,7 +141,7 @@ One row per experiment, archived ones included; the `What We Test` cell holds th
 
 ## Order of writes
 
-On creation: card, then feedback.md, then results.md, then the index last. On evaluation: evidence → `results.md` → the summary in the card → the index last. There is no transaction. When a write fails: stop, name the last file written and the pending write, and do not declare a half-created card saved.
+On creation: card, then feedback.md, then results.md, then the index last. A deep pass adds `notes.md`, written first (`design-notes.md`). On evaluation: evidence → `results.md` → the summary in the card → the index last. There is no transaction. When a write fails: stop, name the last file written and the pending write, and do not declare a half-created card saved.
 
 ## Technical traces: self-check before every write
 
@@ -152,7 +153,7 @@ On creation: card, then feedback.md, then results.md, then the index last. On ev
   5. names of engine objects, mechanisms and frameworks;
   6. architectural terms — layers, design patterns, dependencies between modules, dependency injection;
   7. line numbers, commits, branches.
-- **Not** traces: `EXP-<nnn>`, `E-<nnn>`, `R-<nnn>`, paths **inside** the experiments store, links to GDD documents, researches and balance documents, the checkpoint code in an origin block, and the game's own names the designer uses.
+- **Not** traces: `EXP-<nnn>`, `E-<nnn>`, `R-<nnn>`, paths **inside** the experiments store, links to GDD documents, researches and balance documents, external sources (a title, a venue and a year, or an address), the checkpoint code in an origin block, and the game's own names the designer uses.
 - A hit is rewritten in game words. A fact that cannot be said without the technical word is written `unknown — the planner will check the project`.
 - The restriction applies to **artifacts**; in chat the source may be named at the user's request. There is no checking script: this is an instruction.
 

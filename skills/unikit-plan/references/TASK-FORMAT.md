@@ -427,6 +427,8 @@ The last task of the plan; it carries `WHY:` and `Hand-back:` and **carries no `
   <the Active Summary of that research, as it stands>
   #### Reference · balance · <slug> (<point goal>)
   <the current point of that balance document, as it stands>
+  #### Reference · notes · <title> (updated <date>)
+  <the sections of the card's own notes that experiment-references.md names, as they stand>
   ```
 
 The block above is shown indented by two spaces only so that this file carries no line that starts with a field name; in the manifest its lines start at the margin.
@@ -437,7 +439,7 @@ The block above is shown indented by two spaces only so that this file carries n
 
 **Design researches.** A research of the design store (`.unikit/gamedesign/researches/`) whose Active Summary names the card by an `Experiment:` line goes in as one more block of that card, after section 11, under the heading shown above, its Active Summary copied as it stands. No hash is kept and the plan never re-reads it for drift; the version in the heading is the one the research named. A research of the code store is not copied: it is linked under `## Based on` like any other research.
 
-**References.** Every entry of the card's `Based on:` list is one more block of that card, after section 11, under the `Reference` headings shown above (`experiment-references.md` says what is read and how it is used). The content is copied as it stands; no hash is kept and the plan never re-reads it for drift. A research that is also named by an `Experiment:` line is one block, under the `Reference` heading.
+**References.** Every entry of the card's `Based on:` list is one more block of that card, after section 11, under the `Reference` headings shown above, including the `notes` of the card's own deep pass (`experiment-references.md` says what is read and how it is used). The content is copied as it stands; no hash is kept and the plan never re-reads it for drift. A research that is also named by an `Experiment:` line is one block, under the `Reference` heading.
 
 **Without cards.** A plan built from a design research, a file, a description or the session (`experiment-source.md`) has no cards to copy; it carries a brief instead, in the same slot:
 
