@@ -10949,6 +10949,14 @@ else
     exp_ok "EXP-8:R-25" 'the limit is not measured' "$EXP_REFS/card-draft-view.md"
     exp_ok "EXP-8:R-26" 'saved before this line existed are read as `none`' "$EXP_REFS/balance-link.md"
     exp_ok "EXP-8:R-27" 'researches and balance documents' "$EXP_REFS/storage-and-index.md"
+    # R: the draft table is the file — its numbers and names are the file's, the outcome tokens stay, an item reads alone
+    exp_ok "EXP-8:R-28" 'is the heading of the file, word for word' "$EXP_REFS/card-draft-view.md"
+    exp_ok "EXP-8:R-29" 'No number that the file does not have is ever written' "$EXP_REFS/card-draft-view.md"
+    exp_ok "EXP-8:R-30" 'never translated in the table' "$EXP_REFS/card-draft-view.md"
+    exp_ok "EXP-8:R-31" 'the text that will be written to `experiment.md`' "$EXP_REFS/card-draft-view.md"
+    exp_ok "EXP-8:R-32" 'a token followed by a fragment is not an item' "$EXP_REFS/template-experiment.md"
+    exp_ok "EXP-8:R-33" 'can be read alone' "$EXP_REFS/mode-specify.md"
+    exp_no "EXP-8:R-34-sub-number-rule" 'and a sub-number' "$EXP_REFS/card-draft-view.md"
 
     # (EXP-9) the lexicon: the templates and the sample artifacts carry no technical trace; the scan itself is tested first
     for s in 'PlayerController.cs' 'spawnEnemy()' 'enemy_spawn_timer' 'Assets/Scripts/Player.cs' 'player.Move(x)' 'FlagCaptureManager'; do

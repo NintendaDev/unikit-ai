@@ -91,7 +91,8 @@ The card describes a disposable prototype, not production-ready functionality.
 - **Interface and Feedback** — visual readability is essential; the key elements that must read at a glance are named.
 - **How to Test** — a concrete protocol; the duration is chosen by the card: do not force every experiment to last five minutes.
 - **Success Criteria** — any threshold is marked as a set of preliminary acceptance targets and is never presented as a fact. When `Judged on:` names several qualities, each gets its own signals for every outcome, and Partially Supported means some qualities held and others did not (the card says which).
-- **Problem, Variants, Minimum Scope, Risks, Follow-up Decisions** — as the line of the template says.
+- **Success Criteria and Follow-up Decisions are written as items that can be read alone.** An item names its subject (a judged quality, or the outcome of the whole test) and states the condition or the decision in a full sentence: "The hypothesis is supported on <quality> if …", "If the result is inconclusive, repeat the test with …". The outcome tokens stay in the file as the bold openers of the outcome items (`Supported`, `Partially Supported`, `Not Supported`, `Inconclusive`); a token followed by a fragment is not an item, because the reader of one line must know what is supported and what is decided.
+- **Problem, Variants, Minimum Scope, Risks** — as the line of the template says.
 
 ## Readiness for planning
 

@@ -10,7 +10,8 @@ The designer writes: "A card for the hint arrow, from the research first-session
 - One confirmation line naming the research by its title, with its state in words, before anything else of the research is loaded.
 - A ledger table `| Research item | Goes to |` of at most twelve short rows; a piece the research sets apart or postpones appears as another experiment and in the out-of-scope part of the card.
 - One question about what the test should show, several answers allowed, the source named in each candidate, asked before any question about how the test is run; the qualities named in the designer's own words come first and are recommended.
-- A headline of up to five lines, then a table of short rows; a long section continues as 5.1, 5.2 and so on.
+- A headline of up to five lines, one line saying that the table is the text to be written to the card file, then a table of short rows whose numbers and section names are the file's, each with a gloss in the interface language; a long section continues in the next row with the same number and heading, never under a number the file does not have.
+- The four outcome tokens stay as they are in the file and a line explains them; every item of the success criteria and of the follow-up decisions can be read alone.
 - Section 4 holds one question sentence and a `Judged on:` line; the success criteria are written quality by quality.
 - The card names the research under `Based on:` (its title, the path of its folder, its date) and the headline of the draft shows the line; nothing of the research is copied into the store.
 - Nothing is written before the designer approves.
@@ -20,6 +21,7 @@ The designer writes: "A card for the hint arrow, from the research first-session
 - Take the success signals of the research as the only measure.
 - Ask about a control, a hint or the number of players before the qualities are settled.
 - Print one cell of thousands of characters, or a table the screen falls back to blocks for.
+- Number rows with numbers the card file does not have, translate the section names or the outcome tokens in the table, or write an outcome item as a token with a fragment.
 - Invent example qualities when no source names one.
 - Write to the experiment store before approval.
 - Leave the reference to prose in a section of the card, or copy the research into the store.
@@ -32,6 +34,8 @@ The designer writes: "A card for the hint arrow, from the research first-session
 - Anchor: references/mode-specify.md :: never taken as known
 - Anchor: references/card-draft-view.md :: A row holds one idea
 - Anchor: references/card-draft-view.md :: ## The headline
+- Anchor: references/card-draft-view.md :: is the heading of the file, word for word
+- Anchor: references/template-experiment.md :: a token followed by a fragment is not an item
 - Anchor: references/template-experiment.md :: is read as judged on its question alone
 - Anchor: references/from-research.md :: ## Attaching the research
 - Anchor: references/from-research.md :: A research stays where it is

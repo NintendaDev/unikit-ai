@@ -22,6 +22,7 @@ Read **only** when an experiment card is to be written or changed — an idea wa
 - The card is independently understandable: no "as we discussed" and no reference to a hidden context.
 - The card does not prescribe engine classes, architecture, dependency injection, code files or implementation details.
 - Section 5 carries, as its last line, the sentence from the template, "The card describes a disposable prototype, not production-ready functionality" (the skill never removes it, neither on creation nor on edit).
+- Every item of Success Criteria and Follow-up Decisions can be read alone: it names its subject and says what follows (`template-experiment.md`).
 - A card built from a research or a balance document names it in `Based on:` (`from-research.md`, `balance-link.md`); without it the card stays a draft.
 - A user-combined idea: check the one-factor rule; if two factors move, offer two experiments or record the reason; the user decides.
 
