@@ -159,6 +159,8 @@ Before responding — before any analysis — silently load (do not narrate):
 
 9. **Experiment grounding** (only if `.unikit/gamedesign/experiments/` holds a card) — a topic that names an experiment — `EXP-<nnn>` (`Glob` `.unikit/gamedesign/experiments/EXP-<nnn>-*`, exactly one folder), a path to an `experiment.md`, or an experiment folder — grounds on that card: read its `experiment.md` **in full**; `feedback.md` and `results.md` only when the user asks. A topic that names an experiment by its description ("how to improve the latest experiment", "the experiment about onboarding") is resolved first through `{{skills_dir}}/unikit-gd-experiment/references/lookup.md` — read it only then; it ends in the user's confirmation, which this skill words through the membrane (the title and plain words, no code). The card is context only: nothing is written to the store and no status changes. Keep the card's number, `Version` and title for the save: they make the `Experiment:` line of the saved summary, the only thing by which `/unikit-plan` finds this research. That file missing or unreadable → `WARN [experiment] lookup reference missing — asking for a selector`, and the user is asked which experiment is meant.
 
+10. **`{{skills_dir}}/{{self_name}}/references/experiment-lens.md`** — the experiment design engine (the flow, the web rules, the `## Experiment Plan` block and its tags). Load it **only when the prompt asks to design a test** — an experiment, a prototype or a playtest for a slice of the game — as "Experiment design lens — when it engages" below classifies.
+
 **One-way boundary (with the code-lens exception):** the authoring zones never read
 code, but this skill is a **read-only research verb** — its **code-grounded lens**
 (below) *does* read project source and asset definitions to ground a design question in
@@ -396,6 +398,25 @@ the GDD or the code."* Its routing is the internal-design lens's (the slice's
 `doc_status` picks the owner); in **subagent mode** every interactive call of the question tool of your agent (`AskUserQuestion`)
 is bypassed, the same as the internal-design lens.
 
+## Experiment design lens — when it engages
+
+The fifth lens designs a **test**, not a design: the prompt asks what to test, how to test it, or to prepare an experiment, a prototype or a playtest for a slice of the game, and the result is a reasoned experiment plan that `/unikit-gd-experiment` turns into a card. Like the other lenses it is **inferred from the prompt, never a flag**. The engine — the flow, the web rules and the `## Experiment Plan` block — lives in `references/experiment-lens.md`; this section is the **switch**.
+
+| Signal class | Triggers (examples) |
+|--------------|---------------------|
+| **Design a test** | "design an experiment for the hint arrow", "what should we test about the first minutes", "спроектируй эксперимент", "plan a playtest for X" |
+| **A prototype that answers a question** | "what is the cheapest prototype that shows whether Y works", "потестить, интересно ли" |
+| **Tell whether a change is better** | "how do we know the new onboarding is better", "how should we playtest this" |
+
+**Decision rule:**
+
+- **Test signals present** → experiment lens **ON**, **with or without `GAME.md`**: load `experiment-lens.md` and follow it. The lens needs the idea and the slice it concerns, not a GDD.
+- **Combinable.** It runs alongside the internal design lens (the slice is our own design), MDA dissection and the market lens — load whichever the prompt also triggers; they supply the precedents.
+- **No test signal** (a design question, a reference to dissect, a market question) → lens **OFF**; it never engages uninvited.
+- **A designer who wants the card straight away** does not need this lens: `/unikit-gd-experiment` thinks an experiment through itself, quickly or deeply. This lens is for a test that grows into a research — a mechanic to study first, several precedents, a long dialogue.
+
+**Read-only — say it on entry.** When the lens engages, state once that this is research: *"I'll work out the test and hand you a brief — the card is written by the experiment skill, and I won't edit the GDD."* It writes no experiment card and takes no `EXP-<nnn>` number; its handoff is `/unikit-gd-experiment` with the path of the saved research. In **subagent mode** every interactive call of the question tool of your agent (`AskUserQuestion`) is bypassed, as in the other lenses.
+
 ## Input modes — develop a review file or a RECON reconstruction
 
 Two argument shapes put this skill into an **input mode**: it consumes a specific file
@@ -463,7 +484,9 @@ discovery tags, `RESEARCH_BRIEF.md`), the **Next Steps routing** table, and the
 `researches/INDEX.md` update format. When the research came from the **internal design
 lens**, the brief gets the **one** mode-aware block matching the resolved route — the
 block field lists live in `references/internal-design-lens.md` → "Mode-aware brief"
-(the single source of truth; do not duplicate them). Every save — new or an update — ends
+(the single source of truth; do not duplicate them). When it came from the **experiment
+design lens**, the brief gets the `## Experiment Plan` block, whose field list lives in
+`references/experiment-lens.md` → "The block". Every save — new or an update — ends
 with the coherence gate: `{{skills_dir}}/{{self_name}}/references/coherence-gate.md`, run
 through `check-agent` by `references/save-research.md` → `## Write order`.
 
@@ -522,6 +545,11 @@ crystallize, you might summarize the findings — but the thinking is often the 
   slice** (with or without a GDD), folds code findings into a brief tagged `provenance: extracted from
   code`, and **never** edits the GDD or the code. Cold-start, whole-project
   reconstruction is `unikit-gd-recon`'s, not this lens's.
+- **Experiment design lens (read-only).** The lens (`references/experiment-lens.md`) reads
+  the GDD when there is one and the web for precedents, and writes only its own research
+  (the `## Experiment Plan` block of the brief, `Kind: experiment`). It **never** writes an
+  experiment card, takes an `EXP-<nnn>` number or touches `.unikit/gamedesign/experiments/`;
+  the experiment skill, in turn, never writes `researches/`.
 - **Not this skill:** generating new concepts → `unikit-gd-brainstorm`; authoring
   the spec/systems/flows/content → `unikit-gd-spec` / `unikit-gd-system` /
   `unikit-gd-flow` / `unikit-gd-content`; cold-start code reconstruction →
@@ -540,6 +568,7 @@ crystallize, you might summarize the findings — but the thinking is often the 
 /unikit-gd-explore is this roguelike niche saturated?  → market lens (viability / white-space)
 /unikit-gd-explore improve our combat balance        → internal design lens (read-only) → routes to system / spec
 /unikit-gd-explore how is our loot wired in the code → code-grounded lens (read-only, named slice) → brief
+/unikit-gd-explore design a test for our tutorial hint → experiment design lens (read-only) → brief with ## Experiment Plan → /unikit-gd-experiment
 /unikit-gd-explore reviews/2026-06-25_review-SYS-combat.md → promote ## Research into ## Apply-ready in place → /unikit-gd-apply reviews/X.md
 /unikit-gd-explore .unikit/gamedesign/RECON.md      → develop the cold-start reconstruction (pre-GDD) → save research + ## Explorations backlink → /unikit-gd-spec import
 /unikit-gd-explore https://…                         → dissect a linked design source

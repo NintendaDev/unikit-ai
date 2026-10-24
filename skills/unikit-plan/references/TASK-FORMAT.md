@@ -69,7 +69,7 @@ If no research — technical context is in the `## Technical Context` section be
 (Only when the plan was built from a Balance Checkpoints file — see `### Balance checkpoint grammar`. It is a snapshot: the plan works from it, not from the live file.)
 
 ## Experiment Context
-(Only when the plan was built from experiment cards — see `### Experiment context section`. It is a snapshot: the plan works from it, not from the live cards. A plan has this section or `## Balance Context`, never both.)
+(Only when the plan was built from experiment cards or from another experiment source — see `### Experiment context section`. It is a snapshot: the plan works from it, not from the live cards. A plan has this section or `## Balance Context`, never both.)
 
 ## Settings
 - Testing: yes/no
@@ -404,7 +404,7 @@ The last task of the plan; it carries `WHY:` and `Hand-back:` and **carries no `
 
 ### Experiment context section
 
-**When it applies.** Only in a plan built from experiment cards (`experiment-plan.md`). No task kind, phase or check belongs to it.
+**When it applies.** Only in a plan built from experiment cards (`experiment-plan.md`) or from another source named by an experiment request (`experiment-source.md`). No task kind, phase or check belongs to it.
 
 **`## Experiment Context`** — a snapshot of the cards; the plan works from it, never from the live files. It stands in the slot of `## Balance Context`: after `## Based on` and after any snapshot of the design module, directly before `## Settings`. A plan has this section or `## Balance Context`, never both.
 
@@ -419,19 +419,55 @@ The last task of the plan; it carries `WHY:` and `Hand-back:` and **carries no `
   …
   #### 11. Success Criteria
   …
+  #### Rationale
+  …
   #### Design research · <folder> (names v<k>)
   <the Active Summary of that research, as it stands>
+  #### Reference · research · <title> (updated <date>)
+  <the Active Summary of that research, as it stands>
+  #### Reference · balance · <slug> (<point goal>)
+  <the current point of that balance document, as it stands>
+  #### Reference · notes · <title> (updated <date>)
+  <the sections of the card's own notes that experiment-references.md names, as they stand>
   ```
 
 The block above is shown indented by two spaces only so that this file carries no line that starts with a field name; in the manifest its lines start at the margin.
 
 **`Branch:` and `Base:`.** `Branch:` is the branch the plan lives on — the one created for it, or the current one when none was created; `none` when git is off. `Base:` is the branch the plan's branch was cut from; `none` when no branch was cut. Executors compare the current branch with `Branch:` before they write, and take the base of every diff and check from `Base:` (`.unikit/system/prototype-profile.md`; `.unikit/system/plan-boundaries.md` → `## Base branch`).
 
-**What is copied.** For every card, in the order of the `Cards:` list: sections 2 to 11 of `experiment.md` in full (Problem, Hypothesis, What We Test, Design, Gameplay Flow, Variants, Interface and Feedback, Minimum Scope, How to Test, Success Criteria), with their headings lowered by two levels. Section 12 (Risks) is copied only when it changes what is built; sections 13 and 14 (Follow-up Decisions, Evaluation Summary) are never copied. A path without the content is not a snapshot.
+**What is copied.** In a plan with cards, for every card, in the order of the `Cards:` list: sections 2 to 11 of `experiment.md` in full (Problem, Hypothesis, What We Test, Design, Gameplay Flow, Variants, Interface and Feedback, Minimum Scope, How to Test, Success Criteria), with their headings lowered by two levels. Section 12 (Risks) is copied only when it changes what is built; sections 13 and 14 (Follow-up Decisions, Evaluation Summary) are never copied. The Rationale of the card, when it has one, is copied as it stands, after section 11; an older card has none and the snapshot asks for no empty block. A path without the content is not a snapshot.
 
 **Design researches.** A research of the design store (`.unikit/gamedesign/researches/`) whose Active Summary names the card by an `Experiment:` line goes in as one more block of that card, after section 11, under the heading shown above, its Active Summary copied as it stands. No hash is kept and the plan never re-reads it for drift; the version in the heading is the one the research named. A research of the code store is not copied: it is linked under `## Based on` like any other research.
 
-**What stays out.** Technical decisions: they belong to `## Technical Context`, where the planner reads the code itself. The card's `Out of Scope` is the boundary of the prototype and is repeated in `### OUT OF SCOPE` of `## Technical Context`.
+**References.** Every entry of the card's `Based on:` list is one more block of that card, after section 11, under the `Reference` headings shown above, including the `notes` of the card's own deep pass (`experiment-references.md` says what is read and how it is used). The content is copied as it stands; no hash is kept and the plan never re-reads it for drift. A research that is also named by an `Experiment:` line is one block, under the `Reference` heading.
+
+**Without cards.** A plan built from a design research, a file, a description or the session (`experiment-source.md`) has no cards to copy; it carries a brief instead, in the same slot:
+
+  ```
+  Branch: <the plan's branch name | none>
+  Base: <the branch the plan's branch was cut from | none>
+  Input: research | file | request | session
+  Sources:
+  - <kind> · <path | "request" | "session"> · <Updated: YYYY-MM-DD | —>
+
+  ### Prototype brief
+  #### What is tested
+  …
+  #### Must Have
+  …
+  #### Can Be Simplified
+  …
+  #### Out of Scope
+  …
+  #### How to test
+  …
+  #### Source · <folder or file>
+  <the Active Summary as it stands, the request word for word, or the passages the brief rests on>
+  ```
+
+`Branch:` and `Base:` are the first lines, as in a plan with cards, and mean the same. `Input:` is written only when there is no `Cards:` list; a plan with `Cards:` has no `Input:` line, so plans written before this form existed read as before. Each field of the brief is filled from the source or says `not stated`; `How to test` is kept only when the source states it. Wherever the prototype profile (`.unikit/system/prototype-profile.md`) says "the card", it means this brief. The same rules of mutability and of what stays out apply.
+
+**What stays out.** Technical decisions: they belong to `## Technical Context`, where the planner reads the code itself. The card's (or the brief's) `Out of Scope` is the boundary of the prototype and is repeated in `### OUT OF SCOPE` of `## Technical Context`.
 
 **Mutability.** The section is written once by the planner. `/unikit-implement`, `/unikit-verify`, `/unikit-improve` and `add` mode never rewrite it.
 

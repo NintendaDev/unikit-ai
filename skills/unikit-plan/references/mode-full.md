@@ -12,7 +12,7 @@ These steps run **only in full mode**, before the shared planning workflow.
 
 ### Step A: Decide on Git Branch
 
-**An experiment plan** (the input was experiment cards — `{{skills_dir}}/{{self_name}}/references/experiment-plan.md`): this step is replaced by that file's `## The branch and the base`; do not apply the rest of this step.
+**An experiment plan** (the input was experiment cards or another experiment source — `{{skills_dir}}/{{self_name}}/references/experiment-plan.md`): this step is replaced by that file's `## The branch and the base`; do not apply the rest of this step.
 
 **If `git.enabled = false` or `git.create_branches = false`:**
 - Skip this step entirely

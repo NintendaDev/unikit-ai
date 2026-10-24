@@ -28,6 +28,8 @@ The single definition. In a card (section 1, field `Origin`):
 
 In the header of `results.md` the same five lines, unindented, directly under `Experiment: EXP-<nnn>` and `Origin: from balance` (within the first 12 lines of the file). The block is **immutable**: it copies the context of the question at the time of reading; a later change of the point is noticed by the balance skill from the `Checkpoints updated` value. There is no separate snapshot document of the point's question. The point code (`BCH-<n>`) is allowed in the file, but in speech the point is named by its goal.
 
+**The reading list.** A card built from a point also carries, under `Based on:` in section 1, the line `balance: <slug> · <path to CHECKPOINTS.md> · updated <the Checkpoints updated value>`. The origin block stays the protocol of the return and does not change; `Based on:` is what the planner reads. The Rationale of a card built from a point draws its reasons from the `Why` and the `Not in this point` of the point. Cards of the same point saved before this line existed are read as `none`; the line is added when such a card is next changed, as an edit that does not raise `Version`.
+
 ## Returning the results
 
 After an evaluation the skill prints **one** command as the last block (Handoff Tail):

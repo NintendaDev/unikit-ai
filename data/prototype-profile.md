@@ -12,9 +12,12 @@ Fourteen readers apply the same rules; a reader that repeats a rule drifts from 
 turns red when two answers disagree.
 
 A plan is a **prototype plan** when the manifest has `## Experiment Context` — a plan built from
-experiment cards (`unikit-plan/references/experiment-plan.md`). An ordinary plan never reads this
-file. A prototype is built to answer one question on real players and is then kept or thrown away;
-nothing in this contract turns it into production-ready functionality.
+experiment cards (`unikit-plan/references/experiment-plan.md`) or from another experiment source
+(`unikit-plan/references/experiment-source.md`). A plan built without cards carries an `Input:` line
+and a `### Prototype brief` in that section instead of `Cards:`.
+Wherever this file says "the card", it means that brief.
+An ordinary plan never reads this file. A prototype is built to answer one question on real players
+and is then kept or thrown away; nothing in this contract turns it into production-ready functionality.
 
 ## Trigger and fallback
 
@@ -35,11 +38,11 @@ These stay in force for a prototype plan:
 
 - Clean, readable code (Code conventions 1) and no inline comments (6); the response language (9).
 - The prototype compiles and launches: a task is not done while the project does not build.
-- The interface is legible: the key elements the card names are readable at a glance.
+- The interface is legible: the key elements the card (or the brief) names are readable at a glance.
 - Data integrity: nothing that already saves, loads or migrates player or project data is broken.
 - Explicit project constraints: the rules of `.unikit/RULES.md` and the written prohibitions of
   `.unikit/ARCHITECTURE.md` are obeyed.
-- The card's `Out of Scope` is a boundary: what it excludes is not built.
+- The card's (or the brief's) `Out of Scope` is a boundary: what it excludes is not built.
 - Existing behaviour outside the prototype is unchanged.
 - The evidence contract (Layer A of `.unikit/system/dev-principles.md`): a report never declares
   verified what was not verified.
@@ -89,7 +92,7 @@ These stay in force for a prototype plan:
 - Apply `## Mandatory`, `## Softened`, `## Switched off` and `## Branch and base`.
 - **`/unikit-implement`:** skip Step 3.7, Step 3.10 and Step 5.1; print no "PR after verification"
   hint; Step 5.3 (the documentation checkpoint) runs only when `## Settings` says `Docs: yes`. Build
-  each task at prototype size: the simplest thing that tests the hypothesis of the card, using what
+  each task at prototype size: the simplest thing that tests the hypothesis of the card (or the brief's `What is tested`), using what
   exists. The prompt of every delegate it launches in Step 3.2 (a `develop-agent`) carries the same
   note as the coordinator's workers do.
 - **`unikit-implement-coordinator`:** does the branch check once for the session, before any mark is
@@ -106,7 +109,7 @@ These stay in force for a prototype plan:
 `/unikit-verify`, `/unikit-pr`.
 
 - **`/unikit-verify`:** checks that the checklist of the plan is done, that the project builds and
-  launches, that the key elements of the interface are legible, that the card's `Out of Scope` was
+  launches, that the key elements of the interface are legible, that the card's (or the brief's) `Out of Scope` was
   respected and that data is intact. It does not fail the plan for `TODO`/`FIXME`/`HACK` markers
   (Step 3.2 and the strict-mode row), for missing documentation (Steps 3.3, 3.4 and 3.7), for the
   roadmap gate (Step 3.5) or for context drift (Step 3.6, which asks no "Update now?" question);
@@ -120,7 +123,7 @@ These stay in force for a prototype plan:
 
 `/unikit-improve`, `unikit-plan-polisher`, `unikit-plan-coordinator`.
 
-- Do not widen the plan beyond the card's `Must Have`: no test tasks under `Testing: no`, no
+- Do not widen the plan beyond the card's (or the brief's) `Must Have`: no test tasks under `Testing: no`, no
   documentation tasks under `Docs: no`, no gold-plating.
 - The section `## Experiment Context` is never rewritten: `/unikit-improve` edits around it, the
   polisher preserves it whole.

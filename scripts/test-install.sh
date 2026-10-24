@@ -398,6 +398,14 @@ assert_exists "$CLAUDE_DIR/.claude/skills/unikit-plan/references/merge-plan.md" 
 # cannot see a missing delivery, so the files are asserted here.
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-plan/references/balance-plan.md" \
   "unikit-plan balance-plan.md reference installed"
+# The experiment plan without cards reads experiment-source.md only on an experiment request; the
+# same reasoning applies — a content test cannot see a file that was never delivered.
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-plan/references/experiment-source.md" \
+  "unikit-plan experiment-source.md reference installed"
+# The references of an experiment card (the Based on list) are read by the planner only when a card names a
+# document, so a content test cannot see a missing delivery of the file.
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-plan/references/experiment-references.md" \
+  "unikit-plan experiment-references.md reference installed"
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-implement/references/balance-measure.md" \
   "unikit-implement balance-measure.md reference installed"
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-verify/references/balance-checks.md" \
@@ -424,6 +432,8 @@ assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-explore/references/coherence
   "unikit-gd-explore coherence-gate.md reference installed"
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-explore/references/ultra-research.md" \
   "unikit-gd-explore ultra-research.md reference installed"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-explore/references/experiment-lens.md" \
+  "unikit-gd-explore experiment-lens.md reference installed (the experiment design lens)"
 # The balance skill's branches are read only by intent, so a content test cannot see a missing
 # delivery of a reference — the files are asserted here.
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-balance/SKILL.md" \
@@ -437,10 +447,10 @@ assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-balance/references/template-
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-balance/references/experiment-route.md" \
   "unikit-gd-balance experiment-route.md reference installed (the experiment route)"
 # The experiment skill's branches are read only by intent, so a content test cannot see a missing
-# delivery of a reference — all eleven files are asserted here.
+# delivery of a reference — all fourteen files are asserted here.
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-experiment/SKILL.md" \
   "unikit-gd-experiment SKILL.md installed (experiment partner)"
-for exp_ref in mode-discover mode-specify mode-evaluate mode-manage template-experiment card-draft-view storage-and-index context-and-research planning-handoff balance-link lookup; do
+for exp_ref in mode-discover mode-specify mode-evaluate mode-manage template-experiment card-draft-view storage-and-index context-and-research planning-handoff balance-link lookup from-research mode-think design-notes; do
   assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-experiment/references/${exp_ref}.md" \
     "unikit-gd-experiment ${exp_ref}.md reference installed"
 done

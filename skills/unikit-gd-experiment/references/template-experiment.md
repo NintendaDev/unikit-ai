@@ -18,6 +18,7 @@ Read **only** when a card is being created or edited, or checked for readiness f
 - Updated: YYYY-MM-DD
 - Related: none
 - Origin: none
+- Based on: none
 
 ## 2. Problem
 <The player or design problem: who is hurt, how it shows today, why it matters.>
@@ -27,6 +28,7 @@ Read **only** when a card is being created or edited, or checked for readiness f
 
 ## 4. What We Test
 <One sentence: the single question the evidence must answer.>
+Judged on: <two to four qualities the evidence is read against, each a few words in the designer's words; the question alone when it is one>
 
 ## 5. Design
 <The experience in the designer's words: what the player sees, does and gets; the rules; the parameters that differ between variants.>
@@ -68,6 +70,13 @@ The card describes a disposable prototype, not production-ready functionality.
 - Evidence: None
 - Confidence: —
 - Assessed version: —
+
+## Rationale
+- Why this design: <each key choice, one line: the choice and its reason or precedent; a choice without a reason is marked "assumption">
+- Intended feeling: <one sentence, in the player's terms>
+- Rejected: <an alternative and why not; a piece set aside for a later experiment is named as such>
+- Not tested on purpose: <what, and why>
+- If it fails: <what the result would teach>
 ```
 
 ## Field rules
@@ -78,22 +87,26 @@ The card describes a disposable prototype, not production-ready functionality.
 - **Created** is set once; **Updated** is today's date (`Bash(date *)`) on every write of the card.
 - **Related** is `none` or `EXP-<nnn>` numbers separated by commas; **Category** is a free word; **Summary** is one or two sentences.
 - **Origin** is `none` or `from balance` with five nested lines; the format of those lines belongs to `{{skills_dir}}/{{self_name}}/references/balance-link.md` and is not repeated here.
+- **Based on** is `none` or one nested line per document the card was built from, `<kind>: <title> · <path> · updated <value>`: kind `research` (a design research: the path of its folder and the `Updated:` of its record), kind `balance` (a balance document: the path of its `CHECKPOINTS.md` and the `Updated:` of its header) or kind `notes` (the deep pass of this experiment: the path of its `notes.md` and its date). It is written whenever a research or a balance document was the input of the card and is never left to prose; nothing of the document is copied into the store; a card saved before this line existed is read as `none`. The planner reads the documents it names.
 
 ## What each section must hold
 
 - **Hypothesis** — testable; one changed factor, or the reason why several move together is named.
+- **What We Test** — its first sentence is the question; `index.md` and the lookup read only that sentence. `Judged on:` names the qualities that sentence covers (for example understood, enjoyed, better than the present start), never more than four; a card saved before this line existed is read as judged on its question alone and is not rewritten to add it.
 - **Design** — the player's experience in the designer's words; it does not prescribe engine classes, architecture, dependency injection, code files or implementation details. The sentence "The card describes a disposable prototype, not production-ready functionality" is the last line of section 5 of every card, so the planner tells a prototype from finished functionality; the specify branch keeps it in every card it writes.
 - **Gameplay Flow** — visible: goal, progress, success, failure and the next action.
 - **Interface and Feedback** — visual readability is essential; the key elements that must read at a glance are named.
 - **How to Test** — a concrete protocol; the duration is chosen by the card: do not force every experiment to last five minutes.
-- **Success Criteria** — any threshold is marked as a set of preliminary acceptance targets and is never presented as a fact.
-- **Problem, What We Test, Variants, Minimum Scope, Risks, Follow-up Decisions** — as the line of the template says.
+- **Success Criteria** — any threshold is marked as a set of preliminary acceptance targets and is never presented as a fact. When `Judged on:` names several qualities, each gets its own signals for every outcome, and Partially Supported means some qualities held and others did not (the card says which).
+- **Success Criteria and Follow-up Decisions are written as items that can be read alone.** An item names its subject (a judged quality, or the outcome of the whole test) and states the condition or the decision in a full sentence: "The hypothesis is supported on <quality> if …", "If the result is inconclusive, repeat the test with …". The outcome tokens stay in the file as the bold openers of the outcome items (`Supported`, `Partially Supported`, `Not Supported`, `Inconclusive`); a token followed by a fragment is not an item, because the reader of one line must know what is supported and what is decided.
+- **Problem, Variants, Minimum Scope, Risks** — as the line of the template says.
+- **Rationale** is the section after section 14 and has no number, so the numbering the planner, the lookup and the index rely on does not move. It holds the reasons the other sections leave out. Evaluate changes the six lines of section 14 only; the Rationale stays. A change of the Rationale alone does not raise `Version`. A card saved before this section existed is read as having none and is not rewritten to add it.
 
 ## Readiness for planning
 
-Ready for Planning is set only when the planner could build the prototype without asking the designer about a rule that matters. The card is independently understandable: it does not lean on a hidden conversation context. Eight yes/no checks:
+Ready for Planning is set only when the planner could build the prototype without asking the designer about a rule that matters. The card is independently understandable: it does not lean on a hidden conversation context. Ten yes/no checks:
 
-1. The hypothesis is testable, and the factor is one or the reason for several is named.
+1. The hypothesis is testable, the factor is one or the reason for several is named, and `Judged on:` says what the evidence is read against.
 2. It is clear what to build — sections 5 and 6 describe the whole experience.
 3. The parameters that differ between variants are named.
 4. The minimum interface covers goal, progress, success, failure and the next action.
@@ -101,6 +114,8 @@ Ready for Planning is set only when the planner could build the prototype withou
 6. There is a way to test it and there are success criteria.
 7. No material question to the designer is left in the text.
 8. The text holds no technical traces (the self-check in `{{skills_dir}}/{{self_name}}/references/storage-and-index.md`).
+9. A card built from a game-design research or from a balance document names it in `Based on:`.
+10. The Rationale holds a reason for the main choices (an `assumption` marker is a reason), the intended feeling and what a failure would teach. A small experiment needs two or three lines, but not none.
 
 Any "no" keeps the status at `Draft`, and the closing block prints no plan command and names the reason.
 

@@ -117,6 +117,8 @@ Ultra is **user-named, never model-inferred**. Rule 5 recognises the request whe
 
 **An experiment input** — the argument names an experiment (`EXP-<nnn>`), a path to an `experiment.md` card, an experiment folder under `.unikit/gamedesign/experiments/`, or a set of them (`/unikit-gd-experiment` prints this command): load `{{skills_dir}}/{{self_name}}/references/experiment-plan.md` and follow it. It owns reading and checking the cards, the snapshot, the mode question, the settings, the branch and the base, the folder name and the shape of the plan. The word "experiment" in free text is not a selector. An ordinary plan does not read that file. Missing or unreadable → `WARN [experiment] experiment-plan reference missing — planning as an ordinary plan; run unikit-ai update`. A request that names an experiment by its description — "the latest experiment", "the experiment about onboarding" — while `.unikit/gamedesign/experiments/` holds at least one `experiment.md` is resolved first through `{{skills_dir}}/unikit-gd-experiment/references/lookup.md`, read only for such a request: the card the user confirms becomes the selector and this branch goes on as for `EXP-<nnn>`. That file missing or unreadable → `WARN [experiment] lookup reference missing — asking for a selector`, and the user is asked for an `EXP-<nnn>`.
 
+**An experiment request** — the text asks the planner for an experiment plan, in any phrasing or language: "experiment plan", "experimental plan", "plan an experiment", "plan the experimental branch", "экспериментальный план". It may stand beside any mode word. The wording and the verb that carried it are stripped; what is left is the **source** — a description, a path, a game-design research named by path or in words ("the latest game-design research"), cards, or nothing (then the conversation itself). Load `{{skills_dir}}/{{self_name}}/references/experiment-plan.md` and `{{skills_dir}}/{{self_name}}/references/experiment-source.md`: the second owns every source that is not a card. Like ultra, the request is never inferred — a feature that is about experiments (an A/B switch, an experiment framework) and the bare word in a description are an ordinary plan. Cards named in the same request keep the route of **An experiment input**. `add` mode ignores the wording. Missing or unreadable `experiment-source.md` → `WARN [experiment] experiment-source reference missing — planning an ordinary plan from the description; run unikit-ai update`.
+
 `--base <branch>` — the branch to create the feature branch from (full mode only). `--base` flag overrides `git.base_branch` from config. Priority: `--base` flag > `git.base_branch` from `.unikit/config.yaml` > fallback `main`.
 
 ## Workflow
@@ -182,6 +184,8 @@ Ultra is deliberately absent from this question — see the parsing rules in Ste
 For a merge request the mode question is the one in `merge-plan.md`; `ultra` appears there as the third option.
 
 For an experiment input the mode question is the one in `experiment-plan.md`: `fast`, `full` and `ultra` are all shown, and `ultra` is recommended for a set of two or more cards — the user's own word still decides.
+
+For an experiment request the source is resolved by `{{skills_dir}}/{{self_name}}/references/experiment-source.md` → `## The source`, which replaces the description part of this step — the session context, the researches index and the description question; it never falls back to the code researches index above. The mode question stays, as for any plan.
 
 ### Step 0.5: Bootstrap Context (MANDATORY — all modes except List)
 
@@ -517,7 +521,7 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
 
    **`## Balance Context`** — only for a plan built from a Balance Checkpoints file (`references/balance-plan.md`): the snapshot of the point, placed after `## Based on` and after any of the three snapshots above, directly before `## Settings`; omitted in every other plan. What it carries is `TASK-FORMAT.md`'s (`### Balance checkpoint grammar`).
 
-   **`## Experiment Context`** — only for a plan built from experiment cards (`references/experiment-plan.md`): the snapshot of the cards (and of the design researches that name them) and the lines `Branch:` and `Base:`, placed in the slot of `## Balance Context` (a plan has one of them), directly before `## Settings`; omitted in every other plan. What it carries is `TASK-FORMAT.md`'s (`### Experiment context section`).
+   **`## Experiment Context`** — only for an experiment plan: the snapshot of the cards (and of the design researches that name them) when it was built from experiment cards (`references/experiment-plan.md`), or a brief of the source when it was built from another one (`references/experiment-source.md`); and the lines `Branch:` and `Base:`, placed in the slot of `## Balance Context` (a plan has one of them), directly before `## Settings`; omitted in every other plan. What it carries is `TASK-FORMAT.md`'s (`### Experiment context section`).
 
 3. **`## Settings`** — User preferences (`/unikit-implement` reads this):
    - `Testing: yes/no` — whether tests are written at all: tests for logic and system values (`dev-principles.md` item 5)

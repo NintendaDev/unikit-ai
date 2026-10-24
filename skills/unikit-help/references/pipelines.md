@@ -229,7 +229,8 @@ one-way boundary, delta discipline, and the "diagnose, don't prescribe" stance a
   last; `/unikit-verify` checks the data and the report, not the balance; `/unikit-improve`
   synchronises by `Item:` and never goes past the horizon. The report goes back to
   `/unikit-gd-balance` as a document — design never reads the code workspace on its own.
-- **Experiment loop (code side).** `/unikit-plan` given experiment cards plans them as one prototype
+- **Experiment loop (code side).** `/unikit-plan` given experiment cards, or the source of an
+  explicit experiment request (a design research, a file, a description), plans one prototype
   on its own branch (an `## Experiment Context` snapshot, `Testing: no`, `Docs: no`); the executors
   read `.unikit/system/prototype-profile.md` and leave the roadmap, the project documents and the
   TODO list alone; the playtest feedback goes back to `/unikit-gd-experiment`.

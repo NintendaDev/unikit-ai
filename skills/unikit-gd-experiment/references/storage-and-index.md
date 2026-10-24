@@ -10,11 +10,12 @@ Read **only** when a file under .unikit/gamedesign/experiments/ is about to be c
 ├── unassigned-feedback.md        only when a comment cannot be attributed
 └── EXP-<nnn>-<slug>/
     ├── experiment.md             the card (template-experiment.md owns its format)
+    ├── notes.md                  only after a deep pass (design-notes.md owns it)
     ├── feedback.md               original feedback, append-only
     └── results.md                rounds and assessments
 ```
 
-This skill writes only here. `unassigned-feedback.md` is the one file beyond the three per experiment; it is created only when needed.
+This skill writes only here. `unassigned-feedback.md` is the one file beyond the three per experiment (apart from `notes.md`); it is created only when needed.
 
 ## Numbers
 
@@ -136,11 +137,11 @@ When the card has `Origin: from balance`, line 4 is replaced: the origin lines a
 | EXP-001 | <title> | `.unikit/gamedesign/experiments/EXP-001-<slug>/experiment.md` ([open](EXP-001-<slug>/experiment.md)) | <what we test> | Draft | Not Tested | — |
 ```
 
-One row per experiment, archived ones included. `Path` is the project-root path in backticks with a relative link from the index next to it; a `|` inside a cell is escaped as `\|`. Column headers and machine values are English, free text is in the artifact language. The derived display: Outcome shows Not Tested while the Evaluation status is Not Tested (the card field is then `Undetermined`); after the first assessment the column takes the card's `Outcome`, and shows `Outdated` while the `Evaluation status` is `Outdated`. `Score` shows `—` while the card's `Score` is `Not Rated`, otherwise the number. Confidence is not in the index. The index is **checked, not silently repaired**: `list` reads the cards and the results, prints `WARN [experiment] index out of date — not repaired` on a difference and shows it; `repair-index` runs only on an explicit request; canonical records are never bent to fit the index.
+One row per experiment, archived ones included; the `What We Test` cell holds the first sentence of section 4 only. `Path` is the project-root path in backticks with a relative link from the index next to it; a `|` inside a cell is escaped as `\|`. Column headers and machine values are English, free text is in the artifact language. The derived display: Outcome shows Not Tested while the Evaluation status is Not Tested (the card field is then `Undetermined`); after the first assessment the column takes the card's `Outcome`, and shows `Outdated` while the `Evaluation status` is `Outdated`. `Score` shows `—` while the card's `Score` is `Not Rated`, otherwise the number. Confidence is not in the index. The index is **checked, not silently repaired**: `list` reads the cards and the results, prints `WARN [experiment] index out of date — not repaired` on a difference and shows it; `repair-index` runs only on an explicit request; canonical records are never bent to fit the index.
 
 ## Order of writes
 
-On creation: card, then feedback.md, then results.md, then the index last. On evaluation: evidence → `results.md` → the summary in the card → the index last. There is no transaction. When a write fails: stop, name the last file written and the pending write, and do not declare a half-created card saved.
+On creation: card, then feedback.md, then results.md, then the index last. A deep pass adds `notes.md`, written first (`design-notes.md`). On evaluation: evidence → `results.md` → the summary in the card → the index last. There is no transaction. When a write fails: stop, name the last file written and the pending write, and do not declare a half-created card saved.
 
 ## Technical traces: self-check before every write
 
@@ -152,7 +153,7 @@ On creation: card, then feedback.md, then results.md, then the index last. On ev
   5. names of engine objects, mechanisms and frameworks;
   6. architectural terms — layers, design patterns, dependencies between modules, dependency injection;
   7. line numbers, commits, branches.
-- **Not** traces: `EXP-<nnn>`, `E-<nnn>`, `R-<nnn>`, paths **inside** the experiments store, links to GDD documents and researches, the checkpoint code in an origin block, and the game's own names the designer uses.
+- **Not** traces: `EXP-<nnn>`, `E-<nnn>`, `R-<nnn>`, paths **inside** the experiments store, links to GDD documents, researches and balance documents, external sources (a title, a venue and a year, or an address), the checkpoint code in an origin block, and the game's own names the designer uses.
 - A hit is rewritten in game words. A fact that cannot be said without the technical word is written `unknown — the planner will check the project`.
 - The restriction applies to **artifacts**; in chat the source may be named at the user's request. There is no checking script: this is an instruction.
 
