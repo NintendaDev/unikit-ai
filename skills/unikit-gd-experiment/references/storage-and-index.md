@@ -152,7 +152,7 @@ On creation: card, then feedback.md, then results.md, then the index last. On ev
   5. names of engine objects, mechanisms and frameworks;
   6. architectural terms — layers, design patterns, dependencies between modules, dependency injection;
   7. line numbers, commits, branches.
-- **Not** traces: `EXP-<nnn>`, `E-<nnn>`, `R-<nnn>`, paths **inside** the experiments store, links to GDD documents and researches, the checkpoint code in an origin block, and the game's own names the designer uses.
+- **Not** traces: `EXP-<nnn>`, `E-<nnn>`, `R-<nnn>`, paths **inside** the experiments store, links to GDD documents, researches and balance documents, the checkpoint code in an origin block, and the game's own names the designer uses.
 - A hit is rewritten in game words. A fact that cannot be said without the technical word is written `unknown — the planner will check the project`.
 - The restriction applies to **artifacts**; in chat the source may be named at the user's request. There is no checking script: this is an instruction.
 

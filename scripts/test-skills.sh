@@ -10946,6 +10946,9 @@ else
     exp_ok "EXP-8:R-22" 'names it in `Based on:`' "$EXP_REFS/mode-specify.md"
     exp_ok "EXP-8:R-23" 'what the card is based on (`Based on:`)' "$EXP_REFS/card-draft-view.md"
     exp_ok "EXP-8:R-24" 'balance: <slug>' "$EXP_REFS/balance-link.md"
+    exp_ok "EXP-8:R-25" 'the limit is not measured' "$EXP_REFS/card-draft-view.md"
+    exp_ok "EXP-8:R-26" 'saved before this line existed are read as `none`' "$EXP_REFS/balance-link.md"
+    exp_ok "EXP-8:R-27" 'researches and balance documents' "$EXP_REFS/storage-and-index.md"
 
     # (EXP-9) the lexicon: the templates and the sample artifacts carry no technical trace; the scan itself is tested first
     for s in 'PlayerController.cs' 'spawnEnemy()' 'enemy_spawn_timer' 'Assets/Scripts/Player.cs' 'player.Move(x)' 'FlagCaptureManager'; do
