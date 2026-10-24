@@ -51,7 +51,7 @@ mkdir -p .unikit/gamedesign/researches/<slug>
    Status: completed | in-progress | needs-follow-up
    Research: <folder-name>
    Target: SYS-<slug> | FLOW-<slug> | CONTENT-<slug>   # internal-design lens only — the system, flow, or content type this research targets
-   Kind: feature | improvement   # internal-design lens only — feature = new system/flow/content type, improvement = existing one
+   Kind: feature | improvement | experiment   # feature/improvement: internal-design lens only — feature = new system/flow/content type, improvement = existing one; experiment: experiment lens only, written without Target
 
    ## Table of Contents
    ## Artifact Index   — ultra only, immediately after the Table of Contents (see ultra-research.md); the first line of an ultra record is the mode marker defined there
@@ -94,7 +94,9 @@ mkdir -p .unikit/gamedesign/researches/<slug>
    (`internal-design-lens.md` → "Research tags") — they let `unikit-gd-system` /
    `unikit-gd-flow` / `unikit-gd-content` discover this research deterministically
    after a `/clear`.
-   A reference-dissection or market research omits both.
+   A reference-dissection or market research omits both. The **experiment lens** writes
+   `Kind: experiment` and no `Target:` (`experiment-lens.md` → "Tags and routing"): the
+   experiment skill finds the research by its words, not by a target.
 
    **Identifiers.** The vocabulary is closed: `F-<n>` (finding), `DEC-<n>` (decision),
    `RISK-<n>` (risk), `OQ-<n>` (open question), and in an ultra research also `ADR-<NNNN>`
@@ -156,6 +158,18 @@ mkdir -p .unikit/gamedesign/researches/<slug>
 
    For several targets, append one block per target (dependency-sorted).
 
+   **Experiment lens — append the `## Experiment Plan` block.** One block, for
+   `/unikit-gd-experiment`; its field list is owned by `experiment-lens.md` → "The block" and
+   is not repeated here.
+
+   **Offering the block.** When the research is about a mechanic or a player flow and the
+   experiment lens did not engage (the prompt carried no test signal), ask once before the
+   brief is written, with the question tool of your agent (`AskUserQuestion`): add the
+   `## Experiment Plan` block, so that `/unikit-gd-experiment` can build a card from this
+   research? The options are no (recommended) and yes; the default is no. On yes, fill the
+   fields of the block from what the research already holds and ask only what is still
+   missing; on no, write the brief as usual. In subagent mode nothing is asked.
+
 **Next Steps routing** — turn insights into concrete follow-ups:
 
 | Insight | Follow-up |
@@ -169,6 +183,7 @@ mkdir -p .unikit/gamedesign/researches/<slug>
 | **Internal lens** — a new / `skeleton` flow | 🌊 `/unikit-gd-flow` (consumes `## Flow Feature Plan`) |
 | **Internal lens** — improve a `detailed` content type | 📦 `/unikit-gd-content` (consumes `## Content Improvement Plan`) |
 | **Internal lens** — a new / `skeleton` content type | 📦 `/unikit-gd-content` (consumes `## Content Feature Plan`) |
+| **Experiment lens** — a test to run | 🧪 `/unikit-gd-experiment` (consumes `## Experiment Plan`) |
 | A balance/economy/UX convention worth keeping | 🧠 `/unikit-memory --module gamedesign` |
 | A consistency concern in the current design | ✅ `/unikit-gd-verify` |
 | **Grounded on an experiment card** — the card is ready for planning | 🧭 `/unikit-plan EXP-<nnn>` |

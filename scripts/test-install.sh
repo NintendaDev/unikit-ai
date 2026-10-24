@@ -432,6 +432,8 @@ assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-explore/references/coherence
   "unikit-gd-explore coherence-gate.md reference installed"
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-explore/references/ultra-research.md" \
   "unikit-gd-explore ultra-research.md reference installed"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-explore/references/experiment-lens.md" \
+  "unikit-gd-explore experiment-lens.md reference installed (the experiment design lens)"
 # The balance skill's branches are read only by intent, so a content test cannot see a missing
 # delivery of a reference — the files are asserted here.
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-balance/SKILL.md" \

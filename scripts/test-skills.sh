@@ -11012,14 +11012,14 @@ else
     done < <(find "$EXP_FIX" -path '*/project/*' -name '*.md' 2>/dev/null)
     EXP_CHK=$((EXP_CHK + 1)); (( EXP_PROJ_N > 0 )) || EXP_WHY+=" EXP-9:no-samples-scanned"
 
-    # (EXP-10) the fifteen scenarios of the specification: each README has its five sections and every anchor still resolves
+    # (EXP-10) the sixteen scenarios of the specification: each README has its five sections and every anchor still resolves
     exp_ok "EXP-10:root-honesty" 'checked by text only' "$EXP_FIX/README.md"
     EXP_SC_N=0
     EXP_ANC_N=0
     for sc in s01-empty-invocation s02-boring-first-minutes s03-compare-navigation-hints s04-timed-capture-spec \
               s05-save-without-duplicate-numbers s06-feedback-one-experiment s07-forwarded-mixed-chat \
               s08-repeat-evaluation s09-handoff-to-planner s10-doubtful-evidence s11-card-from-research s12-card-from-balance-point \
-              s13-think-quick-pass s14-think-deep-pass s15-think-without-web; do
+              s13-think-quick-pass s14-think-deep-pass s15-think-without-web s16-card-from-explore-block; do
         EXP_RM="$EXP_FIX/$sc/README.md"
         EXP_CHK=$((EXP_CHK + 1))
         if [[ ! -s "$EXP_RM" ]]; then EXP_WHY+=" EXP-10:missing($sc)"; continue; fi
@@ -11035,12 +11035,12 @@ else
             grep -qF -- "$EXP_ANC_LIT" "$EXP_DIR/$EXP_ANC_FILE" 2>/dev/null || EXP_WHY+=" EXP-10:${sc%%-*}:anchor-lost(${EXP_ANC_FILE##*/}:${EXP_ANC_LIT:0:24})"
         done < <({ grep -E '^- Anchor: ' "$EXP_RM" || true; } | sed 's/^- Anchor: //')
     done
-    EXP_CHK=$((EXP_CHK + 1)); (( EXP_SC_N == 15 )) || EXP_WHY+=" EXP-10:scenarios=${EXP_SC_N}-of-15"
-    EXP_CHK=$((EXP_CHK + 1)); (( EXP_ANC_N >= 73 )) || EXP_WHY+=" EXP-10:anchors=${EXP_ANC_N}-of-73"
+    EXP_CHK=$((EXP_CHK + 1)); (( EXP_SC_N == 16 )) || EXP_WHY+=" EXP-10:scenarios=${EXP_SC_N}-of-16"
+    EXP_CHK=$((EXP_CHK + 1)); (( EXP_ANC_N >= 81 )) || EXP_WHY+=" EXP-10:anchors=${EXP_ANC_N}-of-81"
     (( EXP_CHK > 0 )) || EXP_WHY+=" EXP-1:nothing-checked"
 fi
 if [[ -z "$EXP_WHY" ]]; then
-    pass "EXP-1…EXP-10 experiment skill: structure, fourteen references, single owners, boundary, neutrality, membrane, pinned commitments, lexicon, fifteen scenarios checked by text only (${EXP_CHK} checks)"
+    pass "EXP-1…EXP-10 experiment skill: structure, fourteen references, single owners, boundary, neutrality, membrane, pinned commitments, lexicon, sixteen scenarios checked by text only (${EXP_CHK} checks)"
 else
     fail "EXP-1…EXP-10 experiment skill:$EXP_WHY"
 fi
@@ -11746,6 +11746,67 @@ if [[ -z "$EXP_WHY" ]]; then
     pass "EXP-RF1…EXP-RF3 experiment references: the planner reads every Based on entry, failures are loud, the card wins, the blocks and the delivery are in place (${EXP_CHK} checks)"
 else
     fail "EXP-RF1…EXP-RF3 experiment references:$EXP_WHY"
+fi
+
+# --- EXL1…EXL3: the experiment design lens of the design exploration and the card that reads its block. EXL1 — the
+# reference (load line, size, neutrality) and the switch in SKILL.md; EXL2 — the pinned formulations (a lens that runs with
+# or without a GDD, the block and its fields, the privacy rule of a web query, the tag without Target, the route and the
+# offer whose default is no); EXL3 — the experiment side reads the block first. Source assertions, like EXP-RF; the
+# helpers and accumulators of the EXP block are reused after a reset. The em dash of the heading is asserted by its ASCII
+# parts, and the switch is read as a section so that a phrase already used by another lens cannot satisfy a pin.
+EXP_WHY=""
+EXP_CHK=0
+EXL_LENS="$ROOT_DIR/skills/unikit-gd-explore/references/experiment-lens.md"
+EXL_SKILL="$ROOT_DIR/skills/unikit-gd-explore/SKILL.md"
+EXL_SAVE="$ROOT_DIR/skills/unikit-gd-explore/references/save-research.md"
+if [[ ! -s "$EXL_LENS" ]]; then
+    EXP_WHY+=" EXL1:missing-reference"
+else
+    # (EXL1) the reference and the switch
+    EXP_CHK=$((EXP_CHK + 1)); [[ "$(sed -n '3p' "$EXL_LENS")" == "Read **only** when"* ]] || EXP_WHY+=" EXL1:load-line"
+    EXL_SZ="$(wc -c < "$EXL_LENS" | tr -d ' ')"
+    EXP_CHK=$((EXP_CHK + 1)); (( EXL_SZ <= 12000 )) || EXP_WHY+=" EXL1:size=${EXL_SZ}"
+    exp_no "EXL1:maintainer-record-pointer" '.ai-factory' "$EXL_LENS"
+    exp_no "EXL1:agent-call" 'Agent(' "$EXL_LENS"
+    exp_no "EXL1:agent-variable" '{{agent_' "$EXL_LENS"
+    EXP_CHK=$((EXP_CHK + 1)); ! grep -qwE 'Unity|Godot|Unreal|GDScript' "$EXL_LENS" || EXP_WHY+=" EXL1:engine-word"
+    EXP_CHK=$((EXP_CHK + 1)); grep -qE '^## Experiment design lens .+ when it engages$' "$EXL_SKILL" || EXP_WHY+=" EXL1:no-switch-heading"
+    exp_ok "EXL1:skill-names-reference" 'experiment-lens.md' "$EXL_SKILL"
+    EXL_SEC="$({ awk '/^## Experiment design lens/{f=1;next} /^## /{f=0} f' "$EXL_SKILL" || true; })"
+    EXP_CHK=$((EXP_CHK + 1)); [[ -n "$EXL_SEC" ]] || EXP_WHY+=" EXL1:switch-section-empty"
+    # (EXL2) the pinned formulations
+    exl_in() { # <reason key> <literal> <text>: the literal is in the text
+        EXP_CHK=$((EXP_CHK + 1)); grep -qF -- "$2" <<< "$3" || EXP_WHY+=" $1"
+    }
+    exp_ok "EXL2:01" 'with or without `GAME.md`' "$EXL_LENS"
+    exp_ok "EXL2:02" '`## Experiment Plan`' "$EXL_LENS"
+    exp_ok "EXL2:03" 'Rejected alternatives' "$EXL_LENS"
+    exp_ok "EXL2:04" 'How the test could mislead' "$EXL_LENS"
+    exp_ok "EXL2:05" 'What each outcome decides' "$EXL_LENS"
+    exp_ok "EXL2:06" 'it never carries the name of the project' "$EXL_LENS"
+    exp_ok "EXL2:07" 'never paste fetched page text' "$EXL_LENS"
+    exp_ok "EXL2:08" '`Target:` is **not** written' "$EXL_LENS"
+    exp_ok "EXL2:09" '`Kind: experiment`' "$EXL_LENS"
+    exl_in "EXL2:10" 'inferred from the prompt, never a flag' "$EXL_SEC"
+    exl_in "EXL2:11" 'with or without `GAME.md`' "$EXL_SEC"
+    exl_in "EXL2:12" 'say it on entry' "$EXL_SEC"
+    exl_in "EXL2:13" 'experiment-lens.md' "$EXL_SEC"
+    exp_ok "EXL2:14" 'consumes `## Experiment Plan`' "$EXL_SAVE"
+    exp_ok "EXL2:15" 'the default is no' "$EXL_SAVE"
+    exp_ok "EXL2:16" 'Kind: feature | improvement | experiment' "$EXL_SAVE"
+    # (EXL3) the experiment side
+    exp_ok "EXL3:01" '`## Experiment Plan` is read first' "$EXP_REFS/from-research.md"
+    exp_ok "EXL3:02" 'its `Judged on` field is the first source' "$EXP_REFS/from-research.md"
+    exp_ok "EXL3:03" 'the rows come from its fields' "$EXP_REFS/from-research.md"
+    exp_ok "EXL3:04" 'research without the block goes the way' "$EXP_REFS/from-research.md"
+    exp_ok "EXL3:05" 'skills/unikit-gd-explore/references/experiment-lens.md' "$ROOT_DIR/scripts/test-install.sh"
+    exp_ok "EXL3:06" 'skills/unikit-gd-explore/references/experiment-lens.md' "$ROOT_DIR/scripts/test-update.sh"
+fi
+(( EXP_CHK > 0 )) || EXP_WHY+=" EXL1:nothing-checked"
+if [[ -z "$EXP_WHY" ]]; then
+    pass "EXL1…EXL3 experiment design lens: the reference and its switch, a lens that runs with or without a GDD, the block and the tag, the privacy rule, the offer whose default is no, and the card that reads the block first (${EXP_CHK} checks)"
+else
+    fail "EXL1…EXL3 experiment design lens:$EXP_WHY"
 fi
 
 # ─────────────────────────────────────────────
