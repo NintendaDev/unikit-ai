@@ -58,7 +58,7 @@ so it is settled before section B/C are generated:
   `conditional`; a sandbox / open objective the player sets themselves → `emergent`.
 - **Explain → Capture:** state the candidate and the trade-offs (linear = authored
   control, low replay; conditional = reactive, more branches to balance; emergent =
-  high agency, hardest to pace), then confirm with one `AskUserQuestion` — never
+  high agency, hardest to pace), then confirm it with the question tool of your agent (`AskUserQuestion`), one question — never
   assume on ambiguity.
 - **Record `mode:`** in the `GD-IDS.yaml` `flows[]` entry and the `FLOW.md` header
   `> Mode:` token. `unikit-gd-verify` checks `mode:` ↔ the document's structure (the
@@ -66,7 +66,7 @@ so it is settled before section B/C are generated:
   envelope for emergent) — exactly as it checks a system's `packs:` ↔ `## Pack:`. A
   mode change is an ordinary delta step (Revision).
 
-Then ask **only the remaining real forks**, batched (1–2 `AskUserQuestion` rounds) —
+Then ask **only the remaining real forks**, batched (1–2 rounds of the question tool of your agent (`AskUserQuestion`)) —
 never one gate per section. Options are **grounded** in the loaded `core-loops` /
 `player-motivation` theory and the pillars, **never a blank page** (a grounded **form**
 + an open "my own — I'll describe it"); a truly-blank section becomes a **flagged open
@@ -136,7 +136,7 @@ the card, surfaced on `ru`; no duplication). Each group closes with **one struct
 group gate**:
 
 ```
-AskUserQuestion: <group> review — <n>/<m> sections done.
+The question tool of your agent (`AskUserQuestion`): <group> review — <n>/<m> sections done.
 Options: Accept & continue · Fix this · Defer this · Accept all the rest
 ```
 

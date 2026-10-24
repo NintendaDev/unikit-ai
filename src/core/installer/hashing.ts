@@ -15,8 +15,10 @@ import { getEngineConfig } from '../engines.js';
 import { getTransformer } from '../transformer.js';
 import { logInfo } from '../../utils/log.js';
 import {
-  DEFAULT_SKILL_CALL_FORM, PROFILE_HASH_TAG, REFERENCES_DIR_NAME, SKILL_CALL_HASH_KEY, SKILL_FILE, SPAWN_ARGS_HASH_KEY, TRANSFORM_HASH_TAG, TRANSFORM_REVISIONS,
+  ARGS_HASH_KEY, DEFAULT_SKILL_CALL_FORM, EXTENSION_BLOCK_MARKER_PREFIX, EXTENSION_REFERENCES_SUBDIR, PROFILE_HASH_TAG, REFERENCES_DIR_NAME,
+  SKILL_CALL_HASH_KEY, SKILL_FILE, SPAWN_ARGS_HASH_KEY, TRANSFORM_HASH_TAG, TRANSFORM_REVISIONS,
 } from '../constants.js';
+import { stripBlocksForHash } from '../extension-markers.js';
 import { stripMdExtension } from './shared.js';
 
 export interface ResolvedSkillPaths {
@@ -30,7 +32,21 @@ export interface ResolvedSkillPaths {
 
 // --- Hashing utilities ---
 
-async function hashManagedFiles(files: Array<{ absPath: string; relPath: string }>): Promise<string | null> {
+/**
+ * The bytes of an installed file as the hash sees them: without the blocks an extension put there.
+ * A file with no marker keeps its exact bytes, so the hashes of projects that never installed an
+ * extension do not move.
+ */
+function normalizeInstalledBuffer(content: Buffer): Buffer {
+  const text = content.toString('utf8');
+  if (!text.includes(`<!-- ${EXTENSION_BLOCK_MARKER_PREFIX}:`)) return content;
+  const stripped = stripBlocksForHash(text);
+  return stripped === text ? content : Buffer.from(stripped, 'utf8');
+}
+
+async function hashManagedFiles(
+  files: Array<{ absPath: string; relPath: string; normalizeBlocks?: boolean }>,
+): Promise<string | null> {
   if (files.length === 0) {
     return null;
   }
@@ -44,7 +60,7 @@ async function hashManagedFiles(files: Array<{ absPath: string; relPath: string 
       return null;
     }
     hasher.update(`path:${file.relPath}\n`);
-    hasher.update(content);
+    hasher.update(file.normalizeBlocks ? normalizeInstalledBuffer(content) : content);
     hasher.update('\n');
   }
 
@@ -57,10 +73,16 @@ async function hashManagedDirectory(dirPath: string): Promise<string | null> {
     return null;
   }
 
-  const mapped = files.map(absPath => ({
-    absPath,
-    relPath: path.relative(dirPath, absPath).replaceAll('\\', '/'),
-  }));
+  // What extensions deliver (`references/ext/`) and the blocks they insert into SKILL.md are theirs,
+  // recreated on every pass — neither is a manual edit of the user.
+  const extensionReferencesPrefix = `${REFERENCES_DIR_NAME}/${EXTENSION_REFERENCES_SUBDIR}/`;
+  const mapped = files
+    .map(absPath => ({
+      absPath,
+      relPath: path.relative(dirPath, absPath).replaceAll('\\', '/'),
+    }))
+    .filter(file => !file.relPath.startsWith(extensionReferencesPrefix))
+    .map(file => ({ ...file, normalizeBlocks: file.relPath === SKILL_FILE }));
 
   return hashManagedFiles(mapped);
 }
@@ -112,10 +134,11 @@ export async function hashInstalledSkill(paths: ResolvedSkillPaths): Promise<str
     return null;
   }
 
-  const filesToHash: Array<{ absPath: string; relPath: string }> = [
+  const filesToHash: Array<{ absPath: string; relPath: string; normalizeBlocks?: boolean }> = [
     {
       absPath: paths.targetSkillFile,
       relPath: path.basename(paths.targetSkillFile),
+      normalizeBlocks: true,
     },
   ];
 
@@ -130,6 +153,13 @@ export async function hashInstalledSkill(paths: ResolvedSkillPaths): Promise<str
   }
 
   return hashManagedFiles(filesToHash);
+}
+
+/** Hash of an installed subagent file, without the blocks extensions inserted into it. */
+export async function hashInstalledSubagent(filePath: string): Promise<string | null> {
+  const content = await readFileBuffer(filePath);
+  if (!content) return null;
+  return createHash('sha256').update(normalizeInstalledBuffer(content)).digest('hex');
 }
 
 // --- Source hashes (skill + subagent) ---
@@ -169,17 +199,19 @@ function mcpHashComponent(
  * The agent's subagent profile as a hash component: the profile is substituted into the
  * installed skill text, so a changed value must reinstall every skill. An unregistered id
  * yields `profile:none` rather than throwing — the same stance as the engine lookup below.
- * The skill-call form and the extra call arguments join the tag only when they differ from the
- * default, so an agent that has neither keeps the hash it had before the fields existed.
+ * The skill-call form, the extra call arguments and the names of the model and effort arguments (they
+ * are drawn into every call head as slots) join the tag only when they differ from the default, so an
+ * agent that has none keeps the hash it had before the fields existed.
  */
 export function profileHashComponent(agentId: string): string {
   try {
-    const { readerType, workerType, modelDefault, skillCall, spawnArgs } = getAgentConfig(agentId).subagentProfile;
+    const { readerType, workerType, modelDefault, modelArg, effortArg, skillCall, spawnArgs } = getAgentConfig(agentId).subagentProfile;
     const base = `${PROFILE_HASH_TAG}:${readerType}|${workerType}|${modelDefault}`;
     // Appended only for a value that is not the default: an agent that has none keeps the hash it had.
     const extras = [
       skillCall === DEFAULT_SKILL_CALL_FORM ? '' : `${SKILL_CALL_HASH_KEY}=${skillCall}`,
       spawnArgs === '' ? '' : `${SPAWN_ARGS_HASH_KEY}=${spawnArgs}`,
+      modelArg === '' && effortArg === '' ? '' : `${ARGS_HASH_KEY}=${modelArg}/${effortArg}`,
     ].filter(part => part !== '');
     return [base, ...extras].join('|');
   } catch {

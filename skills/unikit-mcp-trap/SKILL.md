@@ -47,6 +47,8 @@ crossing.
 specification: this skill writes to it, `/unikit-mcp-audit` curates against it. Load it
 before writing anything.
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md` and
@@ -94,6 +96,8 @@ WARN [mcp-trap] server in notes header ≠ configured (<notes> ≠ <configured>)
 The existing entries stay in force — they are *suspect*, not void, and suspect entries
 still fail safe. Retiring them is `/unikit-mcp-audit`'s job, not this skill's.
 
+<!-- unikit:extension-point:bootstrap -->
+
 ## Input
 
 `$ARGUMENTS` takes three forms. Resolve which one this is **before** Step 1 — the branches
@@ -136,11 +140,7 @@ because the caller is usually the very session that produced the rows.
 
 ## Step 2 — ask before reading anything from disk
 
-Nothing in the session → count candidate plans first, then ask once:
-
-```
-No findings in this session. <N> plans changed after <audited>. Review them? [y/N]
-```
+Nothing in the session → count candidate plans first, print `No findings in this session. <N> plans changed after <audited>.`, then ask once with the question tool of your agent (`AskUserQuestion`): `Review them?` — `Review the plans` (Recommended) · `No, stop`.
 
 `<audited>` is the `audited:` date from the notes header; `never` means every plan is a
 candidate. Candidate plans are `.unikit/code/PLAN.md` and

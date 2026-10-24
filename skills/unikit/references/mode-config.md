@@ -15,7 +15,7 @@ implying the project was misconfigured.
 
 This mode **writes only `.unikit/config.yaml`**, and only through a targeted `Edit` —
 **never `Write`**, because a whole-file write would discard the user's own comments and
-ordering. Its tools are `Read`, `Edit` and `AskUserQuestion`, and no others.
+ordering. Its tools are `Read`, `Edit` and the question tool of your agent (`AskUserQuestion`), and no others.
 
 It invokes no skill, spawns no subagent, and runs no shell command. It **writes nothing
 under `.unikit/system/**`** — `.unikit/system/LANGUAGE_RULES.md` is explicitly **not** written
@@ -63,10 +63,13 @@ Assign every paired key to exactly one bucket. Write nothing and ask nothing in 
    "missing **or empty**", and the bootstrap deliberately leaves a placeholder-backed key
    empty when the run has nothing to resolve it from — the no-git case, for instance.
 
-   **Exception — `subagents.model.<agent>`.** An empty value there is a deliberate choice
-   (pass no model argument), not a missing one: keep it, never fill it from the template, and
-   report it as kept. An absent key is appended with its template value (`inherit` for
-   Codex), together with its comment.
+   **Exception — `subagents.model.<agent>.<role>` and `subagents.effort.<agent>.<role>`.** An empty value there
+   is a deliberate choice (pass no model argument, pass no effort argument), not a missing one:
+   keep it, never fill it from the template, and report it as kept. An absent key is appended
+   with its template value, together with its comment, and an agent block with none of its role keys
+   is appended whole. An agent that holds one scalar where the template has a map of roles — the form of
+   earlier releases — is left as it is and listed under skipped: its role keys are not appended, because
+   a key cannot be a value and a map at once.
 4. **Present, value outside a declared domain** → ask. A domain is declared by exactly one
    thing: an inline `# a | b` comment standing beside the value on the same line. Nothing
    else declares one — an `Options:` or `Examples:` list inside a comment block is prose for
@@ -88,16 +91,7 @@ Assign every paired key to exactly one bucket. Write nothing and ask nothing in 
 
 ## Phase C — Print what was found
 
-Print the full table **before asking anything**. The interactive question mechanism carries
-options and does not carry the body they refer to, so a question asked before the report
-leaves the user deciding without the subject of the decision in front of them.
-
-**The table and the question are two separate emissions, in that order.** Where the choice is
-offered through an interactive question mechanism, that is a separate call made **after** the
-report text is already on screen — never in place of it, and never bundled into the same turn
-as the only visible output. Emit the table, then ask. This is stated as its own rule because
-the paragraph above was not enough on its own: the bundling was observed on a real project
-while that rationale was already in the file, and a rationale is not an instruction.
+Print the full table **before asking anything**.
 
 | Key | Current state | Bucket | What will happen |
 |-----|---------------|--------|------------------|
@@ -120,8 +114,8 @@ without writing.
 
 ## Phase D — Ask
 
-Ask only about buckets 2, 3-as-placeholder and 4, through `AskUserQuestion`, after the table
-is on screen. One question per key, or one grouped question when the keys are related and the
+Ask only about buckets 2, 3-as-placeholder and 4, with the question tool of your agent
+(`AskUserQuestion`). One question per key, or one grouped question when the keys are related and the
 options are the same.
 
 Classification decides the **bucket**; it never decides the **value**. Item 2 of

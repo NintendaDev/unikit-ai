@@ -2,6 +2,10 @@
 
 # Skills Reference
 
+## How skills ask you questions
+
+Every skill that asks you a question follows `.unikit/system/user-questions.md`: what is being chosen and what each option changes is printed first as a numbered list, then the question goes through the question tool of your agent with the recommended option first, and the run waits in the same turn until you answer. A question you answer in your own words (a name, a description, a list of numbers) goes through the tool too, with likely answers to pick or replace - you write your own in the free-text answer. Numbered text and the end of the turn come only when your agent has no such tool.
+
 ## Help & Navigation
 
 ### `/unikit-help` - framework navigator
@@ -72,6 +76,7 @@ These skills form the core development loop. See [Development Workflow](workflow
 - The `ultra` keyword adds adaptive artifacts to the research folder - a C4 view, ADRs, a dependency graph - written by relevance rather than by checklist and indexed from the research's `## Artifact Index`; it also makes the dialogue log write itself while you talk. Recognised as the leading token or in your own wording ("ultra research"), never inferred from the topic's size
 - Every save — regular and ultra alike — ends with a **coherence gate**: it re-reads the written files from disk (never the conversation, which does not survive a `/clear`) and checks that the brief stands on its own, does not silently contradict the result, and separates evidence from inference. A mismatch must quote both sides verbatim, so a pass cannot simply be asserted. The gate runs **at most two passes**: zero blocking findings is a pass, a material or cosmetic remainder is recorded rather than held against the save, and blocking findings surviving the second pass stop the gate and ask the user instead of starting a third. The read-only pass goes to a fresh context that receives the path of the gate's reference file rather than its text, and returns a report whose `Next:` line — pass, repair, ask or hold — the saving session acts on, so an ordinary save reads no reference file at the moment its context is fullest; without an agent the pass runs inline. If the gate's reference file is missing it prints `WARN [coherence]` and still saves, rather than losing an exploration that already happened
 - **Merge mode** - ask to merge a named branch into the current one and it reads that merge before it happens: `git merge-tree` predicts the result without touching your working tree, and the saved research gives an agent a directive for every conflict, so you resolve none yourself. Fetching the named branch still asks your permission
+- **Experiment grounding** - a topic that names an experiment (an `EXP-<nnn>`, a path to an `experiment.md`, or "the latest experiment") grounds the exploration on that card: it reads the card, writes nothing to the experiment store, and the saved summary carries an `Experiment:` line and a `Next step:` command - `/unikit-plan EXP-<nnn>` for a card ready for planning, otherwise `/unikit-gd-experiment`. An experiment named in words is found through the lookup of `/unikit-gd-experiment` and always confirmed by you first
 - When direction is clear, transition to `/unikit-plan`
 
 ### `/unikit-plan [fast|full|ultra|add|--list] [--base <branch>] <description>` - plan the work
@@ -88,7 +93,7 @@ These skills form the core development loop. See [Development Workflow](workflow
 Four modes:
 - **Fast** - no git branch, saves plan to `.unikit/code/PLAN.md` (single flat file)
 - **Full** - optionally creates a git branch (`<git.branch_prefix><name>`), asks about tests, documentation and roadmap linkage, saves plan
-- **Ultra** - same folder and branch behavior as Full, plus one file per phase. Strictly opt-in: **user-named, never model-inferred**. Recognised wherever the request sits in the sentence and in any language ("ultra plan", "ультраплан", "make an ultra plan for the inventory"), but never offered (except in a merge plan, where the mode question offers it) and never chosen because a feature looks big. Wording that only asks for care ("plan this thoroughly") is not ultra - the skill asks instead
+- **Ultra** - same folder and branch behavior as Full, plus one file per phase. Strictly opt-in: **user-named, never model-inferred**. Recognised wherever the request sits in the sentence and in any language ("ultra plan", "ультраплан", "make an ultra plan for the inventory"), but never offered (except in a merge plan, where the mode question offers it, and in a set of two or more experiment cards, where it recommends it) and never chosen because a feature looks big. Wording that only asks for care ("plan this thoroughly") is not ultra - the skill asks instead
 - **Add** - extends an existing plan with new tasks (never creates a branch)
 
 Fast, Full and Ultra modes explore your codebase for patterns, create dependency-ordered tasks with effort estimates and file paths. Includes commit checkpoints for 5+ tasks. Generates one `PLAN.md` manifest carrying both the checklist and `## Technical Context`. Ultra additionally splits the plan into one file per phase, each satisfying a Required Detail Gate, so a smaller model can execute what a stronger one planned; its manifest also carries an optional `## Architecture and Decisions` for decisions that bind two or more phases. Add mode extends an existing plan in place: it explores the codebase only when the change needs it, and refuses an ultra bundle (use `/unikit-improve` for that).
@@ -96,6 +101,10 @@ Fast, Full and Ultra modes explore your codebase for patterns, create dependency
 - **Modules** - full and ultra plans are always sliced into modules the base branch can take whole, listed under `## Modules` when there are two or more (or one longer than four phases, with a `why long:` note); a module boundary is a layer barrier, and a commit range never crosses one. With `git.pull_requests.checkpoints: true` every module but the last ends with a **PR checkpoint task**. The manifest records `Planned at:`, the commit the plan's work starts from
 - **Two ultra writing protocols** - standard by default, or with saved state in the plan folder's `.planning/` (chosen by the first ultra question; a standard plan over 12 phases is offered the switch); saved state survives a compaction and resumes with `/unikit-plan ultra <name>`
 - **Merge plan** - asked to merge a named branch into the current one, it analyses the merge itself (or reuses a fresh merge exploration) and writes the plan that carries it out: `fast` in `.unikit/code/PLAN.md`, `full` or `ultra` in `.unikit/code/plans/merge-<slug>/`, always on the current branch. The mode question has three options, `ultra` last and never recommended; the merge commit is made by the plan's own last merge task, not by `/unikit-commit`
+- Given a Balance Checkpoints file (a `CHECKPOINTS.md` path, a folder or slug under `.unikit/gamedesign/balance/`) it finds the current point itself and plans only up to it: a `## Balance Context` snapshot, `Measure:` and `Item:` tasks, a final `Hand-back:`; it never creates or switches a branch for such a plan
+- Given experiment cards (a path to an `experiment.md`, an `EXP-<nnn>`, a folder, or several of them) it builds **one** plan from a `## Experiment Context` snapshot of the cards, on its own `experiment/<date>-<topic>` branch (`full` and `ultra` always ask, `fast` only when the current branch is not an experiment branch - unlike any other fast plan); the defaults are `Testing: no`, `Docs: no`, no PR checkpoint tasks and no roadmap milestone
+- An experiment named in words ("make a plan for the latest experiment") is resolved first through the lookup of `/unikit-gd-experiment` and **always confirmed** by you (title, state, version) before the experiment branch starts. Researches whose summary has an `Experiment: EXP-<nnn>` line for a card join the plan: a code research under `## Based on`, a design research as context inside `## Experiment Context` (no hash, no drift tracking)
+- An explicit request for an experiment plan ("make an experiment plan from the latest game-design research") builds the same plan without cards (`references/experiment-source.md`). The source is a design research - a path, or named in words: the planner looks in `.unikit/gamedesign/researches/`, takes the latest completed one and **always confirms it** with one line - or a file, a description in the request, or simply what you described earlier in the conversation (a bare "launch the experiment branch" after you talked an idea through is enough). `## Experiment Context` then holds a prototype brief instead of the cards. The planner builds what the source says and asks one question when it does not say what to test or build; the mode question offers `fast` and `full` (ultra only when you name it). A feature that is merely about experiments, such as an A/B switch, is an ordinary plan
 
 ### `/unikit-improve [--list] [@plan-folder] [+check] [prompt]` - refine the plan
 
@@ -112,6 +121,7 @@ Fast, Full and Ultra modes explore your codebase for patterns, create dependency
 - `--list` shows available plans; `@<path>` targets a specific plan folder
 - **Builds on the plan's reconnaissance** when the plan kept it (`recon/`, an ultra plan written with saved state): each recon file is a topic, with the phases it covers, their open tasks and how fresh it is (paths changed since its `HEAD`). Without a prompt it shows the topics and asks what to improve - all fresh topics with open tasks by default, or chosen ones, or the whole plan as before; with a prompt it takes only the topics the prompt touches. Fresh reconnaissance replaces a new exploration, changed paths are explored again, the plan's logic (dependencies, modules, commit ranges) is checked across the whole plan either way, and only heads and single sections of recon files are read. The reconnaissance itself is never edited
 - `+check` runs the refinements past a **fresh-context validator** before they are applied - a read-only subagent that drops, modifies, or reclassifies findings it cannot substantiate. If the validator fails to launch, the pass is skipped: every finding is kept and a single `WARN [+check]` line is printed
+- A balance plan: synchronises the plan with the current point by small edits keyed on `Item:`, never goes past `Hand-back:`, never touches `## Measurements` or the balance document
 
 ### `/unikit-implement [--list] [@folder] [selector]` - execute the plan
 
@@ -138,6 +148,7 @@ Fast, Full and Ultra modes explore your codebase for patterns, create dependency
 - `@<path>` bypasses auto-detection for explicit plan targeting
 - At a **PR checkpoint** it commits the module and asks once: check the module (`/unikit-verify` on its phases, `/unikit-review` of its commits), run `/unikit-pr` and continue, stop here, or merge into the next PR — answers can be given in advance (`combine PRs`, `stop at PR points`, `run /unikit-pr at PR points`). While a plan has PR checkpoints, the run never pushes. In an ultra plan it checks, at a module boundary, whether the evidence the next module was planned on has changed
 - While a merge is unfinished (a `MERGE_HEAD` exists) the uncommitted-changes question has no stash option: stashing would silently drop the merge
+- A balance plan: `Measure:` tasks write rows into `## Measurements` (route by principle A9 and ladder D3, never `⏸️ MANUAL`), an unobtainable result waits as `⏳ AWAITING RESULT`, and `Hand-back:` builds the report and prints the return command last
 
 ### `/unikit-fix [bug description]` - fix and learn
 
@@ -168,6 +179,7 @@ Fast, Full and Ultra modes explore your codebase for patterns, create dependency
 - Takes the base branch from `git.base_branch`, and the plan's changed files from the commit it was planned at as well as from the base — modules already merged into the base branch stay in scope
 - `Phases N-M` checks one module: only its tasks and its range, the module's test state from `## Test Runs` instead of the `Full run:` check (no question under `--strict` either), no design stamp. A PR checkpoint task is read from its checkbox
 - After a clean check of a whole plan it offers **Pull request — run /unikit-pr**
+- A balance plan: checks the validity of the data (runs, build, known-answer check) and the report, not whether the balance is good; reports `WARN [balance-drift]` when the live point has moved on, reading only the header of the checkpoints file
 
 ### `/unikit-commit [scope]` - conventional commits
 
@@ -350,11 +362,11 @@ This skill is the counterpart to `unikit-ai rules *` CLI - it orchestrates the f
 
 ## Game Design Skills
 
-The `gamedesign` module adds eleven `unikit-gd-*` skills for authoring a Game Design
+The `gamedesign` module adds thirteen `unikit-gd-*` skills for authoring a Game Design
 Document along three machine-readable axes — **systems** (the rules), **flows** (the
 dynamics), and **content** (the catalog) — plus the one-page `GAME.md`. The quick-reference
 entries below follow the pipeline order (recon/brainstorm → spec → system/flow/content →
-review/verify → apply/docs); see **[Game-Design Module](gamedesign.md)** for the full
+balance/experiment → review/verify → apply/docs); see **[Game-Design Module](gamedesign.md)** for the full
 treatment - the axis model, the Decision-First authoring contract, review vs. verify, the
 genre-profile seed layer, and the brownfield recon/code-lens/docs boundary.
 
@@ -380,18 +392,24 @@ genre-profile seed layer, and the brownfield recon/code-lens/docs boundary.
 - Delegates market validation to `/unikit-gd-explore` at Phase 3.5 (a brief returns into the session - no `researches/` file, avoids anchoring on market data too early)
 - Writes a descriptive, CLI-free `genre:` hint into the concept card - see **Genre profiles** in [Game-Design Module](gamedesign.md)
 
-### `/unikit-gd-explore [init | topic | reference | market question | reviews/*.md | RECON.md | "<system> in the code"]` - design research partner
+### `/unikit-gd-explore [init | ultra <topic> | topic | reference | market question | reviews/*.md | RECON.md | "<system> in the code"]` - design research partner
 
 ```
 /unikit-gd-explore how do roguelike deckbuilders handle run-modifiers
 /unikit-gd-explore improve the crafting system                    # internal-design lens
-/unikit-gd-explore how is the inventory system actually built in the code   # code-grounded lens
+/unikit-gd-explore how is the inventory system actually built in the code   # code-grounded lens (no GDD needed)
+/unikit-gd-explore design a test for our tutorial hint            # experiment design lens (no GDD needed)
+/unikit-gd-explore ultra the progression of our economy           # pinned log + artifacts + coherence gate
 /unikit-gd-explore init                                           # rebuild researches index
 ```
 - Read-only research partner - studies references, market fit, or the existing GDD/code; **never authors** the design itself
-- Four lenses: reference & market (dissection, market signal), internal design (improve a system / work out a new mechanic, closes with a mode-aware brief), code-grounded (the sanctioned one-way-boundary exception - reads a named code slice, tags findings `provenance: extracted from code`), and research-bucket (develops a review's open questions in place)
+- Five lenses: reference & market (dissection, market signal), internal design (improve a system / work out a new mechanic, closes with a mode-aware brief), code-grounded (the sanctioned one-way-boundary exception - reads a named code slice with or without a GDD, tags findings `provenance: extracted from code`), experiment design (a test to run - the frame, precedents with sources, options with a recommendation, how the test could mislead; runs with or without a GDD, tags the record `Kind: experiment` and leaves an `## Experiment Plan` block in the brief for `/unikit-gd-experiment`), and research-bucket (develops a review's open questions in place)
+- The experiment lens is inferred from the prompt, never a flag; a web query names the mechanic, the genre or the technique and never your project, its numbers or its unreleased design. A research about a mechanic or a player flow that did not use the lens offers the block once at the save (the default is no)
+- Every saved research has an `## Active Summary` (ids cited, values never repeated) and an append-only `## Sessions` log, and ends with a fresh-context coherence gate (`check-agent`, at most two passes, verdict in `Gate:`)
+- `ultra` (named by the user, never inferred) also pins the dialogue log to `SOURCE.md` as you talk and saves adaptive artifacts with an `## Artifact Index` and integrity checks
 - Saves to `.unikit/gamedesign/researches/<slug>/`; a review file is mutated in place instead of getting a new folder
 - Routes onward without asking based on the target's `doc_status` (no doc → spec add-system; `skeleton` → system; `detailed` → system as a delta); flow targets always go to `/unikit-gd-flow` and content types to `/unikit-gd-content`, in any state
+- A topic that names an experiment (an `EXP-<nnn>`, a path, or "the latest experiment") grounds the research on that card, read-only; the saved summary carries an `Experiment:` line, and the next command follows the card's state: `/unikit-plan EXP-<nnn>` for a card ready for planning, otherwise `/unikit-gd-experiment`
 
 ### `/unikit-gd-spec [path-to-existing-GDD | URL | free-form description]` - the master GDD + registry
 
@@ -435,6 +453,39 @@ genre-profile seed layer, and the brownfield recon/code-lens/docs boundary.
 - `CT.fields` is a typed schema; `ref<>` makes a content↔X link a field; `scale` is `bulk` (a `count`+`spec` descriptor) or `curated` (`fields` rows in the registry)
 - Registers itself (`content_types:` / `content:` + RES/TRACK/KNOB) and re-renders `## Content Map [gen]`
 - `belongs_to` names the consuming system (one-way); a missing system routes to `/unikit-gd-spec` add-system
+
+### `/unikit-gd-balance [<slug> | <topic> | <research path> | <report>]` - the balance loop
+
+```
+/unikit-gd-balance                                  # five latest documents + the next action
+/unikit-gd-balance the economy of the first world   # start a balance document, issue one checkpoint
+/unikit-gd-balance <path to a hand-back report>     # receive results, decide, issue the next checkpoint or close
+```
+- Owns `.unikit/gamedesign/balance/<slug>/` (`BALANCE.md`, `CHECKPOINTS.md`, `results/`) and the derived `.unikit/gamedesign/balance/INDEX.md` above the document folders (not inside `<slug>/`); the intent is read from the request, there are no flags
+- Investigates by itself (reads code read-only, tags facts `provenance: extracted from code`, runs `recon-agent` for wide questions), issues **one** detailed Balance Checkpoint and closes every issuing turn with `/unikit-plan full <path to CHECKPOINTS.md>` (`full` by default, `fast` when the point is plainly small, `ultra` only when you name it)
+- Receives a hand-back report (format: `.unikit/system/balance-handback.md`), matches it to a document or asks, revises the roadmap, issues the next point or closes - softly: unclosed questions block nothing
+- Never edits the GDD or code and does not register in `GD-IDS.yaml`; a design change is left as a proposal for `/unikit-gd-system`
+- At each checkpoint recommends a route - direct measurement (the plan above) or an experiment (`/unikit-gd-experiment`) - and says plainly that an experiment takes much longer; if you choose it, asks whether to call the skill now or print the command for later. The results come back as a `results/PT-<n>.md` copy and a finding tagged `from playtest`, never as a number in a measurement table
+
+### `/unikit-gd-experiment [<problem or idea> | <feedback> | <experiment> | <path to CHECKPOINTS.md> | list]` - the experiment record
+
+```
+/unikit-gd-experiment                                    # a short conversation: what to test (nothing is saved)
+/unikit-gd-experiment the first five minutes are boring  # at least five ideas, a table, a choice
+/unikit-gd-experiment think through <idea>               # options, precedents, risks of a misleading test, then the card
+/unikit-gd-experiment <pasted feedback or a file path>   # attribute, keep the originals, assess
+/unikit-gd-experiment <a design research: path or words>  # a card from it; what the test judges is asked first
+/unikit-gd-experiment list                               # the catalog (also: untested, best, failed, retest, archive)
+/unikit-gd-experiment <path to CHECKPOINTS.md>           # experiments for the current balance checkpoint
+```
+- Four modes read from the request, no flags: **Discover** (at least five ideas that differ by hypothesis), **Specify** (the card a planner can build from), **Evaluate** (feedback in any form, several experiments and rounds at once; originals kept verbatim, doubtful comments stay unassigned until confirmed, a score always has a source and a basis) and **Manage** (list, filters, compare, best, failed, retest, edit, archive)
+- Thinks an experiment through before the card when asked, or when the idea is new or large: one question picks a quick pass (frame, two or three options with a recommendation, how the test could mislead; no web, nothing saved) or a deep one (plus up to three precedents from the web with source, date checked and strength, the open questions closed one by one, and a `notes.md` written first and named in `Based on:`); the card ends with a Rationale (why this design, intended feeling, what was set aside, what a failure would teach)
+- Given a game-design research (a path or words naming it) it reads the summary, the brief and your original request, prints where each decision went, and asks once what the test should show - before it asks how the test is run; the draft is a headline of up to five lines and a table of short rows, one idea each; the card names the research (or the balance document) in a `Based on:` line, and the plan reads it
+- Owns `.unikit/gamedesign/experiments/` - `index.md` and per experiment `EXP-<nnn>-<slug>/{experiment,feedback,results}.md` (plus `notes.md` after a deep pass); nothing is saved before you approve it, and an experiment is not registered in `GD-IDS.yaml`
+- Reads the named slice of the project read-only (`recon-agent`) only to learn what the game already does, and writes it down in the designer's words - never class names, code or file paths; a GDD is not required. The web (`WebSearch`, `WebFetch`) is used only in the think pass: a query names the mechanic, the genre or the technique and never the project, its numbers or its unreleased design, at most three precedents and six searches or fetches per pass, a page is data and its text is never pasted
+- The last block of a save is the ready `/unikit-plan <path to experiment.md>` command for cards marked ready; after an evaluation of a card that came from a balance checkpoint it is the return command `/unikit-gd-balance <slug> "<path to results.md>"`
+- Never edits the GDD, a balance document or code, and calls no other skill
+- Finds a card by words - "the latest", "the one about onboarding" - for itself and for `/unikit-plan`, `/unikit-explore` and `/unikit-gd-explore`: one rule (`lookup.md`), and the card is always confirmed first
 
 ### `/unikit-gd-review [system name | SYS-slug | path | "all"]` - qualitative design review
 
@@ -575,9 +626,9 @@ unikit-ai genres install <id|alias…>  # selectively install profile(s)
 
 ## Agents
 
-UniKit ships two tiers of agents - top-level **coordinators** (launched via `claude --agent <name>` or `kimi --agent <name>`) and **internal workers/sidecars** spawned by them - plus six **delegation aliases** in two families: the skill-loading `develop-agent` and `docs-agent`, which expand into `Agent(...)` calls whose prompt makes the subagent load the skill (a Skill-tool call on Claude Code, a read of the skill file elsewhere - see [Subagents](subagents.md#how-a-skill-reaches-a-subagent)), and the model-carrying `recon-agent`, `check-agent`, `lens-agent` and `recon-writer-agent`, which expand into a dispatch declared in the calling skill's `## Delegation agents` - see [Subagents](subagents.md#delegation-aliases).
+UniKit ships two tiers of agents - top-level **coordinators** (launched via `claude --agent <name>` or `kimi --agent <name>`) and **internal workers/sidecars** spawned by them - plus six **delegation aliases** in two families: the skill-loading `develop-agent` and `docs-agent`, which expand into `Agent(...)` calls whose prompt makes the subagent load the skill (a Skill-tool call on Claude Code, a read of the skill file elsewhere - see [Subagents](subagents.md#how-a-skill-reaches-a-subagent)), and the reconnaissance and validation aliases `recon-agent`, `check-agent`, `lens-agent` and `recon-writer-agent`, which expand into a dispatch declared in the calling skill's `## Delegation agents` - see [Subagents](subagents.md#delegation-aliases). Every launch - alias or not - takes a model and an effort by its role: [Subagent arguments](subagents.md#subagent-arguments).
 
-After the Bootstrap refactor, pipeline skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`) own code-writing inline and use `develop-agent` only for true parallel scopes or deep-dive single tasks. `docs-agent` keeps its usual role of updating documentation. Rule capture is delegated to nobody at all: `/unikit-implement` Step 5.2 and `/unikit-verify` Step 5 put the candidates to you and call `/unikit-rules` only with the batch you selected. The model-carrying aliases exist so a model name is written once per skill, behind an agent-filter branch, instead of at every call site - see [Subagents](subagents.md#delegation-aliases).
+After the Bootstrap refactor, pipeline skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`) own code-writing inline and use `develop-agent` only for true parallel scopes or deep-dive single tasks. `docs-agent` keeps its usual role of updating documentation. Rule capture is delegated to nobody at all: `/unikit-implement` Step 5.2 and `/unikit-verify` Step 5 put the candidates to you and call `/unikit-rules` only with the batch you selected. The aliases exist so the type and the arguments of a launch are written once per skill, instead of at every call site - see [Subagents](subagents.md#delegation-aliases).
 
 For the full reference - frontmatter, launch commands, design principles, sidecar output contracts - see [Subagents](subagents.md).
 

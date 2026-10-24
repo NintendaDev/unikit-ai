@@ -9,7 +9,8 @@ import {
   buildManagedSubagentsState, updateSubagents,
   type SubagentUpdateEntry,
 } from '../../core/installer/subagents.js';
-import { installEngineTemplates, installCliContract, installGateResultContract, installUltraPlanReadContract, installResearchLinkContract, installPlanBoundariesContract, installMergeAnalysisContract, installDevPrinciples, installEngineMcpRules, readDeliveredEngineMcpServer, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
+import { installEngineTemplates, installCliContract, installGateResultContract, installUltraPlanReadContract, installResearchLinkContract, installPlanBoundariesContract, installMergeAnalysisContract, installBalanceHandbackContract, installPrototypeProfileContract, installDevPrinciples, installEngineMcpRules, readDeliveredEngineMcpServer, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
+import { installSubagentArgumentsContract, installSubagentRolesContract, installUserQuestionsContract } from '../../core/installer/system-contracts.js';
 import { injectMcpRules } from '../../core/installer/mcp-injection.js';
 import { installExtensionSkills, installExtensionSubagents } from '../../core/installer/extensions.js';
 import { syncAllModules } from '../../core/installer/rules-sync.js';
@@ -22,12 +23,16 @@ import { swapMcpRecheckNotes } from '../../core/installer/mcp-notes.js';
 import { getAgentConfig } from '../../core/agents.js';
 import { exitOnSharedSkillsDir } from '../guards.js';
 import { fileExists } from '../../utils/fs.js';
-import { collectReplacedSkills, refreshExtensions } from '../../core/extension-ops.js';
+import { collectReplacedSkills } from '../../core/extension-ops.js';
+import { refreshExtensions } from '../../core/extension-refresh.js';
+import { filterManifest, ExtensionSelectionCancelled } from '../../core/extension-selection.js';
 import { loadExtensionManifest, getExtensionDir } from '../../core/extensions.js';
 import { createRegistry } from '../../core/registry/index.js';
 import { logInfo } from '../../utils/log.js';
-import { applyAllInjections } from '../../core/injections.js';
+import { applyExtensionInjections, injectionInputFromConfig } from '../../core/extension-injections.js';
 import { formatReason, groupEntriesByStatus, bootstrapNewSkillModuleRules } from './update-helpers.js';
+import { printInjectionReport } from './injection-report.js';
+import { buildNewItemsChooser, formatPendingNotice } from './extension-selection-ui.js';
 
 interface UpdateCommandOptions {
   force?: boolean;
@@ -150,14 +155,25 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     let extensions = config.extensions ?? [];
     if (extensions.length > 0) {
       console.log(chalk.dim('Checking extensions for updates...\n'));
-      const extRefresh = await refreshExtensions(projectDir, config, { force });
+      // Items an extension offers that have no decision yet are handled like new package skills:
+      // a terminal gets a list (all checked), no terminal installs them only with --install-new.
+      const extRefresh = await refreshExtensions(projectDir, config, {
+        force,
+        chooseNewItems: buildNewItemsChooser({ installNew, skipNew }),
+      });
       if (extRefresh.updated.length > 0) {
         console.log(chalk.green(`✓ Extensions updated: ${extRefresh.updated.join(', ')}`));
       }
       if (extRefresh.failed.length > 0) {
         console.log(chalk.yellow(`⚠ Extension update failed: ${extRefresh.failed.join(', ')}`));
       }
+      for (const line of formatPendingNotice(extRefresh.pending)) {
+        console.log(chalk.yellow(line));
+      }
       await saveConfig(projectDir, config);
+      // Same outcome as closing the prompt about new package skills: the run stops (what was
+      // committed before the cancel is already saved above).
+      if (extRefresh.cancelled) throw new ExtensionSelectionCancelled();
       // Re-read extensions after refresh (commitResolvedExtension replaces config.extensions)
       extensions = config.extensions ?? [];
     }
@@ -237,13 +253,15 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
         const extManifest = await loadExtensionManifest(getExtensionDir(projectDir, ext.name));
         if (!extManifest) continue;
 
+        // Only what the selection left on: a skill or subagent the user switched off stays out.
+        const selected = filterManifest(extManifest, ext.selection);
         const extensionDir = getExtensionDir(projectDir, ext.name);
         for (const agent of config.agents) {
-          if (extManifest.skills?.length) {
-            await installExtensionSkills(projectDir, agent, extensionDir, extManifest.skills, engineId, config.engineMcpKey);
+          if (selected.skills?.length) {
+            await installExtensionSkills(projectDir, agent, extensionDir, selected.skills, engineId, config.engineMcpKey);
           }
-          if (extManifest.subagents?.length) {
-            await installExtensionSubagents(projectDir, agent, extensionDir, extManifest.subagents, engineId, config.engineMcpKey);
+          if (selected.subagents?.length) {
+            await installExtensionSubagents(projectDir, agent, extensionDir, selected.subagents, engineId, config.engineMcpKey);
           }
         }
       }
@@ -274,19 +292,12 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
       storedMcpCodes,
     );
 
-    // Re-apply extension injections (after base skills updated + MCP injected)
+    // Re-render the extension injections (after the base skills are updated and MCP grants injected):
+    // ONE project-level pass over every extension and agent — the function init and `extension *` call.
     if (extensions.length > 0) {
       console.log(chalk.dim('Re-applying extension injections...\n'));
-
-      for (const ext of extensions) {
-        const extManifest = await loadExtensionManifest(getExtensionDir(projectDir, ext.name));
-        if (!extManifest?.injections?.length) continue;
-
-        const extensionDir = getExtensionDir(projectDir, ext.name);
-        for (const agent of config.agents) {
-          await applyAllInjections(projectDir, agent, ext.name, extManifest.injections, extensionDir);
-        }
-      }
+      const injectionReport = await applyExtensionInjections(injectionInputFromConfig(projectDir, config));
+      printInjectionReport(injectionReport);
     }
 
     // Sync rules (shared) — single call into syncAllModules runs each module's
@@ -328,6 +339,21 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
 
     // Refresh the merge-analysis protocol (read by explore and plan when asked to merge a branch)
     await installMergeAnalysisContract(projectDir);
+
+    // Refresh the balance hand-back report contract (read by plan/implement/verify and unikit-gd-balance)
+    await installBalanceHandbackContract(projectDir);
+
+    // Refresh the prototype-profile contract (read by the executors of a plan built from experiment cards)
+    await installPrototypeProfileContract(projectDir);
+
+    // Refresh the subagent-arguments contract (read by the skills that launch a model-carrying subagent: how its model and effort are settled)
+    await installSubagentArgumentsContract(projectDir);
+
+    // Refresh the subagent-roles table (read together with the contract above: which role each launch has)
+    await installSubagentRolesContract(projectDir);
+
+    // Refresh the user-questions contract (read before their first question by the skills that carry its pointer)
+    await installUserQuestionsContract(projectDir);
 
     // `update` does not re-ask for servers, but the selection still moves under
     // it: editing `.unikit.json` and re-running is how an engine switch reaches

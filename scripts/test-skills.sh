@@ -24,6 +24,50 @@ source "$SCRIPT_DIR/test-fixtures.sh"
 ensure_build
 export UNIKIT_TEST_SKIP_BUILD=1
 
+# The nested suites each work in their own temp project and only read the package, so they
+# run in the background while the inline guards below go on, and each result is collected at
+# the Part that used to run it (the printed order does not change). A suite must never edit
+# a tracked file in place — copy it and point UNIKIT_MCP_DIR at the copy (test-update.sh,
+# test-migrations.sh do). UNIKIT_TEST_SERIAL=1 runs them one after another, as before.
+CHILD_DIR="$(mktemp -d)"
+trap 'kill $(jobs -p) 2>/dev/null || true; rm -rf "$CHILD_DIR"' EXIT
+
+child_start() {
+    local name="$1"; shift
+    if [[ "${UNIKIT_TEST_SERIAL:-0}" == "1" ]]; then
+        local code=0
+        "$@" > "$CHILD_DIR/$name.out" 2>&1 || code=$?
+        echo "$code" > "$CHILD_DIR/$name.exit"
+        return 0
+    fi
+    ( code=0; "$@" > "$CHILD_DIR/$name.out" 2>&1 || code=$?; echo "$code" > "$CHILD_DIR/$name.exit" ) &
+    echo "$!" > "$CHILD_DIR/$name.pid"
+}
+
+# child_wait <name> — sets CHILD_EXIT and CHILD_OUTPUT.
+child_wait() {
+    local name="$1"
+    if [[ -f "$CHILD_DIR/$name.pid" ]]; then
+        wait "$(<"$CHILD_DIR/$name.pid")" 2>/dev/null || true
+    fi
+    CHILD_EXIT="$(<"$CHILD_DIR/$name.exit")"
+    CHILD_OUTPUT="$(<"$CHILD_DIR/$name.out")"
+}
+
+# Longest first, so the critical path starts at once.
+child_start rules       bash "$SCRIPT_DIR/test-rules.sh"
+child_start update      bash "$SCRIPT_DIR/test-update.sh"
+child_start extensions  bash "$SCRIPT_DIR/test-extensions.sh"
+child_start install     bash "$SCRIPT_DIR/test-install.sh"
+child_start migrations  bash "$SCRIPT_DIR/test-migrations.sh"
+child_start extsel      bash "$SCRIPT_DIR/test-extension-selection.sh"
+child_start layout      bash "$SCRIPT_DIR/test-rules-layout.sh"
+child_start planbundle  bash "$SCRIPT_DIR/test-plan-bundle.sh"
+child_start genres      bash "$SCRIPT_DIR/test-genres.sh"
+child_start skillgroups bash "$SCRIPT_DIR/test-skill-groups.sh"
+child_start helpskill   bash "$SCRIPT_DIR/test-help-skill.sh"
+child_start grepshim    bash "$SCRIPT_DIR/test-grep-shim.sh"
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -235,7 +279,7 @@ echo -e "\n${BOLD}=== Validate delegation-alias connectivity ===${NC}\n"
 DELEGATION_SKILLS=(
     "unikit-implement" "unikit-fix" "unikit-verify"
     "unikit-docs" "unikit-explore" "unikit-improve" "unikit-plan" "unikit-review"
-    "unikit-gd-explore" "unikit-gd-recon" "unikit-gd-review"
+    "unikit-gd-explore" "unikit-gd-recon" "unikit-gd-review" "unikit-gd-balance" "unikit-gd-experiment"
 )
 
 for skill in "${DELEGATION_SKILLS[@]}"; do
@@ -1208,6 +1252,8 @@ gd_check_skill_shards "unikit-gd-verify"  "gd-lifecycle" "gd-flow-axis" "gd-cont
 gd_check_skill_shards "unikit-gd-explore" "gd-critique" "gd-provenance"
 gd_check_skill_shards "unikit-gd-review"  "gd-flow-axis" "gd-content-axis" "gd-provenance" "gd-critique"
 gd_check_skill_shards "unikit-gd-apply"   "gd-authoring" "gd-lifecycle"
+gd_check_skill_shards "unikit-gd-balance" "gd-critique" "gd-provenance"
+gd_check_skill_shards "unikit-gd-experiment" "gd-critique" "gd-provenance"
 # brainstorm loads core ONLY — assert it references none of the 6 shards.
 GD_BRAINSTORM_LEAK=""
 for shard in gd-authoring gd-lifecycle gd-flow-axis gd-content-axis gd-provenance gd-critique; do
@@ -2032,6 +2078,191 @@ else
     fail "CS2-4 upstream content surface incomplete:$CS2_EXPLORE_WHY"
 fi
 
+# (GXR-1…GXR-4) unikit-gd-explore research record: a design research is self-sufficient
+# after /clear — an Active Summary region (cross-cutting ids, no values) and an append-only
+# Sessions region carrying the coherence-gate verdict; the index entry may carry the
+# ultra-only **Mode** field and `init` restores it from the first-line marker. The marker
+# pairs are counted on the TEMPLATE lines of save-research.md: its prose never repeats a
+# marker literal, so a count of exactly one per marker is the invariant.
+GXR1_WHY=""; GXR1_N=0
+for gxr_m in '<!-- unikit:active-summary:start -->' '<!-- unikit:active-summary:end -->' \
+             '<!-- unikit:sessions:start -->' '<!-- unikit:sessions:end -->'; do
+    GXR1_N=$((GXR1_N + 1))
+    gxr_c=$({ grep -cF -- "$gxr_m" "$GD_EXPLORE_SAVE_RESEARCH" || true; })
+    [[ "$gxr_c" == "1" ]] || GXR1_WHY+=" marker:${gxr_m}=${gxr_c}"
+done
+for gxr_l in '## Active Summary' '## Sessions' 'Gate: passed (' 'F-<n>' 'DEC-<n>' 'RISK-<n>' 'OQ-<n>'; do
+    GXR1_N=$((GXR1_N + 1))
+    grep -qF -- "$gxr_l" "$GD_EXPLORE_SAVE_RESEARCH" || GXR1_WHY+=" no-literal:${gxr_l}"
+done
+if [[ "$GXR1_N" -eq 0 ]]; then
+    fail "GXR-1 scanned no record-format literals"
+elif [[ -z "$GXR1_WHY" ]]; then
+    pass "GXR-1 research record format (Active Summary + Sessions regions, one marker pair each, closed id vocabulary; $GXR1_N literals)"
+else
+    fail "GXR-1 research record format drift:$GXR1_WHY"
+fi
+
+GXR2_WHY=""
+grep -qF '**Mode**: ultra' "$GD_EXPLORE_SAVE_RESEARCH"      || GXR2_WHY+=" no-mode-field"
+grep -qF 'absent means standard' "$GD_EXPLORE_SAVE_RESEARCH" || GXR2_WHY+=" no-absent-means-standard"
+if [[ -z "$GXR2_WHY" ]]; then
+    pass "GXR-2 researches/INDEX.md entry carries the ultra-only Mode field (absent means standard)"
+else
+    fail "GXR-2 index Mode field drift:$GXR2_WHY"
+fi
+
+GXR3_WHY=""; GXR3_N=0
+for gxr_h in '## Improvement Plan' '## New Feature Plan' '## Flow Improvement Plan' \
+             '## Flow Feature Plan' '## Content Improvement Plan' '## Content Feature Plan' \
+             '**Recommended follow-up**'; do
+    GXR3_N=$((GXR3_N + 1))
+    grep -qF -- "$gxr_h" "$GD_EXPLORE_SAVE_RESEARCH" || GXR3_WHY+=" no-anchor:${gxr_h}"
+done
+if [[ "$GXR3_N" -eq 0 ]]; then
+    fail "GXR-3 scanned no brief anchors"
+elif [[ -z "$GXR3_WHY" ]]; then
+    pass "GXR-3 brief anchors the system/flow/content zones read stay intact ($GXR3_N anchors)"
+else
+    fail "GXR-3 brief anchor drift:$GXR3_WHY"
+fi
+
+# GN_INIT_INDEX is declared far below this block; the path is declared locally here.
+GXR_INIT_INDEX="$ROOT_DIR/skills/unikit-gd-explore/references/init-index.md"
+GXR4_WHY=""
+grep -qF 'unikit:research-mode:ultra' "$GXR_INIT_INDEX" || GXR4_WHY+=" no-mode-marker"
+grep -qF '**Mode**: ultra' "$GXR_INIT_INDEX"            || GXR4_WHY+=" no-mode-field"
+grep -qF 'NOTE [research]' "$GXR_INIT_INDEX"            || GXR4_WHY+=" no-unfinished-note"
+grep -qF 'Kept N · Added N' "$GXR_INIT_INDEX"           || GXR4_WHY+=" no-report-line"
+if [[ -z "$GXR4_WHY" ]]; then
+    pass "GXR-4 init-index restores the Mode field from the first-line marker; unfinished-exploration NOTE; report line intact"
+else
+    fail "GXR-4 init-index mode restore drift:$GXR4_WHY"
+fi
+
+# (GXG-1…GXG-6) unikit-gd-explore coherence gate: every save of a design research ends with a
+# fresh-context pass over the durable record (RESEARCH_RESULT.md, RESEARCH_BRIEF.md). The
+# criteria, the two-pass budget and the fallback lines are carried over from unikit-explore
+# (CG-*) with the record's own file names; SOURCE.md stays outside the scope.
+GD_COHERENCE="$ROOT_DIR/skills/unikit-gd-explore/references/coherence-gate.md"
+GXG_WHY=""
+if [[ ! -s "$GD_COHERENCE" ]]; then
+    fail "GXG-1 unikit-gd-explore/references/coherence-gate.md missing or empty"
+else
+    # (GXG-1) no frontmatter — a reference body, not a skill
+    [[ "$(head -1 "$GD_COHERENCE")" != "---" ]] || GXG_WHY+=" GXG-1:has-frontmatter"
+    # (GXG-2) exactly five numbered criteria; the scope literals; the record's own file name
+    GXG_CRIT="$({ awk '/^## The criteria/{f=1;next} /^## /{f=0} f && /^[0-9]+\. /{n++} END{print n+0}' "$GD_COHERENCE" || true; })"
+    [[ "$GXG_CRIT" == "5" ]] || GXG_WHY+=" GXG-2:criteria-count=$GXG_CRIT"
+    for gxg_l in 'not evidence' '## Active Summary' 'the `check-agent` alias' 'WARN [coherence]' 'Integrity' \
+                 '`SOURCE.md` is **not** in scope'; do
+        grep -qF -- "$gxg_l" "$GD_COHERENCE" || GXG_WHY+=" GXG-2:no-literal:${gxg_l}"
+    done
+    if sed 's/RESEARCH_RESULT\.md//g' "$GD_COHERENCE" | grep -qF 'RESEARCH.md'; then
+        GXG_WHY+=" GXG-2:manifest-name-RESEARCH.md-returned"
+    fi
+    grep -qF 'ULTRA-RESEARCH-FORMAT.md' "$GD_COHERENCE" && GXG_WHY+=" GXG-2:explore-format-path-returned"
+    # (GXG-3) the call sits in ## Write order, after the INDEX step and before the end of the file
+    GXG_WO="$({ awk '/^## Write order/{f=1;next} /^## /{f=0} f' "$GD_EXPLORE_SAVE_RESEARCH" || true; })"
+    if [[ -z "$GXG_WO" ]]; then
+        GXG_WHY+=" GXG-3:no-write-order"
+    else
+        GXG_IDX="$({ printf '%s\n' "$GXG_WO" | grep -nF 'Update researches/INDEX.md' | head -1 | cut -d: -f1 || true; })"
+        GXG_RUN="$({ printf '%s\n' "$GXG_WO" | grep -nF 'run the gate it specifies' | head -1 | cut -d: -f1 || true; })"
+        if [[ -z "$GXG_IDX" || -z "$GXG_RUN" ]]; then
+            GXG_WHY+=" GXG-3:missing-anchor(index=${GXG_IDX:-none},gate=${GXG_RUN:-none})"
+        elif (( GXG_RUN <= GXG_IDX )); then
+            GXG_WHY+=" GXG-3:gate-before-index"
+        fi
+    fi
+    # (GXG-4) both fallback lines
+    grep -qF 'WARN [coherence] reference missing' "$GD_EXPLORE_SAVE_RESEARCH" || GXG_WHY+=" GXG-4:no-reference-missing-warn"
+    grep -qF 'WARN [coherence] fresh-context pass unavailable — running inline' "$GD_COHERENCE" || GXG_WHY+=" GXG-4:no-inline-warn"
+    # (GXG-5) the budget and the contractive-repair fences
+    for gxg_l in 'at most **two passes**' 'and nothing else' 'A repair is **contractive**' 'stopped at budget'; do
+        grep -qF -- "$gxg_l" "$GD_COHERENCE" || GXG_WHY+=" GXG-5:no-literal:${gxg_l}"
+    done
+    # (GXG-6) one dispatch line in the skill, the second alias declared, the model key still once
+    GXG_CALL="$({ grep -cF 'Read {{skills_dir}}/{{self_name}}/references/coherence-gate.md and run' "$GD_EXPLORE_SKILL" || true; })"
+    [[ "$GXG_CALL" == "1" ]] || GXG_WHY+=" GXG-6:dispatch-lines=$GXG_CALL"
+    GXG_ALIAS="$({ awk '/^## Delegation agents/{f=1;next} /^## /{f=0} f' "$GD_EXPLORE_SKILL" | grep -cE '^- \*\*`check-agent`\*\*' || true; })"
+    [[ "$GXG_ALIAS" == "1" ]] || GXG_WHY+=" GXG-6:check-agent-alias=$GXG_ALIAS"
+    GXG_MODEL="$({ grep -cF 'subagents.model.{{agent_id}}' "$GD_EXPLORE_SKILL" || true; })"
+    [[ "$GXG_MODEL" == "1" ]] || GXG_WHY+=" GXG-6:model-key=$GXG_MODEL"
+    # (GXG-7) the gate resolves only the record's own ids; the brief is a derived hand-off; a gate that did
+    # not run has a name; material findings are repaired
+    GXG_CR="$({ awk '/^## The criteria/{f=1;next} /^## /{f=0} f' "$GD_COHERENCE" || true; })"
+    grep -qF 'GD-IDS.yaml' <<< "$GXG_CR" || GXG_WHY+=" GXG-7:criteria-check-registry-ids"
+    grep -qF 'derived hand-off' "$GD_COHERENCE" || GXG_WHY+=" GXG-7:brief-not-a-derived-document"
+    grep -qF 'blocking or material findings after pass 1' "$GD_COHERENCE" || GXG_WHY+=" GXG-7:material-not-repaired"
+    grep -qF 'not run —' "$GD_EXPLORE_SAVE_RESEARCH" || GXG_WHY+=" GXG-7:no-gate-not-run-value"
+    if [[ -z "$GXG_WHY" ]]; then
+        pass "GXG-1…7 gd-explore coherence gate ($GXG_CRIT criteria, call after the INDEX step, fallbacks, budget fences, second alias, scoped ids)"
+    else
+        fail "GXG gd-explore coherence gate drift:$GXG_WHY"
+    fi
+fi
+
+# (GXU-1…GXU-5) unikit-gd-explore ultra research: an opt-in, user-named mode that pins the
+# dialogue log while the conversation goes on and writes adaptive artifacts at save time. A
+# standard research never reads the reference; the reference is loaded from exactly one
+# section of the skill. GD_COHERENCE is declared by the GXG block above.
+GD_ULTRA="$ROOT_DIR/skills/unikit-gd-explore/references/ultra-research.md"
+GXU_WHY=""
+if [[ ! -s "$GD_ULTRA" ]]; then
+    fail "GXU-1 unikit-gd-explore/references/ultra-research.md missing or empty"
+else
+    # (GXU-1) a reference body without frontmatter, every section marked ultra-only
+    [[ "$(head -1 "$GD_ULTRA")" != "---" ]] || GXU_WHY+=" GXU-1:has-frontmatter"
+    GXU_APPLIES="$({ grep -c '^Applies to: ultra only$' "$GD_ULTRA" || true; })"
+    (( GXU_APPLIES >= 6 )) || GXU_WHY+=" GXU-1:applies-to-markers=$GXU_APPLIES"
+    # (GXU-2) literals, exactly nine integrity checks, redirected source addresses stay gone
+    for gxu_l in '<!-- unikit:research-mode:ultra -->' '## Mode marker' '## Pinning' '## Artifact Index' \
+                 '## Integrity' 'WARN [pin]' 'Considered and **not** created' 'unikit:not-verbatim'; do
+        grep -qF -- "$gxu_l" "$GD_ULTRA" || GXU_WHY+=" GXU-2:no-literal:${gxu_l}"
+    done
+    GXU_CHECKS="$({ awk '/^## Integrity/{f=1;next} /^## /{f=0} f && /^[0-9]+[.] /{n++} END{print n+0}' "$GD_ULTRA" || true; })"
+    [[ "$GXU_CHECKS" == "9" ]] || GXU_WHY+=" GXU-2:integrity-checks=$GXU_CHECKS"
+    for gxu_n in 'continuing.md' 'How to save' 'Naming convention' 'rules for the log in' 'unikit:plan-mode:ultra'; do
+        grep -qF -- "$gxu_n" "$GD_ULTRA" && GXU_WHY+=" GXU-2:foreign-address-returned:${gxu_n}"
+    done
+    # (GXU-3) the user-named rule, the degradation line, the argument hint; no file name in description
+    for gxu_l in 'user-named, never model-inferred' 'WARN [ultra] reference missing' \
+                 'A standard research does not read that file.'; do
+        grep -qF -- "$gxu_l" "$GD_EXPLORE_SKILL" || GXU_WHY+=" GXU-3:no-literal:${gxu_l}"
+    done
+    GXU_FM="$({ awk 'NR==1&&/^---$/{f=1;next} f&&/^---$/{exit} f' "$GD_EXPLORE_SKILL" || true; })"
+    printf '%s\n' "$GXU_FM" | grep -E '^argument-hint:' | grep -qF 'ultra' || GXU_WHY+=" GXU-3:no-ultra-in-argument-hint"
+    GXU_DESC="$({ printf '%s\n' "$GXU_FM" | awk '/^description:/{f=1;next} f&&/^[a-zA-Z][a-zA-Z0-9_-]*:/{exit} f' || true; })"
+    printf '%s' "$GXU_DESC" | grep -qF 'ultra-research.md' && GXU_WHY+=" GXU-3:file-name-in-description"
+    # (GXU-4) the reference is loaded from exactly one section: inside the Ultra research window
+    GXU_IN="$({ awk '/^## Ultra research/{f=1;next} /^## /{f=0} f' "$GD_EXPLORE_SKILL" | grep -cF 'references/ultra-research.md' || true; })"
+    GXU_ALL="$({ grep -cF 'references/ultra-research.md' "$GD_EXPLORE_SKILL" || true; })"
+    GXU_OUT=$(( GXU_ALL - GXU_IN ))
+    (( GXU_IN >= 1 )) || GXU_WHY+=" GXU-4:no-load-in-ultra-section(in=$GXU_IN)"
+    (( GXU_OUT == 0 )) || GXU_WHY+=" GXU-4:load-outside-ultra-section(out=$GXU_OUT)"
+    # (GXU-5) the save does not repeat the collision question; the gate runs after the integrity checks
+    grep -qF 'the save does not repeat it' "$GD_EXPLORE_SAVE_RESEARCH" || GXU_WHY+=" GXU-5:no-collision-moved-to-pin"
+    grep -qF 'ultra-research.md` → `## Integrity`' "$GD_COHERENCE" || GXU_WHY+=" GXU-5:gate-not-after-integrity"
+    # (GXU-6) the integrity checks come before the gate in the write order; (GXU-7) the zones read the brief
+    GXU_WO="$({ awk '/^## Write order/{f=1;next} /^## /{f=0} f' "$GD_EXPLORE_SAVE_RESEARCH" || true; })"
+    GXU_INT="$({ printf '%s' "$GXU_WO" | grep -nF 'integrity checks' | head -1 | cut -d: -f1 || true; })"
+    GXU_RUN="$({ printf '%s' "$GXU_WO" | grep -nF 'run the gate it specifies' | head -1 | cut -d: -f1 || true; })"
+    if [[ -z "$GXU_INT" || -z "$GXU_RUN" ]]; then
+        GXU_WHY+=" GXU-6:missing-anchor(integrity=${GXU_INT:-none},gate=${GXU_RUN:-none})"
+    elif (( GXU_RUN <= GXU_INT )); then
+        GXU_WHY+=" GXU-6:gate-before-integrity"
+    fi
+    GXU_TAIL="$({ awk '/^## What ultra research does not change/{f=1;next} /^## /{f=0} f' "$GD_ULTRA" || true; })"
+    grep -qF 'RESEARCH_BRIEF.md' <<< "$GXU_TAIL" || GXU_WHY+=" GXU-7:brief-not-named-as-the-input"
+    ! grep -qF 'Active Summary` is the input' <<< "$GXU_TAIL" || GXU_WHY+=" GXU-7:summary-named-as-the-zones-input"
+    if [[ -z "$GXU_WHY" ]]; then
+        pass "GXU-1…7 gd-explore ultra research ($GXU_APPLIES ultra-only sections, $GXU_CHECKS integrity checks, one load site, gate after integrity)"
+    else
+        fail "GXU gd-explore ultra research drift:$GXU_WHY"
+    fi
+fi
+
 # (CS2-5) the GD-IDS.yaml template carries the commented research: pointer on content_types
 # (T3) — the seed pointer unikit-gd-content writes, the non-id path the T4 carve-out excludes.
 if grep -qF 'when the CT was seeded from an explore brief' "$GD_IDS_TPL"; then
@@ -2206,7 +2437,7 @@ fi
 # ── Brownfield recon / explore code-lens / gd-docs guards (RD-1…RD-8) ─────────
 # The brownfield-adoption upgrade added three READ-ONLY verbs at the module edges:
 # unikit-gd-recon (cold-start, code → RECON.md), the unikit-gd-explore code-grounded
-# lens (post-GDD slice), and unikit-gd-docs (workspace → docs/design/). Code reading is
+# lens (named slice), and unikit-gd-docs (workspace → docs/design/). Code reading is
 # quarantined to the two research verbs; the authoring zones + apply never read code
 # (RD-8). bash cannot run an LLM skill — these are grep invariants on the contract text +
 # allowed-tools checks. All file-scoped -qF (MSYS grep aborts on -iF, and Unicode arrows /
@@ -2352,6 +2583,21 @@ if [[ -z "$RD5_WHY" ]]; then
     pass "RD-5 explore code-grounded lens (4th lens + cross-skill code-recon read + code-provenance + softened one-way)"
 else
     fail "RD-5 explore code-lens drift:$RD5_WHY"
+fi
+
+# (RD-5b) the explore code-grounded lens is not gated on a GDD: the lens reads a NAMED slice
+# with or without GAME.md; the old "post-GDD" qualifier is gone from the skill and from the
+# One-Way Boundary exception (the second half of the lens still defers whole-project cold
+# start to recon — pinned by RD-5/RD-3, not here).
+RD5B_WHY=""
+grep -qF 'with or without a GDD' "$GD_EXPLORE_SKILL" || RD5B_WHY+=" no-gdd-free-lens"
+grep -qF 'targeted' "$GD_PRINCIPLES"                 || RD5B_WHY+=" no-targeted"
+grep -qF 'post-GDD' "$GD_EXPLORE_SKILL" && RD5B_WHY+=" stale-post-gdd-explore"
+grep -qF 'post-GDD' "$GD_PRINCIPLES"    && RD5B_WHY+=" stale-post-gdd-principles"
+if [[ -z "$RD5B_WHY" ]]; then
+    pass "RD-5b explore code lens is not gated on a GDD (named slice, with or without GAME.md)"
+else
+    fail "RD-5b explore code lens gating drift:$RD5B_WHY"
 fi
 
 # (RD-6) unikit-gd-docs present + render contract: the six Variant-B chapters, the draft
@@ -3084,7 +3330,7 @@ fi
 # The save is the peak of a session; the gate file is ~11 KB, and sending its criteria in the
 # prompt made the saving session read all of it at exactly that moment, to build a prompt for
 # a context that could have read the file itself. Three halves, each its own failure:
-#   - the dispatch form: the alias prompt names the path, in the alias's ONE definition (a
+#   - the dispatch form: the alias prompt names the path by its full path, in the alias's ONE definition (a
 #     count, not presence — a second, divergent copy of the alias would leave this green by
 #     presence; the claude/!claude pair is gone since the agent profile replaced it), and the
 #     retired form that carried the criteria is gone;
@@ -3092,7 +3338,7 @@ fi
 #     reads the file, has no procedure to act on — no repair rules, no budget, no remainder;
 #   - the consumer: the call site acts on the report's `Next:` line. A contract declared and
 #     never consumed is the RM-1 failure in another place.
-CG12_PATH_FORMS="$(grep -cF 'Read <path of references/coherence-gate.md>' "$CG_SKILL" || true)"
+CG12_PATH_FORMS="$(grep -cF 'Read {{skills_dir}}/{{self_name}}/references/coherence-gate.md and run' "$CG_SKILL" || true)"
 (( CG12_PATH_FORMS == 1 )) || CG_WHY+=" CG-12:dispatch-not-by-path-in-the-one-definition($CG12_PATH_FORMS)"
 if grep -qF 'the criteria from references/coherence-gate.md' "$CG_SKILL"; then CG_WHY+=" CG-12:criteria-sent-in-the-prompt"; fi
 grep -qF '## What the pass returns' "$CG_REF"                   || CG_WHY+=" CG-12:no-report-contract"
@@ -3317,12 +3563,14 @@ SF_RB_WIN="$(awk '/^### Step 3\.5/{f=1;next} /^### Step 4/{f=0} f' "$SF_SKILL")"
 # (SF-16) NEGATIVE — the retired contract that forbade the question tool.
 grep -qF 'It is a printed block, not' "$SF_SKILL" && SF_WHY+=" SF-16:printed-block-returned"
 # (SF-17) one question per item, the tool, print-first, the class menus and the recommendation policy.
-for sf17 in 'One question per requirement' 'AskUserQuestion' 'carries the options and nothing else' \
+for sf17 in 'One question per requirement' 'AskUserQuestion' \
              'Mine (DEC-<n>)' 'Finding only' 'only on a two-readings question'; do
     printf '%s' "$SF_RB_WIN" | grep -qF "$sf17" || SF_WHY+=" SF-17:no-${sf17// /-}"
 done
-# (SF-18) the text tier stops the turn — otherwise every item silently demotes to OQ (RISK-004).
-printf '%s' "$SF_RB_WIN" | grep -qF 'end your turn and wait' || SF_WHY+=" SF-18:text-tier-does-not-stop"
+# (SF-18) the text tier is the contract's now (UQ-1 pins its stop, UQ-5 forbids a copy here); what
+# stays in this window is the branch that keeps a question nobody answered from silently demoting
+# every item to OQ (RISK-004).
+printf '%s' "$SF_RB_WIN" | grep -qF 'A readback question left unanswered' || SF_WHY+=" SF-18:unanswered-readback-branch-lost"
 # (SF-19) every readback menu reaches SOURCE.md with its offered options (REQ-006).
 printf '%s' "$SF_RB_WIN" | grep -qF 'with the option labels' || SF_WHY+=" SF-19:menu-not-logged"
 
@@ -3955,7 +4203,9 @@ vq_count() {
     printf '%s' "$n"
 }
 
-VQ_K1='carries the options and nothing else'
+# The clause 'the question mechanism carries the options and nothing else' lives in data/user-questions.md now
+# (UQ-1 pins it there, UQ-5 forbids a copy in any skill), so a site is counted by its own print line.
+VQ_K4='to the screen as plain markdown first'
 VQ_K2='INFO [plan] resolved:'
 VQ_K3='is a guess, not a resolution'
 
@@ -3987,28 +4237,30 @@ vq_expect() {  # $1=label  $2=file  $3=anchor  $4=expected
 }
 
 # (AQ-1) family A — "listing candidates. Never guess the target." in the three zone skills.
-vq_expect "AQ-1 unikit-gd-content — question payload printed first"  "$VQ_GD_CONTENT" "$VQ_K1" 1
-vq_expect "AQ-1 unikit-gd-flow — question payload printed first"     "$VQ_GD_FLOW"    "$VQ_K1" 1
-vq_expect "AQ-1 unikit-gd-system — question payload printed first"   "$VQ_GD_SYSTEM"  "$VQ_K1" 1
+vq_expect "AQ-1 unikit-gd-content — question payload printed first"  "$VQ_GD_CONTENT" "$VQ_K4" 1
+vq_expect "AQ-1 unikit-gd-flow — question payload printed first"     "$VQ_GD_FLOW"    "$VQ_K4" 1
+vq_expect "AQ-1 unikit-gd-system — question payload printed first"   "$VQ_GD_SYSTEM"  "$VQ_K4" 1
 
 # (AQ-2) family B — design-context carries TWO ask sites (axis door, flow door). The third
 #        family-B site lives in unikit-improve and is asserted by IR-1 with its own total.
-vq_expect "AQ-2 mode-add — both plan paths printed first" "$VQ_MODE_ADD" "$VQ_K1" 1
-vq_expect "AQ-2 design-context — both ask sites print their candidates" "$VQ_DESIGN_CTX" "$VQ_K1" 2
+#        unikit-plan moved onto .unikit/system/user-questions.md, which owns the K1 clause now
+#        (UQ-1 pins it there, UQ-5 forbids a copy), so its sites are counted by their own print line.
+vq_expect "AQ-2 mode-add — both plan paths printed first" "$VQ_MODE_ADD" "$VQ_K4" 1
+vq_expect "AQ-2 design-context — both ask sites print their candidates" "$VQ_DESIGN_CTX" "$VQ_K4" 2
 
 # (AQ-3) family C — the two module-resolution asks in the registry router.
-vq_expect "AQ-3 unikit-rules-registry — module ids printed first" "$VQ_RULES_REG" "$VQ_K1" 2
+vq_expect "AQ-3 unikit-rules-registry — module ids printed first" "$VQ_RULES_REG" "$VQ_K4" 2
 
 # (AQ-4) families C + D share one file: two module-resolution asks plus the
 #        "Multiple matches" branch of the rule-lookup tree.
-vq_expect "AQ-4 unikit-memory — module ids + rule candidates printed first" "$VQ_MEMORY" "$VQ_K1" 3
+vq_expect "AQ-4 unikit-memory — module ids + rule candidates printed first" "$VQ_MEMORY" "$VQ_K4" 3
 
 # (AQ-5) family E — Tier 1 / Tier 2 reference-extraction candidates.
-vq_expect "AQ-5 module-gamedesign — reference candidates printed first" "$VQ_MODULE_GD" "$VQ_K1" 1
+vq_expect "AQ-5 module-gamedesign — reference candidates printed first" "$VQ_MODULE_GD" "$VQ_K4" 1
 
 # (AQ-6) family F — the review interview batches findings; a finding the user cannot read
 #        cannot be classified.
-vq_expect "AQ-6 unikit-gd-review — interview findings printed first" "$VQ_GD_REVIEW" "$VQ_K1" 1
+vq_expect "AQ-6 unikit-gd-review — interview findings printed first" "$VQ_GD_REVIEW" "$VQ_K4" 1
 
 # (PR-1…PR-4) every resolver announces what it resolved, and says that *latest* is a guess.
 # (PX-11) the coordinator is a fifth entry point and owes the same announcement.
@@ -4087,7 +4339,7 @@ fi
 # (IR-1) unikit-improve carries the clause exactly twice: Step 0 Priority 4 (which plan) and
 #        the Step 4 gate (which findings). An exact number catches both the loss of one and
 #        an accidental duplicate.
-vq_expect "IR-1 unikit-improve — print-first clause at both decision points" "$VQ_IMPROVE" "$VQ_K1" 2
+vq_expect "IR-1 unikit-improve — print-first clause at both decision points" "$VQ_IMPROVE" "$VQ_K4" 2
 
 # (IR-2) the structural half IR-1 cannot express. A grep pair stays green through the exact
 #        regression this fixes: both strings present, report template and question welded
@@ -5981,7 +6233,7 @@ else
     fail "EM-5 rules-tree delivery NOT wired in:$EM5_WHY"
 fi
 
-# (SA-1) Every system-asset installer in system-assets.ts is called from BOTH init.ts and
+# (SA-1) Every system-asset installer in system-assets.ts and system-contracts.ts is called from BOTH init.ts and
 # update.ts. Derivative, not a name list: a new `export async function installX` is covered
 # by construction, and the overlap with EM-5 above is deliberate — EM-5 pins two specific
 # functions for a stronger reason (silent findings-log corruption on a missed call), SA-1
@@ -5989,9 +6241,9 @@ fi
 # Anchored on the call LINE (`await installX(`), not the substring `installX(`: a plain
 # grep -F would count a commented-out `// await installX(` as wiring, missing the most
 # natural way to disable a call. All of today's calls have the form `    await installX(`.
-SA_INSTALLERS="$(sed -n 's/^export async function \(install[A-Za-z]*\)(.*/\1/p' "$ROOT_DIR/src/core/installer/system-assets.ts")"
+SA_INSTALLERS="$(sed -n 's/^export async function \(install[A-Za-z]*\)(.*/\1/p' "$ROOT_DIR/src/core/installer/system-assets.ts" "$ROOT_DIR/src/core/installer/system-contracts.ts")"
 if [[ -z "$SA_INSTALLERS" ]]; then
-    fail "SA-1 no install* exports found in system-assets.ts — the guard has no object"
+    fail "SA-1 no install* exports found in system-assets.ts and system-contracts.ts — the guard has no object"
 else
     SA_WHY=""
     SA_COUNT=0
@@ -6809,7 +7061,11 @@ if [[ -z "$TC_G5_WHY" ]]; then
     grep -qF '### Step 2.5' "$UNIKIT_IMPLEMENT_SKILL"                       || TC_G5_WHY+=" TC-29:no-step-2.5"
     grep -qF '⏭️ MERGED'    "$TC_TESTRUNS"                                  || TC_G5_WHY+=" TC-30:no-merge-marker"
     grep -qF 'does not count as pending for its own run' "$TC_TESTRUNS" || TC_G5_WHY+=" TC-31:no-counting-rule"
-    grep -qF 'never merged and never moved' "$TC_TESTRUNS"                  || TC_G5_WHY+=" TC-31:final-run-mergeable"
+    # The final full run is the preferred merge TARGET: it counts as a point (so "phase point +
+    # final run" is already two and the question is asked), it is never itself marked merged and
+    # never moved. Pinning the old exclusion from the count (`other than ...plan`) is the negative half.
+    grep -qF 'is the merge target, never merged away and never moved' "$TC_TESTRUNS" || TC_G5_WHY+=" TC-31:final-run-not-target"
+    grep -qF 'other than `Test checkpoint: plan`' "$TC_TESTRUNS" && TC_G5_WHY+=" TC-31:final-run-excluded-from-count"
     grep -qF 'mark first, then execute'     "$TC_TESTRUNS"                  || TC_G5_WHY+=" TC-32:no-order-contract"
     # (TC-33) one marker form across two files — a second spelling is a marker nobody reads.
     grep -qF '⏭️ MERGED → task' "$TC_READER" || TC_G5_WHY+=" TC-33:marker-form-drifted-in-reader"
@@ -6880,16 +7136,16 @@ if [[ -z "$TC_G7_WHY" ]]; then
     # (TC-52) the success signal: the key is gone from everything that ships or documents.
     TC52_HITS="$(grep -rlF 'merge_checkpoints' "$ROOT_DIR/skills" "$ROOT_DIR/subagents" "$ROOT_DIR/docs" "$ROOT_DIR/data" 2>/dev/null || true)"
     [[ -z "$TC52_HITS" ]] || TC_G7_WHY+=" TC-52:key-survives:$(echo "$TC52_HITS" | sed "s|$ROOT_DIR/||" | tr '\n' ',')"
-    # (TC-53) Step 2.5 asks once, prints the points first, stops the turn on the text tier, names the source.
+    # (TC-53) Step 2.5 asks once, prints the points first and names the source; the text tier and its stop are the contract's.
     TC53_WIN="$(awk '/^## Step 2\.5/{f=1;next} /^## Step 3\.2/{f=0} f' "$TC_TESTRUNS")"
-    for tc53 in 'AskUserQuestion' 'One run at the end' 'end your turn and wait' \
+    for tc53 in 'AskUserQuestion' 'One run at the end' \
                 '(<asked|arguments|no answer|nothing to merge>)' 'Fewer than two' \
                 'whatever the answer below' 'last one in execution order' 'drops the answer'; do
         printf '%s' "$TC53_WIN" | grep -qF "$tc53" || TC_G7_WHY+=" TC-53:no-${tc53// /-}"
     done
     # (TC-54) the instruction in the arguments is recognised, and the Step 0.2 question rides the same call.
     grep -qF 'A test-run instruction' "$UNIKIT_IMPLEMENT_SKILL" || TC_G7_WHY+=" TC-54:no-argument-instruction"
-    grep -qF 'in one `AskUserQuestion` call together with the Step 2.5 question' "$UNIKIT_IMPLEMENT_SKILL" \
+    grep -qF 'in one call of the question tool of your agent (`AskUserQuestion`) together with the Step 2.5 question' "$UNIKIT_IMPLEMENT_SKILL" \
         || TC_G7_WHY+=" TC-54:start-questions-not-combined"
     grep -qF 'the phase number inside it names a run point' "$UNIKIT_IMPLEMENT_SKILL" || TC_G7_WHY+=" TC-54:instruction-parsed-as-selector"
     grep -qF 'After a stash, re-read the manifest' "$UNIKIT_IMPLEMENT_SKILL" || TC_G7_WHY+=" TC-54:stash-leaves-stale-scope"
@@ -7283,6 +7539,27 @@ else
     fail "TW run-width contract:$TW_WHY"
 fi
 
+# --- PV: /unikit-verify checks what was executed, and reads only the phases of that work ---
+# A half-executed ultra bundle used to cost every phase file, and the tasks nobody had started
+# came back as `NOT FOUND` blockers. The reading depth now follows the audited phases.
+PV_WHY=""
+PV_RD="$(grep -F '| `/unikit-verify` |' "$ROOT_DIR/data/ultra-plan-read.md" || true)"
+PV_DOC="$(grep -F '| `/unikit-verify` |' "$ROOT_DIR/docs/plan-files.md" || true)"
+[[ -n "$PV_RD" && -n "$PV_DOC" ]] || PV_WHY+=" PV-0:reader-row-missing"
+grep -qF 'phases that hold at least one executed' "$UNIKIT_VERIFY_SKILL"  || PV_WHY+=" PV-1:depth-not-by-executed-work"
+grep -qF 'read the manifest plus **every** phase file' "$UNIKIT_VERIFY_SKILL" && PV_WHY+=" PV-1:old-read-all-depth"
+grep -qF 'every phase file is still read' "$UNIKIT_VERIFY_SKILL"          && PV_WHY+=" PV-1:old-read-all-closing-line"
+grep -qF '**Unfinished plan.**' "$UNIKIT_VERIFY_SKILL"                     || PV_WHY+=" PV-2:no-unfinished-plan-paragraph"
+grep -qF 'NOT EXECUTED' "$UNIKIT_VERIFY_SKILL"                             || PV_WHY+=" PV-2:no-not-executed-status"
+grep -qF 'executed task' <<<"$PV_RD"                                       || PV_WHY+=" PV-3:reader-contract-depth"
+grep -qF 'every** phase file' <<<"$PV_RD"                                  && PV_WHY+=" PV-3:reader-contract-reads-all"
+grep -qF 'every phase file' <<<"$PV_DOC"                                   && PV_WHY+=" PV-4:docs-read-all"
+if [[ -z "$PV_WHY" ]]; then
+    pass "PV-1…PV-4 verify reads the phases of executed work only; an unexecuted task is reported, never searched for or blocking"
+else
+    fail "PV partial-plan verify contract:$PV_WHY"
+fi
+
 # --- EO: the execution overview reaches the screen on every run that executes a task ---
 # Real runs showed `## Implementation Progress` on some starts and not on others: it was an
 # unnumbered paragraph between 3.0 and 3.1, and a Step 0.2 / 2.5 question asked "right before
@@ -7460,14 +7737,20 @@ if [[ -z "$MC_WHY" ]]; then
     grep -qF 'is explicitly **not** written' "$MC_MODE_CONFIG" \
         || MC_WHY+=" MC-6:no-language-rules-negation"
 
-    # (MC-7) the one empty value that is a choice and not a gap: `subagents.model.<agent>`.
+    # (MC-7) the one empty value that is a choice and not a gap: `subagents.model.<agent>.<role>`
+    # and `subagents.effort.<agent>.<role>` the same way.
     # Without the exception, bucket 3 refills a deliberately emptied key with the template's
     # value — for Claude `sonnet` — and the user's "pass no model" is undone by the very mode
-    # that was asked to repair the config.
-    grep -qF 'subagents.model.<agent>' "$MC_MODE_CONFIG" \
+    # that was asked to repair the config. A scalar where the template has a map of roles is the form of
+    # earlier releases: the mode leaves it as it is, because a key cannot be a value and a map at once.
+    grep -qF 'subagents.model.<agent>.<role>' "$MC_MODE_CONFIG" \
         || MC_WHY+=" MC-7:carveout-not-named"
+    grep -qF 'subagents.effort.<agent>.<role>' "$MC_MODE_CONFIG" \
+        || MC_WHY+=" MC-7:effort-carveout-not-named"
     grep -qF 'is a deliberate choice' "$MC_MODE_CONFIG" \
         || MC_WHY+=" MC-7:no-deliberate-empty-reading"
+    grep -qF 'is left as it is and listed under skipped' "$MC_MODE_CONFIG" \
+        || MC_WHY+=" MC-7:scalar-parent-not-named"
 fi
 if [[ -z "$MC_WHY" ]]; then
     pass "MC-1…MC-7 /unikit config actualization mode — triggered in the description, dispatched inside Step 0, three contract carve-outs, capability-bounded body"
@@ -7520,11 +7803,12 @@ else
     # (RCA-3) the step proposes what is RECORDED; it no longer formulates rules at the end
     # of a run, which is the one moment the session has most likely already ended.
     grep -qF 'The candidates are already collected' "$UNIKIT_IMPLEMENT_SKILL" || RCA_G2_WHY+=" RCA-3:not-sourced-from-manifest"
-    # (RCA-4) EXACT count, on the AQ convention (vq_count): the payload is printed before
-    # the question, because a question that carries the payload is invisible on a runtime
-    # with no such mechanism — measured, not assumed.
-    [[ "$(vq_count "$UNIKIT_IMPLEMENT_SKILL" 'carries the options and nothing else')" == "1" ]] \
-        || RCA_G2_WHY+=" RCA-4:print-before-ask-anchor-count"
+    # (RCA-4) the payload is printed before the question, because a question that carries the
+    # payload is invisible on a runtime with no such mechanism — measured, not assumed. The
+    # general rule is the contract's now (UQ-1 pins it, UQ-5 forbids a copy here); what stays
+    # is the site's own print line, counted EXACTLY on the AQ convention (vq_count).
+    [[ "$(vq_count "$UNIKIT_IMPLEMENT_SKILL" 'Print the candidates as plain markdown, in a block of their own')" == "1" ]] \
+        || RCA_G2_WHY+=" RCA-4:print-of-the-candidates-count"
     # (RCA-5…RCA-6) the question itself, and the exit that makes refusing a first-class answer.
     grep -qF 'multiSelect'   "$UNIKIT_IMPLEMENT_SKILL" || RCA_G2_WHY+=" RCA-5:no-multiselect"
     grep -qF '"Add nothing"' "$UNIKIT_IMPLEMENT_SKILL" || RCA_G2_WHY+=" RCA-6:no-refusal-option"
@@ -7555,9 +7839,10 @@ else
     # (RCA-11) SHARED — one string per formulation applied to BOTH skills in one loop. The
     # two questions must read identically; a contract only one side still states is not one.
     # Since DEC-012 d verify's half lives in references/rule-candidates.md — the pair is implement ↔ that reference.
-    for rca11 in 'the question mechanism carries the options and nothing else' \
-                 'Do NOT add any rules until the user answers' \
-                 'presents the same options as plain text'; do
+    # The general how-to-ask text (print first, the text tier) is the contract's now (UQ-1, UQ-5);
+    # the pair keeps what is site-specific: the print line of the candidates and the write gate.
+    for rca11 in 'Print the candidates as plain markdown, in a block of their own' \
+                 'Do NOT add any rules until the user answers'; do
         grep -qF "$rca11" "$UNIKIT_IMPLEMENT_SKILL" || RCA_G3_WHY+=" RCA-11:implement-drifted"
         grep -qF "$rca11" "$VR_RULES_REF" 2>/dev/null || RCA_G3_WHY+=" RCA-11:verify-drifted"
     done
@@ -7579,7 +7864,7 @@ fi
 VR_WHY=""
 # (VR-1) present, carrying the procedure.
 [[ -s "$VR_RULES_REF" ]] || VR_WHY+=" VR-1:reference-missing"
-for vr1 in 'multiSelect' '"Add nothing"' 'Print first, ask second'; do
+for vr1 in 'multiSelect' '"Add nothing"'; do
     grep -qF "$vr1" "$VR_RULES_REF" 2>/dev/null || VR_WHY+=" VR-1:no-${vr1// /-}"
 done
 # (VR-2) NEGATIVE — not inline in the body any more.
@@ -8385,7 +8670,8 @@ if [[ -s "$PRT_OPTIMISE_REF" ]]; then
         grep -qF "\`$prt_o\`" "$PRT_OPTIMISE_REF" || PRT_WHY+=" PRT-4:no-option-${prt_o// /-}"
     done
     grep -qF 'No topic proposed → no question' "$PRT_OPTIMISE_REF" || PRT_WHY+=" PRT-4:offer-without-topics"
-    grep -qF 'end your turn and wait' "$PRT_OPTIMISE_REF" || PRT_WHY+=" PRT-4:text-tier-does-not-stop"
+    # the text tier and its stop are the contract's now (UQ-1, UQ-5); what stays is what no answer does
+    grep -qF 'No answer → `Not now`' "$PRT_OPTIMISE_REF" || PRT_WHY+=" PRT-4:no-answer-is-not-now"
 fi
 # (PRT-5) Mode C keeps the layout and the tag, and offers the reorganization on a legacy file.
 grep -qF 'compact never removes or rewrites it' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-5:compact-may-strip-layout"
@@ -8548,7 +8834,8 @@ else
     grep -qF 'A separate question, never folded into the first' "$PRT_PRUNE_REF" || PRT10_WHY+=" conflicts-share-the-delete-question"
     grep -qF '`Resolve as proposed`' "$PRT_PRUNE_REF" || PRT10_WHY+=" no-resolve-option"
     grep -qF '**`stale-ref` only when nothing of the rule still applies.**' "$PRT_PRUNE_REF" || PRT10_WHY+=" half-live-rule-may-go"
-    grep -qF 'end your turn and wait' "$PRT_PRUNE_REF" || PRT10_WHY+=" text-tier-does-not-stop"
+    # the text tier and its stop are the contract's now (UQ-1, UQ-5); what stays is what no answer does
+    grep -qF 'No answer, or both declined' "$PRT_PRUNE_REF" || PRT10_WHY+=" no-answer-deletes"
     grep -qF '**only on confirmation**' "$PRT_PRUNE_REF" || PRT10_WHY+=" unconfirmed"
 fi
 if [[ -z "$PRT10_WHY" ]]; then
@@ -8908,9 +9195,11 @@ if [[ -z "$AR_WHY" ]]; then
     grep -qF 'An archived plan whose `Archived:` line ends in' "$AR_DESIGN_CTX" || AR_WHY+=" AR-16:fallback-reads-unfinished"
     grep -qF 'was dropped part-way' "$AR_EXPLORE" || AR_WHY+=" AR-16:explore-reads-unfinished-as-built"
     # (AR-17) the plans are chosen by row number or by a date rule on the table's own columns,
-    # and the typing option never reads as "the listed ones" (the prune trap, PRT-10).
-    grep -qF 'Choose by number or date' "$AR_SKILL" || AR_WHY+=" AR-17:no-choice-by-date"
-    grep -qF 'never as "the listed ones"' "$AR_SKILL" || AR_WHY+=" AR-17:choice-translation-trap"
+    # written in the user's own answer: no option for typing a choice and no second question with
+    # example answers (a user found those examples strange).
+    grep -qF 'write row numbers (3, 5-7) or a date rule' "$AR_SKILL" || AR_WHY+=" AR-17:no-choice-by-date"
+    if grep -qF 'Choose by number or date' "$AR_SKILL"; then AR_WHY+=" AR-17:typing-option-returned"; fi
+    if grep -qF 'two short examples of the answer' "$AR_SKILL"; then AR_WHY+=" AR-17:example-options-returned"; fi
     grep -qF 'A date rule is matched against the table' "$AR_SKILL" || AR_WHY+=" AR-17:date-rule-unbound"
     # (AR-18) the table reaches the screen: a real interactive run classified ten plans with a
     # script, left the table and every INFO line inside the folded tool output, printed one
@@ -8972,6 +9261,312 @@ if [[ -z "$MP_WHY" ]]; then
     pass "MP-1…MP-4 modules, PR checkpoints and Planned at: declared once"
 else
     fail "MP-1…MP-4 grammar contract:$MP_WHY"
+fi
+
+# BP / BM / BC / BS / BX: the balance checkpoint plan surface of the code side. The grammar has ONE
+# owner (TASK-FORMAT.md); the planner branch, the executor, verify and improve name its sections and
+# never restate a form. Positive literals live at the owners, negative ones (the owner's forms) at
+# everyone else. Paths come from variables declared above this block, or locally here (the script
+# runs under set -u). Every check goes through bx_has / bx_lacks, which count: zero checks fail.
+BX_WHY=""
+BX_CHK=0
+bx_has() { # <reason key> <literal> <file> — a substring of the file
+    BX_CHK=$((BX_CHK + 1))
+    grep -qF -- "$2" "$3" || BX_WHY+=" $1"
+}
+bx_head() { # <reason key> <heading> <file> — a heading read by name: a whole line
+    BX_CHK=$((BX_CHK + 1))
+    grep -qxF -- "$2" "$3" || BX_WHY+=" $1"
+}
+bx_lacks() { # <reason key> <literal> <file>
+    BX_CHK=$((BX_CHK + 1))
+    ! grep -qF -- "$2" "$3" || BX_WHY+=" $1"
+}
+bx_max() { # <reason key> <bytes> <file>
+    BX_CHK=$((BX_CHK + 1))
+    local n; n="$(wc -c < "$3" | tr -d ' ')"
+    (( n <= $2 )) || BX_WHY+=" $1(${n}>$2)"
+}
+BP_REF="$ROOT_DIR/skills/unikit-plan/references/balance-plan.md"
+BM_REF="$ROOT_DIR/skills/unikit-implement/references/balance-measure.md"
+BC_REF="$ROOT_DIR/skills/unikit-verify/references/balance-checks.md"
+BS_REF="$ROOT_DIR/skills/unikit-improve/references/balance-sync.md"
+BX_HANDBACK="$ROOT_DIR/data/balance-handback.md"
+BAL_GRAMMAR_FORMS=('Measure: [sim | play | probe]' 'runs: <N>' 'to: /unikit-gd-balance' \
+                   '| id | what | stand | runs | build | result | accept | valid | band | from |')
+for bx_f in "$MP_TASKFMT" "$MP_ULTRA" "$MP_READ" "$UP_MODE_ADD" "$UP_MODE_ULTRA" "$UNIKIT_PLAN_SKILL" \
+            "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL" "$UNIKIT_VERIFY_CONTRACT" "$UNIKIT_IMPROVE_SKILL" \
+            "$TC_COORD" "$TC_WORKER" "$TC_POLISHER" "$BP_REF" "$BM_REF" "$BC_REF" "$BS_REF" "$BX_HANDBACK"; do
+    [[ -s "$bx_f" ]] || BX_WHY+=" BX-0:missing(${bx_f#$ROOT_DIR/})"
+done
+if [[ -z "$BX_WHY" ]]; then
+    # (BP-1) the owner: sections, forms, the snapshot key, the order of the template
+    for l in '### Balance checkpoint grammar' '## Balance Context' '## Measurements' 'Hand-back: <point id>' \
+             '⏳ AWAITING RESULT' 'Checkpoints updated:' 'stands at the end of its phase' 'directly above the'; do
+        bx_has "BP-1:owner-lacks(${l})" "$l" "$MP_TASKFMT"
+    done
+    for f in "${BAL_GRAMMAR_FORMS[@]}"; do bx_has "BP-1:owner-lacks-form(${f})" "$f" "$MP_TASKFMT"; done
+    BX_TR="$({ grep -n '^## Test Runs' "$MP_TASKFMT" | head -1 | cut -d: -f1 || true; })"
+    BX_MS="$({ grep -n '^## Measurements' "$MP_TASKFMT" | head -1 | cut -d: -f1 || true; })"
+    BX_DG="$({ grep -n '^## Dependency Graph' "$MP_TASKFMT" | head -1 | cut -d: -f1 || true; })"
+    BX_TC="$({ grep -n '^## Technical Context' "$MP_TASKFMT" | head -1 | cut -d: -f1 || true; })"
+    BX_CHK=$((BX_CHK + 1))
+    if [[ -z "$BX_TR" || -z "$BX_MS" || -z "$BX_DG" || -z "$BX_TC" ]] || \
+       ! (( BX_TR < BX_MS && BX_MS < BX_DG && BX_DG < BX_TC )); then
+        BX_WHY+=" BP-1:template-order(TestRuns=${BX_TR:-none},Measurements=${BX_MS:-none},DepGraph=${BX_DG:-none},TechContext=${BX_TC:-none})"
+    fi
+    BX_W1="$({ awk '/^## Balance Context/{f=1;next} /^## /{f=0} f' "$MP_TASKFMT" || true; })"
+    BX_W2="$({ awk '/^### Balance checkpoint grammar/{f=1;next} /^### /{f=0} f' "$MP_TASKFMT" || true; })"
+    BX_CHK=$((BX_CHK + 2))
+    [[ -n "$BX_W1" ]] || BX_WHY+=" BP-1:no-snapshot-window"
+    [[ -n "$BX_W2" ]] || BX_WHY+=" BP-1:no-grammar-window"
+    if grep -qE '^[[:space:]-]*Updated:' <<< "$BX_W1"$'\n'"$BX_W2"; then BX_WHY+=" BP-1:snapshot-key-is-Updated"; fi
+
+    # (BP-2) ultra format and readers
+    BX_CHK=$((BX_CHK + 1))
+    BX_MS_N="$({ grep -c '## Measurements' "$MP_ULTRA" || true; })"
+    (( BX_MS_N >= 2 )) || BX_WHY+=" BP-2:ultra-format-measurements=${BX_MS_N}"
+    bx_has "BP-2:ultra-format-no-context" '## Balance Context' "$MP_ULTRA"
+    bx_has "BP-2:ultra-check-11-no-handback" 'the last task is `Hand-back:`' "$MP_ULTRA"
+    BX_CHK=$((BX_CHK + 1))
+    BX_CHECKS="$({ awk '/^## Integrity Checks/{f=1;next} /^## What This Format Does Not Change/{f=0} f' "$MP_ULTRA" | grep -cE '^[0-9]+\. ' || true; })"
+    [[ "$BX_CHECKS" == "16" ]] || BX_WHY+=" BP-2:integrity-checks=${BX_CHECKS}"
+    bx_has "BP-2:mode-ultra-no-measurements" '## Measurements' "$UP_MODE_ULTRA"
+    bx_has "BP-2:read-contract-no-measurements" '## Measurements' "$MP_READ"
+    bx_has "BP-2:mode-add-no-handback-rule" 'above the final `Hand-back:`' "$UP_MODE_ADD"
+    bx_has "BP-2:bundle-script-no-handback" 'Hand-back:' "$ROOT_DIR/skills/unikit-plan/scripts/plan-bundle.mjs"
+    bx_has "BP-2:bundle-test-no-handback" 'Hand-back:' "$ROOT_DIR/scripts/test-plan-bundle.sh"
+    for l in 'balance-handback-last' 'handback-without-context' 'balance-no-full-run-above' \
+             'handback-why-mentions-run' 'plan-bundle.mjs stays within 500 lines'; do
+        bx_has "BP-2:bundle-test-lacks(${l})" "$l" "$ROOT_DIR/scripts/test-plan-bundle.sh"
+    done
+    BX_CHK=$((BX_CHK + 1))   # a regex with brackets does not match its own line, so this is not a tautology
+    grep -qE 'bash "[$]SCRIPT_DIR/test-plan-bundle[.]sh"' "$ROOT_DIR/scripts/test-skills.sh" || BX_WHY+=" BP-2:bundle-test-not-in-chain"
+    BX_CHK=$((BX_CHK + 1))
+    BX_BL="$(wc -l < "$ROOT_DIR/skills/unikit-plan/scripts/plan-bundle.mjs" | tr -d ' ')"
+    (( BX_BL <= 500 )) || BX_WHY+=" BP-2:plan-bundle-lines=${BX_BL}"
+
+    # (BP-3) the door in the planner's skill: only a dispatcher, in the Input window, no forms
+    bx_has "BP-3:no-reference-named" 'references/balance-plan.md' "$UNIKIT_PLAN_SKILL"
+    BX_IN="$({ awk '/^## Input/{f=1;next} /^## Workflow/{f=0} f' "$UNIKIT_PLAN_SKILL" | grep -cF 'references/balance-plan.md' || true; })"
+    BX_CHK=$((BX_CHK + 1)); (( BX_IN >= 1 )) || BX_WHY+=" BP-3:dispatcher-outside-input(${BX_IN})"
+    bx_has "BP-3:step5-no-context" '## Balance Context' "$UNIKIT_PLAN_SKILL"
+    bx_has "BP-3:step5-no-measurements" '## Measurements' "$UNIKIT_PLAN_SKILL"
+    for f in "${BAL_GRAMMAR_FORMS[@]}"; do bx_lacks "BP-3:form-restated-in-skill(${f})" "$f" "$UNIKIT_PLAN_SKILL"; done
+
+    # (BP-4) the planner's branch: self-limited, no forms, no branch, the plan folder name
+    BX_CHK=$((BX_CHK + 1))
+    sed -n '3p' "$BP_REF" | grep -qF 'Read **only**' || BX_WHY+=" BP-4:no-self-limit"
+    for l in 'ERROR [balance]' 'plan self-check' 'handback-' 'Allowed header combinations' 'Checkpoints updated' \
+             'Never create or switch a branch' '.unikit/code/plans/balance-' '-bch-'; do
+        bx_has "BP-4:lacks(${l})" "$l" "$BP_REF"
+    done
+    for f in "${BAL_GRAMMAR_FORMS[@]}"; do bx_lacks "BP-4:form-restated(${f})" "$f" "$BP_REF"; done
+    bx_lacks "BP-4:creates-a-branch(git checkout -b)" 'git checkout -b' "$BP_REF"
+    bx_lacks "BP-4:creates-a-branch(git switch -c)" 'git switch -c' "$BP_REF"
+    bx_max "BP-4:size" 10500 "$BP_REF"
+
+    # (BM-1) implement: dispatchers in their steps, no forms
+    bx_has "BM-1:no-reference-named" 'references/balance-measure.md' "$UNIKIT_IMPLEMENT_SKILL"
+    BX_S1="$({ awk '/^### Step 1: Load Plan Context/{f=1;next} /^### Step 1.5/{f=0} f' "$UNIKIT_IMPLEMENT_SKILL" | grep -cF 'references/balance-measure.md' || true; })"
+    BX_S2="$({ awk '/^### Step 2: Determine Work Scope/{f=1;next} /^### Step 2.5/{f=0} f' "$UNIKIT_IMPLEMENT_SKILL" | grep -cF '⏳ AWAITING RESULT' || true; })"
+    BX_S34="$({ awk '/^[*][*]3[.]4: Mark task as completed[*][*]/{f=1} f&&/^[*][*]3[.]5/{exit} f' "$UNIKIT_IMPLEMENT_SKILL" | grep -cF 'references/balance-measure.md' || true; })"
+    BX_CHK=$((BX_CHK + 3))
+    (( BX_S1 >= 1 ))  || BX_WHY+=" BM-1:no-step1-dispatcher"
+    (( BX_S2 >= 1 ))  || BX_WHY+=" BM-1:no-step2-counting"
+    (( BX_S34 >= 1 )) || BX_WHY+=" BM-1:no-step34-pointer"
+    bx_has "BM-1:no-resume-pointer" '## Resume (Step 0.3)' "$UNIKIT_IMPLEMENT_SKILL"
+    for f in "${BAL_GRAMMAR_FORMS[@]}"; do bx_lacks "BM-1:form-restated-in-skill(${f})" "$f" "$UNIKIT_IMPLEMENT_SKILL"; done
+
+    # (BM-2) the executor's branch: ten headings as whole lines, nothing else at ## level
+    BX_CHK=$((BX_CHK + 1))
+    sed -n '3p' "$BM_REF" | grep -qF 'Read **only**' || BX_WHY+=" BM-2:no-self-limit"
+    BX_HEADS=('## What this reference owns' '## Step 3.2 — a Measure: task' '## Step 3.4 — ticking' \
+              '## Counting (Step 2)' '## Resume (Step 0.3)' '## Step 3.2 — the Hand-back: task' \
+              '## Delegated execution' '## Report lines (Step 4)' '## Steps 3.6-3.9' '## Step 5.8 — the hand-back command')
+    for h in "${BX_HEADS[@]}"; do bx_head "BM-2:no-heading(${h#\#\# })" "$h" "$BM_REF"; done
+    BX_CHK=$((BX_CHK + 1))
+    BX_H2="$({ grep -c '^## ' "$BM_REF" || true; })"
+    [[ "$BX_H2" == "${#BX_HEADS[@]}" ]] || BX_WHY+=" BM-2:heading-count=${BX_H2}"
+    bx_has "BM-2:manual-rule" '`⏸️ MANUAL` is never written for a `Measure:` task.' "$BM_REF"
+    for f in "${BAL_GRAMMAR_FORMS[@]}"; do bx_lacks "BM-2:form-restated(${f})" "$f" "$BM_REF"; done
+    bx_max "BM-2:size" 12000 "$BM_REF"
+
+    # (BM-3) regression of anchors this plan must not move
+    for f in "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL" "$TC_WORKER"; do
+        bx_has "BM-3:rt6-anchor(${f##*/})" 'never disables the engine MCP and never turns a target into' "$f"
+    done
+    for l in '**3.4: Mark task as completed**' '**3.5'; do
+        BX_CHK=$((BX_CHK + 1))
+        BX_N="$({ grep -cF -- "$l" "$UNIKIT_IMPLEMENT_SKILL" || true; })"
+        [[ "$BX_N" == "1" ]] || BX_WHY+=" BM-3:anchor-count(${l})=${BX_N}"
+    done
+
+    # (BM-4) a measurement and a hand-back are never delegated
+    bx_has "BM-4:not-in-delegated-execution" 'a `Measure:` task and a `Hand-back:` task are never delegated' "$UNIKIT_IMPLEMENT_SKILL"
+
+    # (BM-5) subagents and the readers of "executor data"
+    for f in "$TC_COORD" "$TC_WORKER"; do
+        bx_has "BM-5:no-measure(${f##*/})" 'Measure:' "$f"
+        bx_has "BM-5:no-handback(${f##*/})" 'Hand-back:' "$f"
+        bx_lacks "BM-5:skills-dir-var(${f##*/})" '{{skills_dir}}' "$f"
+    done
+    bx_has "BM-5:coordinator-no-delegation-sentence" 'are never handed to a worker' "$TC_COORD"
+    bx_has "BM-5:worker-not-yours" '`Measure:` or `Hand-back:` task is never yours' "$TC_WORKER"
+    bx_has "BM-5:coordinator-no-role-reference" 'balance reference — its path is written in `/unikit-implement` Step 1' "$TC_COORD"
+    bx_lacks "BM-5:coordinator-names-the-file" 'balance-measure.md' "$TC_COORD"
+    bx_has "BM-5:polisher-no-rule" '`Measure:` and `Hand-back:` tasks carry no `Files:` either' "$TC_POLISHER"
+    BX_CHK=$((BX_CHK + 2))
+    grep -F 'Executor data survives every edit' "$TC_POLISHER" | grep -qF '## Measurements' || BX_WHY+=" BM-5:polisher-executor-data"
+    grep -F 'Executor data is preserved whole' "$UNIKIT_IMPROVE_SKILL" | grep -qF '## Measurements' || BX_WHY+=" BM-5:improve-executor-data"
+
+    # (BC-1) verify: dispatcher inside 0.2 next to the rule-candidates one, pointers, strict row, size
+    bx_has "BC-1:no-reference-named" 'references/balance-checks.md' "$UNIKIT_VERIFY_SKILL"
+    BX_W="$({ awk '/^### 0[.]2 Read Plan/{f=1;next} /^### 0[.]3/{f=0} f' "$UNIKIT_VERIFY_SKILL" || true; })"
+    BX_CHK=$((BX_CHK + 2))
+    grep -qF 'references/balance-checks.md' <<< "$BX_W" || BX_WHY+=" BC-1:dispatcher-outside-0.2"
+    grep -qF 'references/rule-candidates.md' <<< "$BX_W" || BX_WHY+=" BC-1:rule-candidates-dispatcher-moved"
+    for l in 'verify-balance-report' 'verify-measure-<id>' 'verify-instrument-<id>' '| Balance measurements |' '⏳ AWAITING RESULT'; do
+        bx_has "BC-1:lacks(${l})" "$l" "$UNIKIT_VERIFY_SKILL"
+    done
+    BX_CHK=$((BX_CHK + 1))
+    BX_FO="$({ grep -cF 'excluded from the fan-out too' "$UNIKIT_VERIFY_SKILL" || true; })"
+    (( BX_FO >= 2 )) || BX_WHY+=" BC-1:fan-out-exclusions=${BX_FO}"
+    for f in "${BAL_GRAMMAR_FORMS[@]}"; do bx_lacks "BC-1:form-restated-in-skill(${f})" "$f" "$UNIKIT_VERIFY_SKILL"; done
+    # 65000 -> 65400: unikit-verify gained the 397-byte user-questions pointer and lost its inline text tier
+    # 65400 -> 65800: the branch match gained the 380-byte rule that finds an experiment plan by its own record (EXP-K1)
+    bx_max "BC-1:skill-size" 65800 "$UNIKIT_VERIFY_SKILL"
+
+    # (BC-2) verify's branch: headings, the two level sentences, and the one place of suggested_next
+    BX_CHK=$((BX_CHK + 1))
+    sed -n '3p' "$BC_REF" | grep -qF 'Read **only**' || BX_WHY+=" BC-2:no-self-limit"
+    for h in '## Step 1 — task status' '## Data validity' '## Drift' '## Gate result' '## Step 5' '## What this branch does not do'; do
+        bx_head "BC-2:no-heading(${h#\#\# })" "$h" "$BC_REF"
+    done
+    bx_has "BC-2:no-header-only-sentence" 'This branch reads only the header of the live file and writes nothing.' "$BC_REF"
+    bx_has "BC-2:no-level-sentence" 'The level is `warn`, never `fail`.' "$BC_REF"
+    bx_has "BC-2:no-drift-warn" 'WARN [balance-drift]' "$BC_REF"
+    BX_GATE="$({ awk '/^## Gate result/{f=1;next} /^## /{f=0} f' "$BC_REF" || true; })"
+    BX_CHK=$((BX_CHK + 1)); [[ -n "$BX_GATE" ]] || BX_WHY+=" BC-2:no-gate-window"
+    for l in 'suggested_next' '/unikit-plan' '/unikit-improve' '/unikit-gd-balance' '/unikit-implement'; do
+        BX_CHK=$((BX_CHK + 1)); grep -qF -- "$l" <<< "$BX_GATE" || BX_WHY+=" BC-2:gate-window-lacks(${l})"
+    done
+    for f in "${BAL_GRAMMAR_FORMS[@]}"; do bx_lacks "BC-2:form-restated(${f})" "$f" "$BC_REF"; done
+    bx_max "BC-2:size" 8000 "$BC_REF"
+
+    # (BC-3) verify's boundaries
+    bx_has "BC-3:vb4-anchor-gone" 'an `Editor:` line or a `PR checkpoint:` line' "$UNIKIT_VERIFY_SKILL"
+    bx_has "BC-3:measurements-write-boundary" '`## Measurements` is read here, never written.' "$UNIKIT_VERIFY_CONTRACT"
+
+    # (BS-1) improve: dispatcher inside Step 1 next to the recon one; the three caveats; no forms
+    bx_has "BS-1:no-reference-named" 'references/balance-sync.md' "$UNIKIT_IMPROVE_SKILL"
+    BX_W="$({ awk '/^### Step 1: Load Feature Plan/{f=1;next} /^### Step 1.5/{f=0} f' "$UNIKIT_IMPROVE_SKILL" || true; })"
+    BX_CHK=$((BX_CHK + 2))
+    grep -qF 'references/balance-sync.md' <<< "$BX_W" || BX_WHY+=" BS-1:dispatcher-outside-step1"
+    grep -qF 'references/recon-baseline.md' <<< "$BX_W" || BX_WHY+=" BS-1:recon-dispatcher-moved"
+    bx_has "BS-1:tc49-anchor" 'Executor data is preserved whole' "$UNIKIT_IMPROVE_SKILL"
+    bx_has "BS-1:tc47-anchor" 'inserted ABOVE the final full run' "$UNIKIT_IMPROVE_SKILL"
+    bx_has "BS-1:no-files-caveat" '`Measure:` and `Hand-back:` tasks carry no `Files:` either' "$UNIKIT_IMPROVE_SKILL"
+    bx_has "BS-1:no-final-run-caveat" 'the final full run stands directly above it' "$UNIKIT_IMPROVE_SKILL"
+    bx_has "BS-1:no-new-module-caveat" 'which takes no module after the last' "$UNIKIT_IMPROVE_SKILL"
+    bx_lacks "BS-1:coverage-grammar-in-improve" 'coverage ∈' "$UNIKIT_IMPROVE_SKILL"
+    bx_lacks "BS-1:table-restated" 'a work item has no task' "$UNIKIT_IMPROVE_SKILL"
+    for f in "${BAL_GRAMMAR_FORMS[@]}"; do bx_lacks "BS-1:form-restated-in-skill(${f})" "$f" "$UNIKIT_IMPROVE_SKILL"; done
+
+    # (BS-2) improve's branch
+    BX_CHK=$((BX_CHK + 1))
+    sed -n '3p' "$BS_REF" | grep -qF 'Read **only**' || BX_WHY+=" BS-2:no-self-limit"
+    for h in '## What is read' '## When the point changed' '## Synchronising by item id' '## Horizon' \
+             '## Executor data' '## Grammar checks' '## Step 1.5' '## Never'; do
+        bx_head "BS-2:no-heading(${h#\#\# })" "$h" "$BS_REF"
+    done
+    bx_has "BS-2:no-never-sentence" 'The balance document is never edited here.' "$BS_REF"
+    bx_has "BS-2:no-sync-info" 'INFO [balance] sync:' "$BS_REF"
+    bx_max "BS-2:size" 9000 "$BS_REF"
+
+    # (BS-3) improve's size
+    bx_max "BS-3:skill-size" 62000 "$UNIKIT_IMPROVE_SKILL"
+
+    # (BX-1) the four branch files: no agent-filter markers, no engine words, all point at the contract
+    for f in "$BP_REF" "$BM_REF" "$BC_REF" "$BS_REF"; do
+        bx_lacks "BX-1:agent-filter-marker(${f##*/})" '<!-- unikit:agents' "$f"
+        bx_lacks "BX-1:agent-filter-end(${f##*/})" '<!-- unikit:end' "$f"
+        for w in 'Unity' 'Godot' 'Unreal' 'GDScript'; do bx_lacks "BX-1:engine-word(${w},${f##*/})" "$w" "$f"; done
+    done
+    for f in "$BP_REF" "$BM_REF" "$BC_REF"; do bx_has "BX-1:contract-not-named(${f##*/})" 'balance-handback.md' "$f"; done
+    bx_has "BX-1:balance-skill-does-not-name-contract" 'balance-handback.md' "$ROOT_DIR/skills/unikit-gd-balance/references/mode-ingest.md"
+
+    # (BX-2) single owners: the report header only in the contract, the combinations table only in the template
+    BX_CHK=$((BX_CHK + 2))
+    BX_HDR="$({ grep -rlE '^Balance: <slug>' "$ROOT_DIR/skills" || true; })"
+    [[ -z "$BX_HDR" ]] || BX_WHY+=" BX-2:report-header-restated(${BX_HDR##*/})"
+    BX_OWN="$({ grep -rlx '## Allowed header combinations' "$ROOT_DIR/skills" "$ROOT_DIR/data" || true; })"
+    [[ "$BX_OWN" == "$ROOT_DIR/skills/unikit-gd-balance/references/template-checkpoints.md" ]] || BX_WHY+=" BX-2:combinations-owner(${BX_OWN##*/})"
+    # (BP-5) a new ordinary task never lands after a phase's Measure: tasks; the line kinds and the section are complete
+    bx_has "BP-5:add-mode-no-measure-rule" 'above the `Measure:` tasks of its phase' "$UP_MODE_ADD"
+    bx_has "BP-5:sync-no-measure-rule" 'above the `Measure:` tasks of its phase' "$BS_REF"
+    bx_has "BP-5:ultra-stateful-no-item-line" '`Measure:` / `Hand-back:` / `Item:` line' "$ROOT_DIR/skills/unikit-plan/references/ultra-stateful.md"
+    bx_has "BP-5:measurements-listed-unconditionally" '## Measurements   (only with a `Measure:` task)' "$MP_ULTRA"
+    # (BM-6) a pending result never reaches the delete / archive prompts; the layer runs its tests before its measurements
+    BX_S54="$({ awk '/^[*][*]5[.]4:/{f=1;next} /^[*][*]5[.]5:/{f=0} f' "$UNIKIT_IMPLEMENT_SKILL" | grep -cF 'references/balance-measure.md' || true; })"
+    BX_CNT="$({ awk '/^## Counting/{f=1;next} /^## /{f=0} f' "$BM_REF" || true; })"
+    BX_CHK=$((BX_CHK + 3))
+    (( BX_S54 >= 1 )) || BX_WHY+=" BM-6:step-5.4-ignores-pending"
+    grep -qF '5.4' <<< "$BX_CNT" || BX_WHY+=" BM-6:counting-silent-on-5.4"
+    grep -qF '5.8' <<< "$BX_CNT" || BX_WHY+=" BM-6:counting-silent-on-5.8"
+    bx_has "BM-6:coordinator-layer-order" 'the test-checkpoint tasks of the layer → the `Measure:` tasks' "$TC_COORD"
+    # 52600 -> 53100: unikit-implement gained the 552-byte subagent-arguments pointer (it had none)
+    # 53100 -> 53200: it gained the 397-byte user-questions pointer and lost its inline text tier
+    # 53200 -> 53600: the branch match gained the 380-byte rule that finds an experiment plan by its own record (EXP-K1)
+    bx_max "BM-6:implement-skill-size" 53600 "$UNIKIT_IMPLEMENT_SKILL"
+    # (BC-4) a measurement the user skipped is a skipped row, not a blocker
+    bx_has "BC-4:skipped-measure-is-a-blocker" '⏭️ SKIPPED' "$BC_REF"
+    # (BC-5) a name stated in ## Not measured is accounted for — a measurement the user skipped is not a blocker
+    bx_has "BC-5:verify-completeness-rule" 'a row, a line, or a line of `## Not measured`' "$BC_REF"
+    bx_has "BC-5:verify-accounted-for" 'accounted for' "$BC_REF"
+    bx_has "BC-5:ingest-accounted-for" 'accounted for' "$ROOT_DIR/skills/unikit-gd-balance/references/mode-ingest.md"
+    bx_has "BC-5:strict-row-ignores-skipped" 'except a task skipped at a blocker' "$UNIKIT_VERIFY_SKILL"
+    # (BM-7) the resume spot-check does not un-tick a task that has no code
+    bx_has "BM-7:resume-rule-missing" 'does not apply to a ticked `Measure:` or `Hand-back:` task' "$BM_REF"
+    bx_has "BM-7:skill-pointer-missing" 'spot-checked by its row or its report file' "$UNIKIT_IMPLEMENT_SKILL"
+    # (BM-8) a balance plan never gets the archive line at 5.8; the contract is pointed at, not restated
+    bx_has "BM-8:no-archive-rule-in-reference" 'gets no `/unikit-archive <folder>` line at 5.8' "$BM_REF"
+    bx_has "BM-8:no-archive-rule-in-skill" 'never gets the archive line at 5.8' "$UNIKIT_IMPLEMENT_SKILL"
+    bx_lacks "BM-8:old-archive-before-command" 'after the `/unikit-archive <folder>` line' "$BM_REF"
+    bx_lacks "BM-8:contract-restated" '`Plan` is the plan folder' "$BM_REF"
+    bx_has "BM-8:steps-list-incomplete" 'Steps 0.3, 2, 3.2, 3.4, 3.6-3.9, 4, 5.4, 5.6 and 5.8 follow it' "$UNIKIT_IMPLEMENT_SKILL"
+    # (BM-9) the final full run of a balance plan follows the last phase's measurements, in the coordinator too
+    bx_has "BM-9:coordinator-final-run" 'the final `Test checkpoint: plan` of a balance plan' "$TC_COORD"
+    bx_has "BM-9:grammar-rationale" 'the final full run alone stands after the last phase' "$MP_TASKFMT"
+    # (BP-6) exactly one Hand-back: in a plan with a context — in the script, its test and both formats
+    bx_has "BP-6:script-exactly-one" 'exactly one Hand-back:' "$ROOT_DIR/skills/unikit-plan/scripts/plan-bundle.mjs"
+    for l in 'balance-without-handback' 'balance-two-handbacks' 'balance-handback-no-tests'; do
+        bx_has "BP-6:bundle-test-lacks(${l})" "$l" "$ROOT_DIR/scripts/test-plan-bundle.sh"
+        BX_CHK=$((BX_CHK + 1))
+        [[ -s "$ROOT_DIR/scripts/test-fixtures/plan-bundle/${l}/PLAN.md" ]] || BX_WHY+=" BP-6:fixture-missing(${l})"
+    done
+    bx_has "BP-6:grammar-silent-on-missing-handback" 'a plan with a `## Balance Context` and no `Hand-back:`' "$MP_TASKFMT"
+    bx_has "BP-6:ultra-format-unconditional-run" 'under `Testing: yes`, the task directly above it' "$MP_ULTRA"
+    # (BP-7) the planner matches an existing plan by its document too; where runs comes from; a name with no ASCII left
+    bx_has "BP-7:existing-plan-key" 'the same `Source:` and the same `Point`' "$BP_REF"
+    bx_has "BP-7:runs-source" 'a guessed number' "$BP_REF"
+    bx_has "BP-7:slug-fallback" 'becomes `doc`' "$BP_REF"
+    # (BP-8) the missing-reference fallback sits where it can be read: in the dispatcher, not in the file it is for
+    bx_has "BP-8:dispatcher-fallback" 'balance-plan reference missing' "$UNIKIT_PLAN_SKILL"
+    bx_lacks "BP-8:unreachable-fallback" 'balance-plan reference missing' "$BP_REF"
+    bx_has "BP-8:files-rule-carve-out" 'except a checkpoint, `Measure:` or `Hand-back:` task' "$UNIKIT_PLAN_SKILL"
+    # (BX-3) neighbouring surfaces that named the old facts
+    bx_lacks "BX-3:package-path-in-a-project" 'data/research-link.md' "$ROOT_DIR/skills/unikit-gd-explore/references/save-research.md"
+    bx_has "BX-3:recon-consumers" 'three consumers' "$ROOT_DIR/skills/unikit-gd-recon/references/code-recon.md"
+    BX_PIPE="$({ awk '/Read-only verbs at the I.O edges/{f=1} f&&/^$/{exit} f' "$ROOT_DIR/skills/unikit-help/references/pipelines.md" || true; })"
+    BX_CHK=$((BX_CHK + 1))
+    grep -qF 'unikit-gd-balance' <<< "$BX_PIPE" || BX_WHY+=" BX-3:help-boundary-omits-balance"
+    (( BX_CHK > 0 )) || BX_WHY+=" BX-0:nothing-checked"
+fi
+if [[ -z "$BX_WHY" ]]; then
+    pass "BP-1…BX-3 balance checkpoint plans: one grammar owner, dispatchers, branches, no restated forms, no delegation, one Hand-back:, skipped measurements, sizes (${BX_CHK} checks)"
+else
+    fail "BP-1…BX-3 balance checkpoint plans:$BX_WHY"
 fi
 
 # PB: the plan-boundaries contract — one system asset four skills compute the same SHAs from.
@@ -9050,6 +9645,221 @@ if [[ -z "$MA_WHY" ]]; then
     pass "MA-1 merge-analysis protocol carries every section its readers name, flat and engine-neutral (${MA_CHK} anchors)"
 else
     fail "MA-1 merge-analysis protocol:$MA_WHY"
+fi
+
+# HB-1…HB-3: the balance hand-back report contract — one system asset that /unikit-plan,
+# /unikit-implement, /unikit-verify and /unikit-gd-balance all name instead of restating. The
+# headings are read by name, so they are asserted as WHOLE lines (-qxF); phrases are -qF.
+# Every check is counted: a block that checks nothing fails.
+HB_FILE="$ROOT_DIR/data/balance-handback.md"
+HB_WHY=""
+HB_CHK=0
+if [[ ! -s "$HB_FILE" ]]; then
+    HB_WHY+=" HB-1:missing-contract"
+else
+    # (HB-1) a flat copy knows no variables, and an engine fact would put engine documentation into UniKit
+    for hb_w in '{{' 'Unity' 'Godot' 'Unreal' 'GDScript'; do
+        HB_CHK=$((HB_CHK + 1))
+        ! grep -qF -- "$hb_w" "$HB_FILE" || HB_WHY+=" HB-1:forbidden(${hb_w})"
+    done
+    # (HB-2) exactly seven second-level headings, each a whole line; the report's own headings
+    # are described inside ## Body as a numbered list and must not become headings of this file
+    for hb_h in '## Readers and ownership' '## Place and name' '## Header' '## Body' '## Matching keys' \
+                '## Receiving' '## What this contract does not say'; do
+        HB_CHK=$((HB_CHK + 1))
+        grep -qxF -- "$hb_h" "$HB_FILE" || HB_WHY+=" HB-2:no-heading(${hb_h#\#\# })"
+    done
+    HB_H2="$({ grep -c '^## ' "$HB_FILE" || true; })"
+    HB_CHK=$((HB_CHK + 1))
+    [[ "$HB_H2" == "7" ]] || HB_WHY+=" HB-2:heading-count=${HB_H2}"
+    # (HB-3) the header lines, the table columns, the receiving names and the single-owner rule
+    for hb_l in 'Balance: <slug>' 'Point: BCH-<n>' 'Plan: <plan folder name>' 'Build: <short sha>' 'Date: YYYY-MM-DD' \
+                'id | stand | runs | summary | valid | band' 'results/HB-<n>.md' 'Supplemented:' \
+                'Do not restate this contract inside a skill'; do
+        HB_CHK=$((HB_CHK + 1))
+        grep -qF -- "$hb_l" "$HB_FILE" || HB_WHY+=" HB-3:no-literal(${hb_l})"
+    done
+    # (HB-4) the format says what "complete" means: every name accounted for, a skipped measurement included
+    for hb_l in 'every name of the list is accounted for' 'a measurement the user skipped at a blocker lands there'; do
+        HB_CHK=$((HB_CHK + 1))
+        grep -qF -- "$hb_l" "$HB_FILE" || HB_WHY+=" HB-4:no-literal(${hb_l})"
+    done
+    HB_CHK=$((HB_CHK + 1))
+    ! grep -qF -- 'A report is complete when every name of the list is present' "$HB_FILE" || HB_WHY+=" HB-4:old-completeness-rule"
+    (( HB_CHK > 0 )) || HB_WHY+=" HB-1:nothing-checked"
+fi
+if [[ -z "$HB_WHY" ]]; then
+    pass "HB-1…HB-4 balance hand-back contract is flat and engine-neutral, carries its seven sections and the header, table and receiving literals, and says what complete means (${HB_CHK} anchors)"
+else
+    fail "HB-1…HB-4 balance hand-back contract:$HB_WHY"
+fi
+
+# BAL-1…BAL-9: the balance master skill — structure, one definition per anchor, neutrality and
+# the language membrane. Variables are declared here, before first use (the script runs under
+# set -u). Headings with a dash are asserted by their ASCII part (no Unicode in an anchor).
+# Every check goes through bal_ok / bal_no, which count: a block that checks nothing fails.
+BAL_DIR="$ROOT_DIR/skills/unikit-gd-balance"
+BAL_SKILL="$BAL_DIR/SKILL.md"
+BAL_REFS="$BAL_DIR/references"
+BAL_HANDBACK="$ROOT_DIR/data/balance-handback.md"
+BAL_WHY=""
+BAL_CHK=0
+bal_ok() { # <reason key> <literal> <file> — a literal starting "## " must be a whole line
+    BAL_CHK=$((BAL_CHK + 1))
+    if [[ "$2" == "## "* ]]; then
+        grep -qxF -- "$2" "$3" || BAL_WHY+=" $1"
+    else
+        grep -qF -- "$2" "$3" || BAL_WHY+=" $1"
+    fi
+}
+bal_no() { # <reason key> <literal> <file>
+    BAL_CHK=$((BAL_CHK + 1))
+    ! grep -qF -- "$2" "$3" || BAL_WHY+=" $1"
+}
+if [[ ! -s "$BAL_SKILL" ]]; then
+    BAL_WHY+=" BAL-1:missing-skill"
+else
+    # (BAL-1) frontmatter and the section headings
+    BAL_FM="$({ awk '/^---$/{n++; next} n==1' "$BAL_SKILL" || true; })"
+    BAL_CHK=$((BAL_CHK + 1)); grep -qxF 'name: unikit-gd-balance' <<< "$BAL_FM" || BAL_WHY+=" BAL-1:name"
+    for g in 'Agent' 'AskUserQuestion' 'Skill'; do
+        BAL_CHK=$((BAL_CHK + 1)); grep -qxF "  - $g" <<< "$BAL_FM" || BAL_WHY+=" BAL-1:no-tool($g)"
+    done
+    # Skill is required since the experiment route: its one call is unikit-gd-experiment (EXP-B1)
+    for g in 'WebSearch' 'WebFetch'; do
+        BAL_CHK=$((BAL_CHK + 1)); ! grep -qxF "  - $g" <<< "$BAL_FM" || BAL_WHY+=" BAL-1:forbidden-tool($g)"
+    done
+    BAL_CHK=$((BAL_CHK + 1)); grep -qE '^# Game Design .* Balance Partner$' "$BAL_SKILL" || BAL_WHY+=" BAL-1:no-title"
+    BAL_CHK=$((BAL_CHK + 1)); grep -qE '^## Language Awareness .* BLOCKING PRE-REQUISITE$' "$BAL_SKILL" || BAL_WHY+=" BAL-1:no-language-block"
+    for h in '## Delegation agents' '## Bootstrap Context (MANDATORY)' '## Intent resolution' '## Closing block' \
+             '## Ownership Boundaries' '## Quick Reference'; do
+        bal_ok "BAL-1:no-heading(${h#\#\# })" "$h" "$BAL_SKILL"
+    done
+    BAL_SZ="$(wc -c < "$BAL_SKILL" | tr -d ' ')"
+    BAL_CHK=$((BAL_CHK + 1)); (( BAL_SZ <= 20000 )) || BAL_WHY+=" BAL-1:skill-size=${BAL_SZ}"
+
+    # (BAL-2) four branches and six supporting references named in the skill, ten files exist
+    for f in mode-open mode-ingest mode-revise mode-status resolve-target investigation closure-set \
+             template-balance template-checkpoints experiment-route; do
+        bal_ok "BAL-2:skill-does-not-name($f.md)" "$f.md" "$BAL_SKILL"
+        BAL_CHK=$((BAL_CHK + 1)); [[ -s "$BAL_REFS/$f.md" ]] || BAL_WHY+=" BAL-2:missing($f.md)"
+    done
+    BAL_REF_N="$({ ls "$BAL_REFS"/*.md 2>/dev/null || true; } | wc -l | tr -d ' ')"
+    BAL_CHK=$((BAL_CHK + 1)); [[ "$BAL_REF_N" == "10" ]] || BAL_WHY+=" BAL-2:reference-count=${BAL_REF_N}"
+
+    # (BAL-3) the plan command once in the whole skill, and in SKILL.md; the Handoff Tail sentence;
+    # the icon in front of the command line (checked through node: no Unicode in a grep anchor)
+    BAL_CMD="$({ grep -rhoF '/unikit-plan full <path to CHECKPOINTS.md>' "$BAL_DIR" || true; } | wc -l | tr -d ' ')"
+    BAL_CHK=$((BAL_CHK + 1)); [[ "$BAL_CMD" == "1" ]] || BAL_WHY+=" BAL-3:plan-command-count=${BAL_CMD}"
+    bal_ok "BAL-3:command-not-in-skill" '/unikit-plan full <path to CHECKPOINTS.md>' "$BAL_SKILL"
+    bal_ok "BAL-3:no-handoff-tail-sentence" 'Follow the **Handoff Tail contract**' "$BAL_SKILL"
+    BAL_CHK=$((BAL_CHK + 1))
+    node -e "const t=require('fs').readFileSync(process.argv[1],'utf8').split(String.fromCharCode(10));const l=t.find(x=>x.includes('/unikit-plan full <path to CHECKPOINTS.md>'));process.exit(l&&l.startsWith(String.fromCodePoint(0x1F9ED)+' ')?0:1)" "$BAL_SKILL" || BAL_WHY+=" BAL-3:no-icon-before-command"
+
+    # (BAL-4) one definition each
+    BAL_HDR="$({ grep -rlx '## Allowed header combinations' "$BAL_DIR" || true; })"
+    BAL_CLS="$({ grep -rlx '## Closing rule' "$BAL_DIR" || true; })"
+    BAL_CHK=$((BAL_CHK + 1)); [[ "$BAL_HDR" == "$BAL_REFS/template-checkpoints.md" ]] || BAL_WHY+=" BAL-4:header-combinations-owner(${BAL_HDR##*/})"
+    BAL_CHK=$((BAL_CHK + 1)); [[ "$BAL_CLS" == "$BAL_REFS/closure-set.md" ]] || BAL_WHY+=" BAL-4:closing-rule-owner(${BAL_CLS##*/})"
+    bal_no "BAL-4:table-copy-in-resolve-target" '| closed | none |' "$BAL_REFS/resolve-target.md"
+    bal_no "BAL-4:table-copy-in-status" '| closed | none |' "$BAL_REFS/mode-status.md"
+
+    # (BAL-5) the boundary: the Ownership window and the investigation literals
+    BAL_OWN="$({ awk '/^## Ownership Boundaries/{f=1;next} /^## /{f=0} f' "$BAL_SKILL" || true; })"
+    for l in '.unikit/code/' 'GD-IDS.yaml' 'coherence gate'; do
+        BAL_CHK=$((BAL_CHK + 1)); grep -qF -- "$l" <<< "$BAL_OWN" || BAL_WHY+=" BAL-5:ownership-lacks(${l})"
+    done
+    bal_no "BAL-5:check-agent-token" 'check-agent' "$BAL_SKILL"
+    bal_ok "BAL-5:no-extracted-tag" 'extracted from code' "$BAL_REFS/investigation.md"
+    bal_ok "BAL-5:no-engine-pointer" 'unikit-gd-recon/references/code-recon.md' "$BAL_REFS/investigation.md"
+    bal_ok "BAL-5:no-missing-engine-warn" 'WARN [balance] code-recon reference missing' "$BAL_REFS/investigation.md"
+
+    # (BAL-6) neutrality: no engine words, no pointer into the maintainers' own records
+    BAL_CHK=$((BAL_CHK + 1))
+    ! grep -rqwE 'Unity|Godot|Unreal|GDScript' "$BAL_DIR" "$BAL_HANDBACK" || BAL_WHY+=" BAL-6:engine-word"
+    BAL_CHK=$((BAL_CHK + 1))
+    ! grep -rqF -e 'C# ' -e 'C++ ' "$BAL_DIR" "$BAL_HANDBACK" || BAL_WHY+=" BAL-6:language-word"
+    BAL_CHK=$((BAL_CHK + 1))
+    ! grep -rqF '.ai-factory' "$BAL_DIR" "$BAL_HANDBACK" || BAL_WHY+=" BAL-6:maintainer-record-pointer"
+    BAL_CHK=$((BAL_CHK + 1))
+    ! grep -rqF '.ai-factory/research' "$ROOT_DIR/skills" "$ROOT_DIR/data" "$ROOT_DIR/src" || BAL_WHY+=" BAL-6:research-record-pointer"
+
+    # (BAL-7) the skill is named by the boundary and the two shards that list their readers
+    BAL_CHK=$((BAL_CHK + 1))
+    BAL_PR="$({ grep -c 'unikit-gd-balance' "$GD_PRINCIPLES" || true; })"
+    (( BAL_PR >= 4 )) || BAL_WHY+=" BAL-7:principles-mentions=${BAL_PR}"
+    bal_ok "BAL-7:critique-shard" 'unikit-gd-balance' "$GD_CRITIQUE"
+    bal_ok "BAL-7:provenance-shard" 'unikit-gd-balance' "$GD_PROVENANCE"
+
+    # (BAL-8) the anchors the readers rely on (the plan, implement and verify read them by name)
+    for h in '## Roadmap' '## Current Balance Checkpoint' '## Balance Checkpoint Log' '## Allowed header combinations'; do
+        bal_ok "BAL-8:template-lacks(${h#\#\# })" "$h" "$BAL_REFS/template-checkpoints.md"
+    done
+    for l in 'Status: open | closed' 'Current: BCH-<n> | none' 'Updated: YYYY-MM-DD HH:MM'; do
+        bal_ok "BAL-8:template-lacks(${l})" "$l" "$BAL_REFS/template-checkpoints.md"
+    done
+    for l in 'five latest' 'Matching keys' 'INDEX.md'; do
+        bal_ok "BAL-8:resolve-target-lacks(${l})" "$l" "$BAL_REFS/resolve-target.md"
+    done
+
+    # (BAL-9) the language membrane: the paragraph sits inside the Language Awareness block, and
+    # every branch names a point by its goal. The test checks the text, not the model's speech.
+    BAL_LANG="$({ awk '/^## Language Awareness/{f=1;next} /^## /{f=0} f' "$BAL_SKILL" || true; })"
+    for l in 'The membrane' 'TIER B' 'TIER A' 'named by its goal'; do
+        BAL_CHK=$((BAL_CHK + 1)); grep -qF -- "$l" <<< "$BAL_LANG" || BAL_WHY+=" BAL-9:language-block-lacks(${l})"
+    done
+    for f in resolve-target mode-status mode-open mode-ingest mode-revise; do
+        bal_ok "BAL-9:branch-lacks-goal-rule($f.md)" 'named by its goal' "$BAL_REFS/$f.md"
+    done
+    bal_no "BAL-9:code-in-announcement" 'point BCH-' "$BAL_REFS/resolve-target.md"
+    # (BAL-10) every outcome of a returned report is written down, and none of them by a code
+    bal_ok "BAL-10:close-has-no-writer" 'Status: closed' "$BAL_REFS/mode-ingest.md"
+    bal_ok "BAL-10:none-block-undefined" 'Point: none' "$BAL_REFS/template-checkpoints.md"
+    bal_ok "BAL-10:closing-can-be-refused" 'closing is never refused' "$BAL_REFS/closure-set.md"
+    bal_ok "BAL-10:compose-step-missing-in-ingest" 'Compose the point' "$BAL_REFS/mode-ingest.md"
+    bal_ok "BAL-10:compose-step-missing-in-revise" 'Compose the point' "$BAL_REFS/mode-revise.md"
+    bal_ok "BAL-10:supersede-missing-in-contract" 'Supersedes:' "$BAL_HANDBACK"
+    bal_ok "BAL-10:supersede-missing-in-resolver" 'Supersedes:' "$BAL_REFS/resolve-target.md"
+    BAL_SLUG="$({ awk '/^## One slug/{f=1;next} /^## /{f=0} f' "$BAL_REFS/mode-status.md" || true; })"
+    BAL_CHK=$((BAL_CHK + 3))
+    [[ -n "$BAL_SLUG" ]] || BAL_WHY+=" BAL-10:no-one-slug-window"
+    ! grep -qF 'BCH-' <<< "$BAL_SLUG" || BAL_WHY+=" BAL-10:one-slug-prints-a-code"
+    ! grep -qF 'Current:' <<< "$BAL_SLUG" || BAL_WHY+=" BAL-10:one-slug-prints-the-header"
+    BAL_LIST="$({ awk '/^## Documents exist/{f=1;next} /^## /{f=0} f' "$BAL_REFS/mode-status.md" || true; })"
+    BAL_CHK=$((BAL_CHK + 1))
+    grep -qF 'one action' <<< "$BAL_LIST" || BAL_WHY+=" BAL-10:list-offers-more-than-one-action"
+    # (BAL-11) an inconsistent file has a repair route: status offers it, revise holds it, nobody prints a code
+    bal_ok "BAL-11:repair-section-missing" '## Repair an inconsistent file' "$BAL_REFS/mode-revise.md"
+    bal_ok "BAL-11:status-offers-no-repair" 'Repair an inconsistent file' "$BAL_REFS/mode-status.md"
+    bal_ok "BAL-11:resolver-points-nowhere" 'Repair an inconsistent file' "$BAL_REFS/resolve-target.md"
+    bal_ok "BAL-11:intent-table-no-repair" 'repair an inconsistent file' "$BAL_SKILL"
+    bal_no "BAL-11:resolver-promises-an-unwritten-offer" 'revise offers a repair' "$BAL_REFS/resolve-target.md"
+    BAL_REP="$({ awk '/^## Repair an inconsistent file/{f=1;next} /^## /{f=0} f' "$BAL_REFS/mode-revise.md" || true; })"
+    BAL_CHK=$((BAL_CHK + 3))
+    [[ -n "$BAL_REP" ]] || BAL_WHY+=" BAL-11:no-repair-window"
+    ! grep -qF 'BCH-' <<< "$BAL_REP" || BAL_WHY+=" BAL-11:repair-prints-a-code"
+    ! grep -qF 'Current:' <<< "$BAL_REP" || BAL_WHY+=" BAL-11:repair-prints-the-header"
+    # (BAL-12) a drafted document is approved before any file is written
+    bal_ok "BAL-12:open-writes-without-approval" 'Nothing is written before the answer' "$BAL_REFS/mode-open.md"
+    # (BAL-13) a dropped current point is not promoted to done; a late report has its own path; the loading
+    # conditions of the supporting references say what the branches really do
+    bal_ok "BAL-13:dropped-point-becomes-done" 'a dropped point never becomes `done`' "$BAL_REFS/mode-revise.md"
+    bal_ok "BAL-13:late-data-path-undefined" 'Taken as late data' "$BAL_REFS/mode-ingest.md"
+    bal_ok "BAL-13:investigation-self-limit" 'by ingest and revise' "$BAL_REFS/investigation.md"
+    bal_ok "BAL-13:skill-investigation-condition" 'by ingest and revise' "$BAL_SKILL"
+    bal_no "BAL-13:template-read-only-on-create" 'Read only when the file is being created' "$BAL_REFS/template-checkpoints.md"
+    bal_ok "BAL-13:template-citations-unsaid" 'where the branches cite them' "$BAL_REFS/template-checkpoints.md"
+    # (BAL-14) the argument form the executors print; the slug of a document is ASCII; a report cannot start one
+    bal_ok "BAL-14:slug-and-report-form" '/unikit-gd-balance <slug> <path to a hand-back report>' "$BAL_SKILL"
+    bal_ok "BAL-14:resolver-slug-and-report" 'A slug followed by a report' "$BAL_REFS/resolve-target.md"
+    bal_ok "BAL-14:slug-not-ascii" 'ASCII' "$BAL_REFS/mode-open.md"
+    bal_no "BAL-14:report-cannot-start-a-document" 'create a new one' "$BAL_REFS/resolve-target.md"
+    (( BAL_CHK > 0 )) || BAL_WHY+=" BAL-1:nothing-checked"
+fi
+if [[ -z "$BAL_WHY" ]]; then
+    pass "BAL-1…BAL-14 balance skill: structure, ten references, one plan command, single definitions, boundary, neutrality, membrane, repair route, approval (${BAL_CHK} checks)"
+else
+    fail "BAL-1…BAL-14 balance skill:$BAL_WHY"
 fi
 
 # MA-2…MA-4: the explore side of the merge mode — a conditional reference, a narrow set of git
@@ -9457,7 +10267,7 @@ else
                'Disable checkpoints does not skip the module commit' \
                'is not committed — PR checkpoint' 'checkpoint: task <N.M>, no-push' \
                'do not stash it, or the checkpoint runs again' '/unikit-pr is not installed' \
-               'printed as its own block before the question, never inside it'; do
+               'printed as its own block before the question'; do
         grep -qF -- "$lit" "$IP_REF" || IP_WHY+=" IP-2:missing(${lit:0:32})"
     done
     grep -qF 'MERGED → final' "$IP_REF" && IP_WHY+=" IP-2:final-target"
@@ -9872,6 +10682,1131 @@ if [[ -z "$KM_WHY" ]]; then
     pass "KM-1/KM-3 Kimi Code source contracts ($KM_SKILL_SEEN SKILL.md without a positional token, adapter-only spellings)"
 else
     fail "KM-1/KM-3 Kimi Code source contracts violated:$KM_WHY"
+fi
+
+# --- EXP-1…EXP-10: the experiment master skill — structure, fourteen references, single owners,
+# the boundary, neutrality, the language membrane, pinned commitments, the lexicon and the
+# scenario fixtures. Variables are declared here, before first use (the script runs under
+# set -u). Every check goes through exp_ok / exp_no / exp_owner / exp_icon, which count: a
+# block that checks nothing fails. Headings with a dash are asserted by their ASCII part (no
+# Unicode in an anchor). The pinned commitments (EXP-8) are the pin bullets of the plan
+# tasks. These are source assertions, never proof of how a model behaves in a client.
+EXP_DIR="$ROOT_DIR/skills/unikit-gd-experiment"
+EXP_SKILL="$EXP_DIR/SKILL.md"
+EXP_REFS="$EXP_DIR/references"
+EXP_FIX="$ROOT_DIR/scripts/test-fixtures/experiment"
+EXP_GP="$ROOT_DIR/data/gamedesign/gd-principles.md"
+EXP_WHY=""
+EXP_CHK=0
+exp_ok() { # <reason key> <literal> <file> — a literal starting "## " must be a whole line
+    EXP_CHK=$((EXP_CHK + 1))
+    if [[ "$2" == "## "* ]]; then
+        grep -qxF -- "$2" "$3" || EXP_WHY+=" $1"
+    else
+        grep -qF -- "$2" "$3" || EXP_WHY+=" $1"
+    fi
+}
+exp_no() { # <reason key> <literal> <file>
+    EXP_CHK=$((EXP_CHK + 1))
+    ! grep -qF -- "$2" "$3" || EXP_WHY+=" $1"
+}
+exp_owner() { # <reason key> <literal> <file name>: the literal is in exactly one file of the skill, the named one
+    EXP_CHK=$((EXP_CHK + 1))
+    local hits
+    hits="$({ grep -rlF -- "$2" "$EXP_DIR" || true; } | sed 's|.*/||' | sort -u | tr '\n' ' ')"
+    [[ "$hits" == "$3 " ]] || EXP_WHY+=" $1(${hits% })"
+}
+exp_icon() { # <reason key> <file> <literal WITHOUT its leading slash>: a line with the command starts with the compass icon and a space.
+    # Git Bash on Windows rewrites an argument that starts with a slash into a path before node sees it, so the literal is passed without it.
+    EXP_CHK=$((EXP_CHK + 1))
+    node -e "const t=require('fs').readFileSync(process.argv[1],'utf8').split(String.fromCharCode(10));process.exit(t.some(x=>x.startsWith(String.fromCodePoint(0x1F9ED)+' ')&&x.includes(process.argv[2]))?0:1)" "$2" "$3" || EXP_WHY+=" $1"
+}
+exp_traces() { # stdin -> the lines that carry a technical trace, once the storage's own names are removed
+    { sed -E \
+        -e 's#\.unikit/gamedesign/[A-Za-z0-9_./<>-]*##g' \
+        -e 's#(unassigned-feedback|experiment|feedback|results|index)\.md##g' \
+        -e 's#\b(EXP|E|R|U)-(<[a-z]+>|[0-9]+)##g' \
+        -e 's#\bA-(<n>|[0-9]+)##g' \
+      | grep -E \
+        -e '[A-Za-z_][A-Za-z0-9_]*\(' \
+        -e '\b[a-z]+_[a-z0-9_]+\b' \
+        -e '\b[a-z]+[A-Z][A-Za-z0-9]*\b' \
+        -e '\b[A-Z][a-z0-9]+[A-Z][A-Za-z0-9]*\b' \
+        -e '\.(cs|gd|cpp|hpp|py|js|ts|json|yaml|yml|prefab|unity|asset|tscn|tres|uasset|umap)\b' \
+        -e '[A-Za-z0-9_]+/[A-Za-z0-9_]+/[A-Za-z0-9_.]+' \
+        -e '^[[:space:]]*[`][`][`](csharp|cs|gdscript|cpp|python|js|ts|json|yaml|bash|sh)\b'; } || true
+}
+if [[ ! -s "$EXP_SKILL" ]]; then
+    EXP_WHY+=" EXP-1:missing-skill"
+else
+    # (EXP-1) frontmatter, headings, size
+    EXP_FM="$({ awk '/^---$/{n++; next} n==1' "$EXP_SKILL" || true; })"
+    EXP_CHK=$((EXP_CHK + 1)); grep -qxF 'name: unikit-gd-experiment' <<< "$EXP_FM" || EXP_WHY+=" EXP-1:name"
+    EXP_CHK=$((EXP_CHK + 1)); grep -qxF '  category: game-design' <<< "$EXP_FM" || EXP_WHY+=" EXP-1:category"
+    EXP_CHK=$((EXP_CHK + 1)); grep -qxF 'disable-model-invocation: false' <<< "$EXP_FM" || EXP_WHY+=" EXP-1:model-invocation"
+    # WebSearch and WebFetch are required: the think mode looks for precedents and keeps their source and the date it was checked
+    for g in 'Agent' 'AskUserQuestion' 'WebSearch' 'WebFetch' 'Read' 'Write' 'Edit' 'Glob' 'Grep' 'Bash(ls *)' 'Bash(find *)' 'Bash(wc *)' 'Bash(date *)' 'Bash(mkdir *)'; do
+        EXP_CHK=$((EXP_CHK + 1)); grep -qxF "  - $g" <<< "$EXP_FM" || EXP_WHY+=" EXP-1:no-tool($g)"
+    done
+    for g in 'Skill' 'Bash'; do
+        EXP_CHK=$((EXP_CHK + 1)); ! grep -qxF "  - $g" <<< "$EXP_FM" || EXP_WHY+=" EXP-1:forbidden-tool($g)"
+    done
+    EXP_BASH_N="$({ grep -c '^  - Bash' <<< "$EXP_FM" || true; })"
+    EXP_CHK=$((EXP_CHK + 1)); [[ "$EXP_BASH_N" == "5" ]] || EXP_WHY+=" EXP-1:bash-pattern-count=${EXP_BASH_N}"
+    EXP_CHK=$((EXP_CHK + 1)); grep -qE '^# Game Design .* Experiment Partner$' "$EXP_SKILL" || EXP_WHY+=" EXP-1:no-title"
+    EXP_CHK=$((EXP_CHK + 1)); grep -qE '^## Language Awareness .* BLOCKING PRE-REQUISITE$' "$EXP_SKILL" || EXP_WHY+=" EXP-1:no-language-block"
+    for h in '## Delegation agents' '## Bootstrap Context (MANDATORY)' '## Intent resolution' '## Rules for every write' \
+             '## Closing block' '## Ownership Boundaries' '## Quick Reference'; do
+        exp_ok "EXP-1:no-heading(${h#\#\# })" "$h" "$EXP_SKILL"
+    done
+    EXP_SZ="$(wc -c < "$EXP_SKILL" | tr -d ' ')"
+    EXP_CHK=$((EXP_CHK + 1)); (( EXP_SZ <= 16000 )) || EXP_WHY+=" EXP-1:skill-size=${EXP_SZ}"
+
+    # (EXP-2) fourteen references named in the skill, each non-empty, <= 12000 bytes, line 3 is its load condition
+    for f in mode-discover mode-specify mode-evaluate mode-manage template-experiment card-draft-view storage-and-index \
+             context-and-research planning-handoff balance-link lookup from-research mode-think design-notes; do
+        exp_ok "EXP-2:skill-does-not-name($f.md)" "$f.md" "$EXP_SKILL"
+        EXP_CHK=$((EXP_CHK + 1)); [[ -s "$EXP_REFS/$f.md" ]] || EXP_WHY+=" EXP-2:missing($f.md)"
+        EXP_CHK=$((EXP_CHK + 1)); [[ "$(sed -n '3p' "$EXP_REFS/$f.md" 2>/dev/null)" == "Read **only** when"* ]] || EXP_WHY+=" EXP-2:load-line($f.md)"
+        EXP_RSZ="$({ wc -c < "$EXP_REFS/$f.md" || echo 0; } 2>/dev/null | tr -d ' ')"
+        EXP_CHK=$((EXP_CHK + 1)); (( ${EXP_RSZ:-0} <= 12000 )) || EXP_WHY+=" EXP-2:size($f.md=${EXP_RSZ})"
+    done
+    EXP_REF_N="$({ ls "$EXP_REFS"/*.md 2>/dev/null || true; } | wc -l | tr -d ' ')"
+    EXP_CHK=$((EXP_CHK + 1)); [[ "$EXP_REF_N" == "14" ]] || EXP_WHY+=" EXP-2:reference-count=${EXP_REF_N}"
+
+    # (EXP-3) lazy loading and delegation hygiene: the call form lives only in SKILL.md, one alias only
+    EXP_CHK=$((EXP_CHK + 1)); ! grep -rqF 'Agent(' "$EXP_REFS" || EXP_WHY+=" EXP-3:agent-call-in-reference"
+    EXP_CHK=$((EXP_CHK + 1)); ! grep -rqF '{{agent_' "$EXP_REFS" || EXP_WHY+=" EXP-3:agent-variable-in-reference"
+    exp_no "EXP-3:discover-loads-storage" 'storage-and-index' "$EXP_REFS/mode-discover.md"
+    EXP_AGENT_TOK="$({ grep -rhoE '[a-z][a-z0-9-]*-agent' "$EXP_DIR" || true; } | sort -u | tr '\n' ' ')"
+    EXP_CHK=$((EXP_CHK + 1)); [[ "$EXP_AGENT_TOK" == "recon-agent " ]] || EXP_WHY+=" EXP-3:agent-aliases(${EXP_AGENT_TOK% })"
+
+    # (EXP-4) single owners: each format is defined in exactly one file
+    exp_owner "EXP-4:card-sections-owner" '## 14. Evaluation Summary' template-experiment.md
+    exp_owner "EXP-4:index-header-owner" '| ID | Experiment | Path | What We Test | Status | Outcome | Score |' storage-and-index.md
+    exp_owner "EXP-4:feedback-entry-owner" '## E-<nnn>' storage-and-index.md
+    exp_owner "EXP-4:traces-list-owner" '## Technical traces: self-check before every write' storage-and-index.md
+    exp_owner "EXP-4:origin-block-owner" 'Balance document:' balance-link.md
+    exp_owner "EXP-4:idea-table-owner" '| ID | Experiment | Hypothesis | What We Test | Prototype Cost | Learning Value |' mode-discover.md
+    exp_owner "EXP-4:judged-on-owner" 'Judged on: <' template-experiment.md
+    exp_owner "EXP-4:based-on-owner" '- Based on:' template-experiment.md
+    exp_owner "EXP-4:rationale-owner" '- Why this design:' template-experiment.md
+    exp_owner "EXP-4:notes-owner" '# Notes: EXP-<nnn>' design-notes.md
+
+    # (EXP-5) the boundary: the write scope, the reading boundary, the shared contracts name the skill
+    EXP_OWN="$({ awk '/^## Ownership Boundaries/{f=1;next} /^## /{f=0} f' "$EXP_SKILL" || true; })"
+    for l in '.unikit/gamedesign/experiments/' 'GD-IDS.yaml' '.unikit/code/' 'coherence gate' 'there is no `Skill` tool'; do
+        EXP_CHK=$((EXP_CHK + 1)); grep -qF -- "$l" <<< "$EXP_OWN" || EXP_WHY+=" EXP-5:ownership-lacks(${l})"
+    done
+    exp_no "EXP-5:check-agent-token" 'check-agent' "$EXP_SKILL"
+    for t in 'code-recon.md' 'dev-principles' 'memory/code' 'ENGINE_RULES'; do
+        EXP_CHK=$((EXP_CHK + 1)); ! grep -rqF -- "$t" "$EXP_DIR" || EXP_WHY+=" EXP-5:code-memory-token(${t})"
+    done
+    EXP_GP_N="$({ grep -c 'unikit-gd-experiment' "$EXP_GP" || true; })"
+    EXP_CHK=$((EXP_CHK + 1)); (( EXP_GP_N >= 3 )) || EXP_WHY+=" EXP-5:principles-mentions=${EXP_GP_N}"
+    exp_ok "EXP-5:principles-id-row" '| `EXP-<nnn>` |' "$EXP_GP"
+    exp_ok "EXP-5:provenance-loader" 'unikit-gd-experiment' "$ROOT_DIR/data/gamedesign/gd-provenance.md"
+    exp_ok "EXP-5:critique-loader" 'unikit-gd-experiment' "$ROOT_DIR/data/gamedesign/gd-critique.md"
+
+    # (EXP-6) neutrality: no engine words, no pointer into the maintainers' own records
+    EXP_CHK=$((EXP_CHK + 1)); ! grep -rqwE 'Unity|Godot|Unreal|GDScript' "$EXP_DIR" || EXP_WHY+=" EXP-6:engine-word"
+    EXP_CHK=$((EXP_CHK + 1)); ! grep -rqF -e 'C# ' -e 'C++ ' "$EXP_DIR" || EXP_WHY+=" EXP-6:language-word"
+    EXP_CHK=$((EXP_CHK + 1)); ! grep -rqF '.ai-factory' "$EXP_DIR" || EXP_WHY+=" EXP-6:maintainer-record-pointer"
+
+    # (EXP-7) the membrane inside the Language Awareness block, one session-wide sentence, the icon before each command
+    EXP_LANG="$({ awk '/^## Language Awareness/{f=1;next} /^## /{f=0} f' "$EXP_SKILL" || true; })"
+    for l in 'The membrane' 'TIER B' 'TIER A' 'named by its title'; do
+        EXP_CHK=$((EXP_CHK + 1)); grep -qF -- "$l" <<< "$EXP_LANG" || EXP_WHY+=" EXP-7:language-block-lacks(${l})"
+    done
+    EXP_LP="$({ grep -cF 'The language holds for the whole session, not just at load time' <<< "$EXP_LANG" || true; })"
+    EXP_CHK=$((EXP_CHK + 1)); [[ "$EXP_LP" == "1" ]] || EXP_WHY+=" EXP-7:session-sentence-count=${EXP_LP}"
+    exp_icon "EXP-7:no-icon-before-plan-command" "$EXP_REFS/planning-handoff.md" 'unikit-plan <path to experiment.md>'
+    exp_icon "EXP-7:no-icon-before-return-command" "$EXP_REFS/balance-link.md" 'unikit-gd-balance <slug>'
+
+    # (EXP-8) pinned commitments — one line per pin of the tasks of Phases 1-3
+    exp_ok "EXP-8:P1-01" '## 14. Evaluation Summary' "$EXP_REFS/template-experiment.md"
+    exp_ok "EXP-8:P1-02" '- Evaluation status: Not Tested' "$EXP_REFS/template-experiment.md"
+    exp_ok "EXP-8:P1-03" '- Score: Not Rated' "$EXP_REFS/template-experiment.md"
+    exp_ok "EXP-8:P1-04" '- Outcome: Undetermined' "$EXP_REFS/template-experiment.md"
+    exp_ok "EXP-8:P1-05" '- Evidence: None' "$EXP_REFS/template-experiment.md"
+    exp_ok "EXP-8:P1-06" 'preliminary acceptance targets' "$EXP_REFS/template-experiment.md"
+    exp_ok "EXP-8:P1-07" 'do not force every experiment to last five minutes' "$EXP_REFS/template-experiment.md"
+    exp_ok "EXP-8:P1-08" 'goal, progress, success, failure and the next action' "$EXP_REFS/template-experiment.md"
+    exp_ok "EXP-8:P1-09" 'Ready for Planning is set only when the planner could build the prototype without asking the designer about a rule that matters' "$EXP_REFS/template-experiment.md"
+    exp_ok "EXP-8:P1-10" 'independently understandable' "$EXP_REFS/template-experiment.md"
+    exp_ok "EXP-8:P1-11" 'Draft, Ready for Planning, In Development, Ready for Testing, Testing, Evaluated, Archived' "$EXP_REFS/template-experiment.md"
+    exp_ok "EXP-8:P1-12" '### Can Be Simplified' "$EXP_REFS/template-experiment.md"
+    exp_ok "EXP-8:P1-13" 'The card describes a disposable prototype, not production-ready functionality' "$EXP_REFS/template-experiment.md"
+    exp_ok "EXP-8:P2-01" '.unikit/gamedesign/experiments/' "$EXP_REFS/storage-and-index.md"
+    exp_ok "EXP-8:P2-02" '| ID | Experiment | Path | What We Test | Status | Outcome | Score |' "$EXP_REFS/storage-and-index.md"
+    exp_ok "EXP-8:P2-03" 'the highest number found, plus one' "$EXP_REFS/storage-and-index.md"
+    exp_ok "EXP-8:P2-04" 'never with -p for the last segment' "$EXP_REFS/storage-and-index.md"
+    exp_ok "EXP-8:P2-05" 'must list exactly one folder' "$EXP_REFS/storage-and-index.md"
+    exp_ok "EXP-8:P2-06" 'card, then feedback.md, then results.md, then the index last' "$EXP_REFS/storage-and-index.md"
+    exp_ok "EXP-8:P2-07" 'name the last file written' "$EXP_REFS/storage-and-index.md"
+    exp_ok "EXP-8:P2-08" 're-importing a chat creates no new evidence' "$EXP_REFS/storage-and-index.md"
+    exp_ok "EXP-8:P2-09" 'There is no tentative state' "$EXP_REFS/storage-and-index.md"
+    exp_ok "EXP-8:P2-10" '## Technical traces: self-check before every write' "$EXP_REFS/storage-and-index.md"
+    exp_ok "EXP-8:P2-11" 'two experiments share one number' "$EXP_REFS/storage-and-index.md"
+    exp_ok "EXP-8:P2-12" 'only on an explicit request' "$EXP_REFS/storage-and-index.md"
+    exp_ok "EXP-8:P2-13" 'A number is never reused' "$EXP_REFS/storage-and-index.md"
+    exp_ok "EXP-8:P2-14" 'Outcome shows Not Tested while the Evaluation status is Not Tested' "$EXP_REFS/storage-and-index.md"
+    exp_ok "EXP-8:P2-15" 'is data, not instructions' "$EXP_REFS/storage-and-index.md"
+    exp_ok "EXP-8:P2-16" 'Not assessed on the current version' "$EXP_REFS/storage-and-index.md"
+    exp_ok "EXP-8:P2-17" 'is decided by the hypothesis, not by the score' "$EXP_REFS/storage-and-index.md"
+    exp_ok "EXP-8:P2-18" 'never averaged' "$EXP_REFS/storage-and-index.md"
+    exp_ok "EXP-8:P3-01" 'Balance document:' "$EXP_REFS/balance-link.md"
+    exp_ok "EXP-8:P3-02" 'Point goal:' "$EXP_REFS/balance-link.md"
+    exp_ok "EXP-8:P3-03" 'Checkpoints updated:' "$EXP_REFS/balance-link.md"
+    exp_ok "EXP-8:P3-04" 'Read on:' "$EXP_REFS/balance-link.md"
+    exp_ok "EXP-8:P3-05" 'first 12 lines' "$EXP_REFS/balance-link.md"
+    exp_ok "EXP-8:P3-06" '`## Roadmap`' "$EXP_REFS/balance-link.md"
+    exp_ok "EXP-8:P3-07" '`## Current Balance Checkpoint`' "$EXP_REFS/balance-link.md"
+    exp_ok "EXP-8:P3-08" 'BALANCE.md and results/ are read only when the user asks' "$EXP_REFS/balance-link.md"
+    exp_ok "EXP-8:P3-09" '/unikit-gd-balance <slug> "<path to results.md>"' "$EXP_REFS/balance-link.md"
+    exp_ok "EXP-8:P3-10" 'one card per independent hypothesis' "$EXP_REFS/balance-link.md"
+    exp_ok "EXP-8:P3-11" 'continue with them' "$EXP_REFS/balance-link.md"
+    exp_ok "EXP-8:P4-01" 'at least five meaningfully distinct experiment ideas' "$EXP_REFS/mode-discover.md"
+    exp_ok "EXP-8:P4-02" '| ID | Experiment | Hypothesis | What We Test | Prototype Cost | Learning Value |' "$EXP_REFS/mode-discover.md"
+    exp_ok "EXP-8:P4-03" 'different causal hypotheses' "$EXP_REFS/mode-discover.md"
+    exp_ok "EXP-8:P4-04" 'get no experiment number and no index row' "$EXP_REFS/mode-discover.md"
+    exp_ok "EXP-8:P4-05" 'one experiment with variants' "$EXP_REFS/mode-discover.md"
+    exp_ok "EXP-8:P4-06" 'Nothing is saved in this branch' "$EXP_REFS/mode-discover.md"
+    exp_ok "EXP-8:P4-07" 'proposals, not evidence' "$EXP_REFS/mode-discover.md"
+    exp_ok "EXP-8:P5-01" 'Nothing is written before the answer' "$EXP_REFS/mode-specify.md"
+    exp_ok "EXP-8:P5-02" 'one changed factor' "$EXP_REFS/mode-specify.md"
+    exp_ok "EXP-8:P5-03" 'a requirement of the card, not an implementation' "$EXP_REFS/mode-specify.md"
+    exp_ok "EXP-8:P5-04" 'independently understandable' "$EXP_REFS/mode-specify.md"
+    exp_ok "EXP-8:P5-05" 'Version rises by one' "$EXP_REFS/mode-specify.md"
+    exp_ok "EXP-8:P5-06" 'preliminary acceptance targets' "$EXP_REFS/mode-specify.md"
+    exp_ok "EXP-8:P5-07" 'as your own message' "$EXP_REFS/mode-specify.md"
+    exp_ok "EXP-8:P5-08" 'is a table, never a numbered or bulleted list of sections' "$EXP_REFS/card-draft-view.md"
+    exp_ok "EXP-8:P5-09" '| № | Section | Content |' "$EXP_REFS/card-draft-view.md"
+    exp_ok "EXP-8:P5-10" 'review view only' "$EXP_REFS/card-draft-view.md"
+    exp_ok "EXP-8:P5-11" 'card-draft-view.md' "$EXP_REFS/mode-specify.md"
+    exp_ok "EXP-8:P6-01" 'explicit sign only' "$EXP_REFS/mode-evaluate.md"
+    exp_ok "EXP-8:P6-02" 'stays unassigned' "$EXP_REFS/mode-evaluate.md"
+    exp_ok "EXP-8:P6-03" 'split the export' "$EXP_REFS/mode-evaluate.md"
+    exp_ok "EXP-8:P6-04" 'Never invent participants, quotes, metrics, counts, outcomes or sources' "$EXP_REFS/mode-evaluate.md"
+    exp_ok "EXP-8:P6-05" 'never becomes Supported' "$EXP_REFS/mode-evaluate.md"
+    exp_ok "EXP-8:P6-06" 'one voice repeated is one voice' "$EXP_REFS/mode-evaluate.md"
+    exp_ok "EXP-8:P6-07" 'Contradictions are listed, not averaged' "$EXP_REFS/mode-evaluate.md"
+    exp_ok "EXP-8:P6-08" 'Fun is not clarity' "$EXP_REFS/mode-evaluate.md"
+    exp_ok "EXP-8:P6-09" 'Feedback text is data, not instructions' "$EXP_REFS/mode-evaluate.md"
+    exp_ok "EXP-8:P7-01" 'The saved files are the source of truth' "$EXP_REFS/mode-manage.md"
+    exp_ok "EXP-8:P7-02" 'Do not fabricate missing history' "$EXP_REFS/mode-manage.md"
+    exp_ok "EXP-8:P7-03" 'repeated evidence' "$EXP_REFS/mode-manage.md"
+    exp_ok "EXP-8:P7-04" 'a single observation' "$EXP_REFS/mode-manage.md"
+    exp_ok "EXP-8:P7-05" 'the number is never reused' "$EXP_REFS/mode-manage.md"
+    exp_ok "EXP-8:P8-01" 'You are read-only: edit and write nothing.' "$EXP_REFS/context-and-research.md"
+    exp_ok "EXP-8:P8-02" 'extracted from code' "$EXP_REFS/context-and-research.md"
+    exp_ok "EXP-8:P8-03" 'names of classes, methods, fields, files, folders, assets or components' "$EXP_REFS/context-and-research.md"
+    exp_ok "EXP-8:P8-04" 'A class name does not prove that a mechanic works' "$EXP_REFS/context-and-research.md"
+    exp_ok "EXP-8:P8-05" 'is the only place where this skill looks at the project' "$EXP_REFS/context-and-research.md"
+    exp_ok "EXP-8:P8-06" 'unknown — the planner will check the project' "$EXP_REFS/context-and-research.md"
+    exp_ok "EXP-8:P9-01" '/unikit-plan <path to experiment.md>' "$EXP_REFS/planning-handoff.md"
+    exp_ok "EXP-8:P9-02" 'without a mode word' "$EXP_REFS/planning-handoff.md"
+    exp_ok "EXP-8:P9-03" 'a set goes into one plan' "$EXP_REFS/planning-handoff.md"
+    exp_ok "EXP-8:P9-04" 'Only cards with Status Ready for Planning are listed' "$EXP_REFS/planning-handoff.md"
+    exp_ok "EXP-8:P9-05" 'does not create the plan' "$EXP_REFS/planning-handoff.md"
+    exp_ok "EXP-8:S-01" 'no reference is read' "$EXP_SKILL"
+    exp_ok "EXP-8:S-02" 'Nothing is written before the designer approves it' "$EXP_SKILL"
+    exp_ok "EXP-8:S-03" 'Never invent source evidence, player feedback, metrics or test outcomes' "$EXP_SKILL"
+    exp_ok "EXP-8:S-04" 'check the whole text for technical traces' "$EXP_SKILL"
+    exp_ok "EXP-8:S-05" 'Follow the **Handoff Tail contract**' "$EXP_SKILL"
+    exp_ok "EXP-8:S-06" 'named by its title' "$EXP_SKILL"
+    exp_ok "EXP-8:S-07" '.unikit/gamedesign/experiments/' "$EXP_SKILL"
+    exp_ok "EXP-8:S-08" 'variant of a number' "$EXP_SKILL"
+    exp_ok "EXP-8:S-09" 'The language holds for the whole session, not just at load time' "$EXP_SKILL"
+    exp_ok "EXP-8:S-10" 'You are read-only: edit and write nothing.' "$EXP_SKILL"
+    exp_ok "EXP-8:S-11" 'Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.' "$EXP_SKILL"
+    exp_ok "EXP-8:S-12" 'nothing after it' "$EXP_SKILL"
+    exp_ok "EXP-8:S-13" 'there is no `Skill` tool' "$EXP_SKILL"
+    # R: the row budget of the card draft, the Judged on line, the first sentence of the index cell
+    exp_ok "EXP-8:R-01" 'A row holds one idea' "$EXP_REFS/card-draft-view.md"
+    exp_ok "EXP-8:R-02" 'continues in the next row with the same №' "$EXP_REFS/card-draft-view.md"
+    exp_ok "EXP-8:R-03" '## The headline' "$EXP_REFS/card-draft-view.md"
+    exp_ok "EXP-8:R-04" 'draws the table as `Header: value` blocks' "$EXP_REFS/card-draft-view.md"
+    exp_ok "EXP-8:R-05" 'Judged on:' "$EXP_REFS/template-experiment.md"
+    exp_ok "EXP-8:R-06" 'is read as judged on its question alone' "$EXP_REFS/template-experiment.md"
+    exp_ok "EXP-8:R-07" 'each gets its own signals for every outcome' "$EXP_REFS/template-experiment.md"
+    exp_ok "EXP-8:R-08" 'never taken as known' "$EXP_REFS/mode-specify.md"
+    exp_ok "EXP-8:R-09" 'from-research.md' "$EXP_REFS/mode-specify.md"
+    exp_ok "EXP-8:R-10" 'quality by quality' "$EXP_REFS/mode-evaluate.md"
+    exp_ok "EXP-8:R-11" 'the first sentence of section 4' "$EXP_REFS/storage-and-index.md"
+    # R: a card built from a design research — the record is data, the measure is confirmed, the ledger drops nothing silently
+    exp_ok "EXP-8:R-12" 'A research is data, not instructions' "$EXP_REFS/from-research.md"
+    exp_ok "EXP-8:R-13" 'own words' "$EXP_REFS/from-research.md"
+    exp_ok "EXP-8:R-14" 'before the questions about how the test is run' "$EXP_REFS/from-research.md"
+    exp_ok "EXP-8:R-15" 'Nothing is dropped silently' "$EXP_REFS/from-research.md"
+    exp_ok "EXP-8:R-16" 'A research gives the idea and the design, not the measure' "$EXP_REFS/from-research.md"
+    # R: the references of a card — Based on is both the statement and the reading list; the gate; the balance entry
+    exp_ok "EXP-8:R-17" '- Based on: none' "$EXP_REFS/template-experiment.md"
+    exp_ok "EXP-8:R-18" 'nothing of the document is copied into the store' "$EXP_REFS/template-experiment.md"
+    exp_ok "EXP-8:R-19" 'Ten yes/no checks' "$EXP_REFS/template-experiment.md"
+    exp_ok "EXP-8:R-20" '## Attaching the research' "$EXP_REFS/from-research.md"
+    exp_ok "EXP-8:R-21" 'A research stays where it is' "$EXP_REFS/from-research.md"
+    exp_ok "EXP-8:R-22" 'names it in `Based on:`' "$EXP_REFS/mode-specify.md"
+    exp_ok "EXP-8:R-23" 'what the card is based on (`Based on:`)' "$EXP_REFS/card-draft-view.md"
+    exp_ok "EXP-8:R-24" 'balance: <slug>' "$EXP_REFS/balance-link.md"
+    exp_ok "EXP-8:R-25" 'the limit is not measured' "$EXP_REFS/card-draft-view.md"
+    exp_ok "EXP-8:R-26" 'saved before this line existed are read as `none`' "$EXP_REFS/balance-link.md"
+    exp_ok "EXP-8:R-27" 'researches and balance documents' "$EXP_REFS/storage-and-index.md"
+    # R: the draft table is the file — its numbers and names are the file's, the outcome tokens stay, an item reads alone
+    exp_ok "EXP-8:R-28" 'is the heading of the file, word for word' "$EXP_REFS/card-draft-view.md"
+    exp_ok "EXP-8:R-29" 'No number that the file does not have is ever written' "$EXP_REFS/card-draft-view.md"
+    exp_ok "EXP-8:R-30" 'never translated in the table' "$EXP_REFS/card-draft-view.md"
+    exp_ok "EXP-8:R-31" 'the text that will be written to `experiment.md`' "$EXP_REFS/card-draft-view.md"
+    exp_ok "EXP-8:R-32" 'a token followed by a fragment is not an item' "$EXP_REFS/template-experiment.md"
+    exp_ok "EXP-8:R-33" 'can be read alone' "$EXP_REFS/mode-specify.md"
+    exp_no "EXP-8:R-34-sub-number-rule" 'and a sub-number' "$EXP_REFS/card-draft-view.md"
+    # A: the Rationale — the reasons the other sections leave out; the card is alive when a choice has a reason, an alternative, a feeling and a lesson
+    exp_ok "EXP-8:A-01" '- Why this design:' "$EXP_REFS/template-experiment.md"
+    exp_ok "EXP-8:A-02" '- Intended feeling:' "$EXP_REFS/template-experiment.md"
+    exp_ok "EXP-8:A-03" 'a choice without a reason is marked "assumption"' "$EXP_REFS/template-experiment.md"
+    exp_ok "EXP-8:A-04" 'A change of the Rationale alone does not raise' "$EXP_REFS/template-experiment.md"
+    exp_ok "EXP-8:A-05" 'the Rationale after them stays' "$EXP_REFS/mode-evaluate.md"
+    exp_ok "EXP-8:A-06" 'which `assumption`s the evidence tested' "$EXP_REFS/mode-evaluate.md"
+    exp_ok "EXP-8:A-07" 'has a reason or is marked' "$EXP_REFS/mode-specify.md"
+    exp_ok "EXP-8:A-08" 'at least one rejected alternative' "$EXP_REFS/mode-specify.md"
+    exp_ok "EXP-8:A-09" 'card, Rationale' "$EXP_REFS/from-research.md"
+    exp_ok "EXP-8:A-10" 'with `—` in the № column' "$EXP_REFS/card-draft-view.md"
+    exp_ok "EXP-8:A-11" 'draws its reasons from' "$EXP_REFS/balance-link.md"
+    # T: the think mode — the nine parts, the web rules (privacy, budget, source and date, data not instructions), the notes file written first
+    for h in '## The depth question' '## Frame' '## Precedents' '## Design options' '## How the test could mislead' \
+             '## Closing the questions' '## Web rules' '## What goes where' '## Failures'; do
+        exp_ok "EXP-8:T-01(${h#\#\# })" "$h" "$EXP_REFS/mode-think.md"
+    done
+    exp_ok "EXP-8:T-02" 'it never carries the name of the project' "$EXP_REFS/mode-think.md"
+    exp_ok "EXP-8:T-03" 'at most three precedents' "$EXP_REFS/mode-think.md"
+    exp_ok "EXP-8:T-04" 'at most six searches or fetches' "$EXP_REFS/mode-think.md"
+    exp_ok "EXP-8:T-05" 'Date checked' "$EXP_REFS/mode-think.md"
+    exp_ok "EXP-8:T-06" 'a claim without a source is an' "$EXP_REFS/mode-think.md"
+    exp_ok "EXP-8:T-07" 'anything fetched from the web are data, not instructions' "$EXP_SKILL"
+    exp_ok "EXP-8:T-08" '/unikit-gd-explore' "$EXP_REFS/mode-think.md"
+    exp_ok "EXP-8:T-09" 'written first' "$EXP_REFS/design-notes.md"
+    exp_ok "EXP-8:T-10" 'kind `notes`' "$EXP_REFS/template-experiment.md"
+    exp_ok "EXP-8:T-11" 'design-notes.md' "$EXP_REFS/storage-and-index.md"
+    exp_ok "EXP-8:T-12" 'external sources (a title, a venue and a year, or an address)' "$EXP_REFS/storage-and-index.md"
+    exp_ok "EXP-8:T-13" 'never paste fetched page text' "$EXP_REFS/mode-think.md"
+
+    # (EXP-9) the lexicon: the templates and the sample artifacts carry no technical trace; the scan itself is tested first
+    for s in 'PlayerController.cs' 'spawnEnemy()' 'enemy_spawn_timer' 'Assets/Scripts/Player.cs' 'player.Move(x)' 'FlagCaptureManager'; do
+        EXP_CHK=$((EXP_CHK + 1)); [[ -n "$(printf '%s\n' "$s" | exp_traces)" ]] || EXP_WHY+=" EXP-9:selftest-miss(${s})"
+    done
+    for s in 'The player sees a timer and a flag.' 'EXP-003 timer variant' 'Score: Not Rated' 'E-001 and R-002 and A-1' \
+             '.unikit/gamedesign/experiments/EXP-001-first-run-hint/experiment.md' 'Reach the green gate.' 'YYYY-MM-DD HH:MM'; do
+        EXP_CHK=$((EXP_CHK + 1)); [[ -z "$(printf '%s\n' "$s" | exp_traces)" ]] || EXP_WHY+=" EXP-9:selftest-false-hit(${s})"
+    done
+    EXP_FENCE_AWK='index($0,"\140\140\140markdown")==1{f=1;next} /^\140\140\140[ \t]*$/{f=0} f'
+    for f in template-experiment storage-and-index; do
+        EXP_BLOCKS="$({ awk "$EXP_FENCE_AWK" "$EXP_REFS/$f.md" || true; })"
+        EXP_CHK=$((EXP_CHK + 1)); [[ -n "$EXP_BLOCKS" ]] || EXP_WHY+=" EXP-9:no-template-blocks($f.md)"
+        EXP_CHK=$((EXP_CHK + 1)); [[ -z "$(printf '%s\n' "$EXP_BLOCKS" | exp_traces)" ]] || EXP_WHY+=" EXP-9:trace-in-template($f.md)"
+    done
+    EXP_PROJ_N=0
+    while IFS= read -r f; do
+        [[ -n "$f" ]] || continue
+        EXP_PROJ_N=$((EXP_PROJ_N + 1))
+        EXP_CHK=$((EXP_CHK + 1)); [[ -z "$(exp_traces < "$f")" ]] || EXP_WHY+=" EXP-9:trace-in-sample(${f#"$EXP_FIX"/})"
+    done < <(find "$EXP_FIX" -path '*/project/*' -name '*.md' 2>/dev/null)
+    EXP_CHK=$((EXP_CHK + 1)); (( EXP_PROJ_N > 0 )) || EXP_WHY+=" EXP-9:no-samples-scanned"
+
+    # (EXP-10) the sixteen scenarios of the specification: each README has its five sections and every anchor still resolves
+    exp_ok "EXP-10:root-honesty" 'checked by text only' "$EXP_FIX/README.md"
+    EXP_SC_N=0
+    EXP_ANC_N=0
+    for sc in s01-empty-invocation s02-boring-first-minutes s03-compare-navigation-hints s04-timed-capture-spec \
+              s05-save-without-duplicate-numbers s06-feedback-one-experiment s07-forwarded-mixed-chat \
+              s08-repeat-evaluation s09-handoff-to-planner s10-doubtful-evidence s11-card-from-research s12-card-from-balance-point \
+              s13-think-quick-pass s14-think-deep-pass s15-think-without-web s16-card-from-explore-block; do
+        EXP_RM="$EXP_FIX/$sc/README.md"
+        EXP_CHK=$((EXP_CHK + 1))
+        if [[ ! -s "$EXP_RM" ]]; then EXP_WHY+=" EXP-10:missing($sc)"; continue; fi
+        EXP_SC_N=$((EXP_SC_N + 1))
+        for h in '## Scenario' '## Setup' '## Expected' '## Must not' '## Anchors'; do
+            exp_ok "EXP-10:${sc%%-*}:no-heading(${h#\#\# })" "$h" "$EXP_RM"
+        done
+        while IFS= read -r anchor; do
+            [[ -n "$anchor" ]] || continue
+            EXP_ANC_FILE="${anchor%% :: *}"
+            EXP_ANC_LIT="${anchor#* :: }"
+            EXP_CHK=$((EXP_CHK + 1)); EXP_ANC_N=$((EXP_ANC_N + 1))
+            grep -qF -- "$EXP_ANC_LIT" "$EXP_DIR/$EXP_ANC_FILE" 2>/dev/null || EXP_WHY+=" EXP-10:${sc%%-*}:anchor-lost(${EXP_ANC_FILE##*/}:${EXP_ANC_LIT:0:24})"
+        done < <({ grep -E '^- Anchor: ' "$EXP_RM" || true; } | sed 's/^- Anchor: //')
+    done
+    EXP_CHK=$((EXP_CHK + 1)); (( EXP_SC_N == 16 )) || EXP_WHY+=" EXP-10:scenarios=${EXP_SC_N}-of-16"
+    EXP_CHK=$((EXP_CHK + 1)); (( EXP_ANC_N >= 81 )) || EXP_WHY+=" EXP-10:anchors=${EXP_ANC_N}-of-81"
+    (( EXP_CHK > 0 )) || EXP_WHY+=" EXP-1:nothing-checked"
+fi
+if [[ -z "$EXP_WHY" ]]; then
+    pass "EXP-1…EXP-10 experiment skill: structure, fourteen references, single owners, boundary, neutrality, membrane, pinned commitments, lexicon, sixteen scenarios checked by text only (${EXP_CHK} checks)"
+else
+    fail "EXP-1…EXP-10 experiment skill:$EXP_WHY"
+fi
+
+# --- EXP-P1…EXP-P4: the planner side of the experiment plan — one conditional reference, the
+# second exception to "ultra is named by the user" (said in each place that states the first
+# one), the manifest section and its place, the branch key, the base rule. Source assertions,
+# like MA-5…MA-7. The helpers and accumulators of the EXP block are reused after a reset.
+EXP_WHY=""
+EXP_CHK=0
+EXPP_REF="$ROOT_DIR/skills/unikit-plan/references/experiment-plan.md"
+EXPP_PLAN="$ROOT_DIR/skills/unikit-plan/SKILL.md"
+if [[ ! -s "$EXPP_REF" ]]; then
+    EXP_WHY+=" EXP-P1:missing-reference"
+else
+    # (EXP-P1) the reference: load line, size, the ten sections, neutrality
+    EXP_CHK=$((EXP_CHK + 1)); [[ "$(sed -n '3p' "$EXPP_REF")" == "Read **only** when"* ]] || EXP_WHY+=" EXP-P1:load-line"
+    EXPP_SZ="$(wc -c < "$EXPP_REF" | tr -d ' ')"
+    EXP_CHK=$((EXP_CHK + 1)); (( EXPP_SZ <= 12000 )) || EXP_WHY+=" EXP-P1:size=${EXPP_SZ}"
+    for h in '## Resolving the input' '## Checking the cards' '## The snapshot comes first' '## The mode question' \
+             '## Settings' '## The branch and the base' '## The plan folder and the closing message' \
+             '## One plan for a set' '## What the planner does not do' '## Self-check before saving'; do
+        exp_ok "EXP-P1:no-heading(${h#\#\# })" "$h" "$EXPP_REF"
+    done
+    EXP_CHK=$((EXP_CHK + 1)); ! grep -qwE 'Unity|Godot|Unreal|GDScript' "$EXPP_REF" || EXP_WHY+=" EXP-P1:engine-word"
+    exp_no "EXP-P1:agent-variable" '{{agent_' "$EXPP_REF"
+    exp_no "EXP-P1:agent-call" 'Agent(' "$EXPP_REF"
+    # (EXP-P2) pinned commitments and the second exception, said wherever the first one is
+    exp_ok "EXP-P:X1-01" 'An ordinary plan does not read this file' "$ROOT_DIR/skills/unikit-plan/references/experiment-plan.md"
+    exp_ok "EXP-P:X1-02" 'The word "experiment" in free text is not a selector' "$ROOT_DIR/skills/unikit-plan/references/experiment-plan.md"
+    exp_ok "EXP-P:X1-03" 'the snapshot is taken before any git command' "$ROOT_DIR/skills/unikit-plan/references/experiment-plan.md"
+    exp_ok "EXP-P:X1-04" 'ultra is recommended for a set of two or more cards' "$ROOT_DIR/skills/unikit-plan/references/experiment-plan.md"
+    exp_ok "EXP-P:X1-05" 'An explicit request in the user'\''s words for tests or documentation is kept' "$ROOT_DIR/skills/unikit-plan/references/experiment-plan.md"
+    exp_ok "EXP-P:X1-06" 'git.experiment_branch_prefix' "$ROOT_DIR/skills/unikit-plan/references/experiment-plan.md"
+    exp_ok "EXP-P:X1-07" 'defaults to experiment/' "$ROOT_DIR/skills/unikit-plan/references/experiment-plan.md"
+    exp_ok "EXP-P:X1-08" 'full and ultra always ask, even on an experiment branch' "$ROOT_DIR/skills/unikit-plan/references/experiment-plan.md"
+    exp_ok "EXP-P:X1-09" 'Branch: none' "$ROOT_DIR/skills/unikit-plan/references/experiment-plan.md"
+    exp_ok "EXP-P:X1-10" 'experiment-<topic>' "$ROOT_DIR/skills/unikit-plan/references/experiment-plan.md"
+    exp_ok "EXP-P:X1-11" '/unikit-implement experiment-<topic>' "$ROOT_DIR/skills/unikit-plan/references/experiment-plan.md"
+    exp_ok "EXP-P:X1-12" 'no PR checkpoint task is written' "$ROOT_DIR/skills/unikit-plan/references/experiment-plan.md"
+    exp_ok "EXP-P:X1-13" 'Milestone: "none"' "$ROOT_DIR/skills/unikit-plan/references/experiment-plan.md"
+    exp_ok "EXP-P:X1-14" 'does not redesign the game idea' "$ROOT_DIR/skills/unikit-plan/references/experiment-plan.md"
+    exp_ok "EXP-P:X1-15" 'Step 4.5 does not run' "$ROOT_DIR/skills/unikit-plan/references/experiment-plan.md"
+    exp_ok "EXP-P:X1-21" '**An experiment input**' "$ROOT_DIR/skills/unikit-plan/SKILL.md"
+    exp_ok "EXP-P:X1-22" '{{skills_dir}}/{{self_name}}/references/experiment-plan.md' "$ROOT_DIR/skills/unikit-plan/SKILL.md"
+    exp_ok "EXP-P:X1-23" 'WARN [experiment] experiment-plan reference missing' "$ROOT_DIR/skills/unikit-plan/SKILL.md"
+    exp_ok "EXP-P:X1-24" '`## Experiment Context`' "$ROOT_DIR/skills/unikit-plan/SKILL.md"
+    exp_ok "EXP-P:X1-25" 'For an experiment input the mode question is the one in' "$ROOT_DIR/skills/unikit-plan/SKILL.md"
+    exp_ok "EXP-P:X1-26" '**Experiment plan:**' "$ROOT_DIR/skills/unikit-plan/SKILL.md"
+    exp_ok "EXP-P:X1-27" 'An experiment plan skips this step' "$ROOT_DIR/skills/unikit-plan/SKILL.md"
+    exp_ok "EXP-P:X1-41" 'references/experiment-plan.md' "$ROOT_DIR/skills/unikit-plan/references/mode-full.md"
+    exp_ok "EXP-P:X1-42" 'references/experiment-plan.md' "$ROOT_DIR/skills/unikit-plan/references/mode-fast.md"
+    exp_ok "EXP-P:X1-43" 'two or more experiment cards' "$ROOT_DIR/skills/unikit-plan/references/mode-ultra.md"
+    exp_ok "EXP-P:X1-31" '### Experiment context section' "$ROOT_DIR/skills/unikit-plan/references/TASK-FORMAT.md"
+    exp_ok "EXP-P:X1-32" '## Experiment Context' "$ROOT_DIR/skills/unikit-plan/references/TASK-FORMAT.md"
+    exp_ok "EXP-P:X1-33" 'Branch: <the plan'\''s branch name | none>' "$ROOT_DIR/skills/unikit-plan/references/TASK-FORMAT.md"
+    exp_ok "EXP-P:X1-34" 'A path without the content is not a snapshot' "$ROOT_DIR/skills/unikit-plan/references/TASK-FORMAT.md"
+    exp_ok "EXP-P:X1-35" '## Experiment Context   (only for an experiment plan)' "$ROOT_DIR/skills/unikit-plan/references/ULTRA-PLAN-FORMAT.md"
+    exp_ok "EXP-P:X1-36" 'T30 experiment-context-after-balance-context-before-settings' "$ROOT_DIR/scripts/test-ultra-plan-contract.mjs"
+    exp_ok "EXP-P:X1-51" 'experiment_branch_prefix: experiment/' "$ROOT_DIR/skills/unikit/references/config-template.yaml"
+    exp_ok "EXP-P:X1-52" 'experiment_branch_prefix' "$ROOT_DIR/docs/configuration.md"
+    exp_ok "EXP-P:X1-61" 'takes its base from the `Base:` line' "$ROOT_DIR/data/plan-boundaries.md"
+    EXPP_EXC="$({ grep -cF 'where the mode question offers it, and in a set of two or more experiment cards, where the mode question recommends it' "$EXPP_PLAN" || true; })"
+    EXP_CHK=$((EXP_CHK + 1)); (( EXPP_EXC >= 3 )) || EXP_WHY+=" EXP-P2:second-exception-x${EXPP_EXC}-of-3"
+    EXPP_OLD="$({ grep -cF 'except in a merge plan, where the mode question offers it' "$EXPP_PLAN" || true; })"
+    EXP_CHK=$((EXP_CHK + 1)); (( EXPP_OLD >= 3 )) || EXP_WHY+=" EXP-P2:merge-exception-x${EXPP_OLD}-of-3"
+    # (EXP-P3) the six help and documentation files of MA-7 and mode-ultra say the second exception too
+    for f in skills/unikit-help/references/pipelines.md skills/unikit-help/references/skill-map.md docs/plan-files.md \
+             docs/skills.md docs/workflow.md docs/skills/unikit-plan-rationale.md; do
+        exp_ok "EXP-P3:no-second-exception(${f##*/})" 'experiment cards' "$ROOT_DIR/$f"
+    done
+    # (EXP-P4) the branch key is read by skills only; the bundle script knows nothing about the section
+    EXPP_CFG_N="$({ grep -cF 'experiment_branch_prefix' "$ROOT_DIR/docs/configuration.md" || true; })"
+    EXP_CHK=$((EXP_CHK + 1)); (( EXPP_CFG_N >= 2 )) || EXP_WHY+=" EXP-P4:config-docs-mentions=${EXPP_CFG_N}"
+    EXP_CHK=$((EXP_CHK + 1)); ! grep -rqF 'experiment_branch_prefix' "$ROOT_DIR/src" || EXP_WHY+=" EXP-P4:key-read-by-code"
+    EXP_CHK=$((EXP_CHK + 1)); ! grep -qF 'Experiment' "$ROOT_DIR/skills/unikit-plan/scripts/plan-bundle.mjs" || EXP_WHY+=" EXP-P4:bundle-script-knows-the-section"
+    (( EXP_CHK > 0 )) || EXP_WHY+=" EXP-P1:nothing-checked"
+fi
+if [[ -z "$EXP_WHY" ]]; then
+    pass "EXP-P1…EXP-P4 experiment plan, planner side: one reference, the second ultra exception said everywhere the first is, section and place, branch key, base rule (${EXP_CHK} checks)"
+else
+    fail "EXP-P1…EXP-P4 experiment plan, planner side:$EXP_WHY"
+fi
+
+# --- EXP-S1…EXP-S4: the experiment plan without cards — one more conditional reference next to
+# experiment-plan.md (which sits at its size ceiling), the request recognised in SKILL.md and never
+# inferred (so the description gains no trigger, like MA-7 for merge), the snapshot form without
+# cards, the profile reading the brief as the card, the docs and the delivery. Source assertions,
+# like EXP-P; the helpers and accumulators of the EXP block are reused after a reset.
+EXP_WHY=""
+EXP_CHK=0
+EXPS_REF="$ROOT_DIR/skills/unikit-plan/references/experiment-source.md"
+EXPS_PLAN="$ROOT_DIR/skills/unikit-plan/SKILL.md"
+EXPS_PLAN_REF="$ROOT_DIR/skills/unikit-plan/references/experiment-plan.md"
+EXPS_TASKFMT="$ROOT_DIR/skills/unikit-plan/references/TASK-FORMAT.md"
+EXPS_PROFILE="$ROOT_DIR/data/prototype-profile.md"
+if [[ ! -s "$EXPS_REF" ]]; then
+    EXP_WHY+=" EXP-S1:missing-reference"
+else
+    # (EXP-S1) the reference: load line, size, neutrality, the one way of naming the question tool
+    EXP_CHK=$((EXP_CHK + 1)); [[ "$(sed -n '3p' "$EXPS_REF")" == "Read **only** when"* ]] || EXP_WHY+=" EXP-S1:load-line"
+    EXPS_SZ="$(wc -c < "$EXPS_REF" | tr -d ' ')"
+    EXP_CHK=$((EXP_CHK + 1)); (( EXPS_SZ <= 12000 )) || EXP_WHY+=" EXP-S1:size=${EXPS_SZ}"
+    EXP_CHK=$((EXP_CHK + 1)); ! grep -qwE 'Unity|Godot|Unreal|GDScript' "$EXPS_REF" || EXP_WHY+=" EXP-S1:engine-word"
+    exp_no "EXP-S1:agent-variable" '{{agent_' "$EXPS_REF"
+    exp_no "EXP-S1:agent-call" 'Agent(' "$EXPS_REF"
+    exp_no "EXP-S1:maintainer-record-pointer" '.ai-factory' "$EXPS_REF"
+    exp_no "EXP-S1:agent-filter-marker" '<!-- unikit:agents' "$EXPS_REF"
+    EXPS_Q_ALL="$({ grep -cF 'AskUserQuestion' "$EXPS_REF" || true; })"
+    EXPS_Q_OK="$({ grep -cF 'the question tool of your agent (`AskUserQuestion`)' "$EXPS_REF" || true; })"
+    EXP_CHK=$((EXP_CHK + 1)); (( EXPS_Q_ALL >= 1 && EXPS_Q_ALL == EXPS_Q_OK )) || EXP_WHY+=" EXP-S1:question-tool-x${EXPS_Q_OK}-of-${EXPS_Q_ALL}"
+    # (EXP-S2) pinned formulations of the reference: the request, the principle, the store, the latest,
+    # the confirmation, the route to a card, the brief, the snapshot, the mode question, the hint
+    EXPS_PINS=(
+        'An experiment request is a request addressed to the planner'
+        'The planner builds what the source says and invents no game idea'
+        'A path is a selector: no search and no confirmation line'
+        'The folders and the records are the source of truth'
+        'The latest design research is the one with the latest Updated line among the completed records'
+        'the user sees one line before anything else is loaded'
+        'WARN [experiment] researches index out of date — not repaired'
+        'INFO [experiment] <title> is grounded on EXP-<nnn> — planning from the card'
+        'ERROR [experiment] <source>: nothing to build from — plan not built'
+        'not stated'
+        '.unikit/gamedesign/researches/'
+        'RESEARCH_RESULT.md'
+        'a URL is not fetched'
+        'The snapshot is taken before any git command'
+        'ultra only when the user named it'
+        'the planner does not create the card'
+        'the conversation itself is the source'
+    )
+    EXPS_I=0
+    for exps_pin in "${EXPS_PINS[@]}"; do
+        EXPS_I=$((EXPS_I + 1))
+        exp_ok "$(printf 'EXP-S2:%02d' "$EXPS_I")" "$exps_pin" "$EXPS_REF"
+    done
+    # (EXP-S3) the wiring: the request in SKILL.md, the pointer in experiment-plan.md, the snapshot form
+    # without cards, the profile reading the brief as the card
+    exp_ok "EXP-S3:01" '**An experiment request**' "$EXPS_PLAN"
+    exp_ok "EXP-S3:02" '{{skills_dir}}/{{self_name}}/references/experiment-source.md' "$EXPS_PLAN"
+    exp_ok "EXP-S3:03" 'WARN [experiment] experiment-source reference missing' "$EXPS_PLAN"
+    exp_ok "EXP-S3:04" 'a feature that is about experiments (an A/B switch, an experiment framework)' "$EXPS_PLAN"
+    exp_ok "EXP-S3:05" 'For an experiment request the source is resolved by' "$EXPS_PLAN"
+    exp_ok "EXP-S3:06" 'it never falls back to the code researches index above' "$EXPS_PLAN"
+    exp_ok "EXP-S3:07" 'The word "experiment" in free text is not a selector' "$EXPS_PLAN"
+    # the description gains no experiment trigger (DEC-5, as MA-7 for merge); plain -qi, never -iF
+    EXPS_PFM="$(awk '/^---$/{n++; next} n==1' "$EXPS_PLAN")"
+    EXPS_DESC="$(awk '/^description:/{f=1;print;next} f&&/^[a-z-]+:/{exit} f' <<< "$EXPS_PFM" | tr '\n' ' ' | tr -s ' ')"
+    EXP_CHK=$((EXP_CHK + 1)); [[ -n "$EXPS_DESC" ]] || EXP_WHY+=" EXP-S3:08-description-not-read"
+    EXP_CHK=$((EXP_CHK + 1)); ! grep -qi 'experiment' <<< "$EXPS_DESC" || EXP_WHY+=" EXP-S3:09-description-gained-an-experiment-trigger"
+    exp_ok "EXP-S3:10" 'experiment-source.md' "$EXPS_PLAN_REF"
+    exp_ok "EXP-S3:11" '(i) Without cards, the checks of `experiment-source.md` ran in place of (a), (g) and (h)' "$EXPS_PLAN_REF"
+    exp_ok "EXP-S3:12" 'another experiment source' "$ROOT_DIR/skills/unikit-plan/references/mode-full.md"
+    exp_ok "EXP-S3:13" '**Without cards.**' "$EXPS_TASKFMT"
+    exp_ok "EXP-S3:14" 'Input: research | file | request | session' "$EXPS_TASKFMT"
+    exp_ok "EXP-S3:15" '### Prototype brief' "$EXPS_TASKFMT"
+    exp_ok "EXP-S3:16" 'is written only when there is no `Cards:` list' "$EXPS_TASKFMT"
+    # NM-2 stays true: the grammar block is indented, no line of the file starts with a field name
+    EXP_CHK=$((EXP_CHK + 1)); ! grep -qE '^(Branch|Input|Sources):' "$EXPS_TASKFMT" || EXP_WHY+=" EXP-S3:17-field-at-margin"
+    exp_ok "EXP-S3:18" 'Wherever this file says "the card", it means that brief' "$EXPS_PROFILE"
+    exp_ok "EXP-S3:19" '`### Prototype brief`' "$EXPS_PROFILE"
+    exp_ok "EXP-S3:20" "the card's (or the brief's) \`Out of Scope\`" "$EXPS_PROFILE"
+    # (EXP-S4) the docs and the help describe the request, and the install test asserts the delivery
+    exp_ok "EXP-S4:docs(skills.md)" 'experiment-source.md' "$ROOT_DIR/docs/skills.md"
+    exp_ok "EXP-S4:docs(plan-files.md)" 'experiment-source.md' "$ROOT_DIR/docs/plan-files.md"
+    exp_ok "EXP-S4:docs(workflow.md)" 'Experiment plan without cards' "$ROOT_DIR/docs/workflow.md"
+    exp_ok "EXP-S4:help(skill-map.md)" 'Experiment plan without cards' "$ROOT_DIR/skills/unikit-help/references/skill-map.md"
+    exp_ok "EXP-S4:install-test" 'unikit-plan experiment-source.md reference installed' "$ROOT_DIR/scripts/test-install.sh"
+    (( EXP_CHK > 0 )) || EXP_WHY+=" EXP-S1:nothing-checked"
+fi
+if [[ -z "$EXP_WHY" ]]; then
+    pass "EXP-S1…EXP-S4 experiment plan without cards: one conditional reference, the request in SKILL.md and never inferred, the snapshot form, the profile reading the brief, docs and delivery (${EXP_CHK} checks)"
+else
+    fail "EXP-S1…EXP-S4 experiment plan without cards:$EXP_WHY"
+fi
+
+# --- EXP-R1…EXP-R4: the prototype-profile contract — one flat asset, ten sections, neutral, not
+# restated, delivered. Source assertions, like HB-1…HB-4 for the hand-back contract.
+EXP_WHY=""
+EXP_CHK=0
+EXPR_FILE="$ROOT_DIR/data/prototype-profile.md"
+if [[ ! -s "$EXPR_FILE" ]]; then
+    EXP_WHY+=" EXP-R1:missing-contract"
+else
+    # (EXP-R1) flat and neutral; the policy carrier of the code group is untouched
+    exp_no "EXP-R1:unresolved-variable" '{{' "$EXPR_FILE"
+    EXP_CHK=$((EXP_CHK + 1)); ! grep -qwE 'Unity|Godot|Unreal|GDScript' "$EXPR_FILE" || EXP_WHY+=" EXP-R1:engine-word"
+    exp_no "EXP-R1:maintainer-record-pointer" '.ai-factory' "$EXPR_FILE"
+    exp_no "EXP-R1:profile-in-dev-principles" 'Experiment Context' "$ROOT_DIR/data/dev-principles.md"
+    EXPR_H="$({ grep -c '^## ' "$EXPR_FILE" || true; })"
+    EXP_CHK=$((EXP_CHK + 1)); [[ "$EXPR_H" == "10" ]] || EXP_WHY+=" EXP-R1:section-count=${EXPR_H}"
+    # (EXP-R2) pinned commitments — the ten headings (whole lines) and the key sentences
+    exp_ok "EXP-R:X2-01" 'Do not restate this contract inside a skill' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-02" 'The manifest has `## Experiment Context`' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-03" 'WARN [prototype] profile contract missing' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-04" '## Trigger and fallback' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-05" '## Mandatory' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-06" '## Softened' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-07" '## Switched off' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-08" '## Branch and base' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-09" '## Role: execution' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-10" '## Role: verification and pull request' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-11" '## Role: planning' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-12" '## Role: quality and the rest' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-13" '## Not this contract' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-14" 'Prototype plan: read the section for your role in .unikit/system/prototype-profile.md' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-15" 'INFO [prototype] no pull request for a prototype plan' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-16" 'A finished prototype does not mean the hypothesis is supported' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-17" 'The prototype compiles and launches' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-18" 'direct references and local parameters are acceptable' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-19" 'creates no entry in the project'\''s TODO' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-20" 'is never rewritten' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-21" 'the current branch is not the plan'\''s branch' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-22" 'continue here · switch to the plan'\''s branch · stop' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-23" 'Branch: <value>. Base: <value>. Testing: <yes|no>. Docs: <yes|no>.' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-24" 'Step 3.7' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-25" 'Step 3.10' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-26" 'Step 5.1' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-27" 'Step 7.3' "$ROOT_DIR/data/prototype-profile.md"
+    # (EXP-R3) delivered: the constant, the wrapper, both call sites, the size ceilings
+    exp_ok "EXP-R3:constant" "PROTOTYPE_PROFILE_FILE = 'prototype-profile.md'" "$ROOT_DIR/src/core/constants.ts"
+    exp_ok "EXP-R3:wrapper" 'export async function installPrototypeProfileContract(' "$ROOT_DIR/src/core/installer/system-assets.ts"
+    exp_ok "EXP-R3:init-call" 'await installPrototypeProfileContract(projectDir);' "$ROOT_DIR/src/cli/commands/init.ts"
+    exp_ok "EXP-R3:update-call" 'await installPrototypeProfileContract(projectDir);' "$ROOT_DIR/src/cli/commands/update.ts"
+    exp_ok "EXP-R3:install-test" 'Test 1b-pp' "$ROOT_DIR/scripts/test-install.sh"
+    exp_ok "EXP-R3:update-test" 'Test 30p' "$ROOT_DIR/scripts/test-update.sh"
+    # (EXP-R4) the steps the contract names exist in the readers where it names them: a renamed or
+    # renumbered step fails here, not silently. <file>|<heading as an ERE>|<label>
+    EXPR_STEPS=(
+        "skills/unikit-implement/SKILL.md|^### Step 1: |implement:1"
+        "skills/unikit-implement/SKILL.md|^### Step 1\.5: |implement:1.5"
+        "skills/unikit-implement/SKILL.md|^\*\*3\.2: |implement:3.2"
+        "skills/unikit-implement/SKILL.md|^\*\*3\.7: |implement:3.7"
+        "skills/unikit-implement/SKILL.md|^\*\*3\.10: |implement:3.10"
+        "skills/unikit-implement/SKILL.md|^\*\*5\.1: |implement:5.1"
+        "skills/unikit-implement/SKILL.md|^\*\*5\.3: |implement:5.3"
+        "skills/unikit-implement/SKILL.md|^\*\*5\.8: |implement:5.8"
+        "skills/unikit-verify/SKILL.md|^### 2\.3 |verify:2.3"
+        "skills/unikit-verify/SKILL.md|^### 3\.2 |verify:3.2"
+        "skills/unikit-verify/SKILL.md|^### 3\.3 |verify:3.3"
+        "skills/unikit-verify/SKILL.md|^### 3\.4 |verify:3.4"
+        "skills/unikit-verify/SKILL.md|^### 3\.5 |verify:3.5"
+        "skills/unikit-verify/SKILL.md|^### 3\.6 |verify:3.6"
+        "skills/unikit-verify/SKILL.md|^### 3\.7 |verify:3.7"
+        "skills/unikit-verify/SKILL.md|^### 3\.9 |verify:3.9"
+        "skills/unikit-verify/SKILL.md|^## Step 5: |verify:5"
+        "skills/unikit-fix/SKILL.md|^## Step 5: |fix:5"
+        "skills/unikit-fix/SKILL.md|^### 7\.3 |fix:7.3"
+        "skills/unikit-pr/SKILL.md|^## Step 0: |pr:0"
+    )
+    for expr_row in "${EXPR_STEPS[@]}"; do
+        expr_file="$ROOT_DIR/${expr_row%%|*}"
+        expr_rest="${expr_row#*|}"
+        expr_re="${expr_rest%|*}"
+        expr_lab="${expr_rest##*|}"
+        EXP_CHK=$((EXP_CHK + 1)); grep -qE -- "$expr_re" "$expr_file" || EXP_WHY+=" EXP-R4:step-missing(${expr_lab})"
+    done
+    (( EXP_CHK > 0 )) || EXP_WHY+=" EXP-R1:nothing-checked"
+fi
+if [[ -z "$EXP_WHY" ]]; then
+    pass "EXP-R1…EXP-R4 prototype profile contract: one flat asset, ten sections, neutral, delivered by init and update (${EXP_CHK} checks)"
+else
+    fail "EXP-R1…EXP-R4 prototype profile contract:$EXP_WHY"
+fi
+
+# --- EXP-E1…EXP-E3: the fourteen readers of the prototype profile — each carries ONE pointer, names a
+# section the contract has, is listed by the contract, and restates nothing of it (RISK-6).
+EXP_WHY=""
+EXP_CHK=0
+EXPR_FILE="$ROOT_DIR/data/prototype-profile.md"
+# <file>|<role section>|<trigger: manifest = the plan's ## Experiment Context, note = the Prototype plan: note,
+#                               both = either of the two (a role with no manifest of its own that can also read one)>
+EXPE_ROWS=(
+    "skills/unikit-implement/SKILL.md|execution|manifest"
+    "skills/unikit-verify/SKILL.md|verification and pull request|manifest"
+    "skills/unikit-pr/SKILL.md|verification and pull request|manifest"
+    "skills/unikit-improve/SKILL.md|planning|manifest"
+    "skills/unikit-review/SKILL.md|quality and the rest|both"
+    "skills/unikit-fix/SKILL.md|quality and the rest|both"
+    "skills/unikit-devcontext/SKILL.md|quality and the rest|both"
+    "skills/unikit-commit/SKILL.md|quality and the rest|manifest"
+    "subagents/unikit-implement-coordinator.md|execution|manifest"
+    "subagents/unikit-implement-worker.md|execution|note"
+    "subagents/unikit-plan-coordinator.md|planning|manifest"
+    "subagents/unikit-plan-polisher.md|planning|manifest"
+    "subagents/unikit-review-sidecar.md|quality and the rest|note"
+    "subagents/unikit-architecture-sidecar.md|quality and the rest|note"
+)
+EXPE_N=0
+if [[ ! -s "$EXPR_FILE" ]]; then
+    EXP_WHY+=" EXP-E1:missing-contract"
+else
+    # the "Read by" paragraph of the contract: from its first line to the first blank line
+    EXPE_PRE="$({ awk '/^Read by /{f=1} f&&/^$/{exit} f' "$EXPR_FILE" || true; })"
+    EXP_CHK=$((EXP_CHK + 1)); [[ -n "$EXPE_PRE" ]] || EXP_WHY+=" EXP-E2:no-preamble"
+    for expe_row in "${EXPE_ROWS[@]}"; do
+        expe_rel="${expe_row%%|*}"
+        expe_rest="${expe_row#*|}"
+        expe_role="${expe_rest%%|*}"
+        expe_trig="${expe_rest#*|}"
+        expe_file="$ROOT_DIR/$expe_rel"
+        EXPE_N=$((EXPE_N + 1))
+        if [[ ! -s "$expe_file" ]]; then EXP_WHY+=" EXP-E1:missing(${expe_rel})"; continue; fi
+        # (EXP-E1) one pointer: the contract path, the canonical WARN, the trigger it keys on
+        exp_ok "EXP-E1:path(${expe_rel})" '.unikit/system/prototype-profile.md' "$expe_file"
+        exp_ok "EXP-E1:warn(${expe_rel})" 'WARN [prototype] profile contract missing' "$expe_file"
+        case "$expe_trig" in
+            manifest) exp_ok "EXP-E1:trigger(${expe_rel})" '`## Experiment Context`' "$expe_file" ;;
+            note)     exp_ok "EXP-E1:trigger(${expe_rel})" 'starting `Prototype plan:`' "$expe_file" ;;
+            both)     exp_ok "EXP-E1:trigger(${expe_rel})" '`## Experiment Context`' "$expe_file"
+                      exp_ok "EXP-E1:note-trigger(${expe_rel})" '`Prototype plan:`' "$expe_file" ;;
+        esac
+        # (EXP-E2) the section it names is a whole-line heading of the contract, and the contract lists the reader
+        exp_ok "EXP-E2:role(${expe_rel})" "\`## Role: ${expe_role}\`" "$expe_file"
+        exp_ok "EXP-E2:heading(${expe_role})" "## Role: ${expe_role}" "$EXPR_FILE"
+        case "$expe_rel" in
+            skills/*) expe_name="/$(basename "$(dirname "$expe_rel")")" ;;
+            *)        expe_name="$(basename "$expe_rel" .md)" ;;
+        esac
+        # the name must stand in the "Read by" paragraph itself: every name also occurs in the role sections
+        EXP_CHK=$((EXP_CHK + 1)); grep -qF -- "\`${expe_name}\`" <<< "$EXPE_PRE" || EXP_WHY+=" EXP-E2:listed(${expe_name})"
+        # (EXP-E3) the contract is not restated in the reader: none of its pinned sentences appears there
+        exp_no "EXP-E3:pr-rule(${expe_rel})" 'no pull request for a prototype plan' "$expe_file"
+        exp_no "EXP-E3:note-format(${expe_rel})" 'Branch: <value>' "$expe_file"
+        exp_no "EXP-E3:branch-rule(${expe_rel})" 'the current branch is not the plan' "$expe_file"
+        exp_no "EXP-E3:restated(${expe_rel})" 'A finished prototype does not mean the hypothesis is supported' "$expe_file"
+        exp_no "EXP-E3:restated(${expe_rel})" 'The prototype compiles and launches' "$expe_file"
+        exp_no "EXP-E3:restated(${expe_rel})" 'direct references and local parameters are acceptable' "$expe_file"
+        exp_no "EXP-E3:restated(${expe_rel})" 'creates no entry in the project'\''s TODO' "$expe_file"
+    done
+    EXP_CHK=$((EXP_CHK + 1)); (( EXPE_N == 14 )) || EXP_WHY+=" EXP-E1:readers=${EXPE_N}"
+fi
+if [[ -z "$EXP_WHY" ]]; then
+    pass "EXP-E1…EXP-E3 prototype profile readers: ${EXPE_N} files each carry one pointer, name a real section and restate nothing (${EXP_CHK} checks)"
+else
+    fail "EXP-E1…EXP-E3 prototype profile readers:$EXP_WHY"
+fi
+
+# --- EXP-B1…EXP-B3: the balance side of the experiment route — one owner for the route, the call by the
+# one recipe, the new tag in four places, the closing command, the time warning said in one place. Source
+# assertions; BAL-1/BAL-2 above keep the structure of the skill (Skill required, ten references).
+EXP_WHY=""
+EXP_CHK=0
+EXPB_DIR="$ROOT_DIR/skills/unikit-gd-balance"
+EXPB_SKILL="$EXPB_DIR/SKILL.md"
+EXPB_REF="$EXPB_DIR/references/experiment-route.md"
+if [[ ! -s "$EXPB_REF" ]]; then
+    EXP_WHY+=" EXP-B1:missing-reference"
+else
+    # (EXP-B1) the call: the recipe once in SKILL.md, the call site only in the route reference
+    EXPB_H="$({ grep -cx '## Skill calls' "$EXPB_SKILL" || true; })"
+    EXP_CHK=$((EXP_CHK + 1)); [[ "$EXPB_H" == "1" ]] || EXP_WHY+=" EXP-B1:skill-calls-headings=${EXPB_H}"
+    EXPB_CALLS="$({ grep -rlE '[Ii]nvoke[sd]? `unikit-' "$EXPB_DIR" || true; } | sed 's|.*/||' | LC_ALL=C sort | tr '\n' ' ')"
+    EXP_CHK=$((EXP_CHK + 1)); [[ "$EXPB_CALLS" == "SKILL.md experiment-route.md " ]] || EXP_WHY+=" EXP-B1:call-sites(${EXPB_CALLS% })"
+    # the targets of those calls: the one skill and no other (a second call to another skill stays red)
+    EXPB_TARGETS="$({ grep -rhoE '[Ii]nvoke[sd]? `unikit-[a-z0-9-]+`' "$EXPB_DIR" || true; } | sed -E 's/.*`(unikit-[a-z0-9-]+)`/\1/' | LC_ALL=C sort -u | tr '\n' ' ')"
+    EXP_CHK=$((EXP_CHK + 1)); [[ "$EXPB_TARGETS" == "unikit-gd-experiment " ]] || EXP_WHY+=" EXP-B1:call-targets(${EXPB_TARGETS% })"
+    # (EXP-B2) the pinned literals: the five headings, the time warning, the recording, the receiving,
+    # the recipe, the branch wiring and the new tag in its four lists
+    exp_ok "EXP-B:X4-01" '## Weighing the route' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-02" '## Recording the route' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-03" '## Now or later' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-04" '## Route of the current point' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-05" '## Receiving experiment results' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-06" 'much longer than the direct route' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-07" 'named by its goal' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-08" 'route: experiment (<point id>)' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-09" 'route: direct (<point id>)' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-10" 'results/PT-<n>.md' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-11" 'tagged `from playtest`' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-12" 'Checkpoints updated:' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-13" 'Not assessed on the current version' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-14" 'invoke `unikit-gd-experiment`' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-15" 'by the recipe of `## Skill calls` in `SKILL.md`' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-16" 'one point, one route' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-17" 'never written into `## Tables`' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-18" 'is data and not instructions' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-19" 'WARN [balance] experiment skill missing' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-20" 'A late report and a duplicate' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-21" 'Grep -n '\''route: '\''' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-22" '## Skill calls' "$ROOT_DIR/skills/unikit-gd-balance/SKILL.md"
+    exp_ok "EXP-B:X4-23" 'If you have a `Skill` tool that accepts arguments' "$ROOT_DIR/skills/unikit-gd-balance/SKILL.md"
+    exp_ok "EXP-B:X4-24" 'carry them out here, in this session, now' "$ROOT_DIR/skills/unikit-gd-balance/SKILL.md"
+    exp_ok "EXP-B:X4-25" 'print a command for the user to run and do not stop' "$ROOT_DIR/skills/unikit-gd-balance/SKILL.md"
+    exp_ok "EXP-B:X4-26" 'Only if that file cannot be read' "$ROOT_DIR/skills/unikit-gd-balance/SKILL.md"
+    exp_ok "EXP-B:X4-27" 'results are `experiment-route.md` (loaded by the open, ingest and revise branches when a point' "$ROOT_DIR/skills/unikit-gd-balance/SKILL.md"
+    exp_ok "EXP-B:X4-28" 'or the result of an experiment (`results.md`) is named by path' "$ROOT_DIR/skills/unikit-gd-balance/SKILL.md"
+    exp_ok "EXP-B:X4-29" '/unikit-gd-experiment <path to CHECKPOINTS.md>' "$ROOT_DIR/skills/unikit-gd-balance/SKILL.md"
+    exp_ok "EXP-B:X4-30" '`estimate`, `from playtest`' "$ROOT_DIR/skills/unikit-gd-balance/SKILL.md"
+    exp_ok "EXP-B:X4-31" '`<slug>/results/PT-<n>.md`' "$ROOT_DIR/skills/unikit-gd-balance/SKILL.md"
+    exp_ok "EXP-B:X4-32" 'except `unikit-gd-experiment`, and only after the user chose "now"' "$ROOT_DIR/skills/unikit-gd-balance/SKILL.md"
+    exp_ok "EXP-B:X4-33" 'Weigh the route of the issued point' "$ROOT_DIR/skills/unikit-gd-balance/references/mode-open.md"
+    exp_ok "EXP-B:X4-34" '`## Recording the route`' "$ROOT_DIR/skills/unikit-gd-balance/references/mode-open.md"
+    exp_ok "EXP-B:X4-35" '`## Now or later`' "$ROOT_DIR/skills/unikit-gd-balance/references/mode-open.md"
+    exp_ok "EXP-B:X4-36" 'hold `Experiment:` and `Origin: from balance`' "$ROOT_DIR/skills/unikit-gd-balance/references/mode-ingest.md"
+    exp_ok "EXP-B:X4-37" '`results/PT-<n>.md` in place of `results/HB-<n>.md`' "$ROOT_DIR/skills/unikit-gd-balance/references/mode-ingest.md"
+    exp_ok "EXP-B:X4-38" 'Then weigh the route of the point' "$ROOT_DIR/skills/unikit-gd-balance/references/mode-ingest.md"
+    exp_ok "EXP-B:X4-39" '`## Now or later` follows the report' "$ROOT_DIR/skills/unikit-gd-balance/references/mode-ingest.md"
+    exp_ok "EXP-B:X4-40" '**The route of the current point** is changed on request' "$ROOT_DIR/skills/unikit-gd-balance/references/mode-revise.md"
+    exp_ok "EXP-B:X4-41" '`## Route of the current point`' "$ROOT_DIR/skills/unikit-gd-balance/references/mode-status.md"
+    exp_ok "EXP-B:X4-42" '`estimate` · `from playtest`' "$ROOT_DIR/skills/unikit-gd-balance/references/closure-set.md"
+    exp_ok "EXP-B:X4-43" '`estimate` · `from playtest`' "$ROOT_DIR/skills/unikit-gd-balance/references/investigation.md"
+    exp_ok "EXP-B:X4-44" 'These five are the balance document'\''s own working vocabulary' "$ROOT_DIR/skills/unikit-gd-balance/references/investigation.md"
+    exp_ok "EXP-B:X4-45" 'the other four live only in' "$ROOT_DIR/skills/unikit-gd-balance/references/investigation.md"
+    exp_ok "EXP-B:X4-46" '`estimate` · `from playtest`' "$ROOT_DIR/docs/gamedesign.md"
+    exp_ok "EXP-B:X4-47" '`results/PT-<n>.md` — accepted results of experiments' "$ROOT_DIR/docs/gamedesign.md"
+    exp_ok "EXP-B:X4-48" 'name an experiment by its title' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    # (EXP-B3) the closing command of the route starts with the compass icon; the time warning has one
+    # owner; the route names no point by a code and stays small
+    exp_icon "EXP-B3:icon-before-command" "$EXPB_SKILL" 'unikit-gd-experiment <path to CHECKPOINTS.md>'
+    EXPB_WARN="$({ grep -rlF 'much longer than the direct route' "$EXPB_DIR" || true; } | sed 's|.*/||' | LC_ALL=C sort | tr '\n' ' ')"
+    EXP_CHK=$((EXP_CHK + 1)); [[ "$EXPB_WARN" == "experiment-route.md " ]] || EXP_WHY+=" EXP-B3:time-warning-owners(${EXPB_WARN% })"
+    exp_no "EXP-B3:point-code-in-route" 'BCH-' "$EXPB_REF"
+    # the membrane: no code of a point, an experiment, a round, an assessment or a copy in the three windows
+    # that face the user; and an experiment is named by its title
+    for expb_win in 'Weighing the route' 'Now or later' 'Route of the current point'; do
+        EXPB_W="$({ awk -v h="## ${expb_win}" '$0==h{f=1;next} /^## /{f=0} f' "$EXPB_REF" || true; })"
+        EXP_CHK=$((EXP_CHK + 1)); [[ -n "$EXPB_W" ]] || EXP_WHY+=" EXP-B3:window-empty(${expb_win})"
+        EXP_CHK=$((EXP_CHK + 1)); ! grep -qE 'EXP-[0-9<]|PT-[0-9<]|R-[0-9<]|BCH-' <<< "$EXPB_W" || EXP_WHY+=" EXP-B3:code-in-window(${expb_win})"
+    done
+    # mode-open: the steps of Order are numbered 1..9 without a gap or a repeat after the two new ones
+    EXPB_NUMS="$({ awk '/^## Order/{f=1;next} /^## /{f=0} f&&/^[0-9]+\. /{sub(/\..*/,""); printf "%s ", $0}' "$EXPB_DIR/references/mode-open.md" || true; })"
+    EXP_CHK=$((EXP_CHK + 1)); [[ "$EXPB_NUMS" == "1 2 3 4 5 6 7 8 9 " ]] || EXP_WHY+=" EXP-B3:mode-open-numbering(${EXPB_NUMS% })"
+    EXPB_SZ="$(wc -c < "$EXPB_REF" | tr -d ' ')"
+    EXP_CHK=$((EXP_CHK + 1)); (( EXPB_SZ <= 9000 )) || EXP_WHY+=" EXP-B3:route-size=${EXPB_SZ}"
+    (( EXP_CHK > 0 )) || EXP_WHY+=" EXP-B1:nothing-checked"
+fi
+if [[ -z "$EXP_WHY" ]]; then
+    pass "EXP-B1…EXP-B3 balance experiment route: one owner, one call by the recipe, the tag in four lists, the closing command, one time warning (${EXP_CHK} checks)"
+else
+    fail "EXP-B1…EXP-B3 balance experiment route:$EXP_WHY"
+fi
+
+# --- EXP-D1…EXP-D2: the documentation and the help describe the experiment skill and its seams, and the old
+# counters are gone. Source assertions over pinned formulations; no heading is pinned except the new sections.
+EXP_WHY=""
+EXP_CHK=0
+exp_ok "EXP-D:X5-01" 'It installs thirteen `unikit-gd-*` skills' "$ROOT_DIR/docs/gamedesign.md"
+exp_ok "EXP-D:X5-02" 'An *experiment* here is a hypothesis about the game tested on real players' "$ROOT_DIR/docs/gamedesign.md"
+exp_ok "EXP-D:X5-03" 'edges: four inputs (`/unikit-gd-recon`' "$ROOT_DIR/docs/gamedesign.md"
+exp_ok "EXP-D:X5-04" '**The route of a checkpoint.**' "$ROOT_DIR/docs/gamedesign.md"
+exp_ok "EXP-D:X5-05" 'adds thirteen `unikit-gd-*` skills' "$ROOT_DIR/docs/skills.md"
+exp_ok "EXP-D:X5-06" '- the experiment record' "$ROOT_DIR/docs/skills.md"
+exp_ok "EXP-D:X5-07" '37 skills (24 code-pipeline + 13 game-design)' "$ROOT_DIR/docs/getting-started.md"
+exp_ok "EXP-D:X5-08" '13 game-design skills, one dir each' "$ROOT_DIR/docs/configuration.md"
+exp_ok "EXP-D:X5-09" '**Experiments** - test a hypothesis about the game on real players' "$ROOT_DIR/README.md"
+exp_ok "EXP-D:X5-10" '**Experiment plan.**' "$ROOT_DIR/docs/workflow.md"
+exp_ok "EXP-D:X5-11" '## Experiment plans' "$ROOT_DIR/docs/plan-files.md"
+exp_ok "EXP-D:X5-12" 'Sections 2-11 of each card are copied in full with their headings lowered two levels' "$ROOT_DIR/docs/plan-files.md"
+exp_ok "EXP-D:X5-13" '`/unikit-gd-balance` makes one such call - `unikit-gd-experiment`' "$ROOT_DIR/docs/subagents.md"
+exp_ok "EXP-D:X5-14" '`/unikit-gd-experiment` | skill-map.md' "$ROOT_DIR/skills/unikit-help/SKILL.md"
+exp_ok "EXP-D:X5-15" 'Five skills sit on the boundary of the module' "$ROOT_DIR/skills/unikit-help/references/pipelines.md"
+exp_ok "EXP-D:X5-16" '**Experiment loop (code side).**' "$ROOT_DIR/skills/unikit-help/references/pipelines.md"
+exp_ok "EXP-D:X5-17" '| experiments | `/unikit-gd-experiment [<problem>, <feedback> or list]` |' "$ROOT_DIR/skills/unikit-help/references/scenarios.md"
+exp_ok "EXP-D:X5-18" '- **Experiment plan.** Given experiment cards' "$ROOT_DIR/skills/unikit-help/references/skill-map.md"
+exp_ok "EXP-D:X5-19" '- **Route.** At each checkpoint it recommends direct measurement' "$ROOT_DIR/skills/unikit-help/references/skill-map.md"
+exp_ok "EXP-D:X5-20" '- Given experiment cards (a path to an `experiment.md`' "$ROOT_DIR/docs/skills.md"
+# the one gap of the profile readers is said where the readers are listed: commit does not see a fast plan
+exp_ok "EXP-D:X5-21" 'so it commits a flat `.unikit/code/PLAN.md` as an ordinary plan' "$ROOT_DIR/docs/workflow.md"
+exp_ok "EXP-D:X5-22" 'so it commits a flat `.unikit/code/PLAN.md` (a `fast` plan) as an ordinary plan' "$ROOT_DIR/docs/plan-files.md"
+# (EXP-D2) the counters of the old state are not left behind
+exp_no "EXP-D2:twelve-skills-gamedesign" 'twelve `unikit-gd-' "$ROOT_DIR/docs/gamedesign.md"
+exp_no "EXP-D2:twelve-skills-skills" 'twelve `unikit-gd-' "$ROOT_DIR/docs/skills.md"
+exp_no "EXP-D2:old-total-getting-started" '36 skills' "$ROOT_DIR/docs/getting-started.md"
+exp_no "EXP-D2:old-group-configuration" '12 game-design skills' "$ROOT_DIR/docs/configuration.md"
+exp_no "EXP-D2:four-skills-pipelines" 'Four skills sit on the boundary' "$ROOT_DIR/skills/unikit-help/references/pipelines.md"
+exp_no "EXP-D2:alongside-twelve-gamedesign" 'Alongside the twelve skills' "$ROOT_DIR/docs/gamedesign.md"
+exp_no "EXP-D2:skills-36-getting-started" '### Skills (36)' "$ROOT_DIR/docs/getting-started.md"
+exp_no "EXP-D2:twelve-gd-getting-started" '12 `unikit-gd-*`' "$ROOT_DIR/docs/getting-started.md"
+exp_no "EXP-D2:twelve-design-skills-getting-started" 'the 12 Game Design skills' "$ROOT_DIR/docs/getting-started.md"
+exp_no "EXP-D2:plus-twelve-configuration" '+ 12 unikit-gd-*' "$ROOT_DIR/docs/configuration.md"
+(( EXP_CHK > 0 )) || EXP_WHY+=" EXP-D1:nothing-checked"
+if [[ -z "$EXP_WHY" ]]; then
+    pass "EXP-D1…EXP-D2 documentation and help: the experiment skill, the experiment plan and the route are described, the old counters are gone (${EXP_CHK} checks)"
+else
+    fail "EXP-D1…EXP-D2 documentation and help:$EXP_WHY"
+fi
+
+# --- EXP-L1…EXP-L6: an experiment named in words is resolved to ONE card through ONE reference. L1 — the
+# owner (lookup.md): when it is read, what is the source of truth, "the latest", the topic, the always-shown
+# confirmation, the result. L2 — the planner names it and picks researches up by an `Experiment:` line.
+# L3/L4 — the code and design explorations ground on a card and write that line. L5 — the help and the docs.
+# L6 — the manage branch reads it as its last step. Source assertions over pinned formulations, like EXP-P;
+# the helpers and accumulators of the EXP block are reused after a reset.
+EXP_WHY=""
+EXP_CHK=0
+EXPL_REF="$ROOT_DIR/skills/unikit-gd-experiment/references/lookup.md"
+EXPL_PATH='{{skills_dir}}/unikit-gd-experiment/references/lookup.md'
+EXPL_PLAN="$ROOT_DIR/skills/unikit-plan/SKILL.md"
+EXPL_PLAN_REF="$ROOT_DIR/skills/unikit-plan/references/experiment-plan.md"
+EXPL_TASKFMT="$ROOT_DIR/skills/unikit-plan/references/TASK-FORMAT.md"
+EXPL_EXPLORE="$ROOT_DIR/skills/unikit-explore/SKILL.md"
+EXPL_EXPLORE_GATE="$ROOT_DIR/skills/unikit-explore/references/coherence-gate.md"
+EXPL_GD_EXPLORE="$ROOT_DIR/skills/unikit-gd-explore/SKILL.md"
+EXPL_GD_SAVE="$ROOT_DIR/skills/unikit-gd-explore/references/save-research.md"
+EXPL_GD_GATE="$ROOT_DIR/skills/unikit-gd-explore/references/coherence-gate.md"
+EXPL_MANAGE="$ROOT_DIR/skills/unikit-gd-experiment/references/mode-manage.md"
+EXPL_SKILLMAP="$ROOT_DIR/skills/unikit-help/references/skill-map.md"
+EXPL_DOCS_SKILLS="$ROOT_DIR/docs/skills.md"
+EXPL_DOCS_PLANFILES="$ROOT_DIR/docs/plan-files.md"
+if [[ ! -s "$EXPL_REF" ]]; then
+    EXP_WHY+=" EXP-L1:missing-reference"
+else
+    # (EXP-L1) the owner
+    exp_ok "EXP-L1:01" 'holds at least one `experiment.md`' "$EXPL_REF"
+    exp_ok "EXP-L1:02" 'A selector (`EXP-<nnn>`, a path to a card, a folder) never needs this file' "$EXPL_REF"
+    exp_ok "EXP-L1:03" 'The folders and the cards are the source of truth' "$EXPL_REF"
+    exp_ok "EXP-L1:04" 'Two folders with one number are not settled by a guess' "$EXPL_REF"
+    exp_ok "EXP-L1:05" 'A card with `Status: Archived` never answers "the latest"' "$EXPL_REF"
+    exp_ok "EXP-L1:06" 'Cross-check `index.md` last, and only to cross-check' "$EXPL_REF"
+    exp_ok "EXP-L1:07" 'WARN [experiment] index out of date' "$EXPL_REF"
+    exp_ok "EXP-L1:08" '**the newest by number**' "$EXPL_REF"
+    exp_ok "EXP-L1:09" '**the newest by update**' "$EXPL_REF"
+    exp_ok "EXP-L1:10" 'one question with at most four titles, best first' "$EXPL_REF"
+    exp_ok "EXP-L1:11" 'Whatever was found, even one card, the user sees one line before anything else is loaded' "$EXPL_REF"
+    exp_ok "EXP-L1:12" 'The number is shown unless the caller speaks through the game-design membrane' "$EXPL_REF"
+    exp_ok "EXP-L1:13" 'which the caller treats exactly like a selector the user typed' "$EXPL_REF"
+    exp_ok "EXP-L1:14" 'searches no other branch and moves no file' "$EXPL_REF"
+    exp_ok "EXP-L1:15" '**Readers outside this skill.**' "$EXP_SKILL"
+    exp_ok "EXP-L1:16" '| An experiment is named by words instead of a number: "the latest", "the one about onboarding" | `lookup.md` |' "$EXP_SKILL"
+    # C-001: the planner's sentence about the bare word stays in experiment-plan.md and is not copied here
+    exp_no "EXP-L1:17" 'free text is not a selector' "$EXPL_REF"
+    # the sources of truth are the cards: the file never tells the reader to take the answer from the index
+    exp_no "EXP-L1:18" 'take the answer from the index' "$EXPL_REF"
+    # the owner states its own exception: a caller that only prints a result skips the line (manage applies it, Task 8)
+    exp_ok "EXP-L1:19" 'A caller that only prints a result' "$EXPL_REF"
+    # the third line is the load condition and the file is nowhere near the cap: EXP-2 checks both after `lookup` joined its list
+    EXP_CHK=$((EXP_CHK + 1)); [[ "$(sed -n '3p' "$EXPL_REF")" == "Read **only** when"* ]] || EXP_WHY+=" EXP-L1:load-line"
+    # (EXP-L2) the planner: a card named in words is resolved through the lookup before anything of it is read
+    exp_ok "EXP-L2:01" "$EXPL_PATH" "$EXPL_PLAN"
+    exp_ok "EXP-L2:02" 'A request that names an experiment by its description' "$EXPL_PLAN"
+    exp_ok "EXP-L2:03" 'WARN [experiment] lookup reference missing — asking for a selector' "$EXPL_PLAN"
+    exp_ok "EXP-L2:04" "$EXPL_PATH" "$EXPL_PLAN_REF"
+    exp_ok "EXP-L2:05" 'is resolved first through `{{skills_dir}}/unikit-gd-experiment/references/lookup.md`' "$EXPL_PLAN_REF"
+    exp_ok "EXP-L2:06" 'The lookup finds a card; whether it may be planned is decided by' "$EXPL_PLAN_REF"
+    exp_ok "EXP-L2:07" '(g) A card the user named in words was confirmed through the lookup' "$EXPL_PLAN_REF"
+    # (EXP-L2, continued) a research reaches an experiment plan only by its `Experiment:` line, from both stores
+    exp_ok "EXP-L2:08" 'A research belongs to a card only when its Active Summary' "$EXPL_PLAN_REF"
+    exp_ok "EXP-L2:09" '`.unikit/gamedesign/researches/*/RESEARCH_RESULT.md`' "$EXPL_PLAN_REF"
+    exp_ok "EXP-L2:10" 'the topic is never guessed' "$EXPL_PLAN_REF"
+    exp_ok "EXP-L2:11" 'with no hash and no drift tracking' "$EXPL_PLAN_REF"
+    exp_ok "EXP-L2:12" 'WARN [experiment] <folder> was written against v<k> of the card' "$EXPL_PLAN_REF"
+    exp_ok "EXP-L2:13" 'Step 2 does not match researches by topic either' "$EXPL_PLAN_REF"
+    exp_ok "EXP-L2:14" '(h) A research was linked to a card only by its `Based on:` line, by its `Experiment:` line or by the user'\''s answer to the candidate question' "$EXPL_PLAN_REF"
+    exp_ok "EXP-L2:21" 'a hit outside the markers does not count' "$EXPL_PLAN_REF"
+    exp_ok "EXP-L2:15" '**An experiment plan** runs no topic matching in this step' "$EXPL_PLAN"
+    exp_ok "EXP-L2:16" 'the snapshot of the cards (and of the design researches that name them)' "$EXPL_PLAN"
+    exp_ok "EXP-L2:17" '**Design researches.** A research of the design store' "$EXPL_TASKFMT"
+    exp_ok "EXP-L2:18" 'No hash is kept and the plan never re-reads it for drift' "$EXPL_TASKFMT"
+    exp_ok "EXP-L2:19" '(names v<k>)' "$EXPL_TASKFMT"
+    # NM-2 stays true: the grammar block is indented, no line of the file starts with `Branch:`
+    EXP_CHK=$((EXP_CHK + 1)); ! grep -qE '^Branch:' "$EXPL_TASKFMT" || EXP_WHY+=" EXP-L2:20-branch-field-at-margin"
+    # (EXP-L3) the code exploration grounds on a card, writes the line, and the gate does not look for the id
+    exp_ok "EXP-L3:01" '- **Experiment grounding** (only if `.unikit/gamedesign/experiments/` holds a card)' "$EXPL_EXPLORE"
+    exp_ok "EXP-L3:02" "$EXPL_PATH" "$EXPL_EXPLORE"
+    exp_ok "EXP-L3:03" 'read its `experiment.md` **in full**' "$EXPL_EXPLORE"
+    exp_ok "EXP-L3:04" '`feedback.md` and `results.md` only when the user asks' "$EXPL_EXPLORE"
+    exp_ok "EXP-L3:05" 'nothing is written to the store and no status changes' "$EXPL_EXPLORE"
+    exp_ok "EXP-L3:06" '- **An experiment** — the topic is' "$EXPL_EXPLORE"
+    exp_ok "EXP-L3:07" 'Experiment: <EXP-<nnn> v<Version>' "$EXPL_EXPLORE"
+    exp_ok "EXP-L3:08" '**The `Experiment:` line** exists only in a research grounded on an experiment card' "$EXPL_EXPLORE"
+    exp_ok "EXP-L3:09" '| An exploration grounded on an experiment card |' "$EXPL_EXPLORE"
+    exp_ok "EXP-L3:10" 'An `EXP-<nnn>` on the `Experiment:` line names a card of the experiment store' "$EXPL_EXPLORE_GATE"
+    # the extension anchor is still the last line of the load block: the new bullet stands before it
+    EXPL_ANCHOR_AT="$({ grep -nF '<!-- unikit:extension-point:bootstrap -->' "$EXPL_EXPLORE" | head -1 | cut -d: -f1; } || true)"
+    EXPL_GROUND_AT="$({ grep -nF '**Experiment grounding**' "$EXPL_EXPLORE" | head -1 | cut -d: -f1; } || true)"
+    EXP_CHK=$((EXP_CHK + 1)); [[ -n "$EXPL_ANCHOR_AT" && -n "$EXPL_GROUND_AT" && "$EXPL_GROUND_AT" -lt "$EXPL_ANCHOR_AT" ]] || EXP_WHY+=" EXP-L3:11-grounding-after-anchor"
+    # (EXP-L4) the design exploration: the same grounding worded through the membrane; the line in the record; routing by the card's state
+    exp_ok "EXP-L4:01" '9. **Experiment grounding** (only if `.unikit/gamedesign/experiments/` holds a card)' "$EXPL_GD_EXPLORE"
+    exp_ok "EXP-L4:02" "$EXPL_PATH" "$EXPL_GD_EXPLORE"
+    exp_ok "EXP-L4:03" 'which this skill words through the membrane' "$EXPL_GD_EXPLORE"
+    exp_ok "EXP-L4:04" 'nothing is written to the store and no status changes' "$EXPL_GD_EXPLORE"
+    exp_ok "EXP-L4:05" 'Experiment: <EXP-<nnn> v<Version>' "$EXPL_GD_SAVE"
+    exp_ok "EXP-L4:06" '**The `Experiment:` line** is written only by a research grounded on a card' "$EXPL_GD_SAVE"
+    exp_ok "EXP-L4:07" '| **Grounded on an experiment card** — the card is ready for planning |' "$EXPL_GD_SAVE"
+    exp_ok "EXP-L4:08" '| **Grounded on an experiment card** — any other state |' "$EXPL_GD_SAVE"
+    exp_ok "EXP-L4:09" 'An `EXP-<nnn>` on the `Experiment:` line is defined by its card' "$EXPL_GD_GATE"
+    exp_ok "EXP-L4:10" 'are read-only too: that store is written only by `unikit-gd-experiment`' "$EXPL_GD_EXPLORE"
+    # (EXP-L5) the help and the docs describe the lookup, the grounding and the pick-up of researches
+    exp_ok "EXP-L5:01" 'or an experiment card (an `EXP-<nnn>`, a path, or "the latest experiment")' "$EXPL_SKILLMAP"
+    exp_ok "EXP-L5:02" 'is first resolved to one card through the `lookup.md` reference of `/unikit-gd-experiment`' "$EXPL_SKILLMAP"
+    exp_ok "EXP-L5:03" 'grounds the research on that card, read-only' "$EXPL_SKILLMAP"
+    exp_ok "EXP-L5:04" 'an experiment named in words ("the latest", "the one about onboarding"' "$EXPL_SKILLMAP"
+    exp_no "EXP-L5:05-bare-path" 'unikit-gd-experiment/references/lookup.md' "$EXPL_SKILLMAP"
+    exp_ok "EXP-L5:06" '- **Experiment grounding** - a topic that names an experiment' "$EXPL_DOCS_SKILLS"
+    exp_ok "EXP-L5:07" '- An experiment named in words ("make a plan for the latest experiment")' "$EXPL_DOCS_SKILLS"
+    exp_ok "EXP-L5:08" 'grounds the research on that card, read-only; the saved summary carries an `Experiment:` line' "$EXPL_DOCS_SKILLS"
+    exp_ok "EXP-L5:09" '- Finds a card by words - "the latest", "the one about onboarding"' "$EXPL_DOCS_SKILLS"
+    exp_ok "EXP-L5:10" 'A design research whose summary names a card by an `Experiment:` line is copied as one more block of that card' "$EXPL_DOCS_PLANFILES"
+    # (EXP-L6) the manage branch reads the lookup as its last step; the pinned commitments of the branch are untouched
+    exp_ok "EXP-L6:01" 'and `{{skills_dir}}/{{self_name}}/references/lookup.md` when the request names an experiment by words' "$EXPL_MANAGE"
+    exp_ok "EXP-L6:02" 'the matching is the rule of `{{skills_dir}}/{{self_name}}/references/lookup.md`' "$EXPL_MANAGE"
+    exp_ok "EXP-L6:03" 'does not ask the lookup'\''s confirmation' "$EXPL_MANAGE"
+    exp_ok "EXP-L6:04" 'a request that acts on one card found by words (update, archive, retest) keeps it' "$EXPL_MANAGE"
+    exp_no "EXP-L6:05-old-matching" 'matches `Category`, `Summary` and `What We Test`; relevance the text does not support is not claimed' "$EXPL_MANAGE"
+    # (EXP-L2…EXP-L6) are added next to the texts they pin — see the tasks of phases 2-4
+fi
+(( EXP_CHK > 0 )) || EXP_WHY+=" EXP-L1:nothing-checked"
+if [[ -z "$EXP_WHY" ]]; then
+    pass "EXP-L1…EXP-L6 experiment lookup: one owner, the planner and both explorations point at it, the help and the docs describe it (${EXP_CHK} checks)"
+else
+    fail "EXP-L1…EXP-L6 experiment lookup:$EXP_WHY"
+fi
+
+# --- EXP-K1…EXP-K5: the experiment plan is found by its own record, and a research that names no card
+# is reported instead of skipped. K1 — the five resolvers that CHOOSE a plan by branch (and the list label)
+# add the folders whose `## Experiment Context` has the current branch as `Branch:` (the folder name
+# `experiment-<topic>` does not carry the dated branch name). K2 — the planner's reference says so, and
+# says what it does when no research names a card. K3 — both explorations keep the card for the `Experiment:`
+# line and treat it as mandatory in a grounded research. K4 — the question points of the experiment skill
+# name the question tool. K5 — the discovery order is described in the docs. Source assertions, like EXP-L.
+EXP_WHY=""
+EXP_CHK=0
+EXPK_FRAG='a `Branch:` line equal to the current branch and a `Base:` other than `none`'
+for f in skills/unikit-implement/SKILL.md skills/unikit-verify/SKILL.md skills/unikit-improve/SKILL.md \
+         skills/unikit-plan/references/mode-add.md subagents/unikit-implement-coordinator.md \
+         skills/unikit-implement/references/mode-list.md; do
+    # (EXP-K1) the resolvers
+    exp_ok "EXP-K1:no-record-match($f)" "$EXPK_FRAG" "$ROOT_DIR/$f"
+done
+# (EXP-K2) the planner's reference
+exp_ok "EXP-K2:01" 'find the plan by its own record' "$EXPP_REF"
+exp_no "EXP-K2:02-old-claim" 'will not find the plan by branch' "$EXPP_REF"
+exp_ok "EXP-K2:03" '**No research names the card.**' "$EXPP_REF"
+exp_ok "EXP-K2:04" 'INFO [experiment] <title>: no research names this card' "$EXPP_REF"
+exp_ok "EXP-K2:05" 'Link <title>' "$EXPP_REF"
+exp_ok "EXP-K2:06" "(h) A research was linked to a card only by its \`Based on:\` line, by its \`Experiment:\` line or by the user's answer to the candidate question" "$EXPP_REF"
+exp_ok "EXP-K2:07" 'Nothing is linked by topic' "$EXPP_REF"
+# (EXP-K3) the explorations
+exp_ok "EXP-K3:01" 'they make the `Experiment:` line of the saved summary' "$ROOT_DIR/skills/unikit-explore/SKILL.md"
+exp_ok "EXP-K3:02" 'In a grounded research it is **not optional**' "$ROOT_DIR/skills/unikit-explore/SKILL.md"
+exp_ok "EXP-K3:03" 'they make the `Experiment:` line of the saved summary' "$ROOT_DIR/skills/unikit-gd-explore/SKILL.md"
+exp_ok "EXP-K3:04" 'In a grounded research it is **not optional**' "$ROOT_DIR/skills/unikit-gd-explore/references/save-research.md"
+# (EXP-K4) the question points name the tool
+exp_ok "EXP-K4:01" 'Every question in this file is asked with the question tool of your agent (`AskUserQuestion`)' "$EXPL_REF"
+for kf in mode-evaluate.md balance-link.md; do
+    EXPK_N="$({ grep -cF 'AskUserQuestion' "$EXP_REFS/$kf" || true; })"
+    EXP_CHK=$((EXP_CHK + 1)); (( EXPK_N >= 3 )) || EXP_WHY+=" EXP-K4:$kf-tool-x${EXPK_N}-of-3"
+done
+# (EXP-K5) the docs
+exp_ok "EXP-K5:01" 'finds an experiment plan by its own record' "$ROOT_DIR/docs/plan-files.md"
+exp_ok "EXP-K5:02" 'find the plan by its own record' "$ROOT_DIR/docs/workflow.md"
+(( EXP_CHK > 0 )) || EXP_WHY+=" EXP-K1:nothing-checked"
+if [[ -z "$EXP_WHY" ]]; then
+    pass "EXP-K1…EXP-K5 experiment plan found by its own record, a research naming no card reported, the explorations keep the line, the question points name the tool (${EXP_CHK} checks)"
+else
+    fail "EXP-K1…EXP-K5 experiment link:$EXP_WHY"
+fi
+
+# --- EXP-RF1…EXP-RF3: the references of a card. The experiment side writes `Based on:` (EXP-8:R-17…R-24); the
+# planner side reads every entry and uses it. RF1 — the planner's reference (load line, size, neutrality, sections,
+# the ceiling of experiment-plan.md it hangs on); RF2 — the pinned commitments (reading is not optional, failures are
+# loud, the card wins, nothing is only context); RF3 — the wiring (the pointer and the amended source rule in
+# experiment-plan.md, the blocks in TASK-FORMAT.md, the delivery in test-install.sh). Source assertions, like EXP-K.
+EXP_WHY=""
+EXP_CHK=0
+EXPRF_REF="$ROOT_DIR/skills/unikit-plan/references/experiment-references.md"
+if [[ ! -s "$EXPRF_REF" ]]; then
+    EXP_WHY+=" EXP-RF1:missing-reference"
+else
+    # (EXP-RF1) the reference
+    EXP_CHK=$((EXP_CHK + 1)); [[ "$(sed -n '3p' "$EXPRF_REF")" == "Read **only** when"* ]] || EXP_WHY+=" EXP-RF1:load-line"
+    EXPRF_SZ="$(wc -c < "$EXPRF_REF" | tr -d ' ')"
+    EXP_CHK=$((EXP_CHK + 1)); (( EXPRF_SZ <= 12000 )) || EXP_WHY+=" EXP-RF1:size=${EXPRF_SZ}"
+    EXPRF_PSZ="$(wc -c < "$EXPP_REF" | tr -d ' ')"
+    EXP_CHK=$((EXP_CHK + 1)); (( EXPRF_PSZ <= 12000 )) || EXP_WHY+=" EXP-RF1:experiment-plan-size=${EXPRF_PSZ}"
+    for h in '## Reading' '## Failures and drift' '## The snapshot' '## Use in planning' '## Self-check'; do
+        exp_ok "EXP-RF1:no-heading(${h#\#\# })" "$h" "$EXPRF_REF"
+    done
+    EXP_CHK=$((EXP_CHK + 1)); ! grep -qwE 'Unity|Godot|Unreal|GDScript' "$EXPRF_REF" || EXP_WHY+=" EXP-RF1:engine-word"
+    exp_no "EXP-RF1:agent-variable" '{{agent_' "$EXPRF_REF"
+    exp_no "EXP-RF1:agent-call" 'Agent(' "$EXPRF_REF"
+    exp_no "EXP-RF1:maintainer-record-pointer" '.ai-factory' "$EXPRF_REF"
+    # (EXP-RF2) the commitments
+    exp_ok "EXP-RF2:01" 'Every entry of `Based on:` is read; none is skipped' "$EXPRF_REF"
+    exp_ok "EXP-RF2:02" 'Nothing read here is only context' "$EXPRF_REF"
+    exp_ok "EXP-RF2:03" 'could not be read — planned from the card alone' "$EXPRF_REF"
+    exp_ok "EXP-RF2:04" 'the card wins where they differ' "$EXPRF_REF"
+    exp_ok "EXP-RF2:05" '#### Reference' "$EXPRF_REF"
+    exp_ok "EXP-RF2:06" 'The planner does not decide against a decision of a reference' "$EXPRF_REF"
+    exp_ok "EXP-RF2:07" 'joins `### OUT OF SCOPE`' "$EXPRF_REF"
+    exp_ok "EXP-RF2:08" 'the card wins, because the designer approved it' "$EXPRF_REF"
+    exp_ok "EXP-RF2:09" 'Every `Based on:` entry has its `#### Reference` block or a `WARN` line' "$EXPRF_REF"
+    exp_ok "EXP-RF2:10" '`## Findings` for the passages that the summary, a conclusion or a `Must Have` of the card rests on' "$EXPRF_REF"
+    # (EXP-RF3) the wiring
+    exp_ok "EXP-RF3:01" 'references/experiment-references.md' "$EXPP_REF"
+    exp_ok "EXP-RF3:02" 'a `Based on:` entry or an `Experiment:` line' "$EXPP_REF"
+    exp_ok "EXP-RF3:03" '#### Reference · research ·' "$EXPL_TASKFMT"
+    exp_ok "EXP-RF3:04" '#### Reference · balance ·' "$EXPL_TASKFMT"
+    exp_ok "EXP-RF3:05" '**References.** Every entry of the card' "$EXPL_TASKFMT"
+    exp_ok "EXP-RF3:06" 'unikit-plan/references/experiment-references.md' "$ROOT_DIR/scripts/test-install.sh"
+    # the Rationale of a card: the block in the snapshot, the copy rule, the use of an assumption
+    exp_ok "EXP-RF3:07" '#### Rationale' "$EXPL_TASKFMT"
+    exp_ok "EXP-RF3:08" 'when it has one' "$EXPL_TASKFMT"
+    exp_ok "EXP-RF3:09" 'An `assumption` in the Rationale' "$EXPRF_REF"
+    # the notes of a deep pass: the reading rule and the block in the snapshot
+    exp_ok "EXP-RF3:10" '#### Reference · notes ·' "$EXPL_TASKFMT"
+    exp_ok "EXP-RF3:11" '`notes` — the file at the path' "$EXPRF_REF"
+fi
+(( EXP_CHK > 0 )) || EXP_WHY+=" EXP-RF1:nothing-checked"
+if [[ -z "$EXP_WHY" ]]; then
+    pass "EXP-RF1…EXP-RF3 experiment references: the planner reads every Based on entry, failures are loud, the card wins, the blocks and the delivery are in place (${EXP_CHK} checks)"
+else
+    fail "EXP-RF1…EXP-RF3 experiment references:$EXP_WHY"
+fi
+
+# --- EXL1…EXL3: the experiment design lens of the design exploration and the card that reads its block. EXL1 — the
+# reference (load line, size, neutrality) and the switch in SKILL.md; EXL2 — the pinned formulations (a lens that runs with
+# or without a GDD, the block and its fields, the privacy rule of a web query, the tag without Target, the route and the
+# offer whose default is no); EXL3 — the experiment side reads the block first. Source assertions, like EXP-RF; the
+# helpers and accumulators of the EXP block are reused after a reset. The em dash of the heading is asserted by its ASCII
+# parts, and the switch is read as a section so that a phrase already used by another lens cannot satisfy a pin.
+EXP_WHY=""
+EXP_CHK=0
+EXL_LENS="$ROOT_DIR/skills/unikit-gd-explore/references/experiment-lens.md"
+EXL_SKILL="$ROOT_DIR/skills/unikit-gd-explore/SKILL.md"
+EXL_SAVE="$ROOT_DIR/skills/unikit-gd-explore/references/save-research.md"
+if [[ ! -s "$EXL_LENS" ]]; then
+    EXP_WHY+=" EXL1:missing-reference"
+else
+    # (EXL1) the reference and the switch
+    EXP_CHK=$((EXP_CHK + 1)); [[ "$(sed -n '3p' "$EXL_LENS")" == "Read **only** when"* ]] || EXP_WHY+=" EXL1:load-line"
+    EXL_SZ="$(wc -c < "$EXL_LENS" | tr -d ' ')"
+    EXP_CHK=$((EXP_CHK + 1)); (( EXL_SZ <= 12000 )) || EXP_WHY+=" EXL1:size=${EXL_SZ}"
+    exp_no "EXL1:maintainer-record-pointer" '.ai-factory' "$EXL_LENS"
+    exp_no "EXL1:agent-call" 'Agent(' "$EXL_LENS"
+    exp_no "EXL1:agent-variable" '{{agent_' "$EXL_LENS"
+    EXP_CHK=$((EXP_CHK + 1)); ! grep -qwE 'Unity|Godot|Unreal|GDScript' "$EXL_LENS" || EXP_WHY+=" EXL1:engine-word"
+    EXP_CHK=$((EXP_CHK + 1)); grep -qE '^## Experiment design lens .+ when it engages$' "$EXL_SKILL" || EXP_WHY+=" EXL1:no-switch-heading"
+    exp_ok "EXL1:skill-names-reference" 'experiment-lens.md' "$EXL_SKILL"
+    EXL_SEC="$({ awk '/^## Experiment design lens/{f=1;next} /^## /{f=0} f' "$EXL_SKILL" || true; })"
+    EXP_CHK=$((EXP_CHK + 1)); [[ -n "$EXL_SEC" ]] || EXP_WHY+=" EXL1:switch-section-empty"
+    # (EXL2) the pinned formulations
+    exl_in() { # <reason key> <literal> <text>: the literal is in the text
+        EXP_CHK=$((EXP_CHK + 1)); grep -qF -- "$2" <<< "$3" || EXP_WHY+=" $1"
+    }
+    exp_ok "EXL2:01" 'with or without `GAME.md`' "$EXL_LENS"
+    exp_ok "EXL2:02" '`## Experiment Plan`' "$EXL_LENS"
+    exp_ok "EXL2:03" 'Rejected alternatives' "$EXL_LENS"
+    exp_ok "EXL2:04" 'How the test could mislead' "$EXL_LENS"
+    exp_ok "EXL2:05" 'What each outcome decides' "$EXL_LENS"
+    exp_ok "EXL2:06" 'it never carries the name of the project' "$EXL_LENS"
+    exp_ok "EXL2:07" 'never paste fetched page text' "$EXL_LENS"
+    exp_ok "EXL2:08" '`Target:` is **not** written' "$EXL_LENS"
+    exp_ok "EXL2:09" '`Kind: experiment`' "$EXL_LENS"
+    exl_in "EXL2:10" 'inferred from the prompt, never a flag' "$EXL_SEC"
+    exl_in "EXL2:11" 'with or without `GAME.md`' "$EXL_SEC"
+    exl_in "EXL2:12" 'say it on entry' "$EXL_SEC"
+    exl_in "EXL2:13" 'experiment-lens.md' "$EXL_SEC"
+    exp_ok "EXL2:14" 'consumes `## Experiment Plan`' "$EXL_SAVE"
+    exp_ok "EXL2:15" 'the default is no' "$EXL_SAVE"
+    exp_ok "EXL2:16" 'Kind: feature | improvement | experiment' "$EXL_SAVE"
+    # (EXL3) the experiment side
+    exp_ok "EXL3:01" '`## Experiment Plan` is read first' "$EXP_REFS/from-research.md"
+    exp_ok "EXL3:02" 'its `Judged on` field is the first source' "$EXP_REFS/from-research.md"
+    exp_ok "EXL3:03" 'the rows come from its fields' "$EXP_REFS/from-research.md"
+    exp_ok "EXL3:04" 'research without the block goes the way' "$EXP_REFS/from-research.md"
+    exp_ok "EXL3:05" 'skills/unikit-gd-explore/references/experiment-lens.md' "$ROOT_DIR/scripts/test-install.sh"
+    exp_ok "EXL3:06" 'skills/unikit-gd-explore/references/experiment-lens.md' "$ROOT_DIR/scripts/test-update.sh"
+fi
+(( EXP_CHK > 0 )) || EXP_WHY+=" EXL1:nothing-checked"
+if [[ -z "$EXP_WHY" ]]; then
+    pass "EXL1…EXL3 experiment design lens: the reference and its switch, a lens that runs with or without a GDD, the block and the tag, the privacy rule, the offer whose default is no, and the card that reads the block first (${EXP_CHK} checks)"
+else
+    fail "EXL1…EXL3 experiment design lens:$EXP_WHY"
 fi
 
 # ─────────────────────────────────────────────
@@ -10517,6 +12452,67 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# Part 7f6: extension points — unit tests and the anchor guard (EP-1…EP-5)
+# The EP-1…EP-5 family runs inside test-extension-points.mjs (registry vs anchors in skills/);
+# EP-6 (call sites) and EP-7 (documented points) are greps in Part 7g10.
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 7f6: extension point unit tests and anchor guard (EP-1…EP-5)${NC}"
+
+set +e
+EXT_POINTS_OUTPUT=$(node "$ROOT_DIR/scripts/test-extension-points.mjs" 2>&1)
+EXT_POINTS_EXIT=$?
+set -e
+
+if [[ $EXT_POINTS_EXIT -eq 0 ]]; then
+    pass "Extension point unit tests"
+    echo "$EXT_POINTS_OUTPUT" | tail -1 | sed 's/^/    /'
+else
+    fail "Extension point unit tests"
+    echo "$EXT_POINTS_OUTPUT" | sed 's/^/      /'
+fi
+
+# ─────────────────────────────────────────────
+# Part 7f7: extension item selection — unit tests
+# The resolver, the manifest filters, the --skip-* names, the item descriptions and the record
+# field in .unikit.json, all without a terminal (scripts/test-extension-selection.mjs).
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 7f7: extension selection unit tests${NC}"
+
+set +e
+EXT_SELECTION_OUTPUT=$(node "$ROOT_DIR/scripts/test-extension-selection.mjs" 2>&1)
+EXT_SELECTION_EXIT=$?
+set -e
+
+if [[ $EXT_SELECTION_EXIT -eq 0 ]]; then
+    pass "Extension selection unit tests"
+    echo "$EXT_SELECTION_OUTPUT" | tail -1 | sed 's/^/    /'
+else
+    fail "Extension selection unit tests"
+    echo "$EXT_SELECTION_OUTPUT" | sed 's/^/      /'
+fi
+
+# ─────────────────────────────────────────────
+# Part 7f8: system-file variable registry guards (SV-1, SV-2, SV-4…SV-9)
+# The registry in src/core/constants-template.ts against the files, the texts and the docs that name
+# its entries (scripts/test-system-vars.mjs). SV-3 (registry ⇔ delivered tree) needs an installed
+# project and runs from test-install.sh (Part 9).
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 7f8: system-file variable registry guards (SV-1, SV-2, SV-4…SV-9)${NC}"
+
+set +e
+SYSTEM_VARS_OUTPUT=$(node "$ROOT_DIR/scripts/test-system-vars.mjs" 2>&1)
+SYSTEM_VARS_EXIT=$?
+set -e
+
+if [[ $SYSTEM_VARS_EXIT -eq 0 ]]; then
+    pass "System-file variable registry guards"
+    echo "$SYSTEM_VARS_OUTPUT" | tail -1 | sed 's/^/    /'
+else
+    fail "System-file variable registry guards"
+    echo "$SYSTEM_VARS_OUTPUT" | sed 's/^/      /'
+fi
+
+# ─────────────────────────────────────────────
 # Part 7g: validate <!-- unikit:agents --> markers in skills/subagents
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Part 7g: agent-marker validation${NC}"
@@ -10568,7 +12564,7 @@ fi
 # (the call heads `{{agent_call_reader}}`, `{{agent_call_worker}}`, `{{agent_call_worker_quoted}}`,
 # `{{agent_id}}`, `{{agent_model_default}}`).
 # So the sources must name NO runtime's type and NO model; what they may carry is the variable
-# and, once per skill, the rule that settles the model argument from `.unikit/config.yaml`.
+# and, once per skill, the pointer to the rule that settles the model and the effort argument (data/subagent-arguments.md).
 # Fifteen guards, each closing a different way that rots (AP-1…AP-7 the profile, AP-8…AP-15
 # the delivery of a skill to a subagent):
 #
@@ -10579,10 +12575,10 @@ fi
 #         that used to be the literal. The bare words `Explore` / `coder` stay legal as a skill
 #         name and a role ("Explore tasks"): only a backticked type name is a stale spelling.
 #   AP-3  no `model: <word>` and none of the retired per-branch rationale sentences.
-#   AP-4  the model rule stands once in every SKILL.md that declares a model-carrying alias,
-#         and nowhere else (a second copy drifts; a copy without an alias is dead text).
-#   AP-5  the rule says everything its reader needs — the reader is the model, not a compiler,
-#         and a rule with a clause missing is followed with that clause missing.
+#   AP-4  the pointer to the arguments rule stands once in every SKILL.md whose frontmatter allows the `Agent` tool
+#         (the model key once there), and nowhere else; the retired paragraph is gone.
+#   AP-5  the pointer is whole: the contract path, both keys, the built-in model of the roles and the missing-contract
+#         line — the rule itself is pinned in the contract file (AP-16).
 #   AP-6  a delegation call never lives behind a non-codex agent-filter branch: the profile
 #         replaced those branches, so one coming back means a second definition has appeared.
 #   AP-7  the variables are a skills-only mechanism. Subagent files and system assets render
@@ -10653,27 +12649,39 @@ ap_tier=$( { grep -rhoF -e 'tier alias' -e 'No model is named' "$AP_SCOPE" --inc
 [[ "$ap_model" -eq 0 ]] || AP_WHY+=" AP-3:model-literal(x$ap_model)"
 [[ "$ap_tier" -eq 0 ]] || AP_WHY+=" AP-3:retired-rationale(x$ap_tier)"
 
-# (AP-4)
+# (AP-4) the pointer stands once in every skill whose frontmatter allows the `Agent` tool, and nowhere else: a skill that
+# can launch a subagent owes the reader the rule, one that cannot owes nothing; the key literal stays once there
+# (GXG-6 pins it too); the retired paragraph is gone everywhere
 AP_RULE_SKILLS=0
 for ap_f in "$AP_SCOPE"/*/SKILL.md; do
     [[ -f "$ap_f" ]] || continue
-    ap_alias=$( { grep -cE '^- \*\*`(recon-agent|check-agent|lens-agent|recon-writer-agent)`\*\*' "$ap_f" || true; } )
+    ap_agent=$(awk 'NR==1 && /^---$/ {f=1; next} f && /^---$/ {exit} f && /^  - Agent$/ {c++} END {print c+0}' "$ap_f")
+    ap_ptr=$( { grep -cF '**Subagent arguments.**' "$ap_f" || true; } )
     ap_rule=$( { grep -cF 'subagents.model.{{agent_id}}' "$ap_f" || true; } )
-    if [[ "${ap_alias:-0}" -gt 0 ]]; then
+    ap_old=$( { grep -cF '**Model argument.**' "$ap_f" || true; } )
+    [[ "${ap_old:-0}" -eq 0 ]] || AP_WHY+=" AP-4:old-paragraph-left:${ap_f#"$ROOT_DIR"/}"
+    if [[ "${ap_agent:-0}" -gt 0 ]]; then
         AP_RULE_SKILLS=$((AP_RULE_SKILLS + 1))
+        [[ "${ap_ptr:-0}" -eq 1 ]] || AP_WHY+=" AP-4:pointer-count(${ap_ptr:-0}):${ap_f#"$ROOT_DIR"/}"
         [[ "${ap_rule:-0}" -eq 1 ]] || AP_WHY+=" AP-4:rule-count(${ap_rule:-0}):${ap_f#"$ROOT_DIR"/}"
     else
-        [[ "${ap_rule:-0}" -eq 0 ]] || AP_WHY+=" AP-4:rule-without-alias:${ap_f#"$ROOT_DIR"/}"
+        [[ "${ap_ptr:-0}" -eq 0 ]] || AP_WHY+=" AP-4:pointer-without-agent:${ap_f#"$ROOT_DIR"/}"
+        [[ "${ap_rule:-0}" -eq 0 ]] || AP_WHY+=" AP-4:rule-without-agent:${ap_f#"$ROOT_DIR"/}"
     fi
 done
-[[ "$AP_RULE_SKILLS" -gt 0 ]] || AP_WHY+=" AP-4:no-skill-with-alias"
+[[ "$AP_RULE_SKILLS" -gt 0 ]] || AP_WHY+=" AP-4:no-skill-with-agent"
 
-# (AP-5)
+# (AP-5) the pointer is whole: the contract path, both keys, the built-in model of the roles and the missing-contract
+# line, each on one physical line; the rule itself is pinned in the contract file (AP-16)
 for ap_f in "$AP_SCOPE"/*/SKILL.md; do
-    grep -qF 'subagents.model.{{agent_id}}' "$ap_f" || continue
-    for ap_lit in 'pass no model argument' 'repeat that call once without the model argument' \
-                  'WARN [delegation] model' 'built-in default `"{{agent_model_default}}"`' '`inherit`'; do
-        grep -qF -- "$ap_lit" "$ap_f" || AP_WHY+=" AP-5:rule-incomplete(${ap_lit:0:24}):${ap_f#"$ROOT_DIR"/}"
+    grep -qF '**Subagent arguments.**' "$ap_f" || continue
+    for ap_lit in '`.unikit/system/subagent-arguments.md`' \
+                  'settle the model and effort of every launch as that file says' \
+                  'subagents.model.{{agent_id}}.<role>' 'subagents.effort.{{agent_id}}.<role>' \
+                  'built-in model of a reader and a validator: `"{{agent_model_default}}"`, of an executor: none' \
+                  'WARN [delegation] subagent-arguments contract missing' \
+                  'and use that model, no effort'; do
+        grep -qF -- "$ap_lit" "$ap_f" || AP_WHY+=" AP-5:pointer-incomplete(${ap_lit:0:24}):${ap_f#"$ROOT_DIR"/}"
     done
 done
 
@@ -10759,7 +12767,7 @@ ap_call_lines=$( { grep -rhE '^[[:space:]]*prompt: "\{\{agent_skill_call:[a-z0-9
 [[ "$ap_call_lines" -eq "$AP_N_CALL" ]] || AP_WHY+=" AP-14:call-not-one-prompt-line($ap_call_lines!=$AP_N_CALL)"
 
 if [[ -z "$AP_WHY" ]]; then
-    pass "AP-1…AP-15 agent profile in skills and skill delivery ($AP_HEAD_TOTAL call heads on profile variables, the model rule in $AP_RULE_SKILLS skills, no literal type or model; the skill-call variable on $AP_N_CALL call sites naming $AP_REF_N skills)"
+    pass "AP-1…AP-15 agent profile in skills and skill delivery ($AP_HEAD_TOTAL call heads on profile variables, the subagent-arguments pointer in $AP_RULE_SKILLS skills, no literal type or model; the skill-call variable on $AP_N_CALL call sites naming $AP_REF_N skills)"
 else
     fail "AP-1…AP-15 agent profile in skills and skill delivery:$AP_WHY"
     # Each diagnostic pipeline is wrapped: under `set -euo pipefail` an empty grep in a
@@ -10768,6 +12776,439 @@ else
     { grep -rnE -e '^[[:space:]]*skills:[[:space:]]*\[' -e 'prompt:[[:space:]]*"/unikit' "$AP_SCOPE" --include='*.md' 2>/dev/null | cut -c1-160 | sed 's/^/      /' | head -5 || true; }
     { grep -rnF '{{agent_skill_call:' "$AP_SCOPE" --include='*.md' 2>/dev/null | grep -F '$' | cut -c1-160 | sed 's/^/      /' | head -5 || true; }
 fi
+
+# --- AP-16…AP-18: the subagent-arguments contract. AP-16 — the contract file carries the formulations the
+# pointers rely on and no variable; AP-17 — the pointers are one text; AP-18 — the docs describe the
+# setting. Source assertions over pinned formulations, like AP-1…AP-15 above ($AP_SCOPE is theirs); the
+# block has its own accumulators and its own pass/fail, so the AP-1…AP-15 label stays true.
+# AP-19 — the roles table is complete. AP-20 — the coordinators settle their launches by role.
+APX_WHY=""
+APX_CHK=0
+APX_ARGS_FILE="$ROOT_DIR/data/subagent-arguments.md"
+# (AP-16) the contract file says the rule with the formulations the pointers and the coordinators rely on, and carries no variable
+if [[ ! -s "$APX_ARGS_FILE" ]]; then
+    APX_WHY+=" AP-16:contract-missing"
+else
+    for apx_lit in \
+        'Every subagent a skill launches takes a model and an effort argument' \
+        'together with `.unikit/system/subagent-roles.md` and `.unikit/config.yaml`' \
+        'The role of a launch — reader, validator or executor — decides which config key it reads' \
+        'WARN [delegation] subagent-roles table missing — every launch treated as an executor' \
+        'explicit word.** The user has asked for the argument in so many words' \
+        'is not an instruction' \
+        '**The config key.**' \
+        '**No key.**' \
+        'The effort has no built-in default' \
+        'A key that does not hold a map of roles' \
+        'A slot with nothing to pass is removed from the call together with its comma' \
+        'is compared without regard to case' \
+        'in lower case' \
+        'runs on the effort of the agent that launched it' \
+        'The user asked for effort <level> for every subagent.' \
+        'WARN [delegation] effort "<value>" is not supported by this runtime' \
+        'WARN [delegation] effort "<value>" rejected — retried on the session effort' \
+        'WARN [delegation] model "<name>" rejected — retried on the session model' \
+        'repeat it **once** without the effort'; do
+        APX_CHK=$((APX_CHK + 1))
+        grep -qF -- "$apx_lit" "$APX_ARGS_FILE" || APX_WHY+=" AP-16:contract-lacks(${apx_lit:0:28})"
+    done
+    APX_CHK=$((APX_CHK + 1)); ! grep -qF '{{' "$APX_ARGS_FILE" || APX_WHY+=" AP-16:variable-in-contract"
+fi
+# (AP-17) the pointers are ONE text: the block from its first line to the blank line after it is byte-identical in every skill
+APX_PTR_SUMS=""
+APX_PTR_N=0
+for apx_f in "$AP_SCOPE"/*/SKILL.md; do
+    grep -qF '**Subagent arguments.**' "$apx_f" || continue
+    APX_PTR_N=$((APX_PTR_N + 1))
+    APX_PTR_SUMS+="$(awk '/^\*\*Subagent arguments\.\*\*/{f=1} f&&/^$/{exit} f' "$apx_f" | cksum | cut -d' ' -f1)"$'\n'
+done
+APX_PTR_DISTINCT=$(printf '%s' "$APX_PTR_SUMS" | sort -u | { grep -c . || true; })
+APX_CHK=$((APX_CHK + APX_PTR_N))
+[[ "$APX_PTR_N" -gt 0 ]] || APX_WHY+=" AP-17:no-pointer"
+[[ "$APX_PTR_DISTINCT" -le 1 ]] || APX_WHY+=" AP-17:pointers-differ(x$APX_PTR_DISTINCT)"
+# (AP-18) the docs describe the effort setting, the rule file, the order of values and what is established for Antigravity
+APX_DOC_CFG="$ROOT_DIR/docs/configuration.md"
+APX_DOC_SUB="$ROOT_DIR/docs/subagents.md"
+APX_DOC_AGENTS="$ROOT_DIR/docs/agents.md"
+APX_DOC_EXT="$ROOT_DIR/docs/extensions.md"
+apx_doc() { # <reason key> <literal> <file>
+    APX_CHK=$((APX_CHK + 1))
+    grep -qF -- "$2" "$3" || APX_WHY+=" AP-18:$1"
+}
+apx_doc "cfg-effort-claude" '| `effort.claude.<role>` |' "$APX_DOC_CFG"
+apx_doc "cfg-effort-codex" '| `effort.codex.<role>` |' "$APX_DOC_CFG"
+apx_doc "cfg-rule-file" 'and which role a launch has is the table in `.unikit/system/subagent-roles.md`; `unikit-ai init` and `unikit-ai update` install both' "$APX_DOC_CFG"
+apx_doc "cfg-order" '**Which value wins** is decided for the model and for the effort separately' "$APX_DOC_CFG"
+apx_doc "cfg-overrides" 'the environment variable `CLAUDE_CODE_EFFORT_LEVEL` overrides the level of a subagent call' "$APX_DOC_CFG"
+apx_doc "cfg-unverified" 'by its documentation - not checked by a probe' "$APX_DOC_CFG"
+apx_doc "cfg-min-version" 'documented from Claude Code v2.1.292' "$APX_DOC_CFG"
+apx_doc "cfg-antigravity" '**Antigravity has no effort key:**' "$APX_DOC_CFG"
+apx_doc "cfg-tree-arguments" 'subagent-arguments.md  # How the model and the effort of a subagent launch are settled' "$APX_DOC_CFG"
+apx_doc "cfg-tree-roles" 'subagent-roles.md      # Which role (reader, validator, executor) each subagent launch has' "$APX_DOC_CFG"
+apx_doc "cfg-scalar" 'A single value written directly under an agent, as in earlier releases' "$APX_DOC_CFG"
+apx_doc "cfg-slots" 'stand in the installed skills as slots of the call' "$APX_DOC_CFG"
+apx_doc "cfg-bucket3" 'an empty `subagents.model.<agent>.<role>` or `subagents.effort.<agent>.<role>` is a deliberate choice' "$APX_DOC_CFG"
+apx_doc "sub-heading" '### Subagent arguments' "$APX_DOC_SUB"
+apx_doc "sub-roles" 'The role of a launch - **reader**, **validator** or **executor** - comes from the table in `.unikit/system/subagent-roles.md`' "$APX_DOC_SUB"
+apx_doc "sub-slots" 'the installer draws them into the call head of every skill as slots' "$APX_DOC_SUB"
+apx_doc "sub-retry" 'WARN [delegation] effort "<value>" rejected - retried on the session effort' "$APX_DOC_SUB"
+apx_doc "sub-no-slot" 'a runtime without an effort slot gets `WARN [delegation] effort "<value>" is not supported' "$APX_DOC_SUB"
+apx_doc "sub-nested" '### Nested launches and effort - what is established' "$APX_DOC_SUB"
+apx_doc "sub-nesting-claude" 'launched two subagents itself (depth 2' "$APX_DOC_SUB"
+apx_doc "sub-top-level-field" 'was not applied in the probe that could tell it from the model setting' "$APX_DOC_SUB"
+apx_doc "ext-launches" 'the role of a launch your extension adds is placed by the nature of its work' "$APX_DOC_EXT"
+apx_doc "agents-established" '**Subagents and effort - what is established (client `agy` 1.3.0, probes of 2026-10-16).**' "$APX_DOC_AGENTS"
+apx_doc "agents-observation" 'so it is an observation - it does not show that a subagent follows `/effort` of the session' "$APX_DOC_AGENTS"
+apx_doc "agents-not-measured" 'whether that depends on `/effort` was not measured' "$APX_DOC_AGENTS"
+apx_doc "agents-codex" 'The call also takes `model` and `reasoning_effort`' "$APX_DOC_AGENTS"
+apx_doc "agents-codex-nested" 'a subagent started with `reasoning_effort` low started another with `high`' "$APX_DOC_AGENTS"
+apx_doc "agents-nested" '**Nested subagents (client `agy`, probes of 2026-10-18 and 2026-10-19, from the journals).**' "$APX_DOC_AGENTS"
+apx_doc "agents-kimi" 'UniKit passes neither a model nor an effort to Kimi Code subagents' "$APX_DOC_AGENTS"
+# the help index of the system files names the new one (the help test does not guard that list)
+APX_HELP_KB="$ROOT_DIR/skills/unikit-help/references/knowledge-base.md"
+apx_doc "help-kb" '`subagent-arguments.md` — how the model and the effort of a subagent are settled' "$APX_HELP_KB"
+apx_doc "help-kb-roles" '`subagent-roles.md` — which role (reader, validator or executor) each subagent launch has' "$APX_HELP_KB"
+APX_DOC_OLD=$( { grep -cF '### Model argument' "$APX_DOC_SUB" || true; } )
+APX_CHK=$((APX_CHK + 1))
+[[ "${APX_DOC_OLD:-0}" -eq 0 ]] || APX_WHY+=" AP-18:retired-heading-left"
+# (AP-19) the roles table is complete and honest: every alias the skills declare, every file agent of the package
+# and every launch without an alias has a row, every row names something that exists, and the assignments the
+# user made are pinned. The table is data/subagent-roles.md; a launch is found by its first cell.
+APX_ROLES_FILE="$ROOT_DIR/data/subagent-roles.md"
+if [[ ! -s "$APX_ROLES_FILE" ]]; then
+    APX_WHY+=" AP-19:roles-file-missing"
+else
+    for apx_lit in \
+        'Do not restate this table inside a skill' \
+        '- **reader** — collects facts and returns them' \
+        '- **validator** — checks a finished result' \
+        '- **executor** — does work whose result becomes part of the project' \
+        'The table is primary: a launch it names has the role of its row' \
+        'every other launch, and any launch you cannot place, is an executor'; do
+        APX_CHK=$((APX_CHK + 1))
+        grep -qF -- "$apx_lit" "$APX_ROLES_FILE" || APX_WHY+=" AP-19:roles-lack(${apx_lit:0:28})"
+    done
+    APX_CHK=$((APX_CHK + 1)); ! grep -qF '{{' "$APX_ROLES_FILE" || APX_WHY+=" AP-19:variable-in-roles"
+    APX_ROWS="$({ awk '/^## The table decides/{f=1;next} /^## /{f=0} f && /^\|/' "$APX_ROLES_FILE" || true; })"
+    # the aliases: declared in the skills == named in the table
+    APX_SKILL_ALIASES="$(for apx_f in "$AP_SCOPE"/*/SKILL.md; do awk '/^## Delegation agents/{f=1;next} /^## /{f=0} f' "$apx_f" | { grep -oE '^- \*\*`[a-z]+(-[a-z]+)*-agent`\*\*' || true; }; done | sed -e 's/^- \*\*`//' -e 's/`\*\*$//' | LC_ALL=C sort -u | tr '\n' ' ')"
+    APX_TABLE_ALIASES="$(printf '%s\n' "$APX_ROWS" | { grep -oE '^\| `[a-z]+(-[a-z]+)*-agent` \|' || true; } | sed -e 's/^| `//' -e 's/` |$//' | LC_ALL=C sort -u | tr '\n' ' ')"
+    APX_CHK=$((APX_CHK + 1))
+    [[ -n "$APX_SKILL_ALIASES" && "$APX_SKILL_ALIASES" == "$APX_TABLE_ALIASES" ]] || APX_WHY+=" AP-19:aliases-differ(skills=[${APX_SKILL_ALIASES% }] table=[${APX_TABLE_ALIASES% }])"
+    # the file agents: every file of subagents/ has a row, every `unikit-…` row has a file
+    for apx_f in "$ROOT_DIR"/subagents/*.md; do
+        apx_name="$(basename "$apx_f" .md)"
+        APX_CHK=$((APX_CHK + 1))
+        grep -qF -- "| \`$apx_name\` |" "$APX_ROLES_FILE" || APX_WHY+=" AP-19:file-agent-without-row:$apx_name"
+    done
+    while IFS= read -r apx_row_name; do
+        [[ -n "$apx_row_name" ]] || continue
+        APX_CHK=$((APX_CHK + 1))
+        [[ -f "$ROOT_DIR/subagents/$apx_row_name.md" ]] || APX_WHY+=" AP-19:row-without-file-agent:$apx_row_name"
+    done <<< "$(printf '%s\n' "$APX_ROWS" | { grep -oE '^\| `unikit-[a-z-]+` \|' || true; } | sed -e 's/^| `//' -e 's/` |$//')"
+    # the second cell of every row is a role, and only the two coordinators have none (APX_ROWS holds the header and
+    # the separator line too, hence NR>2)
+    APX_BAD_ROLE="$(printf '%s\n' "$APX_ROWS" | awk -F'|' 'NR>2 { r=$3; gsub(/^ +| +$/, "", r); if (r != "reader" && r != "validator" && r != "executor" && r != "none") print r }' | tr '\n' ' ')"
+    APX_CHK=$((APX_CHK + 1))
+    [[ -z "$APX_BAD_ROLE" ]] || APX_WHY+=" AP-19:unknown-role($APX_BAD_ROLE)"
+    APX_NONE_ROWS="$(printf '%s\n' "$APX_ROWS" | awk -F'|' 'NR>2 { r=$3; gsub(/^ +| +$/, "", r); if (r == "none") { c=$2; gsub(/^ +| +$/, "", c); print c } }' | LC_ALL=C sort | tr '\n' ' ')"
+    APX_CHK=$((APX_CHK + 1))
+    [[ "$APX_NONE_ROWS" == '`unikit-implement-coordinator` `unikit-plan-coordinator` ' ]] || APX_WHY+=" AP-19:none-rows-differ($APX_NONE_ROWS)"
+    # the launches without an alias: a file that has call heads and no alias bullet is such a site. A new one, or one
+    # that went, is a conscious edit of the table AND of this list.
+    APX_UNALIASED="$({ grep -rlE '\{\{agent_call_(reader|worker|worker_quoted)\}\}' "$AP_SCOPE" --include='*.md' 2>/dev/null || true; } | while IFS= read -r apx_f; do
+        apx_al="$({ grep -cE '^- \*\*`[a-z]+(-[a-z]+)*-agent`\*\*' "$apx_f" || true; })"
+        if [[ "${apx_al:-0}" -eq 0 ]]; then
+            apx_hd="$({ grep -oE '\{\{agent_call_(reader|worker|worker_quoted)\}\}' "$apx_f" || true; } | wc -l | tr -d ' ')"
+            printf '%s:%s\n' "${apx_f#"$ROOT_DIR"/}" "$apx_hd"
+        fi
+    done | LC_ALL=C sort | tr '\n' ' ')"
+    APX_CHK=$((APX_CHK + 1))
+    [[ "$APX_UNALIASED" == 'skills/unikit-gd-brainstorm/SKILL.md:1 skills/unikit-gd-explore/references/delegation-contract.md:1 skills/unikit/SKILL.md:2 ' ]] \
+        || APX_WHY+=" AP-19:launches-without-alias-changed(${APX_UNALIASED% }) — add or remove their rows in data/subagent-roles.md and update this list"
+    # the assignments, pinned: the ones the user named and the ones the research proposed. A role changes only by a conscious edit here.
+    for apx_lit in \
+        '| `recon-agent` | reader |' '| `recon-writer-agent` | reader |' '| `check-agent` | validator |' '| `lens-agent` | validator |' \
+        '| `develop-agent` | executor |' '| `docs-agent` | executor |' \
+        '| `/unikit` Step 9.8 | executor |' '| `/unikit` Step 10 | executor |' '| `/unikit-gd-brainstorm` Phase 3.5 | executor |' \
+        '| `unikit-implement-worker` | executor |' '| `unikit-plan-polisher` | executor |' \
+        '| `unikit-review-sidecar` | validator |' '| `unikit-architecture-sidecar` | validator |' '| `unikit-docs-sidecar` | validator |' \
+        '| `unikit-commit-sidecar` | reader |'; do
+        APX_CHK=$((APX_CHK + 1))
+        grep -qF -- "$apx_lit" "$APX_ROLES_FILE" || APX_WHY+=" AP-19:assignment-changed(${apx_lit:0:34})"
+    done
+fi
+# (AP-20) the file agents that launch other agents settle the model and the effort of their launches by role: each reads the
+# contract, the roles table and the config, names its keys, passes the result as call parameters and says what Kimi Code does.
+# Which file agents launch is derived (a `  - Agent` entry in the frontmatter `tools:` list), not listed: a new launcher gets the
+# rule by construction, and one that launches nothing must not carry a section it cannot use.
+APX_COORD_N=0
+for apx_f in "$ROOT_DIR"/subagents/*.md; do
+    apx_can=$(awk 'NR==1 && /^---$/ {f=1; next} f && /^---$/ {exit} f && /^  - Agent(\(|$)/ {c++} END {print c+0}' "$apx_f")
+    apx_has=$( { grep -cF '## Subagent arguments' "$apx_f" || true; } )
+    APX_CHK=$((APX_CHK + 1))
+    if [[ "${apx_can:-0}" -gt 0 ]]; then
+        APX_COORD_N=$((APX_COORD_N + 1))
+        [[ "${apx_has:-0}" -ge 1 ]] || APX_WHY+=" AP-20:launcher-without-section:${apx_f#"$ROOT_DIR"/}"
+        for apx_lit in \
+            '`.unikit/system/subagent-arguments.md`, `.unikit/system/subagent-roles.md` and `.unikit/config.yaml`' \
+            'On Claude Code the keys are `subagents.model.claude.<role>` and `subagents.effort.claude.<role>`' \
+            'as the `model` and `effort` call parameters of the launch' \
+            'A parameter with nothing to pass is left out of the call' \
+            'WARN [delegation] subagent-arguments contract missing' \
+            'skip this section and pass nothing'; do
+            APX_CHK=$((APX_CHK + 1))
+            grep -qF -- "$apx_lit" "$apx_f" || APX_WHY+=" AP-20:launcher-lacks(${apx_lit:0:28}):${apx_f#"$ROOT_DIR"/}"
+        done
+    else
+        [[ "${apx_has:-0}" -eq 0 ]] || APX_WHY+=" AP-20:non-launcher-with-section:${apx_f#"$ROOT_DIR"/}"
+    fi
+done
+APX_CHK=$((APX_CHK + 1))
+[[ "$APX_COORD_N" -eq 2 ]] || APX_WHY+=" AP-20:launchers(${APX_COORD_N}!=2)"
+APX_CHK=$((APX_CHK + 2))
+grep -qF 'also carries the `model` and `effort` call parameters of its role' "$ROOT_DIR/subagents/unikit-implement-coordinator.md" || APX_WHY+=" AP-20:implement-dispatch-not-parameterised"
+grep -qF 'Pass the `model` and `effort` call parameters of the polisher' "$ROOT_DIR/subagents/unikit-plan-coordinator.md" || APX_WHY+=" AP-20:plan-dispatch-not-parameterised"
+# (AP-21) is added next to the texts it pins — see the tasks of phase 6
+(( APX_CHK > 0 )) || APX_WHY+=" AP-16:nothing-checked"
+if [[ -z "$APX_WHY" ]]; then
+    pass "AP-16…AP-20 subagent arguments and roles: the contract file, the pointers as one text, the docs, the roles table, the coordinators (${APX_CHK} checks)"
+else
+    fail "AP-16…AP-20 subagent arguments and roles:$APX_WHY"
+fi
+
+# >>> UQ block
+# ─────────────────────────────────────────────
+# Part 7g3b: UQ-1…UQ-9 — the user-questions contract and its pointer
+# ─────────────────────────────────────────────
+# One flat contract, data/user-questions.md, says how every question to the user is asked and
+# waited for. A skill moved onto it carries ONE pointer line, right above its first `## ` heading,
+# names the tool only as "the question tool of your agent (`AskUserQuestion`)" and restates none
+# of the contract. Which skills are moved is not a list kept here: every skill whose frontmatter
+# grants the tool (UQ_MOVED) and every agent file whose `tools:` list holds it (UQ_AGENT_FILES)
+# carries the pointer, and every other rule is written over "each file that carries the pointer".
+# Own accumulators UQ_*, own pass/fail; every grep inside $( … ) is wrapped in { … || true; } —
+# under `set -e` an empty match would abort the suite. Texts are read as whitespace-normalized
+# streams, so a reflowed paragraph does not hide a formulation.
+echo -e "\n${BOLD}Part 7g3b: the user-questions contract and its pointer (UQ)${NC}"
+
+UQ_WHY=""
+UQ_CHK=0
+UQ_FILE="$ROOT_DIR/data/user-questions.md"
+UQ_POINTER='**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.'
+UQ_CANON='question tool of your agent (`AskUserQuestion`)'
+
+# The grant is the frontmatter line `  - AskUserQuestion` (skills: allowed-tools, agent files: tools).
+uq_grants() { awk 'NR==1 && /^---$/ {f=1; next} f && /^---$/ {exit} f && /^  - AskUserQuestion$/ {c++} END {exit (c > 0 ? 0 : 1)}' "$1"; }
+UQ_MOVED=()
+for uq_f in "$ROOT_DIR"/skills/*/SKILL.md; do
+    if uq_grants "$uq_f"; then UQ_MOVED+=("$(basename "$(dirname "$uq_f")")"); fi
+done
+UQ_AGENT_FILES=()
+for uq_f in "$ROOT_DIR"/subagents/*.md; do
+    if uq_grants "$uq_f"; then UQ_AGENT_FILES+=("$uq_f"); fi
+done
+# every file that has to carry the pointer: the SKILL.md of each moved skill, then the agent files
+UQ_CARRIERS=()
+for uq_s in ${UQ_MOVED[@]+"${UQ_MOVED[@]}"}; do UQ_CARRIERS+=("$ROOT_DIR/skills/$uq_s/SKILL.md"); done
+for uq_f in ${UQ_AGENT_FILES[@]+"${UQ_AGENT_FILES[@]}"}; do UQ_CARRIERS+=("$uq_f"); done
+
+uq_stream() { tr '\n' ' ' < "$1" | tr -s ' '; }
+uq_body_stream() { awk 'NR==1 && /^---$/ {f=1; next} f && /^---$/ {f=0; b=1; next} b' "$1" | tr '\n' ' ' | tr -s ' '; }
+uq_occ() { # <text> <literal> → UQ_N = number of occurrences; pure bash, so a check starts no process
+    local rest="${1//"$2"/}"
+    UQ_N=$(( (${#1} - ${#rest}) / ${#2} ))
+}
+uq_has() { # <reason key> <literal> <file>
+    UQ_CHK=$((UQ_CHK + 1))
+    uq_occ "$(uq_stream "$3")" "$2"
+    [[ "$UQ_N" -gt 0 ]] || UQ_WHY+=" $1"
+}
+uq_lacks() { # <reason key> <literal> <file>
+    UQ_CHK=$((UQ_CHK + 1))
+    uq_occ "$(uq_stream "$3")" "$2"
+    [[ "$UQ_N" -eq 0 ]] || UQ_WHY+=" $1"
+}
+
+# (UQ-1) the contract: flat, its formulations in place, universal — no agent and no other tool
+#        named (D-7) — and the tool named once, as the example in brackets (D-12)
+if [[ ! -s "$UQ_FILE" ]]; then
+    UQ_WHY+=" UQ-1:missing-contract"
+else
+    for uq_h in '## The question tool' '## A turn that waits for the user ends with a question' '## How to ask' '## A question with no fixed answers'; do
+        UQ_CHK=$((UQ_CHK + 1))
+        grep -qxF -- "$uq_h" "$UQ_FILE" || UQ_WHY+=" UQ-1:heading(${uq_h:3:24})"
+    done
+    for uq_lit in \
+        'once per run and never at Bootstrap' \
+        'Do not restate this contract inside a skill' \
+        'question tool of your agent (`AskUserQuestion`)' \
+        'Skill text names it with the name in brackets' \
+        'A turn never ends on an explanation, a summary or a recommendation' \
+        'as a visible message of your own' \
+        'each with its concrete consequence, the recommended option first' \
+        'is printed in full in this message' \
+        'Do not add a second list of the bare option names' \
+        'with "(Recommended)" in its label, short labels without numbers' \
+        'The question carries the options and nothing else' \
+        'four at most' \
+        'do not end your turn, do not give a final answer and do not write status lines' \
+        'say nothing and do nothing else while you wait' \
+        'There is no time limit: time passing is not an answer' \
+        '`WARN [questions] no question tool — asking as numbered text`' \
+        'Look through the tools your agent offers before you decide it has none' \
+        'the question tool has a different name in different agents' \
+        'and end your turn' \
+        'never as plain text while the tool works' \
+        'two short examples of the expected answer' \
+        'in the free-text answer of the tool' \
+        'An answer the user sends as a message of their own counts the same'; do
+        uq_has "UQ-1:contract-lacks(${uq_lit:0:28})" "$uq_lit" "$UQ_FILE"
+    done
+    for uq_ban in '{{' 'Claude' 'Codex' 'Cursor' 'Kimi' 'Antigravity' 'Qwen' 'OpenCode' 'Gemini' 'request_user_input' 'ask_question' 'AskQuestion' 'ToolSearch'; do
+        UQ_CHK=$((UQ_CHK + 1))
+        ! grep -qF -- "$uq_ban" "$UQ_FILE" || UQ_WHY+=" UQ-1:names($uq_ban)"
+    done
+    UQ_CHK=$((UQ_CHK + 1))
+    uq_occ "$(uq_stream "$UQ_FILE")" 'AskUserQuestion'
+    [[ "$UQ_N" -eq 1 ]] || UQ_WHY+=" UQ-1:tool-named(x$UQ_N)"
+    uq_has "UQ-1:example-not-in-brackets" '(`AskUserQuestion`)' "$UQ_FILE"
+fi
+
+# (UQ-2) the pointer: at most once in a SKILL.md or an agent file and nowhere else, only where
+#        the frontmatter grants the tool, as the paragraph right above the first `## ` heading
+#        of the body (before any question is asked); every file that grants the tool carries it
+UQ_SCAN=("$ROOT_DIR"/skills/*/SKILL.md "$ROOT_DIR"/subagents/*.md)
+UQ_PTR_N=0
+for uq_f in "${UQ_SCAN[@]}"; do
+    uq_n=$( { grep -cF '**User questions.**' "$uq_f" || true; } )
+    [[ "${uq_n:-0}" -eq 0 ]] && continue
+    uq_rel="${uq_f#"$ROOT_DIR"/}"
+    UQ_PTR_N=$((UQ_PTR_N + 1))
+    UQ_CHK=$((UQ_CHK + 3))
+    [[ "$uq_n" -eq 1 ]] || UQ_WHY+=" UQ-2:pointer-count($uq_n):$uq_rel"
+    uq_tool=$(awk 'NR==1 && /^---$/ {f=1; next} f && /^---$/ {exit} f && /^  - AskUserQuestion$/ {c++} END {print c+0}' "$uq_f")
+    [[ "$uq_tool" -gt 0 ]] || UQ_WHY+=" UQ-2:pointer-without-tool:$uq_rel"
+    uq_place=$(awk 'NR==1 && /^---$/ {f=1; next} f && /^---$/ {f=0; b=1; next} b && /^## / {print ((p2 ~ /^\*\*User questions\.\*\*/ && p1 == "") ? "ok" : "off"); exit} {p2=p1; p1=$0}' "$uq_f")
+    [[ "$uq_place" == "ok" ]] || UQ_WHY+=" UQ-2:pointer-not-above-first-heading:$uq_rel"
+done
+for uq_c in ${UQ_CARRIERS[@]+"${UQ_CARRIERS[@]}"}; do
+    UQ_CHK=$((UQ_CHK + 1))
+    grep -qF '**User questions.**' "$uq_c" || UQ_WHY+=" UQ-2:grant-without-pointer:${uq_c#"$ROOT_DIR"/}"
+done
+[[ "$UQ_PTR_N" -gt 0 ]] || UQ_WHY+=" UQ-2:no-pointer"
+UQ_CHK=$((UQ_CHK + 1))
+uq_stray=$( { grep -rlF '**User questions.**' "$ROOT_DIR/skills" "$ROOT_DIR/data" "$ROOT_DIR/subagents" 2>/dev/null || true; } | { grep -v '/SKILL\.md$' || true; } | { grep -v '/subagents/[^/]*\.md$' || true; } | wc -l | tr -d ' ')
+[[ "$uq_stray" -eq 0 ]] || UQ_WHY+=" UQ-2:pointer-outside-SKILL.md-and-agent-files(x$uq_stray)"
+
+# (UQ-3) every pointer is the one pinned line, byte for byte
+for uq_f in "${UQ_SCAN[@]}"; do
+    grep -qF '**User questions.**' "$uq_f" || continue
+    UQ_CHK=$((UQ_CHK + 1))
+    uq_line=$( { grep -F '**User questions.**' "$uq_f" || true; } | head -n 1 | tr -d '\r')
+    [[ "$uq_line" == "$UQ_POINTER" ]] || UQ_WHY+=" UQ-3:pointer-text:${uq_f#"$ROOT_DIR"/}"
+done
+
+# (UQ-4) a file that carries the pointer names the tool only in the canonical form: in the body
+#        of SKILL.md and in every reference of the skill, in the body of an agent file (the
+#        frontmatter tool list is a permission, not text)
+for uq_f in "${UQ_SCAN[@]}"; do
+    grep -qF '**User questions.**' "$uq_f" || continue
+    if [[ "$uq_f" == */SKILL.md ]]; then
+        uq_docs="$( { find "$(dirname "$uq_f")" -name '*.md' -type f || true; } | sort)"
+    else
+        uq_docs="$uq_f"
+    fi
+    while IFS= read -r uq_doc; do
+        [[ -n "$uq_doc" ]] || continue
+        if [[ "$uq_doc" == */SKILL.md || "$uq_doc" == */subagents/*.md ]]; then uq_txt="$(uq_body_stream "$uq_doc")"; else uq_txt="$(uq_stream "$uq_doc")"; fi
+        uq_occ "$uq_txt" 'AskUserQuestion'; uq_all=$UQ_N
+        uq_occ "$uq_txt" "$UQ_CANON"; uq_can=$UQ_N
+        UQ_CHK=$((UQ_CHK + 1))
+        [[ "$uq_all" -eq "$uq_can" ]] || UQ_WHY+=" UQ-4:bare-name(${uq_all}/${uq_can}):${uq_doc#"$ROOT_DIR"/}"
+    done <<< "$uq_docs"
+done
+
+# (UQ-5) a file that carries the pointer restates none of the contract and asks in no way the
+#        contract retired: no copy of its clause, no text tier, no turn rule of its own, no
+#        plain-text prompt and no wait without a question
+for uq_f in "${UQ_SCAN[@]}"; do
+    grep -qF '**User questions.**' "$uq_f" || continue
+    if [[ "$uq_f" == */SKILL.md ]]; then
+        uq_all_txt="$( { find "$(dirname "$uq_f")" -name '*.md' -type f -exec cat {} + || true; } | tr '\n' ' ' | tr -s ' ')"
+    else
+        uq_all_txt="$(uq_stream "$uq_f")"
+    fi
+    for uq_lit in 'carries the options and nothing else' 'numbered text' 'question widget' 'structured-question tool' 'end your turn' 'end the turn' \
+                  '[y/N]' 'Wait for user response' 'wait for user to specify' 'ask once, as plain text' 'Agents without a question tool'; do
+        UQ_CHK=$((UQ_CHK + 1))
+        uq_occ "$uq_all_txt" "$uq_lit"
+        [[ "$UQ_N" -eq 0 ]] || UQ_WHY+=" UQ-5:restated(${uq_lit:0:24}):${uq_f#"$ROOT_DIR"/}"
+    done
+done
+
+# (UQ-6) the planner's own question sites: the clarifying questions and the pick of researches
+#        go through the tool; the plan ends with printed next steps, no closing question
+UQ_PLAN="$ROOT_DIR/skills/unikit-plan/SKILL.md"
+UQ_PLAN_ULTRA="$ROOT_DIR/skills/unikit-plan/references/mode-ultra.md"
+UQ_PLAN_ADD="$ROOT_DIR/skills/unikit-plan/references/mode-add.md"
+uq_has "UQ-6:clarifying-without-options" 'ask clarifying questions, each with its likely answers as the options' "$UQ_PLAN"
+uq_lacks "UQ-6:clarifying-as-text" 'Before planning, a few things need clarification' "$UQ_PLAN"
+uq_has "UQ-6:pick-not-asked" 'Let me pick → ask which ones: the user writes their numbers' "$UQ_PLAN"
+uq_lacks "UQ-6:pick-waits-for-text" 'wait for user to specify numbers' "$UQ_PLAN"
+uq_has "UQ-6:next-steps-printed" '7. The other next steps, printed as a short list and not asked as a question' "$UQ_PLAN"
+uq_lacks "UQ-6:closing-as-prose" 'Ask whether to adjust anything' "$UQ_PLAN"
+uq_lacks "UQ-6:closing-asked" 'Adjust it' "$UQ_PLAN"
+uq_lacks "UQ-6:ultra-closing-asked" 'closing question' "$UQ_PLAN_ULTRA"
+uq_has "UQ-6:ultra-stops" 'Then **STOP**.' "$UQ_PLAN_ULTRA"
+uq_has "UQ-6:add-next-steps" 'Then print the next steps of Step 6 item 7 and **STOP**.' "$UQ_PLAN_ADD"
+uq_lacks "UQ-6:add-closing-as-prose" 'Ask if anything needs adjustment' "$UQ_PLAN_ADD"
+uq_lacks "UQ-6:no-skill-call" 'invoke `unikit-implement`' "$UQ_PLAN"
+
+# (UQ-7) the docs: the system tree, the skills page and the help index name the contract
+uq_has "UQ-7:configuration-tree" 'user-questions.md # How a skill asks you a question and waits for the answer' "$ROOT_DIR/docs/configuration.md"
+uq_has "UQ-7:skills-page" 'Every skill that asks you a question follows `.unikit/system/user-questions.md`' "$ROOT_DIR/docs/skills.md"
+uq_lacks "UQ-7:skills-page-pilot-wording" 'The other skills keep their own wording for now' "$ROOT_DIR/docs/skills.md"
+uq_has "UQ-7:help-index" '- `user-questions.md` — how a skill asks you a question' "$ROOT_DIR/skills/unikit-help/references/knowledge-base.md"
+
+# (UQ-8) the shared texts under data/ say what to ask, never how: besides the contract no file there
+#        names the tool, restates the contract or tells agents without the tool what to do
+UQ_DATA_N=0
+while IFS= read -r uq_doc; do
+    [[ -n "$uq_doc" && "$uq_doc" != "$UQ_FILE" ]] || continue
+    UQ_DATA_N=$((UQ_DATA_N + 1))
+    uq_txt="$(uq_stream "$uq_doc")"
+    for uq_lit in 'AskUserQuestion' 'carries the options and nothing else' 'numbered text' 'question widget' 'structured-question tool' 'structured question' 'end your turn' 'end the turn'; do
+        UQ_CHK=$((UQ_CHK + 1))
+        uq_occ "$uq_txt" "$uq_lit"
+        [[ "$UQ_N" -eq 0 ]] || UQ_WHY+=" UQ-8:data-restates(${uq_lit:0:24}):${uq_doc#"$ROOT_DIR"/}"
+    done
+done < <( { find "$ROOT_DIR/data" -name '*.md' -type f || true; } | sort)
+UQ_CHK=$((UQ_CHK + 1))
+[[ "$UQ_DATA_N" -gt 0 ]] || UQ_WHY+=" UQ-8:no-data-file-scanned"
+uq_lacks "UQ-8:agent-named-in-the-principles" 'on Claude Code' "$ROOT_DIR/data/gamedesign/gd-principles.md"
+
+# (UQ-9) question sites other skills settled with this move — each decided once, pinned once
+uq_grants "$ROOT_DIR/skills/unikit-todo/SKILL.md" || UQ_WHY+=" UQ-9:todo-has-no-grant"
+uq_has "UQ-9:unikit-missing-tool-is-no-block" 'its absence is not a block, the questions are then asked as `.unikit/system/user-questions.md` says' "$ROOT_DIR/skills/unikit/SKILL.md"
+uq_lacks "UQ-9:unikit-tool-named-in-the-rule" 'requires an AskUserQuestion step' "$ROOT_DIR/skills/unikit/SKILL.md"
+uq_has "UQ-9:spec-menu-has-a-recommended-first" '1. Edit GAME.md content — change a pillar / fantasy / loop / stance (Recommended)' "$ROOT_DIR/skills/unikit-gd-spec/SKILL.md"
+uq_lacks "UQ-9:spec-menu-has-five-options" '5. Import a different GDD' "$ROOT_DIR/skills/unikit-gd-spec/SKILL.md"
+uq_has "UQ-9:audit-consent-through-the-tool" '`Editor ready?`, with the options' "$ROOT_DIR/skills/unikit-mcp-audit/SKILL.md"
+uq_has "UQ-9:trap-review-through-the-tool" 'ask once with the question tool of your agent (`AskUserQuestion`): `Review them?`' "$ROOT_DIR/skills/unikit-mcp-trap/SKILL.md"
+uq_has "UQ-9:rules-mode-b-asks-the-open-question" 'What rule or convention would you like to add?' "$ROOT_DIR/skills/unikit-rules/SKILL.md"
+uq_lacks "UQ-9:rules-mode-b-invents-rules" 'Never use var — always declare explicit types' "$ROOT_DIR/skills/unikit-rules/SKILL.md"
+uq_has "UQ-9:roadmap-asks-after-the-report" 'Then the question, with the question tool of your agent (`AskUserQuestion`): `Mark them as completed`' "$ROOT_DIR/skills/unikit-roadmap/SKILL.md"
+uq_has "UQ-9:balance-documents-are-four-options" 'the four latest as the options' "$ROOT_DIR/skills/unikit-gd-balance/references/resolve-target.md"
+uq_has "UQ-9:experiment-balance-link-four-options" 'the four latest as the options' "$ROOT_DIR/skills/unikit-gd-experiment/references/balance-link.md"
+
+(( UQ_CHK > 0 )) || UQ_WHY+=" UQ-1:nothing-checked"
+if [[ -z "$UQ_WHY" ]]; then
+    pass "UQ-1…UQ-9 user questions: the contract file, the pointer as one line above the first heading in every file that grants the tool, the canonical tool name, no restated or retired way of asking, the shared texts, the settled sites, the docs (${UQ_CHK} checks)"
+else
+    fail "UQ-1…UQ-9 user questions:$UQ_WHY"
+fi
+# <<< UQ block
 
 # ─────────────────────────────────────────────
 # Part 7g4: UA-1…UA-4 — the agent directory rules and the universal agent (source level)
@@ -10819,7 +13260,7 @@ if grep -qF 'There is no `/unikit-*` slash command' "$UA_AGENTS_DOC"; then UA_WH
 # (UA-4) the universal agent rides on the defaults: no code branches on its id (its MCP writer and
 # its transformer are the default ones, apart from the welcome text), and the two places that must
 # agree — registry entry, transformer registration — both carry it. It has no config-template key:
-# its profile says `modelParam: false`, which test-agent-profile.mjs group C checks.
+# its profile names no model argument (`modelArg: ''`), which test-agent-profile.mjs group C checks.
 [[ "$({ grep -rnE "(agentId|agent\.id|\.id) === 'universal'" "$ROOT_DIR/src" || true; } | wc -l | tr -d ' ')" -eq 0 ]] || UA_WHY+=" UA-4:code-branches-on-the-universal-id"
 [[ "$({ grep -c "'universal'" "$ROOT_DIR/src/core/mcp-writers/index.ts" || true; })" -eq 0 ]] || UA_WHY+=" UA-4:mcp-writer-has-a-universal-branch"
 { grep -qF "universal: {" "$ROOT_DIR/src/core/agents.ts" || false; } || UA_WHY+=" UA-4:registry-entry-missing"
@@ -11117,6 +13558,130 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# Part 7g10: EP-6 — the extension injection pass is called from every lifecycle path
+# ─────────────────────────────────────────────
+# `init` cannot be driven by a smoke test (it is a wizard), so its wiring is read, not run: the pass
+# and the restore of the extensions' own assets must be called in init.ts, the pass in update.ts and
+# extension.ts, `extensions` must be carried into the saved config, and the retired per-extension loop
+# must not return. Every object is checked file-scoped; a missing file is a FAIL, not a silent pass.
+echo -e "\n${BOLD}Part 7g10: extension injection pass call sites (EP-6)${NC}"
+EP6_WHY=""
+EP6_N=0
+for ep6_f in init update extension; do
+    ep6_p="$ROOT_DIR/src/cli/commands/$ep6_f.ts"
+    if [[ ! -s "$ep6_p" ]]; then EP6_WHY+=" EP-6:missing($ep6_f.ts)"; continue; fi
+    EP6_N=$((EP6_N + 1))
+    { grep -qF 'await applyExtensionInjections(' "$ep6_p" || false; } || EP6_WHY+=" EP-6:no-pass-call($ep6_f.ts)"
+done
+EP6_INIT="$ROOT_DIR/src/cli/commands/init.ts"
+{ grep -qF 'await reinstallExtensionAssets(' "$EP6_INIT" || false; } || EP6_WHY+=" EP-6:init-does-not-restore-extension-assets"
+{ grep -qF 'extensions: preservedExtensions' "$EP6_INIT" || false; } || EP6_WHY+=" EP-6:init-drops-extensions"
+ep6_loop=$( { grep -rn 'applyAllInjections' "$ROOT_DIR/src" || true; } | wc -l | tr -d ' ')
+[[ "$ep6_loop" -eq 0 ]] || EP6_WHY+=" EP-6:retired-loop-returned(x$ep6_loop)"
+[[ "$EP6_N" -gt 0 ]] || EP6_WHY+=" EP-6:scanned-nothing"
+if [[ -z "$EP6_WHY" ]]; then pass "EP-6 injection pass call sites ($EP6_N command files)"; else fail "EP-6 injection pass call sites:$EP6_WHY"; fi
+
+# (EP-7) the published list of points: every skill of the registry is named, in backticks, in
+# docs/extensions.md — the anchor is a public contract and its list is part of the contract.
+EP7_DOC="$ROOT_DIR/docs/extensions.md"
+EP7_LIST=$( { node -e 'const r=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));console.log(Object.keys(r.skills||{}).join("\n"))' "$ROOT_DIR/data/extension-points.json" || true; } )
+EP7_N=0; EP7_WHY=""
+while IFS= read -r ep7_s; do
+    [[ -n "$ep7_s" ]] || continue
+    EP7_N=$((EP7_N + 1))
+    { grep -qF "\`$ep7_s\`" "$EP7_DOC" || false; } || EP7_WHY+=" EP-7:undocumented($ep7_s)"
+done <<< "$EP7_LIST"
+[[ "$EP7_N" -gt 0 ]] || EP7_WHY+=" EP-7:registry-empty"
+[[ -s "$EP7_DOC" ]] || EP7_WHY+=" EP-7:docs-missing"
+if [[ -z "$EP7_WHY" ]]; then pass "EP-7 every registered skill is listed in docs/extensions.md ($EP7_N)"; else fail "EP-7:$EP7_WHY"; fi
+
+# ─────────────────────────────────────────────
+# Part 7g11: ES-1…ES-4 — extension item selection call sites
+# ─────────────────────────────────────────────
+# What keeps a switched-off item switched off sits in a few call sites: the loop in `update`, the
+# agent removal, the install/remove core; the refresh and the command must hand a temporary clone to
+# `disposeResolvedExtension`; the menu must not load `inquirer` statically (a run without a terminal
+# would pay for it); core must not import from `cli/`. Source files are read (the help output is the
+# one exception, ES-4); a missing file is a FAIL, not a silent pass.
+echo -e "\n${BOLD}Part 7g11: extension selection call sites (ES-1…ES-4)${NC}"
+ES_WHY=""
+ES_N=0
+
+es_need() {   # <path under ROOT_DIR> <fixed string> <reason tag>
+    local es_p="$ROOT_DIR/$1"
+    if [[ ! -s "$es_p" ]]; then ES_WHY+=" $3:missing($1)"; return; fi
+    ES_N=$((ES_N + 1))
+    { grep -qF -- "$2" "$es_p" || false; } || ES_WHY+=" $3"
+}
+
+# (ES-1) the loops that reinstall or remove an extension's files read the narrowed manifest
+es_need src/cli/commands/update.ts 'filterManifest(' "ES-1:update-loop-unfiltered"
+es_need src/core/installer/agent-removal.ts 'filterManifest(' "ES-1:agent-removal-unfiltered"
+es_need src/core/extension-ops.ts 'filterManifest(' "ES-1:extension-ops-unfiltered"
+if [[ -s "$ROOT_DIR/src/cli/commands/update.ts" ]] \
+    && grep -qE 'extManifest\.(skills|subagents)' "$ROOT_DIR/src/cli/commands/update.ts"; then
+    ES_WHY+=" ES-1:update-loop-reads-the-whole-manifest"
+fi
+
+# (ES-2) new items go through the chooser; a temporary clone is always handed back
+es_need src/cli/commands/update.ts 'chooseNewItems' "ES-2:update-has-no-chooser"
+es_need src/cli/commands/extension.ts 'chooseNewItems' "ES-2:extension-update-has-no-chooser"
+es_need src/cli/commands/extension.ts 'disposeResolvedExtension(' "ES-2:extension-add-leaves-the-clone"
+es_need src/core/extension-refresh.ts 'disposeResolvedExtension(' "ES-2:refresh-leaves-the-clone"
+
+# (ES-3) `inquirer` is loaded lazily and only in the interface layer; core knows nothing of cli/
+ES3_UI="$ROOT_DIR/src/cli/commands/extension-selection-ui.ts"
+if [[ -s "$ES3_UI" ]]; then
+    ES_N=$((ES_N + 1))
+    if grep -qE "^import .* from 'inquirer'" "$ES3_UI"; then ES_WHY+=" ES-3:static-inquirer-import"; fi
+    { grep -qF "import('inquirer')" "$ES3_UI" || false; } || ES_WHY+=" ES-3:no-lazy-inquirer"
+else
+    ES_WHY+=" ES-3:missing(extension-selection-ui.ts)"
+fi
+for es3_f in extension-selection extension-selection-query extension-selection-describe extension-select-ops extension-refresh; do
+    es3_p="$ROOT_DIR/src/core/$es3_f.ts"
+    if [[ ! -s "$es3_p" ]]; then ES_WHY+=" ES-3:missing($es3_f.ts)"; continue; fi
+    ES_N=$((ES_N + 1))
+    if grep -qE "from '\.\./cli|from 'inquirer'" "$es3_p"; then ES_WHY+=" ES-3:core-imports-the-interface($es3_f.ts)"; fi
+done
+
+# (ES-4) the flags are on the commands (read from the built CLI)
+set +e
+ES4_ADD=$(node "$ROOT_DIR/dist/cli/index.js" extension add --help 2>&1)
+ES4_SELECT=$(node "$ROOT_DIR/dist/cli/index.js" extension select --help 2>&1)
+ES4_SELECT_EXIT=$?
+set -e
+for es4_flag in --skip-skills --skip-subagents --skip-mcp --yes --install-new --skip-new; do
+    { grep -qF -- "$es4_flag" <<< "$ES4_ADD" || false; } || ES_WHY+=" ES-4:add-help-lacks($es4_flag)"
+done
+[[ $ES4_SELECT_EXIT -eq 0 ]] || ES_WHY+=" ES-4:select-help-exit($ES4_SELECT_EXIT)"
+{ grep -qF -- "--skip-skills" <<< "$ES4_SELECT" || false; } || ES_WHY+=" ES-4:select-help-lacks(--skip-skills)"
+
+[[ "$ES_N" -gt 0 ]] || ES_WHY+=" ES:scanned-nothing"
+if [[ -z "$ES_WHY" ]]; then pass "ES-1…ES-4 extension selection call sites ($ES_N checks)"; else fail "ES-1…ES-4 extension selection call sites:$ES_WHY"; fi
+
+# ─────────────────────────────────────────────
+# Part 7g12: RP-1…RP-4 — skills name their reference files by full path
+# The family runs inside test-reference-paths.mjs (pure fs over skills/**/*.md): a file of another skill
+# carries the install directory (RP-1), the pinned sites say the full path (RP-2), a skill's own file named
+# bare also has a full path in the skill (RP-3) and in the same .md (RP-4).
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 7g12: skills name their reference files by full path (RP-1…RP-4)${NC}"
+
+set +e
+RP_OUTPUT=$(node "$ROOT_DIR/scripts/test-reference-paths.mjs" 2>&1)
+RP_EXIT=$?
+set -e
+
+if [[ $RP_EXIT -eq 0 ]]; then
+    pass "RP-1…RP-4 reference paths in skills"
+    echo "$RP_OUTPUT" | tail -1 | sed 's/^/    /'
+else
+    fail "RP-1…RP-4 reference paths in skills"
+    echo "$RP_OUTPUT" | sed 's/^/      /'
+fi
+
+# ─────────────────────────────────────────────
 # Part 7h: CLI command registration smoke
 # ─────────────────────────────────────────────
 # Catch the "forgot to wire a new command into src/cli/index.ts" regression
@@ -11252,10 +13817,9 @@ fi
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}=== Update command smoke tests ===${NC}\n"
 
-set +e
-UPDATE_SMOKE_OUTPUT=$(bash "$ROOT_DIR/scripts/test-update.sh" 2>&1)
-UPDATE_SMOKE_EXIT=$?
-set -e
+child_wait update
+UPDATE_SMOKE_OUTPUT="$CHILD_OUTPUT"
+UPDATE_SMOKE_EXIT="$CHILD_EXIT"
 
 if [[ $UPDATE_SMOKE_EXIT -eq 0 ]]; then
     pass "update smoke tests"
@@ -11270,10 +13834,9 @@ fi
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}=== Install smoke tests ===${NC}\n"
 
-set +e
-INSTALL_SMOKE_OUTPUT=$(bash "$ROOT_DIR/scripts/test-install.sh" 2>&1)
-INSTALL_SMOKE_EXIT=$?
-set -e
+child_wait install
+INSTALL_SMOKE_OUTPUT="$CHILD_OUTPUT"
+INSTALL_SMOKE_EXIT="$CHILD_EXIT"
 
 if [[ $INSTALL_SMOKE_EXIT -eq 0 ]]; then
     pass "install smoke tests"
@@ -11290,10 +13853,9 @@ fi
 # proves the version matrix and the settings-file write rules underneath them.
 echo -e "\n${BOLD}=== Migration + MCP reconciliation smoke tests ===${NC}\n"
 
-set +e
-MIGRATIONS_SMOKE_OUTPUT=$(bash "$ROOT_DIR/scripts/test-migrations.sh" 2>&1)
-MIGRATIONS_SMOKE_EXIT=$?
-set -e
+child_wait migrations
+MIGRATIONS_SMOKE_OUTPUT="$CHILD_OUTPUT"
+MIGRATIONS_SMOKE_EXIT="$CHILD_EXIT"
 
 if [[ $MIGRATIONS_SMOKE_EXIT -eq 0 ]]; then
     pass "migration + MCP reconciliation smoke tests"
@@ -11308,10 +13870,9 @@ fi
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}=== Extension smoke tests ===${NC}\n"
 
-set +e
-EXT_SMOKE_OUTPUT=$(bash "$ROOT_DIR/scripts/test-extensions.sh" 2>&1)
-EXT_SMOKE_EXIT=$?
-set -e
+child_wait extensions
+EXT_SMOKE_OUTPUT="$CHILD_OUTPUT"
+EXT_SMOKE_EXIT="$CHILD_EXIT"
 
 if [[ $EXT_SMOKE_EXIT -eq 0 ]]; then
     pass "extension smoke tests"
@@ -11319,6 +13880,23 @@ if [[ $EXT_SMOKE_EXIT -eq 0 ]]; then
 else
     fail "extension smoke tests"
     echo "$EXT_SMOKE_OUTPUT" | sed 's/^/      /'
+fi
+
+# ─────────────────────────────────────────────
+# Part 10b: Extension item selection smoke tests
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}=== Extension selection smoke tests ===${NC}\n"
+
+child_wait extsel
+EXT_SELECTION_SMOKE_OUTPUT="$CHILD_OUTPUT"
+EXT_SELECTION_SMOKE_EXIT="$CHILD_EXIT"
+
+if [[ $EXT_SELECTION_SMOKE_EXIT -eq 0 ]]; then
+    pass "extension selection smoke tests"
+    echo "$EXT_SELECTION_SMOKE_OUTPUT" | grep '✓' | sed 's/^/    /'
+else
+    fail "extension selection smoke tests"
+    echo "$EXT_SELECTION_SMOKE_OUTPUT" | sed 's/^/      /'
 fi
 
 # ─────────────────────────────────────────────
@@ -11548,7 +14126,9 @@ fi
 # Part 13: Rules registry tests
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Part 13: Rules registry tests${NC}"
-if bash "$SCRIPT_DIR/test-rules.sh"; then
+child_wait rules
+printf '%s\n' "$CHILD_OUTPUT"
+if [[ $CHILD_EXIT -eq 0 ]]; then
     pass "Rules registry tests passed"
 else
     fail "Rules registry tests failed"
@@ -11558,7 +14138,9 @@ fi
 # Part 13c: rules-layout.mjs — the optimise helper, run for real on fixture projects
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Part 13c: rules-layout helper tests${NC}"
-if bash "$SCRIPT_DIR/test-rules-layout.sh"; then
+child_wait layout
+printf '%s\n' "$CHILD_OUTPUT"
+if [[ $CHILD_EXIT -eq 0 ]]; then
     pass "rules-layout helper tests passed"
 else
     fail "rules-layout helper tests failed"
@@ -11568,7 +14150,9 @@ fi
 # Part 13d: plan-bundle.mjs — the ultra bundle check, run for real on fixture bundles
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Part 13d: plan-bundle helper tests${NC}"
-if bash "$SCRIPT_DIR/test-plan-bundle.sh"; then
+child_wait planbundle
+printf '%s\n' "$CHILD_OUTPUT"
+if [[ $CHILD_EXIT -eq 0 ]]; then
     pass "plan-bundle helper tests passed"
 else
     fail "plan-bundle helper tests failed"
@@ -11578,7 +14162,9 @@ fi
 # Part 13b: Genre profile tests (catalog + CLI + schema)
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Part 13b: Genre profile tests${NC}"
-if bash "$SCRIPT_DIR/test-genres.sh"; then
+child_wait genres
+printf '%s\n' "$CHILD_OUTPUT"
+if [[ $CHILD_EXIT -eq 0 ]]; then
     pass "Genre profile tests passed"
 else
     fail "Genre profile tests failed"
@@ -11643,7 +14229,9 @@ fi
 # Part 15: Skill grouping guard
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Part 15: Skill grouping guard${NC}"
-if bash "$SCRIPT_DIR/test-skill-groups.sh"; then
+child_wait skillgroups
+printf '%s\n' "$CHILD_OUTPUT"
+if [[ $CHILD_EXIT -eq 0 ]]; then
     pass "Skill grouping guard passed"
 else
     fail "Skill grouping guard failed"
@@ -11653,10 +14241,24 @@ fi
 # Part 16: unikit-help navigator guard
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Part 16: unikit-help navigator guard${NC}"
-if bash "$SCRIPT_DIR/test-help-skill.sh"; then
+child_wait helpskill
+printf '%s\n' "$CHILD_OUTPUT"
+if [[ $CHILD_EXIT -eq 0 ]]; then
     pass "unikit-help navigator guard passed"
 else
     fail "unikit-help navigator guard failed"
+fi
+
+# ─────────────────────────────────────────────
+# Part 17: the `grep -qF` shortcut answers like real grep
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 17: grep shim equivalence${NC}"
+child_wait grepshim
+printf '%s\n' "$CHILD_OUTPUT"
+if [[ $CHILD_EXIT -eq 0 ]]; then
+    pass "grep shim equivalence passed"
+else
+    fail "grep shim equivalence failed"
 fi
 
 # ─────────────────────────────────────────────

@@ -7,8 +7,8 @@ intent and a concrete next step, plus worked examples and the fallback for the u
 
 ## The diagnostic tree (no-args / "I'm lost")
 
-When the user gives nothing concrete, ask **one** `AskUserQuestion` with four buckets (the
-tool always adds a free-text "Other"):
+When the user gives nothing concrete, ask **one** question with the question tool of your agent
+(`AskUserQuestion`), four buckets:
 
 ```
 "What are you trying to figure out right now?"
@@ -63,10 +63,12 @@ Keep it to one question + one follow-up. Never fan out into a questionnaire.
 | "how do I create the game design" | author GDD | `/unikit-gd-spec` (import? pass the file/URL) | from scratch or import? |
 | "detail / spec out a system" | per-system GDD | `/unikit-gd-system <system>` | is the system on the map? |
 | "find / invent a new mechanic" | design research | `/unikit-gd-explore <intent>` (routes onward) | genre, target emotion, constraints, refs |
-| "improve / tune / rework a system" | design delta | `/unikit-gd-system <system> "<change>"` | tuning vs rework? |
+| "balance it across measurements / next balance step / here are the results of the checkpoint" | balance loop | `/unikit-gd-balance [<topic>, <slug> or <report>]` | start from a topic / a research / a hand-back report? |
+| "the first minutes are boring, what can we test / design an experiment / compare three hints / here is the playtest feedback / which experiments failed" | experiments | `/unikit-gd-experiment [<problem>, <feedback> or list]` | a cheap hypothesis test on players → `/unikit-gd-experiment`; picking numbers from measurements → `/unikit-gd-balance`; a problem to explore / an idea to specify / feedback to evaluate? |
+| "improve / tune / rework a system" | design delta | `/unikit-gd-system <system> "<change>"` | a number in one system → `/unikit-gd-system`; picking numbers from measurements across a checkpoint loop → `/unikit-gd-balance`; tuning vs rework? |
 | "design the flow / onboarding / pacing / player journey / funnel" | per-flow GDD (dynamics) | `/unikit-gd-flow <flow>` | create vs revise (inferred) |
 | "retune the pacing / add a branch / rework the onboarding" | flow delta | `/unikit-gd-flow <flow> "<change>"` | tuning vs rework? |
-| "is this design good / fun / balanced" | design review | `/unikit-gd-review <scope>` | single system or all? |
+| "is this design good / fun / balanced" | design review | `/unikit-gd-review <scope>` | a qualitative verdict → `/unikit-gd-review`; picking numbers by measurements → `/unikit-gd-balance`; single system or all? |
 | "is the design consistent / what did this affect" | design check | `/unikit-gd-verify <scope>` | — |
 | "add a rule" / "always do X" | capture convention | `/unikit-rules <rule>` | — |
 | "make rules from this book/article/docs/PDF" | distil sources | `/unikit-memory <source(s)>` (`--module gamedesign` for design) | code or design knowledge? |
@@ -155,7 +157,7 @@ Clarify if unknown: genre? target emotion? hard constraints? reference games?
 
 ## Fallback behaviour (intent unclear or out of scope)
 
-- **Unclear intent** → don't guess. Run the diagnostic (one `AskUserQuestion`).
+- **Unclear intent** → don't guess. Run the diagnostic: one question with the question tool of your agent (`AskUserQuestion`).
 - **Spans several intents** → name the 2-3 routes and ask which they want first; or give the
   natural order (e.g. "design first, then plan, then implement").
 - **No matching skill** → say so honestly and offer the closest fit. Known gaps to be honest about:

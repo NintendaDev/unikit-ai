@@ -13,7 +13,7 @@ Read at Step 5, only at the `merge` level and only after the pull request was op
 5. **A separate confirmation**, with the test line from step 4 above it:
 
    ```
-   AskUserQuestion: Merge PR #<n> into <base> with a merge commit?
+   The question tool of your agent (`AskUserQuestion`): Merge PR #<n> into <base> with a merge commit?
 
    Options:
    1. Merge

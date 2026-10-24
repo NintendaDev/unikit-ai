@@ -37,6 +37,8 @@ metadata:
 
 Fix a specific bug or problem in the codebase. Supports two modes: immediate fix or plan-first approach.
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md`
@@ -53,18 +55,13 @@ Do not announce, confirm, or mention the language setting.
 
 This skill uses named delegation aliases for `Agent(...)` calls. A skill-loading alias expands to an `Agent(...)` invocation whose prompt makes the subagent load the skill; a reconnaissance alias expands to a read-only dispatch. Each alias is the single place where its delegate's agent type and call arguments are declared — call sites name the alias and never carry a type or a model argument of their own.
 
-**Model argument.** Before the first dispatch of an alias below, read `.unikit/config.yaml`
-(a missing file, block or key is not an error) and settle the model argument once:
-
-1. `subagents.model.{{agent_id}}` holds a model name — pass `model: <name>` with every call,
-   exactly as written (this runtime's own spelling of the model argument, if it differs).
-2. It holds `inherit`, or is present and empty — pass no model argument; the agent runs on the
-   model of this session.
-3. The key is absent — use the built-in default `"{{agent_model_default}}"`; an empty string
-   means pass no model argument.
-
-If the runtime rejects the model name, repeat that call once without the model argument and
-report `WARN [delegation] model "<name>" rejected — retried on the session model`.
+**Subagent arguments.** Before the first subagent you launch, read `.unikit/system/subagent-arguments.md`
+and `.unikit/config.yaml` once and settle the model and effort of every launch as that file says.
+Keys: `subagents.model.{{agent_id}}.<role>`, `subagents.effort.{{agent_id}}.<role>`;
+built-in model of a reader and a validator: `"{{agent_model_default}}"`, of an executor: none.
+If the file cannot be read, print
+`WARN [delegation] subagent-arguments contract missing — built-in model tier used, effort not passed`
+and use that model, no effort.
 
 `develop-agent` carries no model argument.
 
@@ -180,6 +177,8 @@ Bootstrap loads coding rules and principles ONCE upfront so the fix can be imple
 
 Stack rules are loaded on-demand later — when investigation reveals which framework is involved (e.g. R3, Zenject, UniTask). At the same point, load the topic files listed under `## Topics` in `.unikit/RULES.md` whose `Load when` matches the area the investigation localized — the files, types or feature the bug lives in; when unsure, load (`RULES_INDEX.md` → Step 1).
 
+**The fix runs against a plan whose manifest has `## Experiment Context`** (the session started from such a plan, or the prompt carries a `Prototype plan:` note) → read `.unikit/system/prototype-profile.md` now, once, and follow its `## Role: quality and the rest` — Steps 5 and 7.3, and the prompt of a delegate, follow it. Missing or unreadable → `WARN [prototype] profile contract missing — fixing as for an ordinary plan; run unikit-ai update`.
+
 **Engine-MCP rules (conditional, engine-neutral) — once per session, zero calls:**
 
 5. `.unikit/system/engine-mcp/INDEX.md`, **base section only** — the delivery stamp (`server:`) plus every section **except** the `## Check` table — access, the live failure classes, shape and cost, what is irreversible, the lane, and what to do when the file is silent. Those are the exceptions that hold for every task here. **Do not read the `## Check` table now** — it is grepped per editor task, by area (Step 3).
@@ -226,6 +225,8 @@ codebase conventions, and tech-stack analysis. These rules are tailored to the c
 - If the current problem resembles a past patch — apply the same approach or avoid the same mistakes
 - This is accumulated experience. Use it.
 
+<!-- unikit:extension-point:bootstrap -->
+
 ---
 
 ## Step 1: Understand the Problem & Choose Mode
@@ -236,10 +237,9 @@ From `$ARGUMENTS`, identify:
 - Steps to reproduce (if provided)
 - {{engine_name}} console output (errors, warnings, stack traces)
 
-If unclear, ask:
+If unclear, ask — each question with its likely answers as the options:
 ```
-To fix this efficiently, I need more context:
-
+The question tool of your agent (`AskUserQuestion`):
 1. What is the expected behavior?
 2. What actually happens?
 3. Is there a stack trace or {{engine_name}} Console log?

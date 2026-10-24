@@ -55,8 +55,8 @@ resolve the axis the request names; do **not** default to systems:
 - Request names/implies a **content type** ("the item catalog", "the CT-item
   schema", a `CT-<slug>` id) → resolve the **content type first-class** (content →
   content): its `CT.fields` schema, `scale`, and `belongs_to`.
-- **Ambiguous** (reads as more than one axis, or names several) → `AskUserQuestion`
-  listing the candidates; **never guess** the axis.
+- **Ambiguous** (reads as more than one axis, or names several) → ask which axis is meant, the
+  candidates as the options; **never guess** the axis.
 
 This is the canonical decision ladder. Consumers reference it and apply it to
 their own resolution mechanics (system match by `name`/`category`, flow match by

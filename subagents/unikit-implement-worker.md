@@ -57,6 +57,7 @@ Before writing code:
 5. Read `.unikit/system/dev-principles.md` **up to its lazy-read boundary**: find the marker line (`Grep -n '^<!-- === LAZY-READ BOUNDARY === -->'`) and `Read` with `limit` set to it. The part below the marker is read once, now, when a task you were handed carries an `Editor:` line — the deep reference and the editor procedures D6–D8 — unconditionally, never gated on which rules happen to be installed. An agent that cannot read with a limit reads the whole file.
 6. Read `.unikit/system/engine-mcp/INDEX.md` if it exists, **base section only** — the delivery stamp (`server:`) plus every section **except** the `## Check` table — access, the live failure classes, shape and cost, what is irreversible, the lane, and what to do when the file is silent. The `## Check` table is **not** read here: it is grepped per editor target, by that target's area plus the six cross-cutting ones.
 7. Read `.unikit/MCP-RECHECK-NOTES.md` if it exists, **header only** (`server:` / `audited:`), and compare it against that stamp. A mismatch is one `WARN [engine-mcp] notes header ≠ configured server (<notes> ≠ <configured>)` — the entries are suspect, not void, and they still apply.
+8. **Your prompt carries a note starting `Prototype plan:`** → read `.unikit/system/prototype-profile.md` and follow its `## Role: execution` (the worker part and `## Softened`). Missing or unreadable → `WARN [prototype] profile contract missing — task executed as for an ordinary plan; run unikit-ai update`.
 
 **A missing 6 or 7 changes nothing.** No rules means no known exceptions, never no capabilities: absence never disables the engine MCP and never turns a target into `⏸️ MANUAL` (`dev-principles.md` → A9). Say it once — `MCP rules: no INDEX.md — no known exceptions for this server, rights unchanged` — and carry on.
 
@@ -77,6 +78,8 @@ Before writing code:
    **A task carrying a `PR checkpoint:` line is never yours.** It closes a module and asks the user; if one reaches you, return it unexecuted — `returned: <task id> — PR checkpoint belongs to the coordinator` in your `## Output` — and change nothing.
 2. Load rules (see above).
 3. Implement the target task using direct tool calls.
+
+   **A `Measure:` or `Hand-back:` task is never yours** — return it with `returned: <task id> — Measure/Hand-back belongs to the coordinator`; change nothing and write no row.
 
    **If the task carries one or more `Editor:` lines** (`[kind] <container> → <target> : <action>`) it targets the editor's serialized state, not source files. Branch on the `Editor tasks` mode the coordinator passed:
    - **`mcp`** — carry it out by `dev-principles.md` → **D6**. **No rules file, or no matching check line, changes nothing**: every right you had, you keep, and it is never a reason to mark the target `⏸️ MANUAL` (A9). `⏸️ MANUAL` is reached only by trying, finding no route at all, and having the evidence of that absence to show.
@@ -113,7 +116,7 @@ Return a concise summary:
 - List of files modified
 - `manual_targets:` — editor targets NOT carried out, each as `[kind] container → target : action`; omit the field when there are none. The coordinator must not mark a phase complete on the strength of a task whose editor targets are still listed here
 - `test_run_deferred:` — the coverage, or the run command, that you did not execute and are handing to the scope owner; omit the field when there is none. **Absent → the coordinator reads it as nothing deferred**, never as a run already done — the same explicit-degradation rule `editor_mode:` carries in the dispatch contract
-- `returned:` — tasks handed back unexecuted, one line each (`returned: <task id> — PR checkpoint belongs to the coordinator`); omitted when none
+- `returned:` — tasks handed back unexecuted, one line each (`returned: <task id> — PR checkpoint belongs to the coordinator`, or `returned: <task id> — Measure/Hand-back belongs to the coordinator`); omitted when none
 - `docs_recommended: yes/no`
 - `commit_recommended: yes/no`
 - `next_task: <task description or "phase complete" or "plan complete">`

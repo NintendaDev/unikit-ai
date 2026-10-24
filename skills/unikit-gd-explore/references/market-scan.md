@@ -5,7 +5,7 @@ demand when a prompt carries **market intent**. The *when/what* — the market-s
 table and the decision rule that triggers this load — lives in
 `unikit-gd-explore/SKILL.md` → "Market lens — when it engages". The cross-skill
 **delegation contract** that lets `unikit-gd-brainstorm` pull a scan without owning
-this engine lives in `references/delegation-contract.md` (Explore owns the spec).
+this engine lives in `{{skills_dir}}/{{self_name}}/references/delegation-contract.md` (Explore owns the spec).
 This file is **method, not process** — the same split methods.md keeps for
 `unikit-gd-brainstorm`.
 
@@ -293,7 +293,7 @@ The machine fields (`market_signal`, `validation_confidence`, `clone_density`,
 `trend_fit`, `monetization_fit`, `recommendation`) are **machine fields** (underscore)
 the calling session lifts verbatim into the CONCEPT card header; `key_evidence` and
 `go_to_market_risk` distil into its `## Notes`. They are distinct from the human Pugh
-criterion `market-signal` (hyphen) in `brainstorm/references/methods.md` — the
+criterion `market-signal` (hyphen) in `{{skills_dir}}/unikit-gd-brainstorm/references/methods.md` — the
 criterion is a *judgment*; the field is the *evidence* that judgment may now lean on.
 
 ## Subagent mode (deterministic, no questions)
@@ -305,7 +305,7 @@ delegation by the **canonical marker** the contract requires in the prompt:
 
 In this mode, **deterministically**:
 
-- **Skip every `AskUserQuestion`** — the market lens is already mandated by the
+- **Skip every call of the question tool of your agent (`AskUserQuestion`)** — the market lens is already mandated by the
   prompt (the contract requires the prompt be phrased as an explicit commercial
   question), so there is no lens tie-breaker to resolve and no save-offer to make. A
   subagent is non-interactive; a prompt would hang it.

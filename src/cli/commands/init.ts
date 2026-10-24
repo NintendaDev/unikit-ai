@@ -5,7 +5,8 @@ import { buildManagedSkillsState, installSkills, removeSkillsByName } from '../.
 import { resolveSkillPrune } from '../../core/skill-groups.js';
 import { buildManagedSubagentsState, installSubagents } from '../../core/installer/subagents.js';
 import { injectMcpRules } from '../../core/installer/mcp-injection.js';
-import { installEngineTemplates, installCliContract, installGateResultContract, installUltraPlanReadContract, installResearchLinkContract, installPlanBoundariesContract, installMergeAnalysisContract, installDevPrinciples, installEngineMcpRules, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
+import { installEngineTemplates, installCliContract, installGateResultContract, installUltraPlanReadContract, installResearchLinkContract, installPlanBoundariesContract, installMergeAnalysisContract, installBalanceHandbackContract, installPrototypeProfileContract, installDevPrinciples, installEngineMcpRules, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
+import { installSubagentArgumentsContract, installSubagentRolesContract, installUserQuestionsContract } from '../../core/installer/system-contracts.js';
 import { memoryDir } from '../../core/constants.js';
 import {
   saveConfig, configExists, loadConfig, readConfigVersion, getCurrentVersion, emptyRulesInstallation,
@@ -20,6 +21,9 @@ import { getAgentConfig } from '../../core/agents.js';
 import { collectExtensionSkillNames, removeAgentSetup } from '../../core/installer/agent-removal.js';
 import { getAgentOnboarding } from '../../core/transformer.js';
 import { runProjectMemoryMigrations } from '../../core/memory-migrations/index.js';
+import { reinstallExtensionAssets } from '../../core/extension-ops.js';
+import { applyExtensionInjections } from '../../core/extension-injections.js';
+import { printInjectionReport } from './injection-report.js';
 import { logInfo } from '../../utils/log.js';
 
 export async function initCommand(): Promise<void> {
@@ -48,6 +52,12 @@ export async function initCommand(): Promise<void> {
 
   const hasExistingConfig = await configExists(projectDir);
   const existingConfig = hasExistingConfig ? await loadConfig(projectDir) : null;
+  // A re-init rebuilds the config from the wizard's answers; the extensions are not among them and
+  // must be carried over by hand, or the next `update` no longer knows they exist.
+  const preservedExtensions = existingConfig?.extensions ?? [];
+  if (preservedExtensions.length > 0) {
+    logInfo('init', `extensions preserved: ${preservedExtensions.length}`);
+  }
 
   if (hasExistingConfig) {
     console.log(chalk.yellow('Warning: .unikit.json already exists.'));
@@ -147,6 +157,19 @@ export async function initCommand(): Promise<void> {
       });
     }
 
+    // The loop above reinstalled the base skills over whatever an extension had replaced and wiped
+    // its blocks: put the extensions' own skills, their replacement skills and subagents back.
+    if (preservedExtensions.length > 0) {
+      console.log(chalk.dim('\nRestoring extensions...\n'));
+      const restored = await reinstallExtensionAssets({
+        projectDir, engine: engineId, engineMcpKey: answers.engineMcpKey,
+        agents: installedAgents, extensions: preservedExtensions,
+      });
+      if (restored.missing.length > 0) {
+        console.log(chalk.yellow(`⚠ Extension files not found, skipped: ${restored.missing.join(', ')}`));
+      }
+    }
+
     // Write the MCP settings file of every installed agent. Lifted out of the
     // per-agent install loop above so `init` and `update` drive one and the same
     // pass — see `mcp-reconcile.ts`.
@@ -174,6 +197,15 @@ export async function initCommand(): Promise<void> {
     const mcpAllowedTools = collectMcpRules(discoveredServers, answers.mcpServers);
     await injectMcpRules(projectDir, installedAgents, mcpAllowedTools);
 
+    // The same project-level pass `update` and `extension *` run, after the MCP grants like in `update`.
+    if (preservedExtensions.length > 0) {
+      const injectionReport = await applyExtensionInjections({
+        projectDir, engine: engineId, engineMcpKey: answers.engineMcpKey,
+        agents: installedAgents, extensions: preservedExtensions,
+      });
+      printInjectionReport(injectionReport);
+    }
+
     // Rules installation is deferred to the /unikit skill Step 9, which calls
     // `unikit-ai rules install` (no args — core whitelist bootstrap) and then
     // drives stack rule selection through registry lookup + /unikit-memory
@@ -199,6 +231,7 @@ export async function initCommand(): Promise<void> {
         servers: mcpServerMap,
       },
       agents: installedAgents,
+      extensions: preservedExtensions,
       rules: {
         installed: emptyRulesInstallation(),
       },
@@ -247,6 +280,21 @@ export async function initCommand(): Promise<void> {
 
     // Install the merge-analysis protocol (read by explore and plan when asked to merge a branch)
     await installMergeAnalysisContract(projectDir);
+
+    // Install the balance hand-back report contract (read by plan/implement/verify and unikit-gd-balance)
+    await installBalanceHandbackContract(projectDir);
+
+    // Install the prototype-profile contract (read by the executors of a plan built from experiment cards)
+    await installPrototypeProfileContract(projectDir);
+
+    // Install the subagent-arguments contract (read by the skills that launch a model-carrying subagent: how its model and effort are settled)
+    await installSubagentArgumentsContract(projectDir);
+
+    // Install the subagent-roles table (read together with the contract above: which role each launch has)
+    await installSubagentRolesContract(projectDir);
+
+    // Install the user-questions contract (read before their first question by the skills that carry its pointer)
+    await installUserQuestionsContract(projectDir);
 
     // Deliver the rules tree of the selected engine MCP server
     await installEngineMcpRules(projectDir, selectedEngineServer);

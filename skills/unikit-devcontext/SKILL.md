@@ -50,6 +50,8 @@ Then, in the same pass:
 
 These describe the MCP server actually configured for this project: its bootstrap protocol, which tools are real, and which report success without doing anything. They override generic assumptions about the engine MCP tool.
 
+**The session started from a plan whose manifest has `## Experiment Context`, or the prompt carries a `Prototype plan:` note** → read `.unikit/system/prototype-profile.md` and follow its `## Role: quality and the rest` for the conventions above. Missing or unreadable → `WARN [prototype] profile contract missing — conventions applied as for an ordinary plan; run unikit-ai update`.
+
 ## Rules Loading
 
 Before writing code, load the project rules from `.unikit/`:
@@ -61,3 +63,5 @@ Before writing code, load the project rules from `.unikit/`:
    - **Core**: read the Core table. For EACH row where Required By = `all` or contains `{{self_name}}` — read that file from `.unikit/memory/code/core/` using the Read tool. Do NOT skip any matching row. Always re-read at skill start, never rely on prior conversation cache
    - **Stack**: load dynamically when the current task or context matches "Load When" column, or when a need arises during work
 4. **Read `.unikit/skill-context/{{self_name}}/SKILL.md`** if it exists — project-specific rules accumulated by `/unikit-evolve`. Treat as overrides: skill-context wins over general rules on conflict.
+
+<!-- unikit:extension-point:bootstrap -->

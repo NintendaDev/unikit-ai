@@ -51,6 +51,10 @@ The user provides a planning request. Examples:
 
 Override via input: `max_iterations: 5`
 
+## Subagent arguments
+
+Once, before the first launch of a run, read `.unikit/system/subagent-arguments.md`, `.unikit/system/subagent-roles.md` and `.unikit/config.yaml`. The first file says how the model and the effort of a launch are settled; the second gives the role of the agent you launch. On Claude Code the keys are `subagents.model.claude.<role>` and `subagents.effort.claude.<role>`. Pass the result as the `model` and `effort` call parameters of the launch; with no key pass nothing, and the `model:` of the launched agent's own file applies. A parameter with nothing to pass is left out of the call. If the first file cannot be read, print `WARN [delegation] subagent-arguments contract missing — built-in model tier used, effort not passed` and launch without both parameters. On Kimi Code the template has no key for `kimi` and the call takes neither parameter: skip this section and pass nothing.
+
 ## Execution Algorithm
 
 ```
@@ -145,6 +149,7 @@ Do NOT trust the block over the filesystem.
   - plan folder path (after first pass)
   - remaining issues from previous critique
 - Do NOT pass raw plan content — let plan-polisher read the files itself.
+- Pass the `model` and `effort` call parameters of the polisher's role, settled as `## Subagent arguments` says.
 
 ## Stop Conditions
 
@@ -161,6 +166,8 @@ After each iteration, compare the current issues list with the previous one. If 
 ## Engine-Aware Critique Rubric
 
 The plan-polisher applies engine-specific checks by loading `.unikit/memory/code/RULES_INDEX.md`. The coordinator ensures this by passing the plan path — the polisher reads project rules from `.unikit/` automatically.
+
+**A prototype plan.** When the manifest of the plan folder has `## Experiment Context`, read `.unikit/system/prototype-profile.md` once and judge the remaining issues by its `## Role: planning`: an issue that asks for what that section rules out is not an issue. Missing or unreadable → `WARN [prototype] profile contract missing — plan polished as an ordinary plan; run unikit-ai update`. When no issue is left after that judgement, stop as for `needs_further_refinement: no`; find the section with `Grep` on the manifest at `plan_path`.
 
 ## Output
 

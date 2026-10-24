@@ -1,6 +1,6 @@
 # PR checkpoints and plan modules
 
-Read once, at plan load, by `/unikit-implement` and by `unikit-implement-coordinator` alike, when the checklist carries a `PR checkpoint:` line or the manifest has `## Modules`. Grammar: `unikit-plan/references/TASK-FORMAT.md` → `### Modules section`, `### PR checkpoint task grammar`. Boundaries: `.unikit/system/plan-boundaries.md`. Neither is restated here.
+Read once, at plan load, by `/unikit-implement` and by `unikit-implement-coordinator` alike, when the checklist carries a `PR checkpoint:` line or the manifest has `## Modules`. Grammar: `{{skills_dir}}/unikit-plan/references/TASK-FORMAT.md` → `### Modules section`, `### PR checkpoint task grammar`. Boundaries: `.unikit/system/plan-boundaries.md`. Neither is restated here.
 
 The question texts and option labels below are templates: say them in `language.ui`. `INFO` / `WARN` and their tags stay as they are.
 
@@ -24,11 +24,11 @@ Under `PR checkpoints: yes`. A PR checkpoint runs at the Step 3.9 position of it
 
 1. **Commit the module.** Uncommitted files of this run → invoke `unikit-commit` with the argument `checkpoint: phase <N>, no-push` (and `auto` when auto-commit is on). This commit is the Step 3.9 commit of the closing phase: Step 3.9 does not ask again for it. Nothing to commit → the boundary is `HEAD`. The commit is cancelled or does not complete → the task stays `[ ]`, print `WARN [pr] module <name> is not committed — PR checkpoint <N.M> stays open`, and the run ends as Step 3.3 "Stop" does. Disable checkpoints does not skip the module commit: a module boundary needs a commit. After "Disable checkpoints" it goes through the `unikit-commit` question, exactly as the Step 5.6 commit does, unless auto-commit is on; the same holds for the label commit of `## Step 3.4 — labels`.
 2. `boundary = git rev-parse --short HEAD`; for the review call, the full SHA (`git rev-parse HEAD`).
-3. **The reminder** — three to five lines in `language.ui`: the module and its phases; the branch → the base (from the task's `PR checkpoint:` line); what the base branch gets (`delivers:`); the module's tests — green (task N.M) · moved to task N.M · not run (`Test checkpoints: plan`) · no tests (`Testing: no`); the modules merged into this pull request (`⏭️ MERGED → task <this task>`). The reminder is printed as its own block before the question, never inside it: a body glued to an interactive question is lost as soon as the choice moves into a widget.
+3. **The reminder** — three to five lines in `language.ui`: the module and its phases; the branch → the base (from the task's `PR checkpoint:` line); what the base branch gets (`delivers:`); the module's tests — green (task N.M) · moved to task N.M · not run (`Test checkpoints: plan`) · no tests (`Testing: no`); the modules merged into this pull request (`⏭️ MERGED → task <this task>`). The reminder is printed as its own block before the question.
 4. **One question** — asked under auto-commit too. An answer given in advance in the run's arguments — `combine PRs`, `stop at PR points`, `run /unikit-pr at PR points` (never "merge PRs": `merge` is a `/unikit-pr` level) — answers every PR checkpoint of the run.
 
    ```
-   AskUserQuestion: Module <name> is committed (<boundary>). What now?
+   The question tool of your agent (`AskUserQuestion`): Module <name> is committed (<boundary>). What now?
 
    Options:
    1. Check the module — /unikit-verify and /unikit-review
@@ -42,7 +42,6 @@ Under `PR checkpoints: yes`. A PR checkpoint runs at the Step 3.9 position of it
    - **Stop here — I will make the PR myself** → `## Step 3.4 — labels` with `→ PR <sha>`; the run ends (Step 4), with a hint to `/clear` before the next `/unikit-implement`.
    - **Merge into the next PR** → the label `⏭️ MERGED → task <id of the next PR checkpoint task>`, the checkbox stays `[ ]`, and the run goes on to the next module. At the **last** PR checkpoint there is no next one: write `- [x] Task N.M — … ⏭️ MERGED` at once, with no target — the module goes into the pull request made after `/unikit-verify`.
 
-   Without a question widget, print the options as a numbered list and end the turn.
 5. `/unikit-implement` itself does nothing with the remote.
 
 ## Step 3.4 — labels
@@ -73,7 +72,7 @@ When the run reaches the first task of module k+1 — after a PR checkpoint, aft
 - Not empty → `WARN [plan-drift] module M<k+1>: <n> evidence file(s) changed unexpectedly: <paths>`, then ask:
 
   ```
-  AskUserQuestion: The evidence module M<k+1> was planned on has changed. Refine it first?
+  The question tool of your agent (`AskUserQuestion`): The evidence module M<k+1> was planned on has changed. Refine it first?
 
   Options:
   1. Refine the module first — /unikit-improve

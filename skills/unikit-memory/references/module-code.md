@@ -111,7 +111,7 @@ Set `integrationIntent=true` if **any** of these fire:
 If none fire, `integrationIntent` stays `false`.
 
 **Threading:** when `integrationIntent=true` and a rule spans two existing framework
-files, use `AskUserQuestion` to pick the main framework's file — never split the rule
+files, use the question tool of your agent (`AskUserQuestion`) to pick the main framework's file — never split the rule
 across both. The exact allowed/forbidden content for each value is defined in "Scope
 Isolation" below.
 
@@ -145,7 +145,7 @@ guideline.
     `{X}-{Y}-integration.md` file and never split the integration across both
     framework files.
   - If the "main" framework is ambiguous (the user's input names two frameworks
-    symmetrically and both files exist), use `AskUserQuestion` to let the user
+    symmetrically and both files exist), use the question tool of your agent (`AskUserQuestion`) to let the user
     pick the target file before writing.
 
 **Self-test before writing:** mentally remove every mention of other frameworks
@@ -395,7 +395,7 @@ specific framework, don't force a pattern that doesn't fit.
 found blocks into **Tier 1** and **Tier 2** and present both buckets before writing
 anything — each proposed `.unikit/memory/code/<tier>/references/{filename}.md` with
 what it contains, which of the three signals fired, and the split strategy. Then
-confirm via `AskUserQuestion`, offering the scope choice:
+confirm via the question tool of your agent (`AskUserQuestion`), offering the scope choice:
 
 1. Extract **Tier 1 only** (the clear wins)
 2. Extract **Tier 1 + Tier 2** (also the borderline blocks)

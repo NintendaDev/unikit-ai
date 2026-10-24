@@ -180,7 +180,7 @@ For each phase, in order:
    `Recon:` — the recon files and sections read for it, in their final form `recon/<topic>.md § <section>`;
 4. append the phase's block to `.planning/checklist.md` — the `### Phase N:` heading with
    `**Effort:**`, `**Dependencies:**` and `**Status:** [ ] Not started`, then one task line per
-   task with its `WHY:` line and its `Files:` / `Test checkpoint:` / `PR checkpoint:` line, in the
+   task with its `WHY:` line and its `Files:` / `Test checkpoint:` / `PR checkpoint:` / `Measure:` / `Hand-back:` / `Item:` line, in the
    form of the checklist in the `ULTRA-PLAN-FORMAT.md` manifest template;
 5. update `STATE.md` in one edit: the ✓ in the phase's row, its `## Handoff` line, the new `Next:`;
 6. print `INFO [plan] phase <N>/<total> written · state: .unikit/code/plans/<feature-name>/.planning/STATE.md`.
@@ -188,8 +188,8 @@ For each phase, in order:
 The path is in every progress line: after a compaction it is the line that leads back to the
 state.
 
-A gap in a contract is closed here, by the session itself (through `AskUserQuestion` when it
-needs the user), and the decision goes straight into `## Contracts`.
+A gap in a contract is closed here, by the session itself — through the question tool of your agent (`AskUserQuestion`) when it
+needs the user — and the decision goes straight into `## Contracts`.
 
 ## Resume
 

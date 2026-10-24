@@ -1,0 +1,110 @@
+{
+  "skills": {
+    "unikit": [
+      "bootstrap"
+    ],
+    "unikit-architecture": [
+      "bootstrap"
+    ],
+    "unikit-archive": [
+      "bootstrap"
+    ],
+    "unikit-commit": [
+      "bootstrap"
+    ],
+    "unikit-devcontext": [
+      "bootstrap"
+    ],
+    "unikit-docs": [
+      "bootstrap"
+    ],
+    "unikit-evolve": [
+      "bootstrap"
+    ],
+    "unikit-explore": [
+      "bootstrap"
+    ],
+    "unikit-fix": [
+      "bootstrap"
+    ],
+    "unikit-gd-apply": [
+      "bootstrap"
+    ],
+    "unikit-gd-balance": [
+      "bootstrap"
+    ],
+    "unikit-gd-brainstorm": [
+      "bootstrap"
+    ],
+    "unikit-gd-content": [
+      "bootstrap"
+    ],
+    "unikit-gd-docs": [
+      "bootstrap"
+    ],
+    "unikit-gd-experiment": [
+      "bootstrap"
+    ],
+    "unikit-gd-explore": [
+      "bootstrap"
+    ],
+    "unikit-gd-flow": [
+      "bootstrap"
+    ],
+    "unikit-gd-recon": [
+      "bootstrap"
+    ],
+    "unikit-gd-review": [
+      "bootstrap"
+    ],
+    "unikit-gd-spec": [
+      "bootstrap"
+    ],
+    "unikit-gd-system": [
+      "bootstrap"
+    ],
+    "unikit-gd-verify": [
+      "bootstrap"
+    ],
+    "unikit-implement": [
+      "bootstrap"
+    ],
+    "unikit-improve": [
+      "bootstrap"
+    ],
+    "unikit-mcp-audit": [
+      "bootstrap"
+    ],
+    "unikit-mcp-trap": [
+      "bootstrap"
+    ],
+    "unikit-memory": [
+      "bootstrap"
+    ],
+    "unikit-plan": [
+      "bootstrap"
+    ],
+    "unikit-pr": [
+      "bootstrap"
+    ],
+    "unikit-review": [
+      "bootstrap"
+    ],
+    "unikit-roadmap": [
+      "bootstrap"
+    ],
+    "unikit-rules": [
+      "bootstrap"
+    ],
+    "unikit-rules-registry": [
+      "bootstrap"
+    ],
+    "unikit-todo": [
+      "bootstrap"
+    ],
+    "unikit-verify": [
+      "bootstrap"
+    ]
+  },
+  "subagents": {}
+}

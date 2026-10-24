@@ -66,7 +66,7 @@ same session (a system grafted from a brief is detail-ready by construction — 
 already satisfies the Phase B detail-ready gate):
 
 ```
-AskUserQuestion: "<name>" is on the map but not detailed yet. Detail it now?
+The question tool of your agent (`AskUserQuestion`): "<name>" is on the map but not detailed yet. Detail it now?
 
 Options:
 1. Yes — detail it now → /unikit-gd-system SYS-<slug> (recommended)

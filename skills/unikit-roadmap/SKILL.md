@@ -28,6 +28,8 @@ metadata:
 
 Create and maintain a high-level project roadmap with major milestones.
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md`
@@ -37,6 +39,16 @@ Do not produce any user-facing output until language rules are loaded.
 Do not announce, confirm, or mention the language setting.
 
 **The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
+
+## Subagent launches
+
+**Subagent arguments.** Before the first subagent you launch, read `.unikit/system/subagent-arguments.md`
+and `.unikit/config.yaml` once and settle the model and effort of every launch as that file says.
+Keys: `subagents.model.{{agent_id}}.<role>`, `subagents.effort.{{agent_id}}.<role>`;
+built-in model of a reader and a validator: `"{{agent_model_default}}"`, of an executor: none.
+If the file cannot be read, print
+`WARN [delegation] subagent-arguments contract missing — built-in model tier used, effort not passed`
+and use that model, no effort.
 
 ## Workflow
 
@@ -71,6 +83,8 @@ codebase conventions, and tech-stack analysis. These rules are tailored to the c
 **Enforcement:** After generating any output artifact, verify it against all skill-context rules.
 If any rule is violated — fix the output before presenting it to the user.
 
+<!-- unikit:extension-point:bootstrap -->
+
 ### Step 1: Determine Mode
 
 If argument is `check` → Mode 3: Check Progress (requires ROADMAP.md)
@@ -104,7 +118,7 @@ If no arguments:
 - Ask interactively:
 
 ```
-AskUserQuestion: What are the major goals for this project?
+The question tool of your agent (`AskUserQuestion`): What are the major goals for this project?
 
 Options:
 1. Let me describe the vision
@@ -120,7 +134,7 @@ Based on choice:
 If user chooses option 1 or 3, ask follow-up:
 
 ```
-AskUserQuestion: Any priorities or deadlines?
+The question tool of your agent (`AskUserQuestion`): Any priorities or deadlines?
 
 Options:
 1. Yes, let me specify
@@ -156,7 +170,7 @@ Create `.unikit/ROADMAP.md` using the format defined in the **ROADMAP.md Format*
 Show the generated roadmap and ask:
 
 ```
-AskUserQuestion: Here's the proposed roadmap. What would you like to do?
+The question tool of your agent (`AskUserQuestion`): Here's the proposed roadmap. What would you like to do?
 
 Options:
 1. Looks good — save it
@@ -199,7 +213,7 @@ If no arguments:
 - Analyze current state and present options:
 
 ```
-AskUserQuestion: What would you like to do with the roadmap?
+The question tool of your agent (`AskUserQuestion`): What would you like to do with the roadmap?
 
 Options:
 1. Review progress — check what's done, mark completed milestones
@@ -221,7 +235,7 @@ Based on choice:
 - Propose marking completed milestones:
 
 ```
-AskUserQuestion: These milestones appear to be done:
+The question tool of your agent (`AskUserQuestion`): These milestones appear to be done:
 - **Milestone Name** — [evidence: files exist, systems implemented, etc.]
 
 Mark them as completed?
@@ -305,9 +319,9 @@ For every `- [ ]` milestone:
 ⏳ Not Started:
 - **Night Market**
 - **Dynamic Events**
-
-Mark completed milestones? (2 milestones)
 ```
+
+Then the question, with the question tool of your agent (`AskUserQuestion`): `Mark them as completed` (Recommended) · `Leave them as they are` — the ✅ Done list printed above is what is being chosen.
 
 **3.4: Apply changes (if confirmed)**
 

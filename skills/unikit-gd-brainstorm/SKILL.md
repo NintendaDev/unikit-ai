@@ -49,6 +49,8 @@ This skill **generates new ideas**. Analyzing an existing game or market
 (reference dissection, trade-off tables) is `unikit-gd-explore`. The distinguishing
 test: *five concept cards → brainstorm; a comparison table → explore.*
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md`
@@ -102,6 +104,8 @@ that *interface*, never explore's engine (`market-scan.md`). General `WebSearch`
 `WebFetch` lookups remain available as read-only advisors — they never write and
 never substitute for the Phase 3.5 scan.
 
+<!-- unikit:extension-point:bootstrap -->
+
 ## Skill calls
 
 Where this skill says to **invoke `<skill>`** — optionally "with the argument `<text>`" — it means one call, made in this session, now, on every runtime: not a command printed for the user. A call site that names no argument passes none.
@@ -110,6 +114,16 @@ Where this skill says to **invoke `<skill>`** — optionally "with the argument 
 2. Otherwise — no `Skill` tool, or one that takes only a name — Read `{{skills_dir}}/<skill>/SKILL.md` in full, treat it as the instructions of this step and carry them out here, in this session, now, with the arguments of the call site as the skill's arguments.
 3. When the skill has run, go on to the step the call site names. Do not print a command for the user to run and do not stop.
 4. Only if that file cannot be read: print `Run: /unikit-<skill> <arguments>` for the user and stop.
+
+## Subagent launches
+
+**Subagent arguments.** Before the first subagent you launch, read `.unikit/system/subagent-arguments.md`
+and `.unikit/config.yaml` once and settle the model and effort of every launch as that file says.
+Keys: `subagents.model.{{agent_id}}.<role>`, `subagents.effort.{{agent_id}}.<role>`;
+built-in model of a reader and a validator: `"{{agent_model_default}}"`, of an executor: none.
+If the file cannot be read, print
+`WARN [delegation] subagent-arguments contract missing — built-in model tier used, effort not passed`
+and use that model, no effort.
 
 ## Phase 0 — Auto-Resume (no flags)
 
@@ -124,7 +138,7 @@ and the last phase reached. Semantically match the user's hint against the rows:
 - A live `in-progress` concept matches the hint →
 
   ```
-  AskUserQuestion: Found "<title>" — you left off at phase <N>. What now?
+  The question tool of your agent (`AskUserQuestion`): Found "<title>" — you left off at phase <N>. What now?
   Options:
   1. Continue "<title>" from phase <N> (recommended)
   2. Start a fresh concept
@@ -309,7 +323,7 @@ where the model renders the call instead of running it. Instead, invoke `unikit-
 verbatim, and wait for its brief. If its file cannot be read — instead of step 4 of
 `## Skill calls`, which would stop here — run the scan yourself inline with
 `WebSearch` / `WebFetch` against the technique catalogue in
-`unikit-gd-explore/references/market-scan.md` (comparable mapping, demand
+`{{skills_dir}}/unikit-gd-explore/references/market-scan.md` (comparable mapping, demand
 classification, review mining, and the cross-market rule above), and label every
 finding with the same `market_signal` + `validation_confidence` fields so the rest of
 the flow is unchanged.
@@ -331,7 +345,7 @@ for clones, then read the gap — Steam-proven + no strong clone on the target s
 prize; Steam-proven **but** the target store already clone-dense is a red ocean on the
 platform that actually matters. The mechanics of that rule live in
 `references/methods.md` § Phase 1, and the scan engine that runs it in
-`unikit-gd-explore/references/market-scan.md`. Report the read **per platform** in the
+`{{skills_dir}}/unikit-gd-explore/references/market-scan.md`. Report the read **per platform** in the
 brief; it feeds the kill gate below.
 
 **Consume — the calling session owns persistence:**

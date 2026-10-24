@@ -8,6 +8,8 @@ import {
   extensionAddCommand, extensionRemoveCommand,
   extensionListCommand, extensionUpdateCommand,
 } from './commands/extension.js';
+import { extensionSelectCommand } from './commands/extension-select.js';
+import { collectNameList } from './commands/extension-options.js';
 import {
   rulesListCommand, rulesShowCommand, rulesInstallCommand,
   rulesSyncCommand, rulesStatusCommand,
@@ -44,8 +46,8 @@ program
   .command('update')
   .description('Update installed skills, agents, and rules to latest version')
   .option('--force', 'Force clean reinstall of currently installed skills and force-refresh every installed rule from registry')
-  .option('--install-new', 'Install skills newly added to the package non-interactively (skips the prompt). Overridden by --skip-new.')
-  .option('--skip-new', 'Force-skip skills newly added to the package; overrides --install-new and suppresses the interactive prompt')
+  .option('--install-new', 'Install skills newly added to the package, and undecided items of installed extensions, non-interactively (skips the prompt). Overridden by --skip-new.')
+  .option('--skip-new', 'Force-skip skills newly added to the package and undecided items of installed extensions; overrides --install-new and suppresses the interactive prompt')
   .action(updateCommand);
 
 program
@@ -57,9 +59,20 @@ const ext = program
   .command('extension')
   .description('Manage extensions');
 
+// Flags shared by `extension add` and `extension select`: they only ever switch items off.
+const SKIP_SKILLS_DESCRIPTION = 'Do not install these skills (comma-separated names or manifest paths; repeatable)';
+const SKIP_SUBAGENTS_DESCRIPTION = 'Do not install these subagents (comma-separated names or manifest paths; repeatable)';
+const SKIP_MCP_DESCRIPTION = 'Do not install these MCP servers (comma-separated keys; repeatable)';
+
 ext
   .command('add <source>')
   .description('Install an extension from local path, git URL, or GitHub shorthand')
+  .option('--skip-skills <names>', SKIP_SKILLS_DESCRIPTION, collectNameList, [])
+  .option('--skip-subagents <names>', SKIP_SUBAGENTS_DESCRIPTION, collectNameList, [])
+  .option('--skip-mcp <keys>', SKIP_MCP_DESCRIPTION, collectNameList, [])
+  .option('--install-new', 'Install the items of an installed extension that have no decision yet (without a prompt)')
+  .option('--skip-new', 'Leave the undecided items of an installed extension uninstalled; overrides --install-new and suppresses the prompt')
+  .option('-y, --yes', 'Do not ask: install everything that is not skipped (an installed extension keeps its previous choices)')
   .action(extensionAddCommand);
 
 ext
@@ -76,7 +89,20 @@ ext
   .command('update')
   .description('Check and update extensions from their sources')
   .option('--force', 'Force reinstall even if version unchanged')
+  .option('--install-new', 'Install the items of installed extensions that have no decision yet (without a prompt). Overridden by --skip-new.')
+  .option('--skip-new', 'Leave the undecided items uninstalled; overrides --install-new and suppresses the prompt')
   .action(extensionUpdateCommand);
+
+ext
+  .command('select <name>')
+  .description('Choose which skills, subagents and MCP servers of an installed extension are installed (menu in a terminal, flags otherwise)')
+  .option('--skip-skills <names>', SKIP_SKILLS_DESCRIPTION, collectNameList, [])
+  .option('--skip-subagents <names>', SKIP_SUBAGENTS_DESCRIPTION, collectNameList, [])
+  .option('--skip-mcp <keys>', SKIP_MCP_DESCRIPTION, collectNameList, [])
+  .option('--install-new', 'Install the items that have no decision yet')
+  .option('--skip-new', 'Leave the undecided items uninstalled (no prompt)')
+  .option('-y, --yes', 'Do not ask; combine with --skip-* or --install-new')
+  .action(extensionSelectCommand);
 
 // --- Rules commands ---
 

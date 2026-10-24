@@ -28,9 +28,29 @@ trap 'AIF_EXIT_CODE=$?; if [[ $AIF_EXIT_CODE -ne 0 ]]; then dump_mcp_state "$TMP
 # Ensure dist/ is up to date (skipped when a parent runner already built).
 ensure_build
 
+# Every name `processTemplate` substitutes, as one ERE alternation — the leak checks below are built
+# from it (a name added to the registry is checked here without touching this file).
+TEMPLATE_NAMES_ERE="$(template_var_names_ere)"
+
 run_update() {
   local project="$1"
   (cd "$project" && node "$ROOT_DIR/dist/cli/index.js" update > /dev/null 2>&1)
+}
+
+# assert_system_tree <project dir> <yes|no> <label>
+#
+# SV-3 (registry <=> delivered tree): every file init/update wrote under .unikit/system has a registry
+# row with the same path, and every row the CLI always delivers has its file. `yes` when the project
+# selected an engine MCP server that ships a rules tree, `no` otherwise. The guards that need no
+# installed project (SV-1, SV-2, SV-4...SV-8) run from test-skills.sh Part 7f7.
+assert_system_tree() {
+  local project="$1" engine_tree="$2" label="$3" out
+  if ! out=$(node "$ROOT_DIR/scripts/test-system-vars.mjs" --tree "$(normalize_path_for_json "$project")" --engine-tree "$engine_tree" 2>&1); then
+    echo "Assertion failed: $label: the delivered .unikit/system tree and the variable registry differ"
+    echo "$out"
+    exit 1
+  fi
+  echo "  ✓ $label: $(printf '%s\n' "$out" | { grep -m1 '^Tree check' || true; } | sed 's/^.*: \([0-9][0-9]* files, .*\)$/\1/')"
 }
 
 # assert_contains / assert_not_contains / assert_exists / assert_not_exists /
@@ -55,9 +75,9 @@ cat > "$CLAUDE_DIR/.unikit.json" << 'EOF'
       "skillsDir": ".claude/skills",
       "subagentsDir": ".claude/agents",
       "installedSkills": ["unikit", "unikit-plan", "unikit-devcontext", "unikit-evolve",
-                          "unikit-explore", "unikit-implement", "unikit-memory",
+                          "unikit-explore", "unikit-implement", "unikit-improve", "unikit-memory",
                           "unikit-rules", "unikit-skills-context", "unikit-verify",
-                          "unikit-gd-recon", "unikit-gd-docs",
+                          "unikit-gd-explore", "unikit-gd-balance", "unikit-gd-experiment", "unikit-gd-recon", "unikit-gd-docs",
                           "unikit-gd-flow", "unikit-gd-content", "unikit-gd-verify",
                           "unikit-pr"],
       "installedSubagents": ["unikit-architecture-sidecar"]
@@ -82,14 +102,14 @@ run_update "$CLAUDE_DIR"
 assert_exists "$CLAUDE_DIR/.claude/agents/unikit-architecture-sidecar.md" "subagent files must be installed for claude"
 
 # Check no template placeholders remain in installed skills
-TEMPLATE_HITS=$(grep -r '{{skills_dir}}\|{{settings_file}}\|{{home_skills_dir}}\|{{skills_cli_agent_flag}}\|{{self_name}}' \
+TEMPLATE_HITS=$(grep -rE "\{\{($TEMPLATE_NAMES_ERE)\}\}" \
   "$CLAUDE_DIR/.claude/skills/" --include='*.md' 2>/dev/null | wc -l | tr -d ' ' || true)
 
 if [[ "$TEMPLATE_HITS" -eq 0 ]]; then
   echo "  ✓ template substitution: no {{...}} placeholders in installed skills"
 else
   echo "Assertion failed: found $TEMPLATE_HITS unresolved template placeholders"
-  grep -r '{{skills_dir}}\|{{settings_file}}\|{{home_skills_dir}}\|{{skills_cli_agent_flag}}\|{{self_name}}' \
+  grep -rE "\{\{($TEMPLATE_NAMES_ERE)\}\}" \
     "$CLAUDE_DIR/.claude/skills/" --include='*.md' | head -5
   exit 1
 fi
@@ -258,6 +278,87 @@ assert_not_contains "$MERGE_ANALYSIS_PATH" '\{\{' \
   "merge-analysis.md is a flat copy — no unresolved {{vars}}"
 
 # ─────────────────────────────────────────────────────
+# Test 1b-bh: balance-handback.md installed as a system asset (flat copy, no vars)
+# Read by plan, implement and verify (code group) and unikit-gd-balance (game-design group);
+# a system asset because neither group's skill directory is guaranteed to be installed.
+# ─────────────────────────────────────────────────────
+BALANCE_HANDBACK_PATH="$CLAUDE_DIR/.unikit/system/balance-handback.md"
+assert_exists "$BALANCE_HANDBACK_PATH" "balance-handback.md created in .unikit/system/"
+assert_contains "$BALANCE_HANDBACK_PATH" '^## Header$' \
+  "balance-handback.md carries its header section"
+assert_not_contains "$BALANCE_HANDBACK_PATH" '\{\{' \
+  "balance-handback.md is a flat copy — no unresolved {{vars}}"
+
+# ─────────────────────────────────────────────────────
+# Test 1b-pp: prototype-profile.md installed as a system asset (flat copy, no vars)
+# Read by the executors, verifiers, reviewers and committers of a plan built from experiment
+# cards (a manifest with ## Experiment Context). Update-path coverage like 1b-bh above; the
+# init.ts call site is SA-1's job. assert_contains is grep -E: the [prototype] tag is escaped.
+# ─────────────────────────────────────────────────────
+PROTOTYPE_PROFILE_PATH="$CLAUDE_DIR/.unikit/system/prototype-profile.md"
+assert_exists "$PROTOTYPE_PROFILE_PATH" "prototype-profile.md created in .unikit/system/"
+assert_contains "$PROTOTYPE_PROFILE_PATH" '^## Role: execution$' \
+  "prototype-profile.md carries the ## Role: execution section its readers name"
+assert_contains "$PROTOTYPE_PROFILE_PATH" '^## Branch and base$' \
+  "prototype-profile.md carries the ## Branch and base section its readers name"
+assert_contains "$PROTOTYPE_PROFILE_PATH" 'WARN \[prototype\]' \
+  "prototype-profile.md carries the canonical WARN [prototype] label"
+assert_not_contains "$PROTOTYPE_PROFILE_PATH" '\{\{' \
+  "prototype-profile.md is a flat copy — no unresolved {{vars}}"
+
+# ─────────────────────────────────────────────────────
+# Test 1b-sa: subagent-arguments.md installed as a system asset (flat copy, no vars)
+# Read before the first subagent launch of a run by the skills that carry its pointer and by the two coordinators;
+# a system asset so that it reaches a project whichever skills the wizard installed. Update-path
+# coverage like 1b-pp above; the init.ts call site is SA-1's job. assert_contains is grep -E:
+# the [delegation] tag is escaped.
+# ─────────────────────────────────────────────────────
+SUBAGENT_ARGS_PATH="$CLAUDE_DIR/.unikit/system/subagent-arguments.md"
+assert_exists "$SUBAGENT_ARGS_PATH" "subagent-arguments.md created in .unikit/system/"
+assert_contains "$SUBAGENT_ARGS_PATH" '^## The two arguments, settled separately$' \
+  "subagent-arguments.md carries the section that settles the model and the effort"
+assert_contains "$SUBAGENT_ARGS_PATH" '^## Filling the slots$' \
+  "subagent-arguments.md carries the section that says how the slots of a call head are filled"
+assert_contains "$SUBAGENT_ARGS_PATH" 'WARN \[delegation\] effort' \
+  "subagent-arguments.md carries the canonical WARN [delegation] effort label"
+assert_not_contains "$SUBAGENT_ARGS_PATH" '\{\{' \
+  "subagent-arguments.md is a flat copy — no unresolved {{vars}}"
+
+# ─────────────────────────────────────────────────────
+# Test 1b-sr: subagent-roles.md installed as a system asset (flat copy, no vars)
+# Read with subagent-arguments.md before the first subagent launch of a run; a system asset so that it
+# reaches a project whichever skills the wizard installed. Update-path coverage like 1b-sa above; the init.ts
+# call site is SA-1's job.
+# ─────────────────────────────────────────────────────
+SUBAGENT_ROLES_PATH="$CLAUDE_DIR/.unikit/system/subagent-roles.md"
+assert_exists "$SUBAGENT_ROLES_PATH" "subagent-roles.md created in .unikit/system/"
+assert_contains "$SUBAGENT_ROLES_PATH" '^## The three roles$' \
+  "subagent-roles.md carries the section that defines the roles"
+assert_contains "$SUBAGENT_ROLES_PATH" '^## The table decides$' \
+  "subagent-roles.md carries the table section"
+assert_contains "$SUBAGENT_ROLES_PATH" '\| executor \|' \
+  "subagent-roles.md carries the executor role in a table row"
+assert_not_contains "$SUBAGENT_ROLES_PATH" '\{\{' \
+  "subagent-roles.md is a flat copy — no unresolved {{vars}}"
+
+# ─────────────────────────────────────────────────────
+# Test 1b-uq: user-questions.md installed as a system asset (flat copy, no vars)
+# Read before the first question by the skills that carry its pointer; a system asset so that it reaches
+# a project whichever skills the wizard installed. Update-path coverage is test-update.sh 30u; the init.ts
+# call site is SA-1's job. assert_contains is grep -E: the [questions] tag is escaped.
+# ─────────────────────────────────────────────────────
+USER_QUESTIONS_PATH="$CLAUDE_DIR/.unikit/system/user-questions.md"
+assert_exists "$USER_QUESTIONS_PATH" "user-questions.md created in .unikit/system/"
+assert_contains "$USER_QUESTIONS_PATH" '^## How to ask$' \
+  "user-questions.md carries the section that says how a question is asked"
+assert_contains "$USER_QUESTIONS_PATH" '^## A question with no fixed answers$' \
+  "user-questions.md carries the section on a question answered in words"
+assert_contains "$USER_QUESTIONS_PATH" 'WARN \[questions\] no question tool' \
+  "user-questions.md carries the canonical WARN [questions] label of the text tier"
+assert_not_contains "$USER_QUESTIONS_PATH" '\{\{' \
+  "user-questions.md is a flat copy — no unresolved {{vars}}"
+
+# ─────────────────────────────────────────────────────
 # Test 1b-mcp: engine-mcp shard EMPTY branch — this fixture selects zero MCP
 # servers (mcp.servers = {}), so nothing contributes a shard and the directory
 # must NOT be created. installEngineMcpShards treats an empty set as a normal
@@ -293,6 +394,24 @@ assert_exists "$CLAUDE_DIR/.claude/skills/unikit-explore/references/merge-resear
 # Same for the planner: merge-plan.md is read only on a merge request.
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-plan/references/merge-plan.md" \
   "unikit-plan merge-plan.md reference installed"
+# The branch files of the balance checkpoint plans are read only on their branch; a content test
+# cannot see a missing delivery, so the files are asserted here.
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-plan/references/balance-plan.md" \
+  "unikit-plan balance-plan.md reference installed"
+# The experiment plan without cards reads experiment-source.md only on an experiment request; the
+# same reasoning applies — a content test cannot see a file that was never delivered.
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-plan/references/experiment-source.md" \
+  "unikit-plan experiment-source.md reference installed"
+# The references of an experiment card (the Based on list) are read by the planner only when a card names a
+# document, so a content test cannot see a missing delivery of the file.
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-plan/references/experiment-references.md" \
+  "unikit-plan experiment-references.md reference installed"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-implement/references/balance-measure.md" \
+  "unikit-implement balance-measure.md reference installed"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-verify/references/balance-checks.md" \
+  "unikit-verify balance-checks.md reference installed"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-improve/references/balance-sync.md" \
+  "unikit-improve balance-sync.md reference installed"
 
 # ─────────────────────────────────────────────────────
 # Test 1b-brownfield: the two new brownfield/export skills (unikit-gd-recon,
@@ -307,6 +426,34 @@ assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-recon/references/code-recon.
   "unikit-gd-recon shared code-recon.md engine travels under references/ (non-flat copyDirectory)"
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-docs/SKILL.md" \
   "unikit-gd-docs SKILL.md installed (GDD → docs/design render)"
+# The gate reference is read only at the moment a research is saved, so a content test
+# cannot see a missing delivery — the existence of the file is asserted here.
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-explore/references/coherence-gate.md" \
+  "unikit-gd-explore coherence-gate.md reference installed"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-explore/references/ultra-research.md" \
+  "unikit-gd-explore ultra-research.md reference installed"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-explore/references/experiment-lens.md" \
+  "unikit-gd-explore experiment-lens.md reference installed (the experiment design lens)"
+# The balance skill's branches are read only by intent, so a content test cannot see a missing
+# delivery of a reference — the files are asserted here.
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-balance/SKILL.md" \
+  "unikit-gd-balance SKILL.md installed (balance partner)"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-balance/references/mode-ingest.md" \
+  "unikit-gd-balance mode-ingest.md reference installed"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-balance/references/investigation.md" \
+  "unikit-gd-balance investigation.md reference installed"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-balance/references/template-checkpoints.md" \
+  "unikit-gd-balance template-checkpoints.md reference installed"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-balance/references/experiment-route.md" \
+  "unikit-gd-balance experiment-route.md reference installed (the experiment route)"
+# The experiment skill's branches are read only by intent, so a content test cannot see a missing
+# delivery of a reference — all fourteen files are asserted here.
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-experiment/SKILL.md" \
+  "unikit-gd-experiment SKILL.md installed (experiment partner)"
+for exp_ref in mode-discover mode-specify mode-evaluate mode-manage template-experiment card-draft-view storage-and-index context-and-research planning-handoff balance-link lookup from-research mode-think design-notes; do
+  assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-experiment/references/${exp_ref}.md" \
+    "unikit-gd-experiment ${exp_ref}.md reference installed"
+done
 
 # ─────────────────────────────────────────────────────
 # Test 1b-gd-refs: the context-cost refactor extracted per-mode bodies + axis-checks
@@ -321,6 +468,12 @@ assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-content/references/mode-auth
   "unikit-gd-content extracted mode reference (mode-author.md) travels under references/ (non-flat copyDirectory)"
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-verify/references/axis-checks.md" \
   "unikit-gd-verify extracted axis-checks.md travels under references/ (non-flat copyDirectory)"
+
+# ─────────────────────────────────────────────────────
+# Test 1b-sv: SV-3 — everything the first install wrote under .unikit/system is a registry row
+# (and the other way round), with no engine MCP server selected, so no rules tree.
+# ─────────────────────────────────────────────────────
+assert_system_tree "$CLAUDE_DIR" no "system tree matches the variable registry (first install, no engine MCP tree)"
 
 # ─────────────────────────────────────────────────────
 # Test 1c: supportsSubagents:false skip-path
@@ -657,14 +810,14 @@ assert_not_exists "$ANTIGRAVITY_DIR/.agents/agents/unikit-architecture-sidecar.m
 # No {{...}} template tokens leak into skills or the rules file. {{settings_file}}
 # now renders to the literal '.agents/mcp_config.json' (settingsFile is no longer
 # null); {{skills_cli_agent_flag}} → "--agent antigravity". None stay raw.
-ANTIGRAVITY_TOKEN_HITS=$(grep -r '{{skills_dir}}\|{{settings_file}}\|{{home_skills_dir}}\|{{skills_cli_agent_flag}}\|{{self_name}}' \
+ANTIGRAVITY_TOKEN_HITS=$(grep -rE "\{\{($TEMPLATE_NAMES_ERE)\}\}" \
   "$ANTIGRAVITY_DIR/.agents/skills/" "$ANTIGRAVITY_DIR/.agents/rules/" --include='*.md' 2>/dev/null | wc -l | tr -d ' ' || true)
 
 if [[ "$ANTIGRAVITY_TOKEN_HITS" -eq 0 ]]; then
   echo "  ✓ antigravity: skills-only install (references kept), postInstall rules, no subagents, no {{...}} leak"
 else
   echo "Assertion failed: antigravity install leaked $ANTIGRAVITY_TOKEN_HITS template placeholder(s)"
-  grep -r '{{skills_dir}}\|{{settings_file}}\|{{home_skills_dir}}\|{{skills_cli_agent_flag}}\|{{self_name}}' \
+  grep -rE "\{\{($TEMPLATE_NAMES_ERE)\}\}" \
     "$ANTIGRAVITY_DIR/.agents/skills/" "$ANTIGRAVITY_DIR/.agents/rules/" --include='*.md' | head -5
   exit 1
 fi
@@ -761,7 +914,7 @@ assert_contains "$KIMI_SKILLS/unikit-implement/SKILL.md" '\.kimi-code/mcp\.json'
   "kimi: {{settings_file}} renders to .kimi-code/mcp.json"
 assert_not_contains "$KIMI_SKILLS/unikit-implement/SKILL.md" '\.agents/mcp_config\.json' \
   "kimi: no Antigravity settings path in a Kimi skill"
-KIMI_TOKEN_RE='\{\{(skills_dir|settings_file|home_skills_dir|skills_cli_agent_flag|self_name|engine_name|engine_code_language|engine_mcp_tool|agent_id|agent_reader_type|agent_worker_type|agent_model_default|agent_call_reader|agent_call_worker_quoted|agent_call_worker)\}\}|\{\{agent_skill_call:'
+KIMI_TOKEN_RE="\{\{($TEMPLATE_NAMES_ERE)\}\}|\{\{agent_skill_call:"
 KIMI_TOKEN_HITS=$(grep -rE "$KIMI_TOKEN_RE" "$KIMI_DIR/.kimi-code" --include='*.md' 2>/dev/null | wc -l | tr -d ' ' || true)
 if [[ "$KIMI_TOKEN_HITS" -ne 0 ]]; then
   echo "Assertion failed: kimi install leaked $KIMI_TOKEN_HITS template placeholder(s)"
@@ -953,11 +1106,11 @@ assert_contains "$UNIVERSAL_SKILLS/unikit-fix/SKILL.md" 'subagent_type: Explore,
   "universal: recon-agent launches the reader type Explore"
 assert_contains "$UNIVERSAL_SKILLS/unikit-explore/SKILL.md" 'subagents\.model\.universal' \
   "universal: the model rule names its own config key"
-assert_contains "$UNIVERSAL_SKILLS/unikit-explore/SKILL.md" 'built-in default `"inherit"`' \
+assert_contains "$UNIVERSAL_SKILLS/unikit-explore/SKILL.md" 'built-in model of a reader and a validator: `"inherit"`' \
   "universal: the built-in model default is inherit (no model argument)"
 assert_not_contains "$UNIVERSAL_SKILLS/unikit-explore/SKILL.md" 'Subagent Delegation.*BLOCKING PRE-REQUISITE' \
   "universal: no Codex ask-the-user block (DEC-008)"
-UNIVERSAL_TOKEN_RE='\{\{(skills_dir|settings_file|home_skills_dir|skills_cli_agent_flag|self_name|engine_name|engine_code_language|engine_mcp_tool|agent_id|agent_reader_type|agent_worker_type|agent_model_default|agent_call_reader|agent_call_worker_quoted|agent_call_worker)\}\}|\{\{agent_skill_call:'
+UNIVERSAL_TOKEN_RE="\{\{($TEMPLATE_NAMES_ERE)\}\}|\{\{agent_skill_call:"
 UNIVERSAL_TOKEN_HITS=$(grep -rE "$UNIVERSAL_TOKEN_RE" "$UNIVERSAL_DIR/.agents" --include='*.md' 2>/dev/null | wc -l | tr -d ' ' || true)
 if [[ "$UNIVERSAL_TOKEN_HITS" -ne 0 ]]; then
   echo "Assertion failed: universal install leaked $UNIVERSAL_TOKEN_HITS template placeholder(s)"
@@ -1323,14 +1476,14 @@ echo "  ✓ MCP config: claude agent setup works with the key→code servers map
 echo "  ✓ managedSubagents: hash tracking persisted for claude subagents"
 
 # Check no template placeholders remain in installed subagents
-SUBAGENT_TEMPLATE_HITS=$(grep -r '{{self_name}}\|{{engine_name}}\|{{engine_code_language}}\|{{engine_mcp_tool}}' \
+SUBAGENT_TEMPLATE_HITS=$(grep -rE "\{\{($TEMPLATE_NAMES_ERE)\}\}" \
   "$MCP_DIR/.claude/agents/" --include='*.md' 2>/dev/null | wc -l | tr -d ' ' || true)
 
 if [[ "$SUBAGENT_TEMPLATE_HITS" -eq 0 ]]; then
   echo "  ✓ template substitution: no {{...}} placeholders in installed subagents"
 else
   echo "Assertion failed: found $SUBAGENT_TEMPLATE_HITS unresolved template placeholders in subagents"
-  grep -r '{{self_name}}\|{{engine_name}}\|{{engine_code_language}}\|{{engine_mcp_tool}}' \
+  grep -rE "\{\{($TEMPLATE_NAMES_ERE)\}\}" \
     "$MCP_DIR/.claude/agents/" --include='*.md' | head -5
   exit 1
 fi
@@ -2018,6 +2171,10 @@ assert_not_contains "$MCP_RULES_INDEX" '^version:' \
 assert_not_contains "$MCP_RULES_INDEX" '^delivered:' \
   "no delivery date in the delivery stamp"
 
+# SV-3 with a tree: engine-mcp/INDEX.md and verification.md are the rows engine_mcp_rules_index and
+# engine_mcp_rules_verification, and they exist exactly because this project selected a server with one.
+assert_system_tree "$MCP_SHARDS_DIR" yes "system tree matches the variable registry (engine MCP rules tree delivered)"
+
 echo "  ✓ engine-mcp: biome rules tree delivered (INDEX + verification), stamped with the server id alone, no counters"
 
 # ─────────────────────────────────────────────────────
@@ -2120,6 +2277,9 @@ if ! MCP_NOTREE_TREED_JSON="$MCP_NOTREE_TREED_JSON" node -e "
 fi
 
 unuse_fake_mcp_catalog
+
+# SV-3 after `update` with a treeless server: the engine-mcp rows must be absent with the directory.
+assert_system_tree "$MCP_NOTREE_DIR" no "system tree matches the variable registry (treeless engine MCP server, after update)"
 echo "  ✓ engine-mcp: a server with no rules tree degrades nothing (grants, layer A, skill assets)"
 
 # ─────────────────────────────────────────────────────

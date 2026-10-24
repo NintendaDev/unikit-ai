@@ -46,8 +46,10 @@ Create a structured feature plan and roadmap for the current {{engine_name}} pro
 Four modes:
 - **Fast** — quick plan, no git branch, saves to `.unikit/code/PLAN.md`
 - **Full** — optionally creates `<git.branch_prefix><name>` git branch (when `git.enabled` and `git.create_branches`), asks preferences, saves to `.unikit/code/plans/<feature-name>/`
-- **Ultra** — full mode plus one deeply specified file per phase, for later execution by a smaller model. **User-named, never model-inferred**: it runs because the user asked for an ultra plan, never because the feature looks big — except in a merge plan, where the mode question offers it
+- **Ultra** — full mode plus one deeply specified file per phase, for later execution by a smaller model. **User-named, never model-inferred**: it runs because the user asked for an ultra plan, never because the feature looks big — except in a merge plan, where the mode question offers it, and in a set of two or more experiment cards, where the mode question recommends it
 - **Add** — modify/extend an existing plan without creating a branch
+
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
 
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
@@ -65,18 +67,13 @@ This skill uses named delegation aliases for `Agent(...)` calls. Each alias is t
 place where its delegate's agent type and call arguments are declared — call sites name
 the alias and never carry a type or a model argument of their own.
 
-**Model argument.** Before the first dispatch of an alias below, read `.unikit/config.yaml`
-(a missing file, block or key is not an error) and settle the model argument once:
-
-1. `subagents.model.{{agent_id}}` holds a model name — pass `model: <name>` with every call,
-   exactly as written (this runtime's own spelling of the model argument, if it differs).
-2. It holds `inherit`, or is present and empty — pass no model argument; the agent runs on the
-   model of this session.
-3. The key is absent — use the built-in default `"{{agent_model_default}}"`; an empty string
-   means pass no model argument.
-
-If the runtime rejects the model name, repeat that call once without the model argument and
-report `WARN [delegation] model "<name>" rejected — retried on the session model`.
+**Subagent arguments.** Before the first subagent you launch, read `.unikit/system/subagent-arguments.md`
+and `.unikit/config.yaml` once and settle the model and effort of every launch as that file says.
+Keys: `subagents.model.{{agent_id}}.<role>`, `subagents.effort.{{agent_id}}.<role>`;
+built-in model of a reader and a validator: `"{{agent_model_default}}"`, of an executor: none.
+If the file cannot be read, print
+`WARN [delegation] subagent-arguments contract missing — built-in model tier used, effort not passed`
+and use that model, no effort.
 
 - **`recon-agent`** — read-only parallel reconnaissance. Expands to:
 
@@ -112,9 +109,15 @@ report `WARN [delegation] model "<name>" rejected — retried on the session mod
 6. If the first word is `add` → add mode, remaining text is what to add/change in the existing plan
 7. Otherwise → ask interactively, entire text is the description
 
-Ultra is **user-named, never model-inferred**. Rule 5 recognises the request wherever it sits in the sentence, but it must be a request: ultra is never offered in Step 0.2 (except in a merge plan, where the mode question offers it) and never chosen because the feature looks large, spans many files, or seems hard — size is not a request. Wording that only asks for care — "a deep plan", "plan this thoroughly", "a detailed plan" — is **not** ultra; fall through to rule 7 and ask.
+Ultra is **user-named, never model-inferred**. Rule 5 recognises the request wherever it sits in the sentence, but it must be a request: ultra is never offered in Step 0.2 (except in a merge plan, where the mode question offers it, and in a set of two or more experiment cards, where the mode question recommends it) and never chosen because the feature looks large, spans many files, or seems hard — size is not a request. Wording that only asks for care — "a deep plan", "plan this thoroughly", "a detailed plan" — is **not** ultra; fall through to rule 7 and ask.
 
 **A merge request** — the user asks to merge a named branch into the current one (not a rebase, a cherry-pick or a merge by pull request number): load `{{skills_dir}}/{{self_name}}/references/merge-plan.md` and follow it. It owns the trigger, the analysis, the mode question — `fast`, `full` or `ultra` (`add` does not apply to a merge) — and the shape of the plan; a branch that is not named is asked for there. An ordinary plan does not read that file.
+
+**A Balance Checkpoints input** — the argument names a `CHECKPOINTS.md` file, a folder or slug under `.unikit/gamedesign/balance/`, or the request is calibration or measurement work on a balance document (`/unikit-gd-balance` prints this command): load `{{skills_dir}}/{{self_name}}/references/balance-plan.md` and follow it. It owns finding the current point, the snapshot, the horizon and the shape of the plan. An ordinary plan does not read that file. Missing or unreadable → `WARN [balance] balance-plan reference missing — planning as an ordinary plan; run unikit-ai update`, and no `Hand-back:` task is created in such a plan.
+
+**An experiment input** — the argument names an experiment (`EXP-<nnn>`), a path to an `experiment.md` card, an experiment folder under `.unikit/gamedesign/experiments/`, or a set of them (`/unikit-gd-experiment` prints this command): load `{{skills_dir}}/{{self_name}}/references/experiment-plan.md` and follow it. It owns reading and checking the cards, the snapshot, the mode question, the settings, the branch and the base, the folder name and the shape of the plan. The word "experiment" in free text is not a selector. An ordinary plan does not read that file. Missing or unreadable → `WARN [experiment] experiment-plan reference missing — planning as an ordinary plan; run unikit-ai update`. A request that names an experiment by its description — "the latest experiment", "the experiment about onboarding" — while `.unikit/gamedesign/experiments/` holds at least one `experiment.md` is resolved first through `{{skills_dir}}/unikit-gd-experiment/references/lookup.md`, read only for such a request: the card the user confirms becomes the selector and this branch goes on as for `EXP-<nnn>`. That file missing or unreadable → `WARN [experiment] lookup reference missing — asking for a selector`, and the user is asked for an `EXP-<nnn>`.
+
+**An experiment request** — the text asks the planner for an experiment plan, in any phrasing or language: "experiment plan", "experimental plan", "plan an experiment", "plan the experimental branch", "экспериментальный план". It may stand beside any mode word. The wording and the verb that carried it are stripped; what is left is the **source** — a description, a path, a game-design research named by path or in words ("the latest game-design research"), cards, or nothing (then the conversation itself). Load `{{skills_dir}}/{{self_name}}/references/experiment-plan.md` and `{{skills_dir}}/{{self_name}}/references/experiment-source.md`: the second owns every source that is not a card. Like ultra, the request is never inferred — a feature that is about experiments (an A/B switch, an experiment framework) and the bare word in a description are an ordinary plan. Cards named in the same request keep the route of **An experiment input**. `add` mode ignores the wording. Missing or unreadable `experiment-source.md` → `WARN [experiment] experiment-source reference missing — planning an ordinary plan from the description; run unikit-ai update`.
 
 `--base <branch>` — the branch to create the feature branch from (full mode only). `--base` flag overrides `git.base_branch` from config. Priority: `--base` flag > `git.base_branch` from `.unikit/config.yaml` > fallback `main`.
 
@@ -149,7 +152,7 @@ If the description is empty (user only typed a mode keyword like `full` or `fast
 
 2. **Check recent researches** — if no session context, read `.unikit/code/researches/INDEX.md` (if it exists). The index is sorted newest-first. Take the first entry whose `Lifecycle` is `active` — a record carrying no `Lifecycle` line counts as `active` — and ask:
    ```
-   AskUserQuestion: Found recent research: "<Title>" (<Created>)
+   The question tool of your agent (`AskUserQuestion`): Found recent research: "<Title>" (<Created>)
    Use as basis for planning?
 
    Options:
@@ -164,21 +167,25 @@ If the description is empty (user only typed a mode keyword like `full` or `fast
 
 3. **No context available** — if neither session context nor researches exist, ask the user for a description:
    ```
-   AskUserQuestion: Describe the feature you want to plan.
+   The question tool of your agent (`AskUserQuestion`): Describe the feature you want to plan.
    ```
 
 **If no mode keyword** was found by the Step 0 parsing rules, ask one question, adding the description question when the description is still missing:
 ```
-AskUserQuestion:
+The question tool of your agent (`AskUserQuestion`):
 1. Describe the feature you want to plan.     ← only when the description is still missing
 2. Which planning mode?
    a. Full (recommended) — creates git branch, codebase reconnaissance, full plan
    b. Fast — quick plan without a branch
 ```
 
-Ultra is deliberately absent from this question — see the parsing rules in Step 0 — except in a merge plan, where the mode question offers it.
+Ultra is deliberately absent from this question — see the parsing rules in Step 0 — except in a merge plan, where the mode question offers it, and in a set of two or more experiment cards, where the mode question recommends it.
 
 For a merge request the mode question is the one in `merge-plan.md`; `ultra` appears there as the third option.
+
+For an experiment input the mode question is the one in `experiment-plan.md`: `fast`, `full` and `ultra` are all shown, and `ultra` is recommended for a set of two or more cards — the user's own word still decides.
+
+For an experiment request the source is resolved by `{{skills_dir}}/{{self_name}}/references/experiment-source.md` → `## The source`, which replaces the description part of this step — the session context, the researches index and the description question; it never falls back to the code researches index above. The mode question stays, as for any plan.
 
 ### Step 0.5: Bootstrap Context (MANDATORY — all modes except List)
 
@@ -226,6 +233,8 @@ Planning only *reads* design; it never writes to `.unikit/gamedesign/` — desig
 
 Remember loaded rule file paths — pass them to Explore tasks in Step 4.
 
+<!-- unikit:extension-point:bootstrap -->
+
 ### Step 1: Determine Feature Name and Folder
 
 1. Read the description and understand the feature intent.
@@ -245,7 +254,7 @@ Remember loaded rule file paths — pass them to Explore tasks in Step 4.
    - A match in `.unikit/code/plans/` that has no manifest `.unikit/code/plans/<name>/PLAN.md` → a plan that was not finished:
 
    ```
-   AskUserQuestion: A plan named "<name>" was not finished (.unikit/code/plans/<name>/ has no manifest).
+   The question tool of your agent (`AskUserQuestion`): A plan named "<name>" was not finished (.unikit/code/plans/<name>/ has no manifest).
 
    Options:
    1. Continue it
@@ -260,7 +269,7 @@ Remember loaded rule file paths — pass them to Explore tasks in Step 4.
    - A match in `.unikit/code/plans/` → ask, and do not decide it yourself:
 
    ```
-   AskUserQuestion: A plan named "<name>" already exists (<matched folder>).
+   The question tool of your agent (`AskUserQuestion`): A plan named "<name>" already exists (<matched folder>).
 
    Options:
    1. Refine the existing plan — hand over to add mode
@@ -272,7 +281,7 @@ Remember loaded rule file paths — pass them to Explore tasks in Step 4.
    - A match **only in `.unikit/code/archive/plans/`** → the name belongs to an archived plan. An archived plan is not refined in place, and a second folder of that name would collide when this one is archived:
 
    ```
-   AskUserQuestion: A plan named "<name>" is archived (<matched folder>).
+   The question tool of your agent (`AskUserQuestion`): A plan named "<name>" is archived (<matched folder>).
 
    Options:
    1. Choose another name — I'll enter a different slug
@@ -301,6 +310,8 @@ Load only the selected mode's body — never all of them at once:
 ## Shared Steps (all planning modes)
 
 ### Step 2: Check for Related Researches
+
+**An experiment plan** runs no topic matching in this step (points 1-6): a research reaches it only through an `Experiment:` line (`{{skills_dir}}/{{self_name}}/references/experiment-plan.md` → `## The snapshot comes first`), and point 7 reads what that finds.
 
 **The research-link contract — read at the first link, and only then.** The moment this step links its first research — through the `research_pre_linked` shortcut below or through point 7 — read `.unikit/system/research-link.md`. For each research linked here, compute its `Summary SHA256` over the `## Active Summary` just read, by `## Computing the hash`, and keep the digest for Step 5 (`## Writing an entry`).
 
@@ -339,7 +350,7 @@ Before exploring code, check if `/unikit-explore` has produced relevant research
 6. If **1 or more relevant** researches found — ask the user:
 
 ```
-AskUserQuestion: Found related researches:
+The question tool of your agent (`AskUserQuestion`): Found related researches:
 
 1. <Title> (<Date>) — <Summary>
 2. <Title> (<Date>) — <Summary>
@@ -352,7 +363,7 @@ Options:
 
 Based on choice:
 - Use all → load all listed researches as planning context
-- Let me pick → wait for user to specify numbers, load only selected
+- Let me pick → ask which ones: the user writes their numbers (`1, 3`), and the recommended set is the first option; load only the selected
 - Skip all → proceed without research context, mark `research_linked = false`
 
 Highlight the most relevant entries in the question text (e.g., "Recommended: #1, #3").
@@ -368,11 +379,10 @@ Before exploring code, analyze the feature description for completeness.
 
 **If requirements are clear** — proceed to Step 4.
 
-**If requirements are ambiguous or incomplete** — ask clarifying questions:
+**If requirements are ambiguous or incomplete** — ask clarifying questions, each with its likely answers as the options:
 
 ```
-Before planning, a few things need clarification:
-
+The question tool of your agent (`AskUserQuestion`):
 1. [Specific question about feature scope]
 2. [Question about implementation approach]
 3. [Question about edge cases]
@@ -459,6 +469,8 @@ When evidence for a phase cannot be gathered, the decision goes into the manifes
 
 **Only when `design_linked = true`:** load `{{skills_dir}}/{{self_name}}/references/design-context.md` and follow it. It reads the shared `design-read` contract, resolves the door (a system, a flow or a content type), produces the `## Design` snapshot plus the optional `## Flow Context` / `## Content Context`, and returns here for Step 5. When `design_linked = false` the body is never loaded. Read only — never write to `.unikit/gamedesign/`.
 
+An experiment plan skips this step (`references/experiment-plan.md`) even when `design_linked = true`: its cards are the requirements, and a prototype never feeds `implemented_version`.
+
 ### Step 4.6: Read the Catalog Negatively (only when the plan carries editor work)
 
 **Gate.** Runs only when Step 4 established that the feature touches the editor's **serialized state** *and* an engine MCP is configured (MCP server `{{engine_mcp_tool}}` present in `{{settings_file}}`). A pure-code plan skips this step and makes no call at all.
@@ -507,6 +519,10 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
 
    **`## Design`**, **`## Flow Context`**, **`## Content Context`** (game-design module) — the snapshots Step 4.5 prepared, placed in this order directly after `## Based on`, each omitted when it was not produced (always, for a pure-code plan). What each one carries — the `SYS-id`, its version and the cited Acceptance Criteria; the `FLOW-id`, its wiring mode and `GOAL` steps; the `CT-id`, its `scale` and `CT.fields` schema — is `design-context.md`'s. `## Design` feeds `/unikit-verify`'s `implemented_version` writeback; `## Flow Context` and `## Content Context` have none.
 
+   **`## Balance Context`** — only for a plan built from a Balance Checkpoints file (`references/balance-plan.md`): the snapshot of the point, placed after `## Based on` and after any of the three snapshots above, directly before `## Settings`; omitted in every other plan. What it carries is `TASK-FORMAT.md`'s (`### Balance checkpoint grammar`).
+
+   **`## Experiment Context`** — only for an experiment plan: the snapshot of the cards (and of the design researches that name them) when it was built from experiment cards (`references/experiment-plan.md`), or a brief of the source when it was built from another one (`references/experiment-source.md`); and the lines `Branch:` and `Base:`, placed in the slot of `## Balance Context` (a plan has one of them), directly before `## Settings`; omitted in every other plan. What it carries is `TASK-FORMAT.md`'s (`### Experiment context section`).
+
 3. **`## Settings`** — User preferences (`/unikit-implement` reads this):
    - `Testing: yes/no` — whether tests are written at all: tests for logic and system values (`dev-principles.md` item 5)
    - `Test checkpoints: task | phase | plan` — where the test-checkpoint tasks stand; resolved in the mode file, omitted when `Testing: no`, `task` only in ultra.
@@ -518,7 +534,7 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
    - If linked: `Milestone: "<name>"` and `Rationale: "<why>"`
    - If skipped: `Milestone: "none"` and `Rationale: "Skipped by user"`
 
-5. **`## Checklist`** — phases with tasks. Every task MUST include description, `WHY:` line, `Files:` line.
+5. **`## Checklist`** — phases with tasks. Every task MUST include description, `WHY:` line, `Files:` line — except a checkpoint, `Measure:` or `Hand-back:` task, which carries its own line in that position (`TASK-FORMAT.md`).
    The WHY line answers: "what breaks or is missing if we skip this task?"
 
    **When to write `Editor:`** — the criterion is neutral: the change touches the **serialized state of the editor**, not source text. Editing a plain text or config file stays in `Files:`. The concrete signals for the active engine are listed in `{{skills_dir}}/{{self_name}}/references/ENGINE_RULES.md` §3 — read them from there, **do not restate them here**: they are engine facts (a scene, a prefab, a blueprint are not the same concept across engines), and a second inline copy diverges from §3 on its first edit.
@@ -539,6 +555,8 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
 8. **`## Rule Candidates`** — emitted **always, and empty** (heading and header row). Contract: `TASK-FORMAT.md` → `### Rule candidates section`.
 
 9. **`## Test Runs`** — emitted **empty under `Testing: yes`** (the heading alone), omitted under `Testing: no`. Contract: `TASK-FORMAT.md` → `### Test runs section`.
+
+9a. **`## Measurements`** — emitted **empty** (heading and header row) whenever the plan carries at least one `Measure:` task, omitted otherwise; filled by the executor. It stands directly after `## Test Runs`, or — under `Testing: no`, when there is none — directly after `## Rule Candidates`, or, when that is absent too, above `## Dependency Graph`; always above `## Technical Context`. Contract: `TASK-FORMAT.md` → `### Balance checkpoint grammar`.
 
 10. **`## Dependency Graph`** — phase dependencies in ASCII.
 
@@ -573,9 +591,11 @@ Show the user:
 4. The modules — `N modules, M PR checkpoints` (or `one module`) — one line
 5. When `engine_rules_loaded = false` — the line `Engine rules: ENGINE_RULES.md not found, Editor: fields skipped`
 6. The reminder: "To start implementation, run: `/unikit-implement`"
-7. Ask whether to adjust anything
+7. The other next steps, printed as a short list and not asked as a question: `/unikit-plan add <what to change>` changes this plan, `/unikit-improve` refines it before the work starts
 
 **Merge plan:** the closing message is the one `{{skills_dir}}/{{self_name}}/references/merge-plan.md` describes — it names the command that runs the plan.
+
+**Experiment plan:** the closing message is the one `{{skills_dir}}/{{self_name}}/references/experiment-plan.md` describes — it names the command that runs the plan, with the plan folder named.
 
 **Ultra mode:** the items above plus `mode-ultra.md` Step H (phase-file count, task count, integrity result, and the not-implementation-ready line when blocking open questions exist). Under the saved-state protocol its `.planning/` folder is already gone (`plan-bundle.mjs finalize`).
 

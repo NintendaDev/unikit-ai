@@ -5,14 +5,14 @@ description: >-
   them into the GDD; produces a brief, never edits the GDD itself. Use to assess a genre or
   market for viability, dissect a reference game (mechanics → dynamics → aesthetics), explore
   how to improve or extend an existing system, flow, or content type, research new mechanics
-  the design lacks, investigate a part of the GDD in code, or develop the research bucket of
-  a /unikit-gd-review report into decided edits. Trigger on "explore how to improve the
-  flow", "ways to improve the combat system", "is this genre saturated", "break down the
-  combat of Hades", "work out the review's open questions". GAME-DESIGN research only — for
+  the design lacks, investigate how a slice is built in code, or develop the research bucket of
+  a /unikit-gd-review report into decided edits. "ultra" pins the dialogue log and saves
+  artifacts. Trigger on "explore how to improve the flow", "ways to improve the combat system",
+  "is this genre saturated", "break down the combat of Hades". GAME-DESIGN research only — for
   CODE or technical research use /unikit-explore; to reconstruct a design from code use
   /unikit-gd-recon; to write a change into the GDD use /unikit-gd-system or /unikit-gd-spec;
   to apply edits you know use /unikit-gd-apply; to invent a new game use /unikit-gd-brainstorm.
-argument-hint: "init | <reviews/*_review-*.md> | <RECON.md> | <topic | game reference | URL | design or market question>"
+argument-hint: "init | ultra <topic> | <reviews/*_review-*.md> | <RECON.md> | <topic | game reference | URL | design or market question>"
 allowed-tools:
   - Read
   - Glob
@@ -52,6 +52,8 @@ write `GAME.md`, system GDDs, or concepts — that is `unikit-gd-spec` /
 `unikit-gd-system` / `unikit-gd-brainstorm`. If the user wants to *create*, point
 them at the owner skill and stop researching.
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md`
@@ -65,22 +67,17 @@ language setting.
 
 ## Delegation agents
 
-This skill uses a named delegation alias for `Agent(...)` calls. The alias is the single
-place where its delegate's agent type and call arguments are declared — call sites name
-the alias and never carry a type or a model argument of their own.
+This skill uses two named delegation aliases for `Agent(...)` calls. The aliases are the
+single place where each delegate's agent type and call arguments are declared — call sites
+name the alias and never carry a type or a model argument of their own.
 
-**Model argument.** Before the first dispatch of an alias below, read `.unikit/config.yaml`
-(a missing file, block or key is not an error) and settle the model argument once:
-
-1. `subagents.model.{{agent_id}}` holds a model name — pass `model: <name>` with every call,
-   exactly as written (this runtime's own spelling of the model argument, if it differs).
-2. It holds `inherit`, or is present and empty — pass no model argument; the agent runs on the
-   model of this session.
-3. The key is absent — use the built-in default `"{{agent_model_default}}"`; an empty string
-   means pass no model argument.
-
-If the runtime rejects the model name, repeat that call once without the model argument and
-report `WARN [delegation] model "<name>" rejected — retried on the session model`.
+**Subagent arguments.** Before the first subagent you launch, read `.unikit/system/subagent-arguments.md`
+and `.unikit/config.yaml` once and settle the model and effort of every launch as that file says.
+Keys: `subagents.model.{{agent_id}}.<role>`, `subagents.effort.{{agent_id}}.<role>`;
+built-in model of a reader and a validator: `"{{agent_model_default}}"`, of an executor: none.
+If the file cannot be read, print
+`WARN [delegation] subagent-arguments contract missing — built-in model tier used, effort not passed`
+and use that model, no effort.
 
 - **`recon-agent`** — read-only parallel reconnaissance. Expands to:
 
@@ -91,6 +88,14 @@ report `WARN [delegation] model "<name>" rejected — retried on the session mod
   Every question you send ends with the sentence `You are read-only: edit and write nothing.`, verbatim.
 
   Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
+
+- **`check-agent`** — fresh-context, read-only coherence pass. Expands to:
+
+  ```
+  Agent({{agent_call_reader}} prompt: "Read {{skills_dir}}/{{self_name}}/references/coherence-gate.md and run the pass it specifies over <durable file paths> — pass <n> of 2, adjudicated so far: <ledger>. Return the report that file specifies. You are read-only: edit and write nothing.")
+  ```
+
+  The path travels, never the text. Fallback: if the `Agent` tool is unavailable, read `references/coherence-gate.md` yourself and run the pass inline; print `WARN [coherence] fresh-context pass unavailable — running inline`. The gate is never skipped or delayed.
 
 ## Bootstrap Context (MANDATORY)
 
@@ -152,12 +157,18 @@ Before responding — before any analysis — silently load (do not narrate):
    systems / P1 content, the per-fact `confidence` + source-pointer + `provenance:
    extracted from code` record).
 
+9. **Experiment grounding** (only if `.unikit/gamedesign/experiments/` holds a card) — a topic that names an experiment — `EXP-<nnn>` (`Glob` `.unikit/gamedesign/experiments/EXP-<nnn>-*`, exactly one folder), a path to an `experiment.md`, or an experiment folder — grounds on that card: read its `experiment.md` **in full**; `feedback.md` and `results.md` only when the user asks. A topic that names an experiment by its description ("how to improve the latest experiment", "the experiment about onboarding") is resolved first through `{{skills_dir}}/unikit-gd-experiment/references/lookup.md` — read it only then; it ends in the user's confirmation, which this skill words through the membrane (the title and plain words, no code). The card is context only: nothing is written to the store and no status changes. Keep the card's number, `Version` and title for the save: they make the `Experiment:` line of the saved summary, the only thing by which `/unikit-plan` finds this research. That file missing or unreadable → `WARN [experiment] lookup reference missing — asking for a selector`, and the user is asked which experiment is meant.
+
+10. **`{{skills_dir}}/{{self_name}}/references/experiment-lens.md`** — the experiment design engine (the flow, the web rules, the `## Experiment Plan` block and its tags). Load it **only when the prompt asks to design a test** — an experiment, a prototype or a playtest for a slice of the game — as "Experiment design lens — when it engages" below classifies.
+
 **One-way boundary (with the code-lens exception):** the authoring zones never read
 code, but this skill is a **read-only research verb** — its **code-grounded lens**
-(below) *does* read project source and asset definitions to ground an in-flight design
-slice, the same sanctioned third exception `unikit-gd-recon` uses (`gd-principles` →
+(below) *does* read project source and asset definitions to ground a design question in
+the slice the prompt names, the same sanctioned third exception `unikit-gd-recon` uses (`gd-principles` →
 One-Way Boundary). Outside that lens, do not read `.unikit/code/` or build artifacts.
 Web research **is allowed** here (market and reference scans — `gd-principles`).
+
+<!-- unikit:extension-point:bootstrap -->
 
 ### Parallel investigation
 
@@ -243,7 +254,7 @@ question but the *cut* is unclear and the two readings mean materially different
 work, ask **one** question — not one per ambiguous prompt:
 
 ```
-AskUserQuestion: What kind of read do you want?
+The question tool of your agent (`AskUserQuestion`): What kind of read do you want?
 Options:
 1. Design dissection (recommended)
 2. Market viability
@@ -346,10 +357,10 @@ delta). A `belongs_to` that needs a **missing system** still routes that *system
 
 The fourth lens grounds a design slice against **this project's own code** — when the
 question is not "how does *another* game do this" (MDA) or "is it worth it" (market) but
-**"how is *our* X actually built?"**. It is the **post-GDD, targeted** counterpart to
+**"how is *our* X actually built?"**. It is the **targeted** counterpart to
 `unikit-gd-recon`: where recon is a strictly cold-start, whole-project bootstrap (no GDD
-yet → one passive `RECON.md`), this lens runs **when a GDD already exists** and reads only
-the **slice** the prompt names, to inform an in-flight design decision. Like the other
+yet → one passive `RECON.md`), this lens reads only the **slice** the prompt names —
+**with or without a GDD** — to inform a design question. Like the other
 lenses it is **inferred from the prompt, never a flag**, and it **combines** with the
 internal-design lens (read the design intent *and* the code reality together).
 
@@ -364,25 +375,47 @@ built / what the asset actually has* — separating it from MDA's "another game"
 
 **Decision rule:**
 
-- **Code-grounded signal present and `GAME.md` exists** → code lens **ON**: load
-  `unikit-gd-recon/references/code-recon.md`, scan **only the named slice** with
-  `recon-agent` (fallback: inline `Glob`/`Grep`/`Read`), and fold the
-  code findings into the brief.
-- **No `GAME.md` yet** → this is the **cold-start** case → **do not** use this lens;
-  point at `/unikit-gd-recon` (whole-project reconstruction) instead. Recon owns cold
-  start; this lens owns the in-flight slice.
+- **Code-grounded signal present** → code lens **ON**: load
+  `{{skills_dir}}/unikit-gd-recon/references/code-recon.md`, scan **only the named slice** with
+  `recon-agent` (fallback: inline `Glob`/`Grep`/`Read`), and fold the code findings
+  into the brief. With `GAME.md` the lens combines with the internal-design lens;
+  without it the result is **pre-spec research** and routes as the internal-design
+  lens's no-`GAME.md` bullet does (`/unikit-gd-spec` or `/unikit-gd-brainstorm`).
+- **The request is to reconstruct the whole project** (no slice is named, no GDD yet)
+  → this is the **cold-start** case → **do not** use this lens; point at
+  `/unikit-gd-recon`. Recon owns cold start; this lens owns a named slice.
 - **No code-grounded signal** → code lens **OFF** (it never reads code uninvited).
 
 **Read-only and code-provenance-tagged.** This lens reads code; it **never** edits the
 GDD and **never** writes code. Facts it lifts **directly from code** into the brief carry
 `provenance: extracted from code` (review holds them ≥ Major — `gd-provenance`), exactly
 as a `RECON.md` would; the designer's own options and reasoning in the same brief stay
-**untagged**. This keeps the two read-only research verbs symmetric — code-origin is
-tagged identically whether recon or this lens surfaced it. Say it on entry, as the
+**untagged**. This keeps the read-only research verbs symmetric — code-origin is
+tagged identically whichever of them — recon, this lens, the balance skill or the experiment skill —
+surfaced it. Say it on entry, as the
 internal-design lens does: *"I'll read how it's built and hand you a brief — I won't edit
 the GDD or the code."* Its routing is the internal-design lens's (the slice's
-`doc_status` picks the owner); in **subagent mode** every interactive `AskUserQuestion`
+`doc_status` picks the owner); in **subagent mode** every interactive call of the question tool of your agent (`AskUserQuestion`)
 is bypassed, the same as the internal-design lens.
+
+## Experiment design lens — when it engages
+
+The fifth lens designs a **test**, not a design: the prompt asks what to test, how to test it, or to prepare an experiment, a prototype or a playtest for a slice of the game, and the result is a reasoned experiment plan that `/unikit-gd-experiment` turns into a card. Like the other lenses it is **inferred from the prompt, never a flag**. The engine — the flow, the web rules and the `## Experiment Plan` block — lives in `references/experiment-lens.md`; this section is the **switch**.
+
+| Signal class | Triggers (examples) |
+|--------------|---------------------|
+| **Design a test** | "design an experiment for the hint arrow", "what should we test about the first minutes", "спроектируй эксперимент", "plan a playtest for X" |
+| **A prototype that answers a question** | "what is the cheapest prototype that shows whether Y works", "потестить, интересно ли" |
+| **Tell whether a change is better** | "how do we know the new onboarding is better", "how should we playtest this" |
+
+**Decision rule:**
+
+- **Test signals present** → experiment lens **ON**, **with or without `GAME.md`**: load `experiment-lens.md` and follow it. The lens needs the idea and the slice it concerns, not a GDD.
+- **Combinable.** It runs alongside the internal design lens (the slice is our own design), MDA dissection and the market lens — load whichever the prompt also triggers; they supply the precedents.
+- **No test signal** (a design question, a reference to dissect, a market question) → lens **OFF**; it never engages uninvited.
+- **A designer who wants the card straight away** does not need this lens: `/unikit-gd-experiment` thinks an experiment through itself, quickly or deeply. This lens is for a test that grows into a research — a mechanic to study first, several precedents, a long dialogue.
+
+**Read-only — say it on entry.** When the lens engages, state once that this is research: *"I'll work out the test and hand you a brief — the card is written by the experiment skill, and I won't edit the GDD."* It writes no experiment card and takes no `EXP-<nnn>` number; its handoff is `/unikit-gd-experiment` with the path of the saved research. In **subagent mode** every interactive call of the question tool of your agent (`AskUserQuestion`) is bypassed, as in the other lenses.
 
 ## Input modes — develop a review file or a RECON reconstruction
 
@@ -410,15 +443,37 @@ marker** — the prompt contains, verbatim, on one line:
 > **"Return the brief into this session as text; do not save any files."**
 
 Detection is by this **exact phrase**, not a loose reading. On a match, **load
-`references/delegation-contract.md`** (this skill's own spec — provider-owns-spec; the
+`{{skills_dir}}/{{self_name}}/references/delegation-contract.md`** (this skill's own spec — provider-owns-spec; the
 engine behavior is `references/market-scan.md` → "Subagent mode") and follow it: run
-**deterministically**, **bypass every interactive `AskUserQuestion`** (the lens
+**deterministically**, **bypass every interactive call of the question tool of your agent (`AskUserQuestion`)** (the lens
 tie-breaker above, the save-offer under "Saving Research Results", and the
 internal-design / code-grounded closure passes — a subagent would hang on any prompt),
 run the **market lens** (per-concept `market_signal` + `validation_confidence` +
 evidence), and **return the brief into the session as text — save no file** (skip the
 save step; the calling session owns persistence). Prefer direct `WebSearch` /
 `WebFetch` over a nested `recon-agent` (see "Parallel investigation").
+
+## Ultra research (user-named)
+
+An **ultra request** — the leading `ultra` token, or the same request in the user's own
+words ("ultra research", "ultraresearch", "ultra explore", "ультраисследование") — switches
+on a pinned dialogue log and adaptive artifacts. Ultra is **user-named, never model-inferred**:
+it is never chosen because the topic is large or difficult, and wording that only asks for care
+("look deeper", "be thorough") is not an ultra request — explore normally.
+
+On an ultra request strip the ultra wording and the verb that carried it, treat the rest as the
+topic, load `{{skills_dir}}/{{self_name}}/references/ultra-research.md` now and follow it: it
+owns the pinning of the log while the conversation goes on, and the artifacts at save time. The
+stance and the exploration itself are unchanged. Ultra applies to prompt-based requests and to
+the RECON-input mode; it does not apply to the review-file mode (nothing to save into
+`researches/`), to the subagent mode of an `unikit-gd-brainstorm` request, or to `init`. Ultra
+is recognised when the request is made: naming it later starts no pinning.
+
+If that reference cannot be read, degrade to a standard research and print one line
+`WARN [ultra] reference missing — saving a standard research`: losing the research over a
+missing reference file is not an acceptable trade.
+
+A standard research does not read that file.
 
 ## Saving Research Results
 
@@ -429,7 +484,11 @@ discovery tags, `RESEARCH_BRIEF.md`), the **Next Steps routing** table, and the
 `researches/INDEX.md` update format. When the research came from the **internal design
 lens**, the brief gets the **one** mode-aware block matching the resolved route — the
 block field lists live in `references/internal-design-lens.md` → "Mode-aware brief"
-(the single source of truth; do not duplicate them).
+(the single source of truth; do not duplicate them). When it came from the **experiment
+design lens**, the brief gets the `## Experiment Plan` block, whose field list lives in
+`references/experiment-lens.md` → "The block". Every save — new or an update — ends
+with the coherence gate: `{{skills_dir}}/{{self_name}}/references/coherence-gate.md`, run
+through `check-agent` by `references/save-research.md` → `## Write order`.
 
 ## Init: Rebuilding the Researches Index
 
@@ -448,7 +507,8 @@ crystallize, you might summarize the findings — but the thinking is often the 
 ## Ownership Boundaries
 
 - **Owns:** `.unikit/gamedesign/researches/` — `RESEARCH_RESULT.md`,
-  `RESEARCH_BRIEF.md`, and the researches `INDEX.md`.
+  `RESEARCH_BRIEF.md`, the researches `INDEX.md`, and — in an ultra research — `SOURCE.md`
+  and the adaptive artifacts inside a research folder.
 - **Owns (spec):** `references/delegation-contract.md` — the brainstorm→explore
   contract. This skill is its provider; brainstorm reads it as the interface. Keep its
   canonical marker and brief field-list in sync with `references/market-scan.md`.
@@ -461,7 +521,7 @@ crystallize, you might summarize the findings — but the thinking is often the 
   `unikit-gd-content` for a **content type** — there is no add-flow / add-content).
   Explore only **tags** its own research (`Target:` / `Kind:`).
 - **Read-only:** `GAME.md`, `GD-IDS.yaml`, systems, flows, content types, concepts —
-  route any design change to its owner skill, never edit them here.
+  route any design change to its owner skill, never edit them here. The experiment cards of `.unikit/gamedesign/experiments/` are read-only too: that store is written only by `unikit-gd-experiment`.
 - **Research-bucket mode (in-place promotion).** Developing a `unikit-gd-review`
   report's `## Research` bucket turns each open finding into a decided edit and **promotes
   it in place** — moving the line into the report's `## Apply-ready` bucket (reformatted as
@@ -482,14 +542,20 @@ crystallize, you might summarize the findings — but the thinking is often the 
 - **Code-grounded lens (read-only).** When the code lens engages, this skill reads
   project source and asset definitions — the sanctioned third exception to the one-way
   boundary (`gd-principles`), shared with `unikit-gd-recon`. It reads only the **named
-  slice** (post-GDD), folds code findings into a brief tagged `provenance: extracted from
+  slice** (with or without a GDD), folds code findings into a brief tagged `provenance: extracted from
   code`, and **never** edits the GDD or the code. Cold-start, whole-project
   reconstruction is `unikit-gd-recon`'s, not this lens's.
+- **Experiment design lens (read-only).** The lens (`references/experiment-lens.md`) reads
+  the GDD when there is one and the web for precedents, and writes only its own research
+  (the `## Experiment Plan` block of the brief, `Kind: experiment`). It **never** writes an
+  experiment card, takes an `EXP-<nnn>` number or touches `.unikit/gamedesign/experiments/`;
+  the experiment skill, in turn, never writes `researches/`.
 - **Not this skill:** generating new concepts → `unikit-gd-brainstorm`; authoring
   the spec/systems/flows/content → `unikit-gd-spec` / `unikit-gd-system` /
   `unikit-gd-flow` / `unikit-gd-content`; cold-start code reconstruction →
   `unikit-gd-recon`.
-- **Never:** author or edit a design document; auto-save a research; read the code
+- **Never:** author or edit a design document; auto-save a research (appending a turn to
+  `SOURCE.md` in ultra is pinning, not saving); read the code
   workspace or project source **outside the code-grounded lens** (that lens is the one
   sanctioned read — `gd-principles` third exception).
 
@@ -501,9 +567,11 @@ crystallize, you might summarize the findings — but the thinking is often the 
 /unikit-gd-explore roguelike meta-progression       → genre / mechanics scan
 /unikit-gd-explore is this roguelike niche saturated?  → market lens (viability / white-space)
 /unikit-gd-explore improve our combat balance        → internal design lens (read-only) → routes to system / spec
-/unikit-gd-explore how is our loot wired in the code → code-grounded lens (read-only, post-GDD slice) → brief
+/unikit-gd-explore how is our loot wired in the code → code-grounded lens (read-only, named slice) → brief
+/unikit-gd-explore design a test for our tutorial hint → experiment design lens (read-only) → brief with ## Experiment Plan → /unikit-gd-experiment
 /unikit-gd-explore reviews/2026-06-25_review-SYS-combat.md → promote ## Research into ## Apply-ready in place → /unikit-gd-apply reviews/X.md
 /unikit-gd-explore .unikit/gamedesign/RECON.md      → develop the cold-start reconstruction (pre-GDD) → save research + ## Explorations backlink → /unikit-gd-spec import
 /unikit-gd-explore https://…                         → dissect a linked design source
+/unikit-gd-explore ultra the progression of our economy → ultra research: pinned log + artifacts + coherence gate
 /unikit-gd-explore init                              → rebuild researches/INDEX.md
 ```

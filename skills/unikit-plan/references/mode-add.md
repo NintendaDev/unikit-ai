@@ -13,7 +13,7 @@ Modifies an existing plan in-place. Never creates a new branch.
 Use unified plan detection:
 1. Check both locations: `.unikit/code/PLAN.md` (fast plan) and `.unikit/code/plans/` (full plans, resolved as follows).
 
-   **Branch match.** From branch `<prefix><name>`, collect every folder in `.unikit/code/plans/` that matches any of the three name formats: (1) exactly `<name>` — the current format; (2) ending with `_<name>` — the `YYYY-MM-DD_<name>` format; (3) ending with `-<name>` and beginning with three digits — the legacy `DDD-<name>` format. Exactly one match → use it. **More than one → ask the user which one**, listing each with its `Updated:` — do not pick by format precedence: two folders for one feature is exactly the state the date used to prevent, and choosing silently is how the resolver starts finding the wrong one. No match → fall through to *latest*.
+   **Branch match.** From branch `<prefix><name>`, collect every folder in `.unikit/code/plans/` that matches any of the three name formats: (1) exactly `<name>` — the current format; (2) ending with `_<name>` — the `YYYY-MM-DD_<name>` format; (3) ending with `-<name>` and beginning with three digits — the legacy `DDD-<name>` format. An experiment plan's folder does not carry its dated branch name (`experiment-<topic>` on `experiment/<date>-<topic>`), so its own record adds the folders whose manifest has, inside `## Experiment Context`, a `Branch:` line equal to the current branch and a `Base:` other than `none` (`Grep` `^Branch: ` over `.unikit/code/plans/*/PLAN.md`); a folder found both ways counts once. Exactly one match → use it. **More than one → ask the user which one**, listing each with its `Updated:` — do not pick by format precedence: two folders for one feature is exactly the state the date used to prevent, and choosing silently is how the resolver starts finding the wrong one. No match → fall through to *latest*.
 
    **Latest.** Read the `Updated:` line from each candidate's `.unikit/code/plans/<folder>/PLAN.md` and sort descending; ties break on `Created:` descending, then on folder name descending. A manifest with no `Updated:` is **excluded and named** — `WARN [plan] <folder>: manifest has no Updated: — excluded; run unikit-ai update to backfill it` — never guessed from the folder name and never from the file's mtime, which `git checkout` and a fresh clone rewrite.
    **`latest fallback` is a guess, not a resolution:** the branch named no plan. With two
@@ -39,7 +39,7 @@ INFO [plan] resolved: <path> (<reason>)
 `branch match: <branch>` · `latest fallback`. This is plain output, never the payload of an
 interactive question.
 2. Both exist → ask user which to modify. Print both plan paths with their `Updated:` to the
-   screen as plain markdown first — the question mechanism carries the options and nothing else.
+   screen as plain markdown first.
 3. Only one exists → use it
 4. No plan found → tell user to create one first, **STOP**
 
@@ -69,11 +69,11 @@ Apply changes with Edit tool, preserving unaffected content (this list applies t
 - New tasks/phases follow existing format (numbering, WHY, `Files:`, `Editor:`, effort)
   - `Editor:` — one line per editor target, placed after `Files:`, only when the change touches the editor's **serialized state** (concrete signals for the active engine: `references/ENGINE_RULES.md` §3). Omitted for pure code tasks, and **not generated at all** when `engine_rules_loaded = false`.
   - Add mode does **not** introduce a `## Settings` section and does not re-ask the editor-mode question — it extends an existing plan and inherits its settings, `Test checkpoints:` among them. It never resolves that value from the config and never writes the line: the plan already carries it, and re-resolving it here would reinterpret a plan that has already been written.
-- **New tasks go above the final full run.** When the plan's last task carries `Test checkpoint: plan`, every task Add mode appends is inserted **before** it, so that the full run stays last. Appending after it leaves the plan with work no run covers, and breaks the integrity check requiring the final task to be that run. The same holds inside a phase closed by a test-checkpoint task: new tasks for that phase go above it, not after it.
+- **New tasks go above the final full run.** When the plan's last task carries `Test checkpoint: plan`, every task Add mode appends is inserted **before** it, so that the full run stays last; in a plan with a `## Balance Context` also above the final `Hand-back:` and, inside a phase, above the `Measure:` tasks of its phase. Appending after it leaves the plan with work no run covers, and breaks the integrity check requiring the final task to be that run. The same holds inside a phase closed by a test-checkpoint task: new tasks for that phase go above it, not after it.
 - **Plans with modules** (`## Modules` present, or any `PR checkpoint:` line). The grammar is `TASK-FORMAT.md` → `### Modules section` and `### PR checkpoint task grammar`; only the insertion decisions are stated here:
   - A new task of an existing module goes **above** its PR checkpoint task and above its module test-checkpoint task. The module is the one whose `## Modules` line covers the phase.
   - A new module **after the last**: under `PR checkpoints: yes` the former last module gets a PR checkpoint task — a new task at the end of its closing phase, with that phase's next free number — and its `## Modules` line gains `PR: task N.M`. The new module carries no `PR:` field: it is now the last.
-  - Under `Testing: yes` the last task of the plan must stay `Test checkpoint: plan`, so with a module after the last the final full run moves to the new last phase, with that phase's next free number. Its old place in the former closing phase takes the module's test-checkpoint task (under `Test checkpoints: phase | task`), right before the new PR checkpoint task.
+  - Under `Testing: yes` the last task of the plan must stay `Test checkpoint: plan` (in a plan with a `## Balance Context` the last task stays `Hand-back:` and the final full run stays directly above it), so with a module after the last the final full run moves to the new last phase, with that phase's next free number. Its old place in the former closing phase takes the module's test-checkpoint task (under `Test checkpoints: phase | task`), right before the new PR checkpoint task.
   - A new module **before the first** gets its own PR checkpoint task under `PR checkpoints: yes`; its phase is numbered `0`, and no existing phase changes its number.
   - A new module between two modules is not added: its work joins an existing module, above that module's PR checkpoint. There is no number for a phase between two existing ones without renumbering.
   - `## Modules` is updated in the same edit — its lines, ranges and `PR:` fields. A plan that had no section and now has two modules gets one.
@@ -81,10 +81,11 @@ Apply changes with Edit tool, preserving unaffected content (this list applies t
   - `PR checkpoints: yes` is never written or removed here: Add mode does not read the config, so a plan without the line gets modules but no PR checkpoint tasks.
   - Existing task IDs are never renumbered, and `Planned at:` is left alone.
   - Adding a module prints one line: `INFO [plan] module <name> added as M<k> (phases K-L)`. Every other edit is silent.
+- **A plan with a `## Balance Context`** never gets a phase or a module after the `Hand-back:` task: Add mode inserts new tasks above it, inside existing phases. The horizon is the point's; work beyond it belongs to `/unikit-gd-balance`.
 - Update the manifest's `## Total Estimated Effort`, `## Commit Plan` and `## Dependency Graph` as needed
 - Update the `## Technical Context` section if changes affect constraints, interfaces, or patterns
 - Move the header's `Updated:` to today's date (`Bash(date *)`). Add mode changes the plan's **content**, which is exactly what that field tracks; leaving it stale drops the plan behind untouched plans in every "latest" resolver. `Created:` is never rewritten. `Planned at:` is never rewritten either: it marks where the plan's work starts.
 
 ### Add Step 3: Confirm
 
-Show: plan path, what changed, updated effort. When `engine_rules_loaded = false`, also show the line `Engine rules: ENGINE_RULES.md not found, Editor: fields skipped` — Add mode never reaches Step 6, so this is its **only** confirmation point for the skipped editor fields. Ask if anything needs adjustment. **STOP after confirmation.**
+Show: plan path, what changed, updated effort. When `engine_rules_loaded = false`, also show the line `Engine rules: ENGINE_RULES.md not found, Editor: fields skipped` — Add mode never reaches Step 6, so this is its **only** confirmation point for the skipped editor fields. Then print the next steps of Step 6 item 7 and **STOP**.

@@ -44,7 +44,7 @@ For each rule entry — in the root and in every topic file:
 - **Reason:** {why this belongs in the target file}
 ```
 
-Options via `AskUserQuestion` (batches of up to 4):
+Options via the question tool of your agent (`AskUserQuestion`) (batches of up to 4):
 1. Transfer — move to target file, remove from RULES.md
 2. Keep — leave in RULES.md permanently, tag `<!-- @no-migrate -->`
 3. Skip — decide later (no tag — will be presented again on next migration)
@@ -64,7 +64,7 @@ Based on choice:
 - **Reason:** {why the RULES.md entry overrides the base convention}
 ```
 
-Options via `AskUserQuestion` (batches of up to 4):
+Options via the question tool of your agent (`AskUserQuestion`) (batches of up to 4):
 1. Replace — delete conflicting rule(s) from memory file, insert RULES.md entry verbatim, remove from RULES.md
 2. Keep — leave in RULES.md permanently, tag `<!-- @no-migrate -->`
 3. Delete — remove from RULES.md without transferring (base convention wins)
@@ -84,7 +84,7 @@ Based on choice:
 - **Reason:** {why no existing file covers this topic}
 ```
 
-Options via `AskUserQuestion` (batches of up to 4):
+Options via the question tool of your agent (`AskUserQuestion`) (batches of up to 4):
 1. Create & Transfer — create proposed file and move the rule there
 2. Custom — user specifies own filename and/or tier
 3. Keep — leave in RULES.md permanently, tag `<!-- @no-migrate -->`

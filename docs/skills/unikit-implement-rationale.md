@@ -10,6 +10,11 @@ explore save pipeline, on the same criterion — see
 
 ## Step 0 — Plan resolution
 
+- **An experiment plan is found by its record, not by its name.** The folder is
+  `experiment-<topic>` and the branch `experiment/<date>-<topic>`, so no name format can
+  tie them. The manifest already holds the branch (`## Experiment Context` → `Branch:`), and
+  `Base:` other than `none` says the branch was cut for this plan; the record is therefore
+  added to the matches instead of renaming folders, which also reaches plans that already exist.
 - **Two branch-matching folders are a question, never a choice by format precedence.** Two
   folders for one feature is exactly the state the date in the folder name used to prevent,
   and choosing silently is how the resolver starts finding the wrong one.

@@ -40,7 +40,10 @@ TMPDIR=$(mktemp -d)
 # check). Restoring it belongs in the trap, not next to the test: `set -e` aborts
 # on the first failed assertion, and a run that leaves a doctored config behind
 # poisons every later run and the repository besides.
-BIOME_JSON="$ROOT_DIR/mcp/unity/unity-biome-mcp.json"
+# The doctored config is a COPY of the catalog under $TMPDIR, reached through
+# UNIKIT_MCP_DIR: a shipped file edited in place is visible to every suite running at the
+# same time (they run in parallel, see test-skills.sh).
+BIOME_JSON="$TMPDIR/mcp-catalog/unity/unity-biome-mcp.json"
 BIOME_JSON_BACKUP=""
 restore_package_state() {
     if [[ -n "$BIOME_JSON_BACKUP" && -f "$BIOME_JSON_BACKUP" ]]; then
@@ -696,6 +699,7 @@ HASH_SKILL="$HASH/.claude/skills/unikit-implement/SKILL.md"
 assert_contains "$HASH_SKILL" 'mcp__unity-biome-mcp__' \
   "code-change hash: the first update injects the shipped code"
 
+cp -r "$ROOT_DIR/mcp" "$TMPDIR/mcp-catalog"
 BIOME_JSON_BACKUP="$TMPDIR/unity-biome-mcp.json.orig"
 cp "$BIOME_JSON" "$BIOME_JSON_BACKUP"
 BIOME_JSON="$BIOME_JSON" BIOME_SRC="$BIOME_JSON_BACKUP" node -e "
@@ -704,7 +708,9 @@ BIOME_JSON="$BIOME_JSON" BIOME_SRC="$BIOME_JSON_BACKUP" node -e "
     m.code = 'unity-biome-renamed';
     fs.writeFileSync(process.env.BIOME_JSON, JSON.stringify(m, null, 2));
 "
+export UNIKIT_MCP_DIR="$(normalize_path_for_json "$TMPDIR/mcp-catalog")"
 run_update "$HASH" "$TMPDIR/code-hash-2.log"
+unset UNIKIT_MCP_DIR
 assert_contains "$HASH_SKILL" 'mcp__unity-biome-renamed__' \
   "code-change hash: renaming the vendor code alone reinstalls the skill with the new prefix"
 assert_not_contains "$HASH_SKILL" 'mcp__unity-biome-mcp__' \

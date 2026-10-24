@@ -3,7 +3,7 @@
 Loaded on demand by `unikit-gd-explore/SKILL.md` → "Input modes" when the argument
 resolves to a `RECON.md` file. This is the body; the SKILL keeps only the switch.
 Develops the reconstruction through the internal-design lens
-(`references/internal-design-lens.md`); the pre-GDD carve-out lets the lens engage with
+(`{{skills_dir}}/{{self_name}}/references/internal-design-lens.md`); the pre-GDD carve-out lets the lens engage with
 no `GAME.md` yet.
 
 ## RECON-input mode — developing a cold-start reconstruction

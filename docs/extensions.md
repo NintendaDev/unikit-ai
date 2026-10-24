@@ -2,7 +2,7 @@
 
 # Extensions
 
-Extensions let third-party developers add new capabilities to UniKit AI - custom skills, subagents, skill injections, MCP servers, CLI commands, and skill replacements. Extensions survive `unikit-ai update` (injections are automatically re-applied after base skills are refreshed).
+Extensions let third-party developers add new capabilities to UniKit AI - custom skills, subagents, skill injections (by position, or at a named extension point), MCP servers, CLI commands, and skill replacements. Extensions survive `unikit-ai update` (injections are automatically re-applied after base skills are refreshed).
 
 ---
 
@@ -22,13 +22,71 @@ unikit-ai extension add user/unikit-ext-example
 
 # With a specific branch or tag
 unikit-ai extension add user/unikit-ext-example#v2.0.0
+
+# Choose in a terminal: a list of the extension's skills, subagents and MCP servers, everything checked
+unikit-ai extension add ./my-extension
+
+# Without a menu: install everything except the named items
+unikit-ai extension add ./my-extension --skip-skills noisy-skill --skip-subagents helper --skip-mcp my-server
 ```
+
+### Choosing What to Install
+
+An extension can ship skills, subagents and MCP servers. You decide which of them end up in the project:
+
+- **Skills** - including skills that replace a base skill, listed as `my-commit → unikit-commit`
+- **Subagents**
+- **MCP servers**
+
+CLI commands and injections are not part of the list: they always come with the extension (see [Injections and the selection](#injections-and-the-selection)).
+
+**The menu.** In a terminal `unikit-ai extension add` shows one list with the three sections, everything checked. Uncheck what you do not want and confirm. When you add an extension that is already installed, the list is pre-filled with your earlier choices; items the new version added are checked. Cancelling the list is treated as "no change": nothing is written and the temporary git clone is removed (the cancel path is covered by the code, not yet confirmed in a live terminal). The menu is shown only in a terminal and only when no flag has already decided the question (see below).
+
+**Flags.** The flags only ever switch items off:
+
+| Flag | Takes | Meaning |
+|------|-------|---------|
+| `--skip-skills <names>` | Comma-separated names (repeatable) | Do not install these skills. A name is the skill directory name or its path from the manifest |
+| `--skip-subagents <names>` | Comma-separated names (repeatable) | Do not install these subagents. A name is the file name without `.md` or its path from the manifest |
+| `--skip-mcp <keys>` | Comma-separated keys (repeatable) | Do not install these MCP servers |
+| `--yes`, `-y` | - | Do not show the menu and do not ask anything; follow the rules below |
+| `--install-new` | - | Turn on the items that have no decision yet (see below) |
+| `--skip-new` | - | Leave those items uninstalled without asking; wins over `--install-new` |
+
+An unknown name, or a name that matches two skills (use the manifest path then), is an error with exit code `1`, reported before anything is written.
+
+**Without a terminal** (CI, scripts, `--yes`, or any of the flags above) there is no menu and the rules are:
+
+| | No flags | `--install-new` | `--skip-new` | `--skip-skills` / `--skip-subagents` / `--skip-mcp` |
+|---|----------|-----------------|--------------|--------------------|
+| **First install** | Everything is installed | Ignored: everything is installed | Ignored: everything is installed | Everything except the named items |
+| **Installed extension** (`add` again, `update`, `extension update`) | Earlier choices are kept; items with no decision yet are **not** installed | Items with no decision yet are turned on; an item you switched off stays off | Items with no decision yet stay undecided; no question | The named items are off, an undecided one included; earlier choices are kept |
+
+A flag never turns an item you switched off back on: that is what the menu is for.
+
+**Changing the choice later.**
+
+```bash
+# Menu in a terminal, pre-filled with the current state
+unikit-ai extension select unikit-ext-example
+
+# Without a terminal: switch items off, or turn on the ones with no decision yet
+unikit-ai extension select unikit-ext-example --skip-skills noisy-skill --skip-mcp my-server
+unikit-ai extension select unikit-ext-example --install-new
+```
+
+`extension select` works on the copy in `.unikit/extensions/<name>/`: the source is not needed. It takes out what turned off, installs what turned on, re-applies the injections and, when a replacement is switched off, puts the base skill back at once. Without a terminal and without a flag that changes something it stops with `Nothing to change` and exit code `1`. Turning on an item you switched off earlier needs the menu.
+
+`unikit-ai extension list` shows `Skipped:` (items you switched off) and `Not decided:` (items of the installed version that have no decision yet).
 
 ### Managing Extensions
 
 ```bash
 # List installed extensions
 unikit-ai extension list
+
+# Choose which items of an installed extension are installed
+unikit-ai extension select unikit-ext-example
 
 # Update all extensions from their sources
 unikit-ai extension update
@@ -44,14 +102,15 @@ unikit-ai extension remove unikit-ext-example
 
 1. Extension source is resolved (local path, or a shallow `git clone` for both git and GitHub sources)
 2. Manifest (`extension.json`) is validated
-3. Command module files are verified to exist (if `commands` is defined)
-4. Extension files are copied to `.unikit/extensions/<name>/`
-5. Skills are installed into all configured agents (applying agent-specific transformers)
-6. Subagents are installed into agents that support them
-7. Injections are applied to matching skill/subagent files
-8. MCP servers are merged into each agent's settings file
-9. Extension is recorded in `.unikit.json` under `extensions` - **last**, only once every asset above is on disk, so an interrupted install never leaves a recorded extension whose files never arrived
-10. Command modules are available on next CLI invocation
+3. The selection is made: the menu in a terminal, otherwise the flags and rules from [Choosing What to Install](#choosing-what-to-install). A wrong name or a closed menu stops here, before anything is written, and the temporary clone is removed
+4. Command module files are verified to exist (if `commands` is defined)
+5. Extension files are copied to `.unikit/extensions/<name>/` (the whole extension, including the items you left out - `extension select` needs them)
+6. The selected skills are installed into all configured agents (applying agent-specific transformers)
+7. The selected subagents are installed into agents that support them
+8. Injections are applied: position-based text is added to the target file; extension-point text is rendered for each agent and inserted under the point's anchor, and the entry's reference files are copied into the target skill. The command then prints `Injections: N of M applied` and the reason for every skipped entry
+9. The selected MCP servers are merged into each agent's settings file
+10. Extension is recorded in `.unikit.json` under `extensions` (with your `selection`) - **last**, only once every asset above is on disk, so an interrupted install never leaves a recorded extension whose files never arrived
+11. Command modules are available on next CLI invocation
 
 ### What Happens on Update
 
@@ -59,9 +118,11 @@ Running `unikit-ai update`:
 
 1. **Extension refresh** - every installed extension is re-resolved from its source and compared by manifest `version`; changed ones are re-committed
 2. **Base skill update** - updates installed base skills (hash-based change detection)
-3. **Re-apply injections** - all extension injections are re-applied automatically
+3. **Re-render injections** - one pass over every installed extension and every agent re-applies all injections and reference files after the base skills and MCP grants are refreshed
 
 The extension refresh runs **before** the base-skill update, so a skill an extension replaces is already in place when the base pass walks the skill list.
+
+The injection pass does not depend on the order the extensions were installed in or on earlier runs: it renders everything from the installed extensions each time. `update` does not treat injected text as a local edit of the skill, so adding, updating or removing an extension is never followed by a `Local modifications detected` warning.
 
 `unikit-ai update` does **not** check whether a newer CLI version is on npm. Updating the CLI package itself is a separate, explicitly-invoked command:
 
@@ -84,6 +145,22 @@ All three source types are treated **identically**: the source is always re-reso
 
 There is no GitHub-API fast path and no `GITHUB_TOKEN` handling in the refresh flow - a GitHub source is cloned like any other git source, so GitHub API rate limits never apply to `unikit-ai update`.
 
+#### New items of an installed extension
+
+Your earlier choices survive every `update`, `update --force`, `init` and `extension update`: what you switched off is not installed again. An item the extension offers that you have not decided on - typically one a new version added - is called *new* (or *undecided*) and is handled the way new skills of the package are in `unikit-ai update`:
+
+- **In a terminal**, `update` and `extension update` show a list of only those items, everything checked. Items you uncheck are remembered as "not wanted" and are not offered again; `extension select` is the way back.
+- **Without a terminal**, new items are **not** installed. The command says `not installed (undecided)` and names them. Pass `--install-new` to install them (it never turns on an item you switched off), or `--skip-new` to decline explicitly: the items then stay undecided and nothing is asked.
+
+**This changes the behaviour of non-interactive runs.** Before item selection existed, a new version of an extension installed everything it added by itself. Now a run without a terminal installs new items only with `--install-new`. In CI, use for example:
+
+```bash
+unikit-ai extension update --install-new
+unikit-ai update --install-new
+```
+
+A record from before item selection (no `selection` in `.unikit.json`) is read as "what is installed is on": the first update after the upgrade keeps all of it, and only the items the new version adds are undecided.
+
 ### Updating Extensions Separately
 
 Use `unikit-ai extension update` to refresh extensions without updating base skills:
@@ -98,12 +175,14 @@ unikit-ai extension update --force
 
 ### What Happens on Remove
 
-1. Injection markers are stripped from all skill/subagent files
+1. Injection blocks and copied reference files are removed; the target files return to the bytes they had before the extension was added
 2. MCP server entries are removed from agent settings files
 3. Extension skills and subagents are removed from all agents
 4. Extension directory is deleted from `.unikit/extensions/`
 5. Extension record is removed from `.unikit.json`
 6. If the extension replaced base skills, the originals are restored automatically
+
+Only what the extension installed is removed: a skill, a subagent or an MCP key that was left out of the selection is never touched, so a file of the same name that you added yourself stays. The same holds when you deselect an agent on a repeat `init`.
 
 ---
 
@@ -176,7 +255,7 @@ Only `name` and `version` are required. All other fields are optional.
 | `skills` | `string[]` | No | Paths to skill directories within the extension |
 | `subagents` | `string[]` | No | Paths to subagent `.md` files within the extension |
 | `replaces` | `Record<string, string>` | No | Maps extension skill paths to base skill names they replace |
-| `injections` | `ExtensionInjection[]` | No | Content to inject into existing skill/subagent files |
+| `injections` | `ExtensionInjection[]` | No | Content to inject into existing skill/subagent files, by position or at a named extension point (see [Injections](#injections)) |
 | `mcpServers` | `ExtensionMcpServer[]` | No | MCP server configurations to merge into agent settings |
 
 ### Name Validation
@@ -234,14 +313,16 @@ The replacement skill is installed **under the base skill name**. For example, `
 
 **On update** (`unikit-ai update`):
 1. The base-skill pass **skips** every skill an extension replaces, so the replacement survives the update untouched rather than being overwritten by the packaged original
-2. The extension's own `skills` and `subagents` are reinstalled from `.unikit/extensions/`. A `replaces` entry is not itself reinstalled - it is protected by the skip above
+2. The extension's own `skills` and `subagents` you left on are reinstalled from `.unikit/extensions/`. A `replaces` entry is not itself reinstalled - it is protected by the skip above, which covers every skill a *selected* replacement owns
 3. If an extension's manifest is missing or unreadable, that extension is skipped silently in the reinstall and injection passes and the update continues; a source that cannot be resolved during the refresh pass produces a `Could not refresh extension` warning. The base skill is **not** restored - restoring an original is exclusively the job of `unikit-ai extension remove`
 
 **On remove** (`extension remove`):
 1. The replacement skill is removed (by its base name)
 2. The original base skill is **restored** from the package
 
-**Conflict detection:** No two extensions can replace the same base skill. Attempting to install a second extension that replaces an already-replaced skill will produce an error.
+**Conflict detection:** No two extensions can replace the same base skill. Attempting to install a second extension that replaces an already-replaced skill will produce an error. Only replacements you left on count: a replacement that is switched off is neither installed nor a conflict.
+
+**Leaving a replacement out.** A replacement is an item of its own in the selection (`my-commit → unikit-commit`) and can be switched off. The base skill then stays in place and keeps updating with `unikit-ai update`. If a replacement is switched off or dropped later (`extension select`, a new version), the base skill is restored at once, not at the next `update`. The skip in the update pass above is for the replacements you left **on**.
 
 #### Example
 
@@ -294,13 +375,116 @@ Agent instructions here...
 
 Subagents are only installed for agents that support them (Claude Code and Kimi Code). They are placed in the agent's subagents directory (e.g., `.claude/agents/`). On Kimi Code, which does not read a `skills:` field in an agent file, the installer turns that field into a read list of `SKILL.md` paths at the top of the file - the same adapter runs over extension subagents (see [Subagents](subagents.md#skills-listed-in-an-agent-file)).
 
+A subagent can be left out of the selection like a skill. If a subagent you kept preloads (`skills:`) a skill of the same extension that you left out, the command prints one `[WARN][extension]` line naming both. It is only a warning: nothing is blocked and the skill is not turned on for you.
+
+A skill or a subagent of your extension that launches subagents settles their model and effort like the bundled ones: the rule is `.unikit/system/subagent-arguments.md`, the role of a launch your extension adds is placed by the nature of its work (the last section of `.unikit/system/subagent-roles.md`), and the project's `subagents.model.<agent>.<role>` and `subagents.effort.<agent>.<role>` keys apply. Do not copy the rule into your skill; point to the file.
+
 ---
 
 ### Injections
 
-Injections append or prepend content to existing skill or subagent files. This lets extensions augment built-in workflows without replacing them entirely.
+Injections put extension text into existing skill or subagent files. This lets extensions augment built-in workflows without replacing them entirely.
 
-#### Injection Definition
+#### Two forms
+
+| Form | Declared with | Where the text goes | Use it for |
+|------|---------------|---------------------|------------|
+| Position | `position: "append"` or `"prepend"` | The end of the target file, or right after its frontmatter | Whole sections added to a skill or a subagent |
+| Extension point | `point` + `id` (+ `references`) | Under a named anchor the base skill carries | One short line, or a link to a reference file, at a fixed place of a skill's context loading |
+
+An entry sets exactly one of `position` and `point`. A manifest that uses `point` is rejected by UniKit versions that predate extension points: the `position` field is required there.
+
+#### Extension points
+
+A base skill marks a place where extensions may add text with an anchor line:
+
+```markdown
+<!-- unikit:extension-point:bootstrap -->
+```
+
+An extension asks for that place by naming the point:
+
+```json
+{
+  "id": "spec-line",
+  "target": "unikit-plan",
+  "targetType": "skill",
+  "point": "bootstrap",
+  "file": "./injections/spec-line.md",
+  "references": ["./references/notes.md"]
+}
+```
+
+| Field | Values | Description |
+|-------|--------|-------------|
+| `id` | `[a-z0-9][a-z0-9-]*`, up to 64 characters | Required with `point`. Unique inside the extension; part of the block marker |
+| `target` | A skill name from [Available extension points](#available-extension-points) | The skill whose anchor is used |
+| `targetType` | `skill` | Subagent files carry no points yet |
+| `point` | `[a-z][a-z0-9-]*`, not ending in `-agent` | The name of the point. Today every listed skill offers `bootstrap` |
+| `file` | Relative path | The text to insert. Must stay inside the extension directory and exist at install time |
+| `references` | Relative paths | Optional files delivered next to the target skill's own references (see [Reference files](#reference-files)). Same path rules as `file`; two files of one extension may not share a file name unless they are the same file |
+
+#### Where the text goes
+
+The anchor line stays in the skill. The block goes right under it:
+
+```markdown
+<!-- unikit:extension-point:bootstrap -->
+<!-- unikit-ext:my-extension:unikit-plan:bootstrap:spec-line:start -->
+Your text here.
+<!-- unikit-ext:my-extension:unikit-plan:bootstrap:spec-line:end -->
+```
+
+Several blocks in one point are ordered by extension name, then by `id`. The result does not depend on the order the extensions were installed in or on how many times the commands ran.
+
+#### What happens to your text
+
+The text goes through the same steps as the text of the skill itself, in this order:
+
+1. The agent filter: `<!-- unikit:agents … -->` blocks are kept or dropped for the agent.
+2. `{{ext_reference:<file name>}}` becomes the path of the delivered reference file.
+3. The variables from [Template Variables](#template-variables); `{{self_name}}` is the target skill.
+4. The agent's own rewrite of invocations, where it has one - for example `/unikit-*` becomes `$unikit-*` for Codex.
+
+A file may not contain `<!-- unikit-ext:` or an extension-point anchor. An empty file is skipped.
+
+#### Reference files
+
+A file listed in `references` is copied to `<skills dir>/<target>/references/ext/<slug>/<file name>`. The slug is the extension name with `@` replaced by `=` and `/` by `+`, so `@scope/pkg` gives `=scope+pkg`. In the text of the block and in the `.md` reference files themselves `{{ext_reference:<file name>}}` expands to that path, written from the project root. Files of other types are copied unchanged. `.md` files are read as UTF-8 text.
+
+The `references/ext/` directory belongs to UniKit: it is recreated whole on every pass, and nothing in it survives by hand.
+
+#### Skipped insertions
+
+A skipped entry is not an installation error: the extension is installed, the command exits with `0`, and the report says what was not applied.
+
+```
+Injections: 1 of 2 applied, 1 reference file(s)
+  my-extension › spec-line → unikit-plan (bootstrap): the installed skill has no such anchor — run "unikit-ai update" to refresh installed skills [claude]
+```
+
+| Reason | Meaning |
+|--------|---------|
+| `unknown-point` | This UniKit version offers no such point on the target - upgrade `unikit-ai`. Subagent entries with `point` also end here |
+| `anchor-missing` | The installed skill has no such anchor - run `unikit-ai update` to refresh installed skills |
+| `anchor-duplicated` | The installed skill carries the anchor more than once - run `unikit-ai update --force` |
+| `target-not-installed` | The target is not installed for this agent |
+| `source-missing` | A file the entry names is missing in the extension directory |
+| `reference-unresolved` | The text uses `{{ext_reference:<name>}}` for a name that is not in `references` |
+| `render-failed` | The text could not be rendered for this agent (a broken agent-filter marker, a reserved marker in the text) |
+| `target-not-found` | The target file is not installed for this agent (position entries) |
+| `target-disabled` | The target is a skill or subagent of this extension that was left out of its selection (position entries) |
+| `path-outside-extension` | The path leaves the extension directory |
+
+#### Injections and the selection
+
+Injections are applied whatever the user selected. There is no `requires` field: an injection is self-sufficient, and the selection of skills, subagents and MCP servers does not switch injections on or off. So:
+
+- text of an injection that names a skill, subagent or server the user left out is still inserted - write injected text so that it makes sense without the optional items of your extension;
+- an injection into a **base** skill (or into a base skill whose replacement was switched off) is always applied;
+- a `position` injection into a skill or subagent **of this extension** that the user left out is skipped with the reason `target-disabled` and no "target not found" warning.
+
+#### Position injections
 
 ```json
 {
@@ -318,8 +502,6 @@ Injections append or prepend content to existing skill or subagent files. This l
 | `position` | `append` or `prepend` | Where to insert the content |
 | `file` | Relative path | Path to the markdown file within the extension directory |
 
-#### How Injections Work
-
 Injected content is wrapped in HTML comment markers for tracking:
 
 ```markdown
@@ -328,10 +510,16 @@ Your injected content here.
 <!-- unikit-ext:my-extension:unikit-implement:append:end -->
 ```
 
+`append` puts the block at the end of the file. `prepend` puts it **right after the frontmatter**, so the file still starts with `---`; a block an earlier version put in front of the frontmatter is moved at the next `update`. A `file` path that leaves the extension directory is skipped when the injection is applied and shows up in the report as `path-outside-extension`.
+
 These markers enable:
 - **Idempotent application** - re-installing the same extension won't duplicate content
-- **Clean removal** - `extension remove` strips exactly the injected blocks
+- **Clean removal** - `extension remove` strips exactly the injected blocks and returns the file to its previous bytes
 - **Update survival** - `unikit-ai update` overwrites base skills, then re-applies all injections
+
+#### Ownership of injected text
+
+The text between the `unikit-ext` markers belongs to the extension and is rewritten on every pass. Edits made inside a block are not kept and are not reported as local modifications of the skill.
 
 #### Example Injection File
 
@@ -343,6 +531,54 @@ After completing each task:
 2. Check for debug statements left in production code
 3. Verify error messages are user-friendly
 ```
+
+#### Available extension points
+
+An anchor is a public contract: adding a point is a minor version of the package; moving or removing one happens only after a release that warns about it. More points - a second point in a skill, points in subagent files - are added on request of an extension, together with a check of the skill size limits and of the tests that read skill sections.
+
+Every skill below offers one point, `bootstrap`, at the end of its context-loading block.
+
+| Skill | Point | Placed | Not reached when |
+|-------|-------|--------|------------------|
+| `unikit` | `bootstrap` | Step 0 (Load Existing Config), before the config-actualization mode | - |
+| `unikit-architecture` | `bootstrap` | Step 1 (Load Existing Context) | - |
+| `unikit-archive` | `bootstrap` | Step 0 (Context) | - |
+| `unikit-commit` | `bootstrap` | Item 3 of the main list (Context Check), indented as part of the item | - |
+| `unikit-devcontext` | `bootstrap` | Rules Loading, the last lines of the file | - |
+| `unikit-docs` | `bootstrap` | Step 0 (Load Project Context) | - |
+| `unikit-evolve` | `bootstrap` | Step 2 (Load Context) | - |
+| `unikit-explore` | `bootstrap` | Step 0 (Bootstrap Context), after the optional reads | - |
+| `unikit-fix` | `bootstrap` | Step 0.2 (Load Fix Context) | - |
+| `unikit-implement` | `bootstrap` | Step 1.5 (Bootstrap Rules & Principles) | `--list`, `status` |
+| `unikit-improve` | `bootstrap` | Step 0.5 (Bootstrap Context) | - |
+| `unikit-mcp-audit` | `bootstrap` | Bootstrap | There is no `.unikit/MCP-RECHECK-NOTES.md` |
+| `unikit-mcp-trap` | `bootstrap` | Bootstrap | - |
+| `unikit-memory` | `bootstrap` | Step 0.5 (Resolve the Active Module) | - |
+| `unikit-plan` | `bootstrap` | Step 0.5 (Bootstrap Context) | `--list`, resuming an ultra plan, a merge plan |
+| `unikit-pr` | `bootstrap` | Step 0 (Context) | - |
+| `unikit-review` | `bootstrap` | Step 1 (Load rules) | - |
+| `unikit-roadmap` | `bootstrap` | Step 0 (Load Project Context) | - |
+| `unikit-rules` | `bootstrap` | Step 0 (Load Skill Context) | - |
+| `unikit-rules-registry` | `bootstrap` | Step 0.5 (Load the Module Registry) | - |
+| `unikit-todo` | `bootstrap` | Step 0 (Load Skill Context) | - |
+| `unikit-verify` | `bootstrap` | Step 0.3 (Load Engine Rules) | Before the plan is resolved (0.1) |
+| `unikit-gd-apply` | `bootstrap` | Phase 0 - Bootstrap | - |
+| `unikit-gd-balance` | `bootstrap` | Bootstrap Context | - |
+| `unikit-gd-brainstorm` | `bootstrap` | Bootstrap | - |
+| `unikit-gd-content` | `bootstrap` | Phase 0 - Bootstrap | - |
+| `unikit-gd-docs` | `bootstrap` | Phase 0 - Bootstrap | - |
+| `unikit-gd-experiment` | `bootstrap` | Bootstrap Context | - |
+| `unikit-gd-explore` | `bootstrap` | Bootstrap Context | `init` mode |
+| `unikit-gd-flow` | `bootstrap` | Phase 0 - Bootstrap | - |
+| `unikit-gd-recon` | `bootstrap` | End of the cold-start gate | The gate stopped the run |
+| `unikit-gd-review` | `bootstrap` | Phase 0 - Bootstrap | - |
+| `unikit-gd-spec` | `bootstrap` | Bootstrap - Working Contract & Domain Knowledge | - |
+| `unikit-gd-system` | `bootstrap` | Phase 0 - Bootstrap | - |
+| `unikit-gd-verify` | `bootstrap` | Phase 0 - Bootstrap | - |
+
+`unikit-skills-context` and `unikit-help` have no point: they have no context-loading block.
+
+A line in a point is read by the model that runs the skill; whether it acts on the line is up to the model and is not guaranteed. The subagents `unikit-implement-worker` and `unikit-implement-coordinator` do not receive the line from `bootstrap` directly - only the content of the skills they preload reaches them.
 
 ---
 
@@ -403,6 +639,8 @@ The template is written into each agent's settings file under `mcpServers.<key>`
 | Universal / Other | `.mcp.json` |
 
 On `extension remove`, the key is deleted from the settings file.
+
+A server you left out of the selection is not written to the settings files. Switching a server off later (`extension select`) removes only that key from each agent's settings file; the other entries of the file - yours, and those of other tools - are left as they are. The file is shared with you and with other tools (for Codex it is TOML); choose a `key` that is unlikely to collide with an entry of your own.
 
 #### Tool permissions for an extension MCP server
 
@@ -532,6 +770,7 @@ Extension skills and subagents can use template variables that are substituted a
 | `{{home_skills_dir}}` | `~/.claude/skills` | Agent's home skills directory |
 | `{{settings_file}}` | `.mcp.json` | Agent's MCP settings file |
 | `{{skills_cli_agent_flag}}` | `--agent claude-code` | CLI agent flag |
+| `{{self_name}}` | `unikit-plan` | Name of the skill the file belongs to: in a skill's own `references/` files it is that skill; in an injection it is the target skill |
 | `{{engine_name}}` | `Unity` | Game engine name |
 | `{{engine_code_language}}` | `C#` | Engine's programming language |
 | `{{engine_mcp_tool}}` | `unity-biome-mcp` | Vendor code of the engine MCP server — the key it is registered under in the settings file, and the middle segment of its `mcp__<code>__*` grants. Not the server's file id. |
@@ -544,13 +783,69 @@ Extension skills and subagents can use template variables that are substituted a
 | `{{agent_call_worker_quoted}}` | `subagent_type: "general-purpose",` | The same, with the type in quotes (the spelling of multi-line call blocks) |
 | `{{agent_skill_call:<skill>}}` | `Call the Skill tool with skill "<skill>" and …` | At the start of a `prompt: "…"` line: makes the subagent load the skill; the text after it up to the closing quote is the skill's arguments. Claude Code: a Skill-tool call; every other agent: a read of `<skills dir>/<skill>/SKILL.md` |
 
-The `{{agent_*}}` variables are substituted in skills only (`SKILL.md` and `references/`); in subagent files and system assets they are empty, and `{{agent_skill_call:…}}` stays as written (a guard keeps it out of those files). They come from the agent profile - see [Subagents](subagents.md#subagent-profile-per-agent).
+The `{{agent_*}}` variables are substituted in skills only (`SKILL.md` and `references/`); in subagent files and system assets they are empty, and `{{agent_skill_call:…}}` stays as written (a guard keeps it out of those files). They come from the agent profile - see [Subagents](subagents.md#subagent-profile-per-agent). The system-file variables further down are the opposite: they depend on neither the agent nor the engine, so they are substituted everywhere the template runs - in skills and their `references/`, in the text of extensions (injection blocks, reference files, and the skills and subagents an extension adds), in subagent files and in `dev-principles.md`. The other system files (the flat contracts, the `gamedesign/` files and the `engine-mcp/` tree) are copied without any substitution.
 
-Use these in SKILL.md files to write agent-agnostic skills:
+The same variables are available in the text of an injection and in the `.md` reference files of an extension point; `{{self_name}}` is the name of the target skill, and `{{agent_skill_call:<skill>}}` in the text of an injection expands as it does in a skill.
+
+**System files.** Every file the framework puts under `.unikit/system/` has a variable that holds its path from the project root, so an extension names the file without writing the path out. The value is the same for every agent and for subagent files:
+
+| Variable | Value | Present |
+|----------|-------|---------|
+| `{{system_dir}}` | `.unikit/system` | always |
+| `{{system_gamedesign_dir}}` | `.unikit/system/gamedesign` | always |
+| `{{system_genres_dir}}` | `.unikit/system/gamedesign/genres` | selective: appears with `unikit-ai genres install` and holds only the genre profiles the project installed |
+| `{{system_engine_mcp_dir}}` | `.unikit/system/engine-mcp` | when the selected engine MCP server ships a rules tree |
+| `{{cli_contract}}` | `.unikit/system/cli-contract.md` | always |
+| `{{dev_principles}}` | `.unikit/system/dev-principles.md` | always |
+| `{{modules_yml}}` | `.unikit/system/modules.yml` | always |
+| `{{gate_result_contract}}` | `.unikit/system/gate-result-contract.md` | always |
+| `{{ultra_plan_read_contract}}` | `.unikit/system/ultra-plan-read.md` | always |
+| `{{research_link_contract}}` | `.unikit/system/research-link.md` | always |
+| `{{plan_boundaries_contract}}` | `.unikit/system/plan-boundaries.md` | always |
+| `{{merge_analysis_contract}}` | `.unikit/system/merge-analysis.md` | always |
+| `{{balance_handback_contract}}` | `.unikit/system/balance-handback.md` | always |
+| `{{prototype_profile_contract}}` | `.unikit/system/prototype-profile.md` | always |
+| `{{subagent_arguments_contract}}` | `.unikit/system/subagent-arguments.md` | always |
+| `{{subagent_roles_contract}}` | `.unikit/system/subagent-roles.md` | always |
+| `{{user_questions_contract}}` | `.unikit/system/user-questions.md` | always |
+| `{{gd_principles}}` | `.unikit/system/gamedesign/gd-principles.md` | always |
+| `{{gd_authoring}}` | `.unikit/system/gamedesign/gd-authoring.md` | always |
+| `{{gd_lifecycle}}` | `.unikit/system/gamedesign/gd-lifecycle.md` | always |
+| `{{gd_flow_axis}}` | `.unikit/system/gamedesign/gd-flow-axis.md` | always |
+| `{{gd_content_axis}}` | `.unikit/system/gamedesign/gd-content-axis.md` | always |
+| `{{gd_provenance}}` | `.unikit/system/gamedesign/gd-provenance.md` | always |
+| `{{gd_critique}}` | `.unikit/system/gamedesign/gd-critique.md` | always |
+| `{{design_read_contract}}` | `.unikit/system/gamedesign/design-read.md` | always |
+| `{{engine_mcp_rules_index}}` | `.unikit/system/engine-mcp/INDEX.md` | when the selected engine MCP server ships a rules tree |
+| `{{engine_mcp_rules_verification}}` | `.unikit/system/engine-mcp/verification.md` | when the selected engine MCP server ships a rules tree |
+| `{{language_rules}}` | `.unikit/system/LANGUAGE_RULES.md` | after the `/unikit` skill has written it |
+
+The names of these variables are public API of extensions, on a par with the extension-point anchors in the base skills: when the framework moves a file the value follows it and the name stays. A name is renamed or removed only after a release that warns about it.
+
+A variable whose file is not always there (`{{system_genres_dir}}`, `{{system_engine_mcp_dir}}`, `{{engine_mcp_rules_index}}`, `{{engine_mcp_rules_verification}}`, `{{language_rules}}`) still resolves to its path, but the file may be missing; write the extension text so that it also works when the file is not there. A `{{…}}` token that the installed build of unikit-ai does not know stays in the text exactly as written and does not stop the install.
+
+Such a token is not reported by default. A slot of your own that is meant for the runtime - a lower-case `{{…}}` in a template that your skill fills in - has exactly the form of a variable that a newer build might add, so the installer cannot tell the two apart, and an extension full of templates would repeat the same lines on every `update`. To see which tokens a build leaves as written, run `unikit-ai --verbose init`, `unikit-ai --verbose update` or `unikit-ai --verbose extension add|update|remove|select` (the extension commands re-apply the text; `update` only when it updated something): every file of the extension that holds such a token is listed at INFO level with the names, nothing of the content. Name the unikit-ai version your extension needs in its README.
+
+```markdown
+Before you ask the user anything, read `{{user_questions_contract}}`.
+```
+
+Use the variables in SKILL.md files to write agent-agnostic skills:
 
 ```markdown
 Read the project rules from `{{skills_dir}}/unikit/SKILL.md`.
 ```
+
+**Referencing files of a skill.** Name a file by its full path, built from the variables above. A phrase such as "the references folder of the skill", or a bare `references/<file>.md` as the only mention, does not say where the file is installed.
+
+| You are pointing at | Write |
+|---|---|
+| a file of the same skill (`references/`, `scripts/`, `templates/`, `assets/`) | `{{skills_dir}}/{{self_name}}/references/<file>.md` |
+| a file of another skill | `{{skills_dir}}/<skill>/references/<file>.md`, with the skill name written out |
+| a reference file delivered by an extension point | `{{ext_reference:<file name>}}` |
+| anything from a subagent file or a system asset | no `{{skills_dir}}`: it is empty there |
+
+In a skill's `references/` files `{{self_name}}` is the skill that owns the directory, not the name of the file. A skill that an extension adds is installed the same way, so the same form points at its own files, with the skill's own name as `{{self_name}}`.
 
 ---
 
@@ -604,6 +899,7 @@ your-project/
 ├── .unikit.json                       # extensions[] array tracks installed extensions
 ├── .claude/
 │   ├── skills/                        # Extension skills installed here
+│   │   └── <skill>/references/ext/<slug>/   # Reference files delivered by extensions (owned by UniKit, recreated on every update)
 │   └── agents/                        # Extension subagents installed here
 └── .mcp.json                          # MCP servers merged here (Claude Code)
 ```
@@ -623,13 +919,22 @@ Extensions are tracked in `.unikit.json`:
       "version": "1.0.0",
       "replacedSkills": {
         "unikit-commit": "skills/my-commit"
+      },
+      "selection": {
+        "skills": { "skills/my-skill": true, "skills/my-commit": false },
+        "subagents": { "subagents/my-agent.md": true },
+        "mcpServers": { "my-server": true }
       }
     }
   ]
 }
 ```
 
-The `replacedSkills` field maps base skill names to extension skill paths, enabling automatic restoration of base skills when the extension is removed.
+The `replacedSkills` field maps base skill names to extension skill paths, enabling automatic restoration of base skills when the extension is removed. It lists only the replacements that are switched on.
+
+The `selection` field holds your choices: the key is the path from the manifest (skills and subagents) or the `key` of an MCP server; the value says whether the item is on. An item that is missing from the maps is *undecided*: it has not been installed and is offered the next time (see [New items of an installed extension](#new-items-of-an-installed-extension)). A record without `selection` was written before item selection existed; everything installed counts as on. You do not edit the field by hand - use `unikit-ai extension select`.
+
+An older CLI does not know the field: the next time it re-commits the extension (a version bump, `--force`) it rewrites the record without `selection`, and an `update` then installs everything again. Do not use different CLI versions in one project.
 
 ---
 
@@ -653,6 +958,7 @@ The backup and rollback apply to upgrades only and cover only `.unikit/extension
 - **Replacement conflicts** - no two extensions can replace the same base skill
 - **Command modules execute code** - command modules are dynamically imported at CLI startup. Only install extensions you trust, just as you would with npm packages
 - **Command module validation** - module files referenced in `commands` are verified to exist at install time
+- **Injection and reference paths are validated** - for entries with `point`, `file` and `references` may not leave the extension directory (`..`, absolute paths) and must exist at install time; for `position` entries a path that leaves the extension directory is skipped when the injection is applied
 
 ---
 
@@ -695,6 +1001,14 @@ An extension with all features:
       "targetType": "subagent",
       "position": "prepend",
       "file": "./injections/agent-preamble.md"
+    },
+    {
+      "id": "checks-line",
+      "target": "unikit-plan",
+      "targetType": "skill",
+      "point": "bootstrap",
+      "file": "./injections/plan-line.md",
+      "references": ["./references/checks.md"]
     }
   ],
   "mcpServers": [
@@ -723,7 +1037,10 @@ unikit-ext-complete/
 │   └── web-expert.md
 ├── injections/
 │   ├── extra-checks.md
-│   └── agent-preamble.md
+│   ├── agent-preamble.md
+│   └── plan-line.md
+├── references/
+│   └── checks.md
 └── mcp/
     └── web-server.json
 ```
@@ -733,7 +1050,8 @@ unikit-ext-complete/
 - 1 base skill replaced (`unikit-review` with extension's `code-reviewer`)
 - 1 subagent installed (`web-expert`) - for agents that support subagents
 - Content appended to `unikit-implement` skill
-- Content prepended to `unikit-implement-coordinator` subagent
+- Content prepended to `unikit-implement-coordinator` subagent, right after its frontmatter
+- A block inserted under the `bootstrap` anchor of `unikit-plan`, and `references/checks.md` copied to `<skills dir>/unikit-plan/references/ext/unikit-ext-complete/checks.md`
 - `web-mcp` server configured in `.mcp.json`
 - `complete-setup` CLI command registered (available as `unikit-ai complete-setup`)
 

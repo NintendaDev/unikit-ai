@@ -97,7 +97,7 @@ at save time (`SKILL.md` → *How to save*, step 1).
   ```
 
   This is also the one state in which saving has to pick the log back up, see
-  `references/continuing.md`.
+  `{{skills_dir}}/{{self_name}}/references/continuing.md`.
 
 - `.unikit/code/researches/` does not exist: create it (`mkdir -p`) and continue, silently.
 

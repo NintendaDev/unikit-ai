@@ -24,6 +24,8 @@ allowed-tools:
 
 One author of pull requests: this skill. It writes the title and the text, pushes the branch, opens or updates the branch's pull request, and — only when allowed and only when it is safe — merges it. It writes nothing into a plan and commits nothing.
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md`
@@ -68,12 +70,14 @@ Two conditions turn any level into `remind`:
 ## Step 0: Context
 
 1. **The branch** — `git rev-parse --abbrev-ref HEAD`.
-2. **The branch's plan** — the folder found by the branch-match rule of `/unikit-implement` Step 0.1 (the three name formats); the flat fast plan is never a PR's plan. No plan is a normal case: the skill works without one.
+2. **The branch's plan** — the folder found by the branch-match rule of `/unikit-implement` Step 0.1 (the three name formats); the flat fast plan is never a PR's plan. No plan is a normal case: the skill works without one. **A plan whose `## Experiment Context` has a `Branch:` line equal to the current branch** (look in `.unikit/code/plans/*/PLAN.md` and `.unikit/code/PLAN.md`; this lookup serves this check only) → read `.unikit/system/prototype-profile.md` and follow its `## Role: verification and pull request` before item 3. Missing or unreadable → `WARN [prototype] profile contract missing — treating the plan as ordinary; run unikit-ai update`, and continue.
 3. **The boundaries contract** — read `.unikit/system/plan-boundaries.md`. Missing or unreadable → `WARN [pr] plan-boundaries contract missing — module boundaries unknown, the PR is the current state; run unikit-ai update`, and continue.
 4. **The base** — at a PR checkpoint, the `→ <base>` of its `PR checkpoint:` line; otherwise the contract's `## Base branch`. The current branch is the base → `WARN [pr] you are on the base branch <base> — nothing to open a PR from`, and stop.
 5. **owner/repo** — from the URL of `origin`: `git@github.com:<owner>/<repo>.git` or `https://github.com/<owner>/<repo>(.git)`.
 6. `git fetch origin <base>`. A network error → `WARN [pr] fetch failed — using the local origin/<base>`, and continue.
 7. **Uncommitted changes** — `git status --porcelain` is not empty → they are not part of the pull request: `WARN [pr] <n> uncommitted file(s) are not part of the PR — commit them with /unikit-commit first`. At `create` and `merge` the Step 4 question then offers `Stop — I will commit first`.
+
+<!-- unikit:extension-point:bootstrap -->
 
 ## Step 1: Boundaries
 
@@ -84,7 +88,7 @@ The pull request is the current state — `HEAD` — unless the user chooses oth
 - **Inside a module of a plan with PR checkpoints** — the contract's `## Push target` says when `HEAD` is inside a module: not every task is `[x]`, and `HEAD` is not the `## Last completed boundary`. Inside a module the skill asks — it never cuts the PR silently. Before any text is written (Step 2 depends on the range), print `WARN [pr] HEAD is inside module <name> — a PR up to now carries its unfinished part into an open PR of <previous module>, if there is one`, then ask:
 
   ```
-  AskUserQuestion: Where should the pull request end?
+  The question tool of your agent (`AskUserQuestion`): Where should the pull request end?
 
   Options:
   1. PR everything up to now (HEAD)
@@ -112,7 +116,7 @@ Print the title, the body, the push command `git push origin <end>:refs/heads/<b
 Ask once:
 
 ```
-AskUserQuestion: Push <end short> to origin/<branch> and open or update the PR?
+The question tool of your agent (`AskUserQuestion`): Push <end short> to origin/<branch> and open or update the PR?
 
 Options:
 1. Push and open/update

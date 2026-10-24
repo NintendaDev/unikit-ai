@@ -69,6 +69,8 @@ becomes ordinary trusted source content). Recon still reads code, still writes o
 `RECON.md`, still calls no one. It has **no `WebFetch`** — links are recorded, not opened (if
 their content matters, ask the user to paste it).
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md` and apply
@@ -111,24 +113,21 @@ Recon is **strictly cold-start**. Check the workspace **first**:
   exists. Do not proceed.
 - If neither exists → this is the cold-start case recon is for. Continue.
 
+<!-- unikit:extension-point:bootstrap -->
+
 ## Delegation agents
 
 This skill uses a named delegation alias for `Agent(...)` calls. The alias is the single
 place where its delegate's agent type and call arguments are declared — call sites name
 the alias and never carry a type or a model argument of their own.
 
-**Model argument.** Before the first dispatch of an alias below, read `.unikit/config.yaml`
-(a missing file, block or key is not an error) and settle the model argument once:
-
-1. `subagents.model.{{agent_id}}` holds a model name — pass `model: <name>` with every call,
-   exactly as written (this runtime's own spelling of the model argument, if it differs).
-2. It holds `inherit`, or is present and empty — pass no model argument; the agent runs on the
-   model of this session.
-3. The key is absent — use the built-in default `"{{agent_model_default}}"`; an empty string
-   means pass no model argument.
-
-If the runtime rejects the model name, repeat that call once without the model argument and
-report `WARN [delegation] model "<name>" rejected — retried on the session model`.
+**Subagent arguments.** Before the first subagent you launch, read `.unikit/system/subagent-arguments.md`
+and `.unikit/config.yaml` once and settle the model and effort of every launch as that file says.
+Keys: `subagents.model.{{agent_id}}.<role>`, `subagents.effort.{{agent_id}}.<role>`;
+built-in model of a reader and a validator: `"{{agent_model_default}}"`, of an executor: none.
+If the file cannot be read, print
+`WARN [delegation] subagent-arguments contract missing — built-in model tier used, effort not passed`
+and use that model, no effort.
 
 - **`recon-agent`** — read-only parallel reconnaissance. Expands to:
 
@@ -180,7 +179,7 @@ kinds at once, and none is required:
 - **A folder path** — record it as a reference and use it as a **scan-focus** for Step 3
   (still one whole-project `RECON.md`).
 - **A link (URL)** — record it as-is. There is **no `WebFetch`**: do not pretend to read it;
-  if its content matters, say so and ask the user to paste the relevant part.
+  if its content matters, say so and ask with the question tool of your agent (`AskUserQuestion`): `I'll paste the relevant part` (recommended) · `Go on without it`; the pasted text is the free-text answer.
 - **A bare subsystem name** (e.g. `combat`) — the existing scan-focus behaviour; this is a
   Step 3 hint, not author-intent, so it gets no `## Provided Context` entry.
 

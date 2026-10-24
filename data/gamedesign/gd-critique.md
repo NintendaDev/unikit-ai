@@ -3,7 +3,7 @@
 A shard of the `gd-principles` working contract, installed by `unikit-ai init` /
 `unikit-ai update` into `.unikit/system/gamedesign/gd-critique.md` as a flat copy
 (engine-agnostic, no variable substitution, not hash-tracked). Loaded on Bootstrap
-by `unikit-gd-review`, `unikit-gd-verify`, and `unikit-gd-explore`. See the core
+by `unikit-gd-review`, `unikit-gd-verify`, `unikit-gd-explore`, `unikit-gd-balance`, and `unikit-gd-experiment`. See the core
 `gd-principles.md` for zone ownership and routing.
 
 ## Critique Stance (Braintrust)
@@ -84,8 +84,7 @@ does that in the interview.
 
 Everything not entailed is triaged WITH the user (the room has no authority).
 One **per-run** choice up front — **[Run the interview]** or **[Send everything
-to research]** — then, when interviewing, findings are presented in **batches**
-(`AskUserQuestion`, ≤ 4 questions per call). The interview **classifies** each
+to research]** — then, when interviewing, findings are presented in **batches**. The interview **classifies** each
 finding and records the user's decision text; it writes **nothing** to the GDD
 (review stays non-authoring, verify stays consistency-only). It captures the
 "needs a decision but not research" case — the answer already in the user's head
@@ -103,8 +102,8 @@ the stance (a critique can be declined; a consistency conflict cannot):
 ### Handoff Tail contract
 
 The shared shape of the **last thing on screen** when a run ends in a handoff,
-inherited identically by `unikit-gd-review`, `unikit-gd-verify`, and
-`unikit-gd-explore` (all three close on a runnable next step). The terminal's
+inherited identically by `unikit-gd-review`, `unikit-gd-verify`, `unikit-gd-explore`,
+`unikit-gd-balance`, and `unikit-gd-experiment` (all five close on a runnable next step). The terminal's
 bottom line is the most visible and the one the user acts on — any prose printed
 *after* a command buries it.
 

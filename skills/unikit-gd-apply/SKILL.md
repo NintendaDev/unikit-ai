@@ -60,6 +60,8 @@ design** (an open question, a mechanic to research, a balance to work out) goes 
 `unikit-gd-explore` **first** — this skill only carries out edits you have already decided
 (Phase 1, GATE 1).
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md` and
@@ -100,6 +102,8 @@ rules (it authors nothing, so there is no system/flow/content to balance):
 **One-way boundary:** never read `.unikit/code/`, project source, or build artifacts
 (`gd-principles` → One-Way Boundary). This skill does not load `RULES_INDEX.md` domain
 rules — it dispatches, it does not design.
+
+<!-- unikit:extension-point:bootstrap -->
 
 ## Skill calls
 

@@ -48,7 +48,7 @@ far fewer gates.
    registry-conflicts are caught here, **early** — before any prose is written.
 
 3. **Decision interview.** Ask **only the real forks**, batched (1–2 structural
-   `AskUserQuestion` rounds) — never one gate per section. Options are always
+   question rounds) — never one gate per section. Options are always
    **grounded** — in `balance` / `frameworks` theory, the pillars, or neighbours —
    **never a blank page**: "which formula?" is a choice of a grounded **form**
    (linear / diminishing / threshold) plus an open **"my own — I'll describe it"**
@@ -80,7 +80,7 @@ far fewer gates.
    section show a **card** — Context · why this section exists · what it captures · its
    source — drawn from the template's `[]`-hints (no duplication; the hint *is* the
    card, surfaced to the user instead of left in the file). Each group closes with
-   **one structural group gate**, an `AskUserQuestion` over the group:
+   **one structural group gate**, a question over the group:
    `[ Accept & continue · Fix this · Defer this · Accept all the rest ]`, with a
    **progress indicator** ("core 3/5"). *Fix* loops the section back through a
    decision; *Defer* writes its `<!-- deferred -->` marker; *Accept all the rest* ends

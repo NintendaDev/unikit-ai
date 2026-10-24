@@ -1182,6 +1182,83 @@ assert_exists "$ENGEXT_DIR/.claude/skills/hello-world/SKILL.md" "extension skill
 echo "  ✓ engine switch + extensions: Godot engine applied, extension skill preserved"
 
 # ─────────────────────────────────────────────
+# Test 25b: extension injections do not look like local edits
+#           (both forms, skill and subagent, add → update → remove)
+# ─────────────────────────────────────────────
+DRIFTEXT_DIR="$TMPDIR/update-ext-drift"
+mkdir -p "$DRIFTEXT_DIR"
+
+cat > "$DRIFTEXT_DIR/.unikit.json" << 'EOF'
+{
+  "version": "1.0.0",
+  "language": "en",
+  "engine": "unity",
+  "engineMcpKey": null,
+  "mcp": { "servers": {} },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit"],
+      "installedSubagents": ["unikit-architecture-sidecar"]
+    }
+  ],
+  "rules": {
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": ["code-style"], "stack": [] } } }
+  }
+}
+EOF
+inject_fake_registry "$DRIFTEXT_DIR"
+(cd "$DRIFTEXT_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > /dev/null 2>&1)
+
+DRIFT_SKILL="$DRIFTEXT_DIR/.claude/skills/unikit/SKILL.md"
+DRIFT_AGENT="$DRIFTEXT_DIR/.claude/agents/unikit-architecture-sidecar.md"
+SHA_DRIFT_SKILL_BEFORE=$(sha_of "$DRIFT_SKILL")
+SHA_DRIFT_AGENT_BEFORE=$(sha_of "$DRIFT_AGENT")
+
+DRIFT_EXT="$TMPDIR/unikit-ext-drift"
+mkdir -p "$DRIFT_EXT/injections" "$DRIFT_EXT/references"
+printf 'Tail line from extension.\n' > "$DRIFT_EXT/injections/tail.md"
+printf 'Read {{ext_reference:notes.md}} when a spec is attached.\n' > "$DRIFT_EXT/injections/boot.md"
+printf 'Notes for {{self_name}}.\n' > "$DRIFT_EXT/references/notes.md"
+cat > "$DRIFT_EXT/extension.json" << 'EOF'
+{ "name": "unikit-ext-drift", "version": "1.0.0",
+  "injections": [
+    { "target": "unikit", "targetType": "skill", "position": "append", "file": "./injections/tail.md" },
+    { "id": "boot-line", "target": "unikit", "targetType": "skill", "point": "bootstrap",
+      "file": "./injections/boot.md", "references": ["./references/notes.md"] },
+    { "target": "unikit-architecture-sidecar", "targetType": "subagent", "position": "append", "file": "./injections/tail.md" }
+  ] }
+EOF
+
+DRIFT_ADD_LOG="$TMPDIR/update-ext-drift-add.log"
+(cd "$DRIFTEXT_DIR" && node "$ROOT_DIR/dist/cli/index.js" extension add "$DRIFT_EXT" > "$DRIFT_ADD_LOG" 2>&1)
+assert_contains "$DRIFT_ADD_LOG" 'Injections: 3 of 3 applied' "25b: all three entries must be applied"
+
+DRIFT_UPDATE_LOG="$TMPDIR/update-ext-drift-update.log"
+(cd "$DRIFTEXT_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$DRIFT_UPDATE_LOG" 2>&1)
+assert_not_contains "$DRIFT_UPDATE_LOG" 'Local modifications detected' "25b: update right after add must not report drift"
+assert_contains "$DRIFT_UPDATE_LOG" 'changed: 0' "25b: update right after add must not reinstall anything"
+DRIFT_SKILL_MARKERS=$({ grep -cF 'unikit-ext:unikit-ext-drift:' "$DRIFT_SKILL" || true; })
+DRIFT_AGENT_MARKERS=$({ grep -cF 'unikit-ext:unikit-ext-drift:' "$DRIFT_AGENT" || true; })
+if [[ "$DRIFT_SKILL_MARKERS" != "4" || "$DRIFT_AGENT_MARKERS" != "2" ]]; then
+  echo "Assertion failed: 25b: the blocks must survive update (skill markers: $DRIFT_SKILL_MARKERS, expected 4; agent markers: $DRIFT_AGENT_MARKERS, expected 2)"
+  cat "$DRIFT_UPDATE_LOG"
+  exit 1
+fi
+
+DRIFT_REMOVE_LOG="$TMPDIR/update-ext-drift-remove.log"
+(cd "$DRIFTEXT_DIR" && node "$ROOT_DIR/dist/cli/index.js" extension remove unikit-ext-drift > "$DRIFT_REMOVE_LOG" 2>&1)
+assert_same_sha "$DRIFT_SKILL" "$SHA_DRIFT_SKILL_BEFORE" "25b: the skill must come back byte for byte after removal"
+assert_same_sha "$DRIFT_AGENT" "$SHA_DRIFT_AGENT_BEFORE" "25b: the subagent must come back byte for byte after removal"
+DRIFT_UPDATE2_LOG="$TMPDIR/update-ext-drift-update2.log"
+(cd "$DRIFTEXT_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$DRIFT_UPDATE2_LOG" 2>&1)
+assert_not_contains "$DRIFT_UPDATE2_LOG" 'Local modifications detected' "25b: update after removal must not report drift"
+
+echo "  ✓ extension injections: update right after add/remove reports no drift and removal is byte-exact"
+
+# ─────────────────────────────────────────────
 # Test 26: subagent force reinstall
 # ─────────────────────────────────────────────
 SAFRC_DIR="$TMPDIR/update-sa-force"
@@ -1778,7 +1855,14 @@ inject_fake_registry "$NARROW_DIR"
 # if the recipient were absent there rather than wildcarded, run 2 would inject nothing,
 # the removal branch would never be exercised, and the dead names would survive a test
 # that reads as if it had proved they do not.
-FIXTURE_JSON="$(fake_mcp_catalog_path two-unity-servers)/unity/fixture-treed-mcp.json"
+#
+# The doctored file is a COPY of the fixture catalog under $TMPDIR, selected through
+# UNIKIT_MCP_DIR: the suites run in parallel (test-skills.sh), and a git-tracked fixture
+# edited in place is visible to the install suite that reads the same catalog.
+NARROW_CATALOG="$TMPDIR/mcp-two-unity-servers"
+cp -r "$ROOT_DIR/scripts/test-fixtures/mcp/two-unity-servers" "$NARROW_CATALOG"
+export UNIKIT_MCP_DIR="$(normalize_path_for_json "$NARROW_CATALOG")"
+FIXTURE_JSON="$UNIKIT_MCP_DIR/unity/fixture-treed-mcp.json"
 FIXTURE_JSON_BACKUP="$TMPDIR/fixture-treed-mcp.json.orig"
 cp "$FIXTURE_JSON" "$FIXTURE_JSON_BACKUP"
 
@@ -2120,6 +2204,106 @@ fi
 echo "  ✓ merge-analysis.md: update installs + refreshes from data/ (update.ts wiring)"
 
 # ─────────────────────────────────────────────
+# Test 30o: balance-handback.md is delivered on update — same shape as 30n: DEVPRIN_DIR ran
+# `update` with no prior `init`, so the file existing proves update.ts calls the installer;
+# tamper-refresh confirms the flat rewrite from data/. init.ts is SA-1's job.
+# ─────────────────────────────────────────────
+BALANCE_HANDBACK="$DEVPRIN_DIR/.unikit/system/balance-handback.md"
+assert_exists "$BALANCE_HANDBACK" "balance-handback.md must be installed on update (system asset, update.ts wiring)"
+
+echo "tampered" > "$BALANCE_HANDBACK"
+
+DEVPRIN_OUT12="$TMPDIR/update-balance-handback.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$DEVPRIN_OUT12" 2>&1)
+
+if ! grep -q "^## Header$" "$BALANCE_HANDBACK"; then
+    echo "Assertion failed: update did NOT refresh balance-handback.md from data/ (## Header missing)"
+    exit 1
+fi
+
+echo "  ✓ balance-handback.md: update installs + refreshes from data/ (update.ts wiring)"
+
+# ─────────────────────────────────────────────
+# Test 30p: prototype-profile.md is delivered on update — same shape as 30o: DEVPRIN_DIR ran
+# `update` with no prior `init`, so the file existing proves update.ts calls the installer;
+# tamper-refresh confirms the flat rewrite from data/. init.ts is SA-1's job.
+# ─────────────────────────────────────────────
+PROTOTYPE_PROFILE="$DEVPRIN_DIR/.unikit/system/prototype-profile.md"
+assert_exists "$PROTOTYPE_PROFILE" "prototype-profile.md must be installed on update (system asset, update.ts wiring)"
+
+echo "tampered" > "$PROTOTYPE_PROFILE"
+
+DEVPRIN_OUT13="$TMPDIR/update-prototype-profile.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$DEVPRIN_OUT13" 2>&1)
+
+if ! grep -q "^## Branch and base$" "$PROTOTYPE_PROFILE"; then
+    echo "Assertion failed: update did NOT refresh prototype-profile.md from data/ (## Branch and base missing)"
+    exit 1
+fi
+
+echo "  ✓ prototype-profile.md: update installs + refreshes from data/ (update.ts wiring)"
+
+# ─────────────────────────────────────────────
+# Test 30s: subagent-arguments.md is delivered on update — same shape as 30p: DEVPRIN_DIR ran
+# `update` with no prior `init`, so the file existing proves update.ts calls the installer;
+# tamper-refresh confirms the flat rewrite from data/. init.ts is SA-1's job.
+# ─────────────────────────────────────────────
+SUBAGENT_ARGS="$DEVPRIN_DIR/.unikit/system/subagent-arguments.md"
+assert_exists "$SUBAGENT_ARGS" "subagent-arguments.md must be installed on update (system asset, update.ts wiring)"
+
+echo "tampered" > "$SUBAGENT_ARGS"
+
+DEVPRIN_OUT14="$TMPDIR/update-subagent-arguments.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$DEVPRIN_OUT14" 2>&1)
+
+if ! grep -q "^## The two arguments, settled separately$" "$SUBAGENT_ARGS"; then
+    echo "Assertion failed: update did NOT refresh subagent-arguments.md from data/ (## The two arguments, settled separately missing)"
+    exit 1
+fi
+
+echo "  ✓ subagent-arguments.md: update installs + refreshes from data/ (update.ts wiring)"
+
+# ─────────────────────────────────────────────
+# Test 30r: subagent-roles.md is delivered on update — same shape as 30s: DEVPRIN_DIR ran `update` with no
+# prior `init`, so the file existing proves update.ts calls the installer; tamper-refresh confirms the flat
+# rewrite from data/. init.ts is SA-1's job.
+# ─────────────────────────────────────────────
+SUBAGENT_ROLES="$DEVPRIN_DIR/.unikit/system/subagent-roles.md"
+assert_exists "$SUBAGENT_ROLES" "subagent-roles.md must be installed on update (system asset, update.ts wiring)"
+
+echo "tampered" > "$SUBAGENT_ROLES"
+
+DEVPRIN_OUT15="$TMPDIR/update-subagent-roles.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$DEVPRIN_OUT15" 2>&1)
+
+if ! grep -q "^## The three roles$" "$SUBAGENT_ROLES"; then
+    echo "Assertion failed: update did NOT refresh subagent-roles.md from data/ (## The three roles missing)"
+    exit 1
+fi
+
+echo "  ✓ subagent-roles.md: update installs + refreshes from data/ (update.ts wiring)"
+
+# ─────────────────────────────────────────────
+# Test 30u: user-questions.md is delivered on update — same shape as 30s: DEVPRIN_DIR ran `update` with no
+# prior `init`, so the file existing proves update.ts calls the installer; tamper-refresh confirms the flat
+# rewrite from data/. init.ts is SA-1's job.
+# ─────────────────────────────────────────────
+USER_QUESTIONS="$DEVPRIN_DIR/.unikit/system/user-questions.md"
+assert_exists "$USER_QUESTIONS" "user-questions.md must be installed on update (system asset, update.ts wiring)"
+
+echo "tampered" > "$USER_QUESTIONS"
+
+DEVPRIN_OUT16="$TMPDIR/update-user-questions.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$DEVPRIN_OUT16" 2>&1)
+
+if ! grep -q "^## How to ask$" "$USER_QUESTIONS"; then
+    echo "Assertion failed: update did NOT refresh user-questions.md from data/ (## How to ask missing)"
+    exit 1
+fi
+
+echo "  ✓ user-questions.md: update installs + refreshes from data/ (update.ts wiring)"
+
+# ─────────────────────────────────────────────
 # Test 31: `update --install-new` installs newly added package skills
 # non-interactively AND bootstraps the rules of a module whose first skill just
 # arrived (closes the gap: opting into game-design skills delivers gd rules).
@@ -2153,6 +2337,26 @@ assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-recon/references/code-re
     "unikit-gd-recon's shared code-recon.md engine travels under references/ (non-flat copyDirectory)"
 assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-docs/SKILL.md" \
     "update --install-new installed the new GDD-render skill (unikit-gd-docs)"
+assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-balance/SKILL.md" \
+    "update --install-new installed the new balance skill (unikit-gd-balance)"
+assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-balance/references/mode-ingest.md" \
+    "unikit-gd-balance references travel under references/ (non-flat copyDirectory)"
+assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-balance/references/template-checkpoints.md" \
+    "unikit-gd-balance template-checkpoints.md travels under references/ (non-flat copyDirectory)"
+assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-experiment/SKILL.md" \
+    "update --install-new installed the new experiment skill (unikit-gd-experiment)"
+assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-experiment/references/storage-and-index.md" \
+    "unikit-gd-experiment references travel under references/ (non-flat copyDirectory)"
+assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-experiment/references/template-experiment.md" \
+    "unikit-gd-experiment template-experiment.md travels under references/ (non-flat copyDirectory)"
+assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-experiment/references/from-research.md" \
+    "unikit-gd-experiment from-research.md travels under references/ (non-flat copyDirectory)"
+assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-experiment/references/mode-think.md" \
+    "unikit-gd-experiment mode-think.md travels under references/ (non-flat copyDirectory)"
+assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-experiment/references/design-notes.md" \
+    "unikit-gd-experiment design-notes.md travels under references/ (non-flat copyDirectory)"
+assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-explore/references/experiment-lens.md" \
+    "unikit-gd-explore experiment-lens.md travels under references/ (non-flat copyDirectory)"
 assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-archive/SKILL.md" \
     "update --install-new installed the new plan-archive skill (unikit-archive)"
 assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-pr/SKILL.md" \
@@ -2411,8 +2615,8 @@ seed_rule "$UC_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
 
 UC_CLAUDE_SKILL="$UC_DIR/.claude/skills/unikit-implement/SKILL.md"
 UC_UNI_SKILL="$UC_DIR/.agents/skills/unikit-implement/SKILL.md"
-# The model rule (`subagents.model.<agent>`) is carried by ten skills and unikit-implement is not one of
-# them; unikit-plan is, and it is in both agents' installedSkills.
+# The subagent-arguments pointer (it names `subagents.model.<agent>.<role>`) is carried by every skill that can
+# launch a subagent, unikit-implement included; unikit-plan is the one checked here, and it is in both agents' installedSkills.
 UC_CLAUDE_PLAN="$UC_DIR/.claude/skills/unikit-plan/SKILL.md"
 UC_UNI_PLAN="$UC_DIR/.agents/skills/unikit-plan/SKILL.md"
 UC_MCP="$UC_DIR/.mcp.json"
@@ -2438,8 +2642,8 @@ assert_contains "$UC_CLAUDE_SKILL" 'Call the Skill tool with skill "unikit-devco
 assert_not_contains "$UC_CLAUDE_SKILL" 'Read \.claude/skills/unikit-devcontext/SKILL\.md in full' "claude copy: no file-read form"
 assert_contains "$UC_UNI_SKILL" 'Read \.agents/skills/unikit-devcontext/SKILL\.md in full' "universal copy: develop-agent reads the skill file"
 assert_not_contains "$UC_UNI_SKILL" 'Call the Skill tool with skill' "universal copy: no Skill-tool form"
-assert_exists "$UC_CLAUDE_PLAN" "claude must have unikit-plan installed (it carries the model rule)"
-assert_exists "$UC_UNI_PLAN" "universal must have unikit-plan installed (it carries the model rule)"
+assert_exists "$UC_CLAUDE_PLAN" "claude must have unikit-plan installed (it carries the subagent-arguments pointer)"
+assert_exists "$UC_UNI_PLAN" "universal must have unikit-plan installed (it carries the subagent-arguments pointer)"
 assert_contains "$UC_CLAUDE_PLAN" 'subagents\.model\.claude' "claude copy: its own config key"
 assert_contains "$UC_UNI_PLAN" 'subagents\.model\.universal' "universal copy: its own config key"
 assert_not_contains "$UC_UNI_PLAN" 'subagents\.model\.claude' "universal copy: not the Claude key"

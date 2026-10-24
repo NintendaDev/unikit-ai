@@ -1,6 +1,6 @@
 import type { SubagentProfile } from './agents.js';
 import {
-  READ_CALL, READ_CALL_NO_ARGS_NOTE, SKILLTOOL_CALL_FORM, SKILLTOOL_CALL_NO_ARGS, SKILLTOOL_CALL_WITH_ARGS,
+  EFFORT_SLOT, MODEL_SLOT, READ_CALL, READ_CALL_NO_ARGS_NOTE, SKILLTOOL_CALL_FORM, SKILLTOOL_CALL_NO_ARGS, SKILLTOOL_CALL_WITH_ARGS,
   SKILL_CALL_DIR_MARK, SKILL_CALL_SKILL_MARK, SKILL_CALL_TOKEN_PATTERN, SUBAGENT_TYPE_KEY,
 } from './constants-skill-call.js';
 import type { SkillCallForm } from './constants-skill-call.js';
@@ -11,14 +11,19 @@ export type CallHeadRole = 'reader' | 'worker';
 /**
  * The leading arguments of an `Agent(...)` call for one role, written the way the skills have always
  * written them: the type (quoted or bare — the two spellings are historic, a skill picks one by the
- * variable it uses), then the agent's extra arguments. An agent whose runtime takes no type gets the
- * extra arguments alone. Every part ends with its comma, so the skill text goes straight on.
+ * variable it uses), then the agent's extra arguments, then one slot per argument the runtime's call
+ * takes for the model and the effort (`model: <model>,`, `effort: <effort>,` — the names come from the
+ * profile). A slot is not a value: the skill fills it, or removes it, at run time. An agent whose runtime
+ * takes no type gets the extra arguments and the slots alone; an agent whose call takes neither argument
+ * gets the head it always had. Every part ends with its comma, so the skill text goes straight on.
  */
 export function renderCallHead(profile: SubagentProfile, role: CallHeadRole, quoted: boolean): string {
   const type = role === 'reader' ? profile.readerType : profile.workerType;
   const parts: string[] = [];
   if (type !== '') parts.push(`${SUBAGENT_TYPE_KEY}: ${quoted ? `"${type}"` : type},`);
   if (profile.spawnArgs !== '') parts.push(profile.spawnArgs);
+  if (profile.modelArg !== '') parts.push(`${profile.modelArg}: ${MODEL_SLOT},`);
+  if (profile.effortArg !== '') parts.push(`${profile.effortArg}: ${EFFORT_SLOT},`);
   return parts.join(' ');
 }
 

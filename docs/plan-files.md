@@ -237,7 +237,7 @@ At that task `/unikit-implement` commits the module and asks one question — ch
 
 While the checklist carries a `PR checkpoint:` line, a run never pushes — every automatic commit passes `no-push`, and the branch reaches the remote through `/unikit-pr` or you. A plan with PR checkpoint tasks but no `PR checkpoints: yes` line (written under a project's own rule) is legacy: its tasks run by their own steps, a `→ skipped` label reads as `⏭️ MERGED`, and a `→ PR` label without a SHA is a boundary found through the commit that added it.
 
-**Section order in the manifest** is a contract, not layout: `## Commit Plan` → `## MCP Findings` → `## Rule Candidates` → `## Test Runs` → `## Dependency Graph` → `## Total Estimated Effort` → `---` → `## Technical Context` → `## Open Questions`.
+**Section order in the manifest** is a contract, not layout: `## Commit Plan` → `## MCP Findings` → `## Rule Candidates` → `## Test Runs` → `## Measurements` → `## Dependency Graph` → `## Total Estimated Effort` → `---` → `## Technical Context` → `## Open Questions`. `## Measurements` is present only in a plan that has a `Measure:` task ([Balance checkpoint plans](#balance-checkpoint-plans)).
 
 ### Ultra bundle — a manifest plus one file per phase
 
@@ -249,7 +249,7 @@ symbols, ordered edits, interfaces, error handling, acceptance criteria, verific
 commands) is simply too long to live inside `## Checklist`.
 
 **Ultra is strictly opt-in — user-named, never model-inferred.** It is never offered in
-the interactive mode question (except in a merge plan, where the mode question offers it)
+the interactive mode question (except in a merge plan, where the mode question offers it, and in a set of two or more experiment cards, where it recommends it)
 and never chosen because a feature looks big. You do have to
 ask for it, but you can ask in your own words and in any language ("ultra plan",
 "ультраплан", "make an ultra plan for the inventory") — the request is recognised wherever
@@ -295,7 +295,7 @@ specification is incomplete.
 | Consumer | Reads |
 |----------|-------|
 | `/unikit-implement` | the manifest plus the phase file of the active task |
-| `/unikit-verify` | the manifest plus every phase file |
+| `/unikit-verify` | the manifest plus the phase files of the phases with executed tasks |
 | `/unikit-improve` | the manifest plus every phase file |
 | `/unikit-commit` | the manifest plus the phase files of the current commit group |
 | `unikit-implement-coordinator` | the manifest plus the phase files of the phases it dispatches in the current layer |
@@ -317,9 +317,117 @@ with `## Phase Index` and `## Checklist`.
 **What the bundle does not change.** Plan discovery is untouched, and so is
 `/unikit-plan --list`. The flat fast plan `.unikit/code/PLAN.md` and `.unikit/code/FIX_PLAN.md`
 are never bundles — a fix plan is architecturally a flat file and stays outside the model.
-The design axis (`/unikit-gd-*` and `.unikit/gamedesign/`) has no ultra mode at all.
+The design axis (`/unikit-gd-*` and `.unikit/gamedesign/`) has no ultra plan bundle at all;
+the ultra research mode of `/unikit-gd-explore` (`/unikit-gd-explore ultra <topic>`: a pinned
+dialogue log and adaptive artifacts in the research folder) is a different thing, and not a
+consumer of the bundle model.
 `/unikit-review` is not a consumer either: it is diff/PR-scoped and reads no plan, so a
 broken bundle passes review in silence, while `/unikit-implement`, `/unikit-verify` and `/unikit-improve` block on it (`/unikit-commit` only warns).
+
+## Balance checkpoint plans
+
+A plan built from a Balance Checkpoints file (`/unikit-plan full <path to CHECKPOINTS.md>`, printed by `/unikit-gd-balance`) carries the extra vocabulary below. `unikit-plan/references/TASK-FORMAT.md` → `### Balance checkpoint grammar` is the only owner of the forms; this page describes them and copies them from there.
+
+### `## Balance Context` — the snapshot
+
+A snapshot of one point, placed directly before `## Settings`; the plan works from it, never from the live file:
+
+```markdown
+## Balance Context
+Source: .unikit/gamedesign/balance/<slug>/CHECKPOINTS.md
+Point: BCH-2
+Checkpoints updated: 2026-10-10 18:30
+Work:
+- BCH-2.W1 · tool · — · the sampler reproduces a known answer
+- BCH-2.W2 · measure · sim · metric inside the band
+Report: BCH-2.W2, build-notes
+```
+
+The key is `Checkpoints updated:`, not `Updated:` — `Updated:` is the header field of the plan manifest itself and the "latest plan" resolvers read it.
+
+### Task lines
+
+```markdown
+- [ ] Task 2.1 — Measure the metric
+  WHY: the next decision depends on this number
+  Item: BCH-2.W2
+  Measure: [sim] <stand> → <metric> : <acceptance> · runs: <N>
+```
+
+`Item:` links a task to a `Work` item (synchronisation and verification key on it). A `Measure:` task and the final `Hand-back:` task carry no `Files:`: they leave nothing in the project but a table row and a report. `Measure:` writes a capability class (`sim`, `play`, `probe`), never a tool; the executor picks the route by principle A9 and the degradation ladder D3 of `dev-principles.md`.
+
+### `## Measurements`
+
+Emitted empty by the planner when the plan has at least one `Measure:` task; rows are only appended by `/unikit-implement` (and the implement coordinator, in the main session): `id | what | stand | runs | build | result | accept | valid | band | from`. It stands directly after `## Test Runs` (after `## Rule Candidates` under `Testing: no`), above `## Technical Context`.
+
+### `⏳ AWAITING RESULT`
+
+A label on the checkbox line of a measuring task whose result cannot be obtained now; the checkbox stays `- [ ]`. It is **pending** — dependent tasks and `Hand-back:` wait — unlike `⏸️ MANUAL`, which is ticked and counted as out of scope.
+
+### Order and the horizon
+
+Inside a phase: ordinary tasks → the phase's `Test checkpoint:` → `Measure:` tasks → `PR checkpoint:` or `Hand-back:`. The last task is `Hand-back:`; under `Testing: yes` the final `Test checkpoint: plan` stands directly above it. Nothing follows `Hand-back:`, and nothing from the roadmap's later points is in the plan: the returned data may change the decision, and that decision is `/unikit-gd-balance`'s. The plan folder is `.unikit/code/plans/balance-<slug>-bch-<n>/` (a `fast` plan has none: it is `.unikit/code/PLAN.md`, and the report lies next to it, in `.unikit/code/`); the planner creates and switches no branch for such a plan. The executor writes the report to `handback-<point id>.md` in the plan folder (format: `.unikit/system/balance-handback.md`) and prints the return command last: `/unikit-implement` as the last line of its output, the implement coordinator inside the `Hand-back:` line of its summary.
+
+## Experiment plans
+
+A plan built from experiment cards (`/unikit-plan <path to experiment.md>`, printed by `/unikit-gd-experiment`) is an ordinary plan plus one section. A plan built from another source named by an explicit experiment request - a design research, a file, a description or the session (`unikit-plan/references/experiment-source.md`) - has the same section with a brief in place of the cards. `unikit-plan/references/TASK-FORMAT.md` → `### Experiment context section` is the only owner of its form; this page describes it.
+
+### `## Experiment Context` — the snapshot
+
+A snapshot of the cards, placed directly before `## Settings`, in the slot of `## Balance Context` (a plan has one or the other); the plan works from it, never from the live files:
+
+```markdown
+## Experiment Context
+Branch: experiment/2026-10-13-timer-variant
+Base: main
+Cards:
+- EXP-003 · v1 · .unikit/gamedesign/experiments/EXP-003-timer-variant/experiment.md · variants: single version
+
+### EXP-003 · Timer variant (v1)
+#### 2. Problem
+…
+#### 11. Success Criteria
+…
+#### Rationale
+…
+#### Reference · research · Timer hint (updated 2026-10-12)
+…
+#### Reference · notes · Timer hint (updated 2026-10-13)
+…
+```
+
+`Branch:` is the branch the plan lives on (`none` when git is off) and `Base:` the branch it was cut from (`none` when none was cut): the executors compare the current branch with `Branch:` before they write and take the base of every diff and check from `Base:`. Sections 2-11 of each card are copied in full with their headings lowered two levels, so a card is never read by the executors; the card's `Out of Scope` is repeated in `### OUT OF SCOPE` of `## Technical Context`. Nothing else is special: no new task kinds, phases or checks, no `Measure:` or `Hand-back:`, no PR checkpoint tasks. The card's Rationale, when it has one, follows section 11 as `#### Rationale`; an older card has none and the snapshot asks for no empty block. A design research whose summary names a card by an `Experiment:` line is copied as one more block of that card (`#### Design research · <folder> (names v<k>)`, after section 11) with no hash and no drift tracking; a code research is linked under `## Based on` instead.
+
+**References.** A card whose `Based on:` line names a design research, a balance document or the `notes.md` of its own deep pass is planned with every document it names (`unikit-plan/references/experiment-references.md`): each one is read, none is skipped silently, and a `#### Reference` block holding its Active Summary, its current point or the frame, risks and questions of the notes is added to the card's part of the snapshot. An `assumption` in the Rationale is a risk the prototype has to make observable. What the documents decide is carried into the text of the tasks that need it. A document that cannot be read gives a `WARN` and the plan is built from the card alone; a document that changed after the card was written gives a `WARN`, and the card wins where they differ.
+
+Without cards the section has no `Cards:` list; `Input:` says where the plan came from, `Sources:` lists the sources, and a prototype brief stands in place of the card sections:
+
+```markdown
+## Experiment Context
+Branch: experiment/2026-10-23-onboarding-hint
+Base: development
+Input: research
+Sources:
+- research · .unikit/gamedesign/researches/onboarding-first-minutes/RESEARCH_RESULT.md · Updated: 2026-10-20
+
+### Prototype brief
+#### What is tested
+…
+#### Must Have
+…
+#### Out of Scope
+…
+#### Source · onboarding-first-minutes
+…
+```
+
+Every field of the brief comes from the source or says `not stated`; the planner invents no game idea, and when the source does not say what to test or what to build it asks one question and stops if there is still no answer. `Branch:` and `Base:` mean what they mean in a plan with cards, so the executors and the plan lookup by branch work the same; the prototype profile reads "the card" as this brief. Such a plan has no card, so a playtest result has nothing to attach to: ask `/unikit-gd-experiment` to write the card if you want the record.
+
+### What an executor does differently
+
+The section is the trigger. `/unikit-implement` (and its coordinator and worker), `/unikit-verify`, `/unikit-pr`, `/unikit-improve` (and the plan polisher and coordinator), `/unikit-review` (and its sidecars), `/unikit-fix`, `/unikit-devcontext` and `/unikit-commit` read the section of their role in `.unikit/system/prototype-profile.md` and nothing else of it. In short: what stays mandatory is a project that builds and runs, a legible interface, intact data, the written project constraints and the card's `Out of Scope`; architecture, scalability, documentation after a method change, error handling and TODO entries are softened; and the project documents, the roadmap, the TODO list, pull requests and the experiment storage itself are left alone. The profile file is the only owner of these rules. One gap: `/unikit-commit` looks for the section only in `.unikit/code/plans/*/PLAN.md`, so it commits a flat `.unikit/code/PLAN.md` (a `fast` plan) as an ordinary plan.
+
+---
 
 ## Editor tasks
 
@@ -387,7 +495,7 @@ This table is about **the vocabularies this project writes**, not about what an 
 
 `/unikit-implement` finds plans in this order:
 1. **Fast plan** → `.unikit/code/PLAN.md` (if exists, used directly)
-2. **Git branch match** → from branch `<prefix><name>`, every folder matching one of the three name formats that coexist on disk: exactly `<name>`, ending in `_<name>` (the `YYYY-MM-DD_` era), or ending in `-<name>` after three digits (the older `DDD-` era). More than one match is a question, never a silent pick
+2. **Git branch match** → from branch `<prefix><name>`, every folder matching one of the three name formats that coexist on disk: exactly `<name>`, ending in `_<name>` (the `YYYY-MM-DD_` era), or ending in `-<name>` after three digits (the older `DDD-` era). `/unikit-implement` also finds an experiment plan by its own record: a manifest whose `## Experiment Context` has a `Branch:` line equal to the current branch and a `Base:` other than `none` joins the matches, because the folder `experiment-<topic>` does not carry the dated branch name. More than one match is a question, never a silent pick
 3. **Latest** → the folder whose manifest carries the newest `Updated:`; ties break on `Created:`. A manifest carrying no `Updated:` is excluded and named in a `WARN [plan]` line rather than guessed at from the folder name or the file's mtime. Reaching this step at all means the branch named no plan, so *latest* is a guess rather than a resolution: with two or more plans present the candidates are printed and the choice is put to the user, never auto-selected. With exactly one plan there is nothing to choose between — it is announced with the branch miss named, and work continues
 4. **Fix plan fallback** → `.unikit/code/FIX_PLAN.md` → redirects to `/unikit-fix`
 
@@ -563,7 +671,7 @@ The rule is about the **class** of artifact, not a list of exceptions: a list wo
 
 Plan creates one manifest — `.unikit/code/PLAN.md` for a fast plan, `.unikit/code/plans/<folder>/PLAN.md` for a folder plan — carrying the checklist and `## Technical Context` in the same file. Implement discovers plans via the [Plan Discovery](#plan-discovery) priority order, reads the checklist for task ordering and the technical context alongside it, Bootstraps rules + engine principles once, then executes tasks sequentially inline (`Read/Edit/Write/Bash`). Parallel phases and deep-dive tasks are offloaded to the `develop-agent` alias. After each task, implement marks `- [x]` in the plan file. After phase completion: compilation check (engine MCP), optional tests, commit checkpoint.
 
-In an [ultra bundle](#ultra-bundle--a-manifest-plus-one-file-per-phase) the depths differ per consumer: implement reads the manifest plus the phase file of the **active task**; verify and improve read the manifest plus **every** phase file; commit reads the manifest plus the phase files of the current commit group; and `unikit-implement-coordinator` — the parallel execution path, a separate entry point that does its own detection — reads the manifest plus the phase files of the phases it dispatches in the current layer. The full table lives in `.unikit/system/ultra-plan-read.md`.
+In an [ultra bundle](#ultra-bundle--a-manifest-plus-one-file-per-phase) the depths differ per consumer: implement reads the manifest plus the phase file of the **active task**; verify reads the manifest plus the phase files of the phases with executed tasks (an unfinished plan is not read past what was done), and improve reads the manifest plus **every** phase file; commit reads the manifest plus the phase files of the current commit group; and `unikit-implement-coordinator` — the parallel execution path, a separate entry point that does its own detection — reads the manifest plus the phase files of the phases it dispatches in the current layer. The full table lives in `.unikit/system/ultra-plan-read.md`.
 
 ### /unikit-fix ↔ /unikit-implement
 

@@ -139,6 +139,12 @@ git:
   # Default: feature/
   branch_prefix: feature/
 
+  # Branch name prefix for experiment plans (/unikit-plan given experiment cards).
+  # Applies only when create_branches = true. The branch is <prefix><YYYY-MM-DD>-<topic>.
+  # A project without this key uses the default silently.
+  # Default: experiment/
+  experiment_branch_prefix: experiment/
+
   # Skip push prompt after /unikit-commit creates a commit.
   # If true:
   #   - /unikit-commit ends after successful local commit
@@ -165,45 +171,96 @@ git:
 # =============================================================================
 # Subagent Settings
 # =============================================================================
-# Which model the subagents that skills launch run on — one value per agent.
-# Skills read this block at run time, so an edit takes effect on the next
-# command; no `unikit-ai update` is needed.
+# Which model, and how much reasoning effort, the subagents that skills and the
+# two coordinators launch use. Every launch has a role — reader, validator or
+# executor — and each block below holds one value per agent and per role. Skills
+# read this block at run time, so an edit takes effect on the next command; no
+# `unikit-ai update` is needed.
 #
-# Only the delegation aliases that name a model read it: recon-agent,
-# check-agent, lens-agent and recon-writer-agent. The two that load a skill
-# (develop-agent, docs-agent) never pass a model.
+# The roles, and which launch has which, are listed in
+# .unikit/system/subagent-roles.md:
+#   reader    — collects facts and returns them (reconnaissance, a commit-readiness check)
+#   validator — checks a finished result (a coherence pass, a review lens, a review sidecar)
+#   executor  — does work whose result becomes part of the project (code, documents,
+#               rules, plans, architecture)
 #
-# A value is a model name exactly as that agent's own tool accepts it. UniKit
-# keeps no list of names: a stale name makes the launch fail, and the skill
-# then repeats the call once on the model of the session.
-#   <name>   — pass this model to the subagent
-#   inherit  — pass nothing; the subagent runs on the model of the session
+# A value is exactly what that agent's own tool accepts. UniKit keeps no list of
+# names or levels: a wrong value makes the launch fail, and the skill then
+# repeats the call once without the effort and, if it still fails, without the
+# model.
+#   <value>  — pass it to the subagent
+#   inherit  — pass nothing; the subagent runs on the model — or the effort — of
+#              the agent that launches it
 #   (empty)  — the same as inherit; a deliberate choice, never filled in again
-# A key that is missing altogether falls back to the built-in default noted
-# below. The block lists the agents whose subagent call takes a model without
-# any setting of the runtime itself.
+# A model key that is missing altogether falls back to the built-in model of the
+# role (a reader and a validator: the default noted below; an executor: inherit);
+# an effort key that is missing passes nothing. Each block lists the agents whose
+# subagent call takes that argument without any setting of the runtime itself.
+# What you ask for in a request, or said earlier in the session, wins over both
+# blocks for that run: "use opus for the subagents" or "effort high for the
+# subagents". A single value written directly under an agent, as in earlier
+# releases, is not read.
 
 subagents:
   model:
     # Claude Code. Tier aliases: sonnet | opus | haiku.
-    # Built-in default: sonnet.
-    claude: sonnet
+    # Built-in default: sonnet for a reader and a validator, inherit for an executor.
+    claude:
+      reader: sonnet
+      validator: sonnet
+      executor: inherit
 
     # Codex CLI. A model identifier exactly as the model parameter of Codex's
     # spawn_agent accepts it; its schema lists the valid names. Built-in
     # default: inherit (identifiers go stale, so choose your own).
-    codex: inherit
+    codex:
+      reader: inherit
+      validator: inherit
+      executor: inherit
 
-    # Antigravity. flash | pro | inherit.
-    # Built-in default: flash.
-    antigravity: flash
+    # Antigravity. inherit | flash_lite | flash | pro — the values of the Model
+    # argument of its subagent call; a tier sets the size of the model, not the
+    # depth. Built-in default: flash for a reader and a validator, inherit for an
+    # executor.
+    antigravity:
+      reader: flash
+      validator: flash
+      executor: inherit
 
     # Cursor, OpenCode, Kimi Code, Qwen Code and Universal / Other have no key:
-    # their subagent call takes no model, or takes one only after you set up the
-    # client itself, so nothing is passed and the subagent runs on the model of
-    # the session (the same as inherit). If you did enable it, add
-    # subagents.model.<agent> by hand and the skills will read it. Take the
-    # value from the client's own documentation: Kimi Code - an alias from
-    # [secondary_model.models] in ~/.kimi-code/config.toml, or primary; Qwen
-    # Code - a grade name from agents.modelGrades in settings.json; Universal /
-    # Other - whatever the subagent tool of your agent accepts.
+    # their subagent call takes no model argument, or takes one only after you set
+    # up the client itself, so UniKit draws no model slot for them and passes
+    # nothing — the subagent runs on the model of the session (the same as
+    # inherit). Set the model in the client's own settings.
+
+  effort:
+    # Claude Code. low | medium | high | xhigh | max — the levels the effort
+    # argument of its subagent call lists. Which levels a model supports differs,
+    # and the runtime may cap a level (the setting maxEffortLevel) or override it
+    # (the environment variable CLAUDE_CODE_EFFORT_LEVEL): the value written here
+    # is then not the one that runs. The argument exists only in a Claude Code
+    # version that has it; on an older client the call can fail and the skill
+    # repeats it without the effort. Written in lower case.
+    claude:
+      reader: medium
+      validator: medium
+      executor: inherit
+
+    # Codex CLI. The reasoning_effort argument of spawn_agent. The valid levels
+    # depend on the model of the subagent, and a wrong one fails with an error
+    # that lists them, so this template keeps no list. Pair it with the model
+    # chosen for codex above. Written in lower case.
+    codex:
+      reader: medium
+      validator: medium
+      executor: inherit
+
+    # Antigravity has no key: the subagent call of its client takes no effort
+    # argument, and a call that adds one is rejected whole. What you can set is
+    # the effort of the session itself (/effort or --effort) and, in the model
+    # block above, the tier of the subagent.
+
+    # Cursor, OpenCode, Kimi Code, Qwen Code and Universal / Other have no key
+    # either: their subagent call takes no effort argument, or takes one only
+    # after you set up the client itself, so UniKit passes nothing. Set the
+    # effort in the client's own settings.

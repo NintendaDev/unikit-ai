@@ -88,6 +88,21 @@ Relevant to the dev pipeline:
 - `merge-analysis.md` — how to read a merge before it happens (the three commits, `git merge-tree`
   prediction, a directive per conflicted file), read by `/unikit-explore` and `/unikit-plan` only
   when asked to merge a named branch.
+- `balance-handback.md` — the format of the report that carries a balance checkpoint's measurements
+  back (header, table, matching keys, receiving), read by `/unikit-plan`, `/unikit-implement`,
+  `/unikit-verify` and `/unikit-gd-balance`.
+- `prototype-profile.md` — how a plan built from experiment cards or another experiment source is executed (what stays
+  mandatory, what is softened, what is switched off, the branch check), read by `/unikit-implement`,
+  `/unikit-verify`, `/unikit-pr`, `/unikit-improve`, `/unikit-review`, `/unikit-fix`,
+  `/unikit-devcontext`, `/unikit-commit` and their subagents, only when the plan has `## Experiment Context`.
+- `subagent-arguments.md` — how the model and the effort of a subagent are settled (your word in the
+  request or earlier in the session, then the config key of the launch's role, then the built-in value),
+  read by the skills that launch a subagent, and by the two coordinators, before their first launch.
+- `subagent-roles.md` — which role (reader, validator or executor) each subagent launch has, so that its
+  model and effort are read from the right config key; read together with `subagent-arguments.md`.
+- `user-questions.md` — how a skill asks you a question (what is chosen and what each option changes
+  printed first, then the question tool of your agent, the run waiting in the same turn for your
+  answer); read by the skills that ask you a question, before their first question.
 
 ---
 

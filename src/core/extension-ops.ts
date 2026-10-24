@@ -2,21 +2,30 @@ import path from 'path';
 import {
   copyDirectory, removeDirectory, fileExists, readJsonFile,
 } from '../utils/fs.js';
-import type { UniKitConfig, ExtensionRecord } from './config.js';
+import type { UniKitConfig, ExtensionRecord, AgentInstallation } from './config.js';
 import { getAgentConfig } from './agents.js';
 import {
   type ResolvedExtension, type ExtensionManifest,
   commitExtensionInstall, removeExtensionFiles, getExtensionDir,
   loadExtensionManifest, buildExtensionRecord, checkReplacementConflicts,
-  resolveExtension,
+  findExtensionRecord,
 } from './extensions.js';
+import {
+  listExtensionItems, filterManifest, priorSelectionOf, decideSelection, normalizeToItems,
+  type ExtensionSelection,
+} from './extension-selection.js';
+import { findDanglingPreloads, formatDanglingPreload } from './extension-selection-describe.js';
+import { EXTENSION_LOG_COMPONENT } from './constants.js';
 import { installSkillWithTransformer } from './installer/skills.js';
 import {
   installExtensionSkills, removeExtensionSkills,
   installExtensionSubagents, removeExtensionSubagents,
 } from './installer/extensions.js';
 import { injectMcpRules } from './installer/mcp-injection.js';
-import { applyAllInjections, stripAllInjections } from './injections.js';
+import { stripAllInjections } from './injections.js';
+import { collectPointInjectionFiles } from './extension-injections-schema.js';
+import type { ExtensionInjectionInput } from './extension-injections.js';
+import { logInfo, logWarn } from '../utils/log.js';
 import {
   configureExtensionMcpServers, removeExtensionMcpServers, validateMcpTemplate,
   discoverMcpServers, collectMcpRules,
@@ -50,53 +59,88 @@ export function assertNoReplacementConflicts(
 
 // --- Install extension assets for all agents ---
 
+/** The extension's own files for one agent: its skills, the replacements of base skills, its subagents. */
+async function installExtensionFilesForAgent(
+  projectDir: string,
+  agent: AgentInstallation,
+  manifest: ExtensionManifest,
+  extensionDir: string,
+  engineId: string,
+  engineMcpKey: string | null | undefined,
+): Promise<void> {
+  // Install extension skills
+  if (manifest.skills && manifest.skills.length > 0) {
+    await installExtensionSkills(projectDir, agent, extensionDir, manifest.skills, engineId, engineMcpKey);
+  }
+
+  // Install replacement skills (under base skill name, not extension path name)
+  if (manifest.replaces) {
+    const agentConfig = getAgentConfig(agent.id);
+
+    for (const [skillPath, baseName] of Object.entries(manifest.replaces)) {
+      const sourceDir = path.join(extensionDir, skillPath);
+      try {
+        await installSkillWithTransformer(
+          sourceDir, baseName, projectDir, agent.skillsDir,
+          agent.id, agentConfig, engineId, engineMcpKey,
+        );
+      } catch (error) {
+        console.warn(`Warning: Could not install replacement skill "${baseName}": ${error}`);
+      }
+    }
+  }
+
+  // Install extension subagents
+  if (manifest.subagents && manifest.subagents.length > 0) {
+    const agentConfig = getAgentConfig(agent.id);
+    if (agentConfig.supportsSubagents) {
+      await installExtensionSubagents(projectDir, agent, extensionDir, manifest.subagents, engineId, engineMcpKey);
+    }
+  }
+}
+
+/**
+ * Put the files of the recorded extensions back for the given agents — what `init` needs after it has
+ * reinstalled the base skills over a replacement. MCP servers and grants are not touched here.
+ */
+export async function reinstallExtensionAssets(
+  input: ExtensionInjectionInput,
+): Promise<{ reinstalled: string[]; missing: string[] }> {
+  const reinstalled: string[] = [];
+  const missing: string[] = [];
+
+  for (const ext of input.extensions) {
+    const extDir = getExtensionDir(input.projectDir, ext.name);
+    const manifest = await loadExtensionManifest(extDir);
+    if (!manifest) {
+      missing.push(ext.name);
+      logWarn('extension-ops', `extension "${ext.name}": manifest not found — its assets were not reinstalled`);
+      continue;
+    }
+
+    // Only what the user left on: a skill or subagent switched off in the selection stays out.
+    const selected = filterManifest(manifest, ext.selection);
+    for (const agent of input.agents) {
+      await installExtensionFilesForAgent(input.projectDir, agent, selected, extDir, input.engine, input.engineMcpKey);
+    }
+    reinstalled.push(ext.name);
+  }
+
+  return { reinstalled, missing };
+}
+
 export async function installExtensionAssetsForAllAgents(
   projectDir: string,
   config: UniKitConfig,
   manifest: ExtensionManifest,
   extensionDir: string,
 ): Promise<void> {
+  // Block and reference injections are NOT applied here: the caller runs the project-level pass
+  // (`applyExtensionInjections`) once the set of extensions and base skills is final.
   for (const agent of config.agents) {
-    // Install extension skills
-    if (manifest.skills && manifest.skills.length > 0) {
-      await installExtensionSkills(
-        projectDir, agent, extensionDir, manifest.skills,
-        config.engine, config.engineMcpKey,
-      );
-    }
-
-    // Install replacement skills (under base skill name, not extension path name)
-    if (manifest.replaces) {
-      const agentConfig = getAgentConfig(agent.id);
-
-      for (const [skillPath, baseName] of Object.entries(manifest.replaces)) {
-        const sourceDir = path.join(extensionDir, skillPath);
-        try {
-          await installSkillWithTransformer(
-            sourceDir, baseName, projectDir, agent.skillsDir,
-            agent.id, agentConfig, config.engine, config.engineMcpKey,
-          );
-        } catch (error) {
-          console.warn(`Warning: Could not install replacement skill "${baseName}": ${error}`);
-        }
-      }
-    }
-
-    // Install extension subagents
-    if (manifest.subagents && manifest.subagents.length > 0) {
-      const agentConfig = getAgentConfig(agent.id);
-      if (agentConfig.supportsSubagents) {
-        await installExtensionSubagents(
-          projectDir, agent, extensionDir, manifest.subagents,
-          config.engine, config.engineMcpKey,
-        );
-      }
-    }
-
-    // Apply injections
-    if (manifest.injections && manifest.injections.length > 0) {
-      await applyAllInjections(projectDir, agent, manifest.name, manifest.injections, extensionDir);
-    }
+    await installExtensionFilesForAgent(
+      projectDir, agent, manifest, extensionDir, config.engine, config.engineMcpKey,
+    );
 
     // Configure MCP servers
     if (manifest.mcpServers && manifest.mcpServers.length > 0) {
@@ -141,12 +185,18 @@ export async function installExtensionAssetsForAllAgents(
 
 // --- Remove extension assets for all agents ---
 
+/**
+ * Takes out of every agent what `manifest` names. The manifest must already be narrowed to what
+ * was installed: `filterManifest` over the record's selection for a removal, `manifestSubset`
+ * for a difference. The extension's injections come off by `manifest.injections`, which a subset
+ * does not carry — so applying a difference never erases them.
+ */
 export async function removeExtensionAssetsForAllAgents(
   projectDir: string,
   config: UniKitConfig,
   manifest: ExtensionManifest,
 ): Promise<void> {
-  // Derive skill names from manifest
+  // Skill names: the directory name of each skill path and the base skills it replaced
   const skillNames = [
     ...(manifest.skills ?? []).map(p => path.basename(p)),
     ...Object.values(manifest.replaces ?? {}),
@@ -190,18 +240,45 @@ export function removePreviousExtensionState(
 
 // --- Commit resolved extension (full flow) ---
 
+/**
+ * Installs a resolved extension for every agent and returns its record.
+ *
+ * `selection` is the caller's decision on the items (already narrowed by the CLI). Without it the
+ * previous state of the record is kept: a first install turns everything on, an installed
+ * extension keeps its earlier decisions and its new items stay undecided (not installed).
+ * Conflicts of `replaces` are checked on the enabled replacements only.
+ */
 export async function commitResolvedExtension(
   projectDir: string,
   config: UniKitConfig,
   resolved: ResolvedExtension,
+  selection?: ExtensionSelection,
 ): Promise<ExtensionRecord> {
   const manifest = resolved.manifest;
   const existingExtensions = config.extensions ?? [];
 
-  // Check conflicts
+  // What was installed before, read before anything is changed (reads the disk only).
+  const previousRecord = findExtensionRecord(existingExtensions, manifest.name);
+  const existingDir = getExtensionDir(projectDir, manifest.name);
+  const hasExisting = await fileExists(existingDir);
+  const previousManifest = hasExisting ? await loadExtensionManifest(existingDir) : null;
+
+  const items = listExtensionItems(manifest);
+  const chosen = selection !== undefined
+    ? normalizeToItems(selection, items)
+    : decideSelection({
+      items,
+      prior: priorSelectionOf(previousRecord, previousManifest),
+      skip: new Set<string>(),
+      installNew: false,
+      skipNew: false,
+    });
+  const enabledManifest = filterManifest(manifest, chosen);
+
+  // Check conflicts (a replacement the selection leaves off is not a conflict)
   assertNoReplacementConflicts(
     existingExtensions.filter(e => e.name !== manifest.name),
-    manifest,
+    enabledManifest,
   );
 
   // Validate command module files exist (before any disk mutation)
@@ -216,23 +293,26 @@ export async function commitResolvedExtension(
     }
   }
 
+  // Files named by point injections — the extension is rejected before any disk mutation.
+  for (const relPath of collectPointInjectionFiles(manifest.injections ?? [])) {
+    if (!(await fileExists(path.join(resolved.localPath, relPath)))) {
+      throw new Error(`Extension "${manifest.name}" injection references a missing file: ${relPath}`);
+    }
+  }
+
   // Backup existing extension if upgrading
-  const existingDir = getExtensionDir(projectDir, manifest.name);
   const backupDir = existingDir + '.backup';
-  const hasExisting = await fileExists(existingDir);
 
   if (hasExisting) {
     await copyDirectory(existingDir, backupDir);
   }
 
   try {
-    // Remove previous assets from agents
-    const previousManifest = hasExisting
-      ? await loadExtensionManifest(getExtensionDir(projectDir, manifest.name))
-      : null;
-
+    // Remove previous assets from agents: what was installed, not the whole previous manifest
     if (previousManifest) {
-      await removeExtensionAssetsForAllAgents(projectDir, config, previousManifest);
+      await removeExtensionAssetsForAllAgents(
+        projectDir, config, filterManifest(previousManifest, previousRecord?.selection),
+      );
     }
 
     // Remove previous config state
@@ -241,14 +321,29 @@ export async function commitResolvedExtension(
     // Commit extension files to storage
     await commitExtensionInstall(projectDir, resolved);
 
-    // Install assets for all agents
+    // Install assets for all agents: only the enabled items
     const extensionDir = getExtensionDir(projectDir, manifest.name);
     await installExtensionAssetsForAllAgents(
-      projectDir, config, manifest, extensionDir,
+      projectDir, config, enabledManifest, extensionDir,
     );
 
-    // Update config
-    const record = buildExtensionRecord(resolved);
+    // Build the record (it joins `config.extensions` last, after everything that can throw)
+    const record = buildExtensionRecord(resolved, chosen);
+
+    // A base skill whose replacement is gone (switched off, or dropped from the new version)
+    // comes back now, not at the next `update`.
+    const kept = new Set(Object.keys(record.replacedSkills ?? {}));
+    const dropped = Object.keys(previousRecord?.replacedSkills ?? {}).filter(base => !kept.has(base));
+    if (dropped.length > 0) {
+      logInfo(EXTENSION_LOG_COMPONENT, `restoring base skill(s) dropped from replacements: ${dropped.join(', ')}`);
+      await restoreBaseSkills(projectDir, config, dropped);
+    }
+
+    // A selected subagent that preloads a skill left out of the selection: a warning, not a block.
+    for (const dangling of await findDanglingPreloads(extensionDir, manifest, chosen)) {
+      logWarn(EXTENSION_LOG_COMPONENT, formatDanglingPreload(manifest.name, dangling));
+    }
+
     config.extensions = [...(config.extensions ?? []), record];
 
     // Cleanup backup
@@ -277,48 +372,26 @@ export async function removeExtension(
   extensionName: string,
 ): Promise<void> {
   const manifest = await loadExtensionManifest(getExtensionDir(projectDir, extensionName));
+  const record = findExtensionRecord(config.extensions ?? [], extensionName);
 
   if (manifest) {
-    await removeExtensionAssetsForAllAgents(projectDir, config, manifest);
+    // Only what the selection left on was installed: nothing else is taken out.
+    await removeExtensionAssetsForAllAgents(projectDir, config, filterManifest(manifest, record?.selection));
   }
 
   removePreviousExtensionState(config, extensionName);
   await removeExtensionFiles(projectDir, extensionName);
 }
 
-// --- Refresh extensions (version check + re-commit) ---
-
-export async function refreshExtensions(
-  projectDir: string,
-  config: UniKitConfig,
-  options?: { force?: boolean },
-): Promise<{ updated: string[]; failed: string[] }> {
-  const extensions = config.extensions ?? [];
-  const updated: string[] = [];
-  const failed: string[] = [];
-  const force = options?.force ?? false;
-
-  for (const ext of extensions) {
-    try {
-      const resolved = await resolveExtension(ext.source);
-
-      if (!force && resolved.manifest.version === ext.version) {
-        // Clean up temp dir for git sources
-        if (resolved.source.type === 'git' || resolved.source.type === 'github') {
-          await removeDirectory(resolved.localPath);
-        }
-        continue;
-      }
-
-      await commitResolvedExtension(projectDir, config, resolved);
-      updated.push(ext.name);
-    } catch (error) {
-      console.warn(`Warning: Could not refresh extension "${ext.name}": ${error}`);
-      failed.push(ext.name);
-    }
+/**
+ * Removes the temporary clone of a git or GitHub source. A local source's `localPath` is the
+ * user's own directory and is never deleted. Safe to call after `commitResolvedExtension`, which
+ * already removed the clone: removing an absent path is not an error.
+ */
+export async function disposeResolvedExtension(resolved: ResolvedExtension): Promise<void> {
+  if (resolved.source.type === 'git' || resolved.source.type === 'github') {
+    await removeDirectory(resolved.localPath);
   }
-
-  return { updated, failed };
 }
 
 // --- Restore base skills after extension removal ---
@@ -356,15 +429,5 @@ export async function restoreBaseSkills(
     await injectMcpRules(projectDir, config.agents, mcpAllowedTools);
   }
 
-  // Re-apply content injections from remaining installed extensions
-  const remainingExtensions = config.extensions ?? [];
-  for (const ext of remainingExtensions) {
-    const extDir = getExtensionDir(projectDir, ext.name);
-    const extManifest = await loadExtensionManifest(extDir);
-    if (!extManifest?.injections?.length) continue;
-
-    for (const agent of config.agents) {
-      await applyAllInjections(projectDir, agent, ext.name, extManifest.injections, extDir);
-    }
-  }
+  // Injections are re-rendered by the caller through applyExtensionInjections — one pass over every extension.
 }

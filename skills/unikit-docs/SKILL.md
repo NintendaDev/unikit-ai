@@ -32,6 +32,8 @@ metadata:
 
 Generate, maintain, and improve documentation for game projects following a landing-page README + detailed docs/ structure.
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Core Principles
 
 1. **README is a landing page, not a manual.** ~80-120 lines. First impression, tech stack, quick start, links to details.
@@ -57,18 +59,13 @@ This skill uses a named delegation alias for `Agent(...)` calls. The alias is th
 place where its delegate's agent type and call arguments are declared — call sites name
 the alias and never carry a type or a model argument of their own.
 
-**Model argument.** Before the first dispatch of an alias below, read `.unikit/config.yaml`
-(a missing file, block or key is not an error) and settle the model argument once:
-
-1. `subagents.model.{{agent_id}}` holds a model name — pass `model: <name>` with every call,
-   exactly as written (this runtime's own spelling of the model argument, if it differs).
-2. It holds `inherit`, or is present and empty — pass no model argument; the agent runs on the
-   model of this session.
-3. The key is absent — use the built-in default `"{{agent_model_default}}"`; an empty string
-   means pass no model argument.
-
-If the runtime rejects the model name, repeat that call once without the model argument and
-report `WARN [delegation] model "<name>" rejected — retried on the session model`.
+**Subagent arguments.** Before the first subagent you launch, read `.unikit/system/subagent-arguments.md`
+and `.unikit/config.yaml` once and settle the model and effort of every launch as that file says.
+Keys: `subagents.model.{{agent_id}}.<role>`, `subagents.effort.{{agent_id}}.<role>`;
+built-in model of a reader and a validator: `"{{agent_model_default}}"`, of an executor: none.
+If the file cannot be read, print
+`WARN [delegation] subagent-arguments contract missing — built-in model tier used, effort not passed`
+and use that model, no effort.
 
 - **`recon-agent`** — read-only parallel reconnaissance. Expands to:
 
@@ -93,6 +90,8 @@ report `WARN [delegation] model "<name>" rejected — retried on the session mod
 3. Read `.unikit/ARCHITECTURE.md` (if exists) — architecture decisions, module structure
 4. Read `.unikit/skill-context/unikit-docs/SKILL.md` — **MANDATORY if exists.** Project-specific overrides. Skill-context rules win over general rules on conflict.
 5. Read `AGENTS.md` (if exists) — current documentation index
+
+<!-- unikit:extension-point:bootstrap -->
 
 ### Step 0.1: Parse Flags
 
@@ -231,15 +230,18 @@ Documents:
   🔍 networking — suggested (Mirror detected)
   ⚠️ docs/save-system.md — exists but removed from config
 
-Apply suggestions?
+```
+
+Then ask with the question tool of your agent (`AskUserQuestion`): Apply suggestions?
+
+Options:
 1. Apply all
 2. Let me pick
 3. Skip — use config as-is
-```
 
 Based on choice:
 - Apply all → update `docs-config.json` with all suggestions, proceed to Step 1.6
-- Let me pick → present each suggestion individually for approval, apply selected
+- Let me pick → ask for each suggestion with the question tool of your agent (`AskUserQuestion`): `Apply` (recommended) or `Skip`; apply the selected
 - Skip → use config as-is, proceed to Step 1.6
 
 After reconciliation, update `docs-config.json` with confirmed changes and proceed to Step 1.5.
@@ -384,16 +386,19 @@ Conditional documents (detected):
   ✅ docs/testing.md — test infrastructure
   ❌ docs/networking.md — no networking framework detected
 
+```
+
+Then ask with the question tool of your agent (`AskUserQuestion`): Which documents should be generated?
+
 Options:
 1. Generate all detected
 2. Let me pick
 3. Add more topics
-```
 
 Based on choice:
 - Generate all detected → proceed to Step 3.2 with full document list
-- Let me pick → present each document individually for approval, generate only selected
-- Add more topics → ask user for additional topics via AskUserQuestion, merge with detected list, re-confirm
+- Let me pick → ask for each document with the question tool of your agent (`AskUserQuestion`): `Generate` (recommended) or `Skip`; generate only the selected
+- Add more topics → ask for the additional topics with the question tool of your agent (`AskUserQuestion`): its options are the conditional documents of the Step 1.4 table that were not detected, and the user writes their own topics in the free-text answer; merge with the detected list, re-confirm
 
 ##### 3.2: Generate README.md
 
@@ -489,7 +494,7 @@ For the complete conversion process, template placeholders, nav_links format, ma
 Summary of the process:
 
 1. Create `docs-html/` directory
-2. Read `templates/html-template.html` (use as base for all pages)
+2. Read `{{skills_dir}}/{{self_name}}/templates/html-template.html` (use as base for all pages)
 3. For each markdown file → convert to HTML following conversion rules from `{{skills_dir}}/{{self_name}}/references/HTML-GENERATION.md`
 4. Replace template placeholders (`{project_name}`, `{page_title}`, `{nav_links}`, `{content}`, `{prev_link}`, `{next_link}`)
 5. Fix `.md` links to `.html`

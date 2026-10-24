@@ -6,6 +6,12 @@ import {
   copyDirectory, ensureDir, removeDirectory, listDirectories,
 } from '../utils/fs.js';
 import type { ExtensionRecord } from './config.js';
+import { parseInjections, type ExtensionInjection } from './extension-injections-schema.js';
+import {
+  deriveReplacedSkills, listExtensionItems, normalizeToItems, type ExtensionSelection,
+} from './extension-selection.js';
+
+export type { ExtensionInjection, PositionInjection, PointInjection } from './extension-injections-schema.js';
 
 // --- Constants ---
 
@@ -14,13 +20,6 @@ const EXTENSIONS_DIR = '.unikit/extensions';
 const EXT_NAME_PATTERN = /^[a-zA-Z0-9_@][\w.@/-]*$/;
 
 // --- Types ---
-
-export interface ExtensionInjection {
-  target: string;
-  targetType: 'skill' | 'subagent';
-  position: 'append' | 'prepend';
-  file: string;
-}
 
 export interface ExtensionMcpServer {
   key: string;
@@ -148,30 +147,12 @@ export function validateManifest(manifest: unknown): { valid: true; manifest: Ex
     }
   }
 
-  // Validate injections
+  // Validate injections (both entry shapes: position and point)
+  let injections: ExtensionInjection[] | undefined;
   if (m.injections !== undefined) {
-    if (!Array.isArray(m.injections)) {
-      return { valid: false, error: '"injections" must be an array' };
-    }
-    for (let i = 0; i < m.injections.length; i++) {
-      const inj = m.injections[i] as Record<string, unknown>;
-      if (!inj || typeof inj !== 'object') {
-        return { valid: false, error: `injections[${i}] must be an object` };
-      }
-      if (typeof inj.target !== 'string') {
-        return { valid: false, error: `injections[${i}].target must be a string` };
-      }
-      if (typeof inj.file !== 'string') {
-        return { valid: false, error: `injections[${i}].file must be a string` };
-      }
-      const targetType = inj.targetType ?? 'skill';
-      if (targetType !== 'skill' && targetType !== 'subagent') {
-        return { valid: false, error: `injections[${i}].targetType must be "skill" or "subagent"` };
-      }
-      if (inj.position !== 'append' && inj.position !== 'prepend') {
-        return { valid: false, error: `injections[${i}].position must be "append" or "prepend"` };
-      }
-    }
+    const parsed = parseInjections(m.injections);
+    if (!parsed.ok) return { valid: false, error: parsed.error };
+    injections = parsed.injections;
   }
 
   // Validate commands
@@ -215,12 +196,6 @@ export function validateManifest(manifest: unknown): { valid: true; manifest: Ex
     }
   }
 
-  // Normalize injections targetType default
-  const injections = (m.injections as ExtensionInjection[] | undefined)?.map(inj => ({
-    ...inj,
-    targetType: (inj.targetType ?? 'skill') as 'skill' | 'subagent',
-  }));
-
   return {
     valid: true,
     manifest: {
@@ -263,7 +238,7 @@ export async function resolveFromLocal(localPath: string): Promise<ResolvedExten
 
 export async function resolveFromGit(gitUrl: string): Promise<ResolvedExtension> {
   const { tmpdir } = await import('os');
-  const tmpDir = path.join(tmpdir(), `unikit-ext-${Date.now()}`);
+  const tmpDir = path.join(tmpdir(), `unikit-ext-${process.pid}-${Date.now()}`);
 
   try {
     const [url, ref] = gitUrl.split('#');
@@ -435,19 +410,26 @@ export async function loadAllExtensions(
 
 // --- Extension record helpers ---
 
-export function buildExtensionRecord(resolved: ResolvedExtension): ExtensionRecord {
-  const replacedSkills = resolved.manifest.replaces
-    ? Object.fromEntries(
-      Object.entries(resolved.manifest.replaces).map(([skillPath, baseName]) => [baseName, skillPath]),
-    )
-    : undefined;
-
-  return {
+/**
+ * Builds the record stored in `.unikit.json`. `replacedSkills` counts only the replacements the
+ * selection leaves on; `selection` (when given) is narrowed to the items this version offers.
+ * Without a selection the record carries no `selection` field — the legacy form.
+ */
+export function buildExtensionRecord(
+  resolved: ResolvedExtension,
+  selection?: ExtensionSelection,
+): ExtensionRecord {
+  const record: ExtensionRecord = {
     name: resolved.manifest.name,
     source: resolved.source.raw,
     version: resolved.manifest.version,
-    replacedSkills,
+    replacedSkills: deriveReplacedSkills(resolved.manifest, selection),
   };
+  if (selection !== undefined) {
+    record.selection = normalizeToItems(selection, listExtensionItems(resolved.manifest));
+  }
+
+  return record;
 }
 
 export function findExtensionRecord(

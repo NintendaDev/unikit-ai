@@ -9,11 +9,15 @@
 // the TS-level copies.
 
 import { createHash } from 'crypto';
+import path from 'path';
 import { readSourceForAgent } from '../agent-filter.js';
+import { systemDir } from '../constants.js';
+import { SYSTEM_PATH_VARS } from '../constants-template.js';
 import { buildEngineVars, processTemplate } from '../template.js';
 import type { TemplateVars } from '../template.js';
 import { getTransformer } from '../transformer.js';
-import { logInfo } from '../../utils/log.js';
+import { getDataDir, readTextFile, writeTextFile } from '../../utils/fs.js';
+import { logInfo, logWarn } from '../../utils/log.js';
 
 // --- Content hashing ---
 
@@ -40,7 +44,9 @@ export function stripMdExtension(file: string): string {
  * Build the TemplateVars used for subagents and system assets. All agent-level
  * slots are blank (subagents/system files are agent-agnostic); when an engine
  * id is supplied the engine vars are layered on top. `selfName` is the
- * `{{self_name}}` identity for the rendered artifact.
+ * `{{self_name}}` identity for the rendered artifact. The system-file paths are
+ * the exception to "blank": they depend on neither agent nor engine, so a
+ * subagent file or `dev-principles.md` gets the same value as a skill does.
  */
 export function buildSubagentTemplateVars(
   selfName: string,
@@ -65,6 +71,7 @@ export function buildSubagentTemplateVars(
     agent_call_worker: '',
     agent_call_worker_quoted: '',
     agent_skill_call_form: '',
+    ...SYSTEM_PATH_VARS,
   };
   if (engineId) {
     Object.assign(vars, buildEngineVars(engineId, engineMcpKey));
@@ -117,4 +124,23 @@ export async function renderSubagent(
  */
 export function warnActionFailed(action: string, name: string, error: unknown): void {
   console.warn(`Warning: Could not ${action} "${name}": ${error}`);
+}
+
+// --- Flat system assets ---
+
+/**
+ * Copy one `data/<fileName>` into `.unikit/system/<fileName>` verbatim — the shared body of
+ * every flat, substitution-free, non-hash-tracked contract (`system-assets.ts`,
+ * `system-contracts.ts`). A missing source is a skip with a warning, never an abort: one absent
+ * contract is not a reason to fail init/update.
+ */
+export async function installFlatSystemAsset(projectDir: string, fileName: string, component: string): Promise<void> {
+  const content = await readTextFile(path.join(getDataDir(), fileName));
+  if (!content) {
+    logWarn(component, `${fileName} not found in data/, skipping`);
+    return;
+  }
+
+  await writeTextFile(path.join(systemDir(projectDir), fileName), content);
+  logInfo(component, `installed .unikit/system/${fileName}`);
 }

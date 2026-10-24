@@ -40,6 +40,12 @@ const SECTION_OPEN_QUESTIONS = '## Open Questions';
 const SECTION_FILES_IN_PHASE = '## Files in This Phase';
 const SECTION_RULE_CANDIDATES = '## Rule Candidates';
 const SECTION_TEST_RUNS = '## Test Runs';
+const SECTION_MEASUREMENTS = '## Measurements';
+const SECTION_BALANCE_CONTEXT = '## Balance Context';
+const SECTION_EXPERIMENT_CONTEXT = '## Experiment Context';
+const SECTION_CONTENT_CONTEXT = '## Content Context';
+const SECTION_SETTINGS = '## Settings';
+const SECTION_DEPENDENCY_GRAPH = '## Dependency Graph';
 const TASK_RUN_MARKER = 'Test checkpoint:';
 const SECTION_MODULES = '## Modules';
 const SECTION_ROADMAP_LINKAGE = '## Roadmap Linkage';
@@ -430,6 +436,33 @@ if (manifest) {
     assertTrue('T27 recon-section-between-effort-and-technical-context',
         reconLines.length === 1 && idxTechnical !== -1 && idxEffort !== -1 && idxRecon > idxEffort && idxRecon < idxTechnical,
         `${reconLines.length} ${SECTION_RECON} line(s); at ${idxRecon}, ${SECTION_TOTAL_EFFORT} at ${idxEffort}, ${SECTION_TECHNICAL_CONTEXT} at ${idxTechnical}`);
+
+    // --- T28..T29: the balance plan surfaces ---
+    // List lines of the template carry a trailing note ("## Balance Context   (only for ...)"), so
+    // every lookup is startsWith, as in T25/T26.
+    const lineIdx = (heading) => mLines.map((l, i) => [l, i]).filter(([l]) => l.startsWith(heading)).map(([, i]) => i);
+    const runsIdx = lineIdx(SECTION_TEST_RUNS);
+    const measIdx = lineIdx(SECTION_MEASUREMENTS);
+    const graphIdx = lineIdx(SECTION_DEPENDENCY_GRAPH);
+    const techIdx = lineIdx(SECTION_TECHNICAL_CONTEXT);
+    assertTrue('T28 measurements-after-test-runs-above-dependency-graph',
+        runsIdx.length === 1 && measIdx.length === 1 && graphIdx.length >= 1 && techIdx.length >= 1
+            && runsIdx[0] < measIdx[0] && measIdx[0] < graphIdx[0] && graphIdx[0] < techIdx[0],
+        `${runsIdx.length} ${SECTION_TEST_RUNS}, ${measIdx.length} ${SECTION_MEASUREMENTS}; at ${runsIdx[0]}, ${measIdx[0]}, ${SECTION_DEPENDENCY_GRAPH} at ${graphIdx[0]}, ${SECTION_TECHNICAL_CONTEXT} at ${techIdx[0]}`);
+
+    const balIdx = lineIdx(SECTION_BALANCE_CONTEXT);
+    const contentIdx = lineIdx(SECTION_CONTENT_CONTEXT);
+    const settingsIdx = lineIdx(SECTION_SETTINGS);
+    assertTrue('T29 balance-context-between-content-context-and-settings',
+        balIdx.length === 1 && contentIdx.length === 1 && settingsIdx.length >= 1
+            && contentIdx[0] < balIdx[0] && balIdx[0] < settingsIdx[0],
+        `${balIdx.length} ${SECTION_BALANCE_CONTEXT} line(s); at ${balIdx[0]}, ${SECTION_CONTENT_CONTEXT} at ${contentIdx[0]}, ${SECTION_SETTINGS} at ${settingsIdx[0]}`);
+
+    const expIdx = lineIdx(SECTION_EXPERIMENT_CONTEXT);
+    assertTrue('T30 experiment-context-after-balance-context-before-settings',
+        expIdx.length === 1 && balIdx.length === 1 && settingsIdx.length >= 1
+            && balIdx[0] < expIdx[0] && expIdx[0] < settingsIdx[0],
+        `${expIdx.length} ${SECTION_EXPERIMENT_CONTEXT} line(s); at ${expIdx[0]}, ${SECTION_BALANCE_CONTEXT} at ${balIdx[0]}, ${SECTION_SETTINGS} at ${settingsIdx[0]}`);
 }
 
 // --- T7..T10: the phase file template ---

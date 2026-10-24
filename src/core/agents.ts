@@ -4,26 +4,36 @@ import type { SkillCallForm } from './constants-skill-call.js';
 /**
  * How skills name the subagents they launch on this runtime. `readerType` is the read-only
  * agent type (reconnaissance, validation), `workerType` the one that can create files and
- * is also what the skill-loading aliases launch. `modelDefault` is the model argument passed
- * when `.unikit/config.yaml` has no `subagents.model.<id>`: only a stable vendor alias
- * (`sonnet`, `flash`) or `inherit` — `inherit` means pass no model. The values are pointers into
- * the runtime's own type namespace and age with it: re-check them in a live session.
+ * is also what the skill-loading aliases launch. `modelDefault` is the model a reader and a validator
+ * launch passes when `.unikit/config.yaml` has no `subagents.model.<id>.<role>`: only a stable vendor alias
+ * (`sonnet`, `flash`) or `inherit` — `inherit` means pass no model; an executor launch has no built-in model.
+ * `modelArg` and `effortArg` name the two arguments of the runtime's agent call and are drawn into every call
+ * head as slots. The values are pointers into the runtime's own type namespace and age with it: re-check them in a live session.
  */
 export interface SubagentProfile {
   /** Read-only agent type (reconnaissance, validation). Empty when the runtime's agent call takes no type (see `spawnArgs`). */
   readerType: string;
   /** Agent type that can create files; also what the skill-loading aliases launch. Empty like `readerType`. */
   workerType: string;
-  /** Model argument used when `.unikit/config.yaml` has no `subagents.model.<id>`: only a stable vendor alias or `inherit` (never empty). */
+  /** Model a reader and a validator launch passes when `.unikit/config.yaml` has no `subagents.model.<id>.<role>`: only a stable vendor alias or `inherit` (never empty). */
   modelDefault: string;
   /**
-   * `true` when the runtime's agent call takes a model without any setting of the runtime itself; only
-   * then the config template carries a `subagents.model.<id>` key. `false` when the call takes none
-   * (Cursor, OpenCode), takes one only after the user configures the client (Kimi `[secondary_model]`,
-   * Qwen `agents.modelGrades`), or the runtime is not known in advance (Universal). It never reaches an
-   * installed file, so it stays out of the profile hash.
+   * The name of the model argument in this runtime's agent call (`model`; Antigravity `Model`), or an empty
+   * string when the call takes none without a setting of the runtime itself: Cursor and OpenCode (none),
+   * Kimi (only after the user configures `[secondary_model]`), Qwen (`agents.modelGrades`), Universal (the
+   * runtime is not known in advance). A non-empty name draws a `<name>: <model>` slot into every call head and
+   * gives the agent a `subagents.model.<id>` block in the config template. It reaches the installed skills,
+   * so it is part of the profile hash.
    */
-  modelParam: boolean;
+  modelArg: string;
+  /**
+   * The name of the effort (reasoning depth) argument in this runtime's agent call (`effort`; Codex
+   * `reasoning_effort`), or an empty string when the call takes none without a setting of the runtime itself:
+   * Cursor, OpenCode, Antigravity (the schema of its `invoke_subagent` has no such field, probe 2026-10-16),
+   * Kimi, Qwen, Universal. Same consequences as `modelArg`: a slot in every call head, a
+   * `subagents.effort.<id>` block in the template, a part of the profile hash.
+   */
+  effortArg: string;
   /** How a subagent is told to load a skill: see `SKILL_CALL_FORMS`. */
   skillCall: SkillCallForm;
   /** Extra arguments every agent call carries, written as they stand in the call (each part ends with a comma); empty when none. */
@@ -54,7 +64,7 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsMcp: true,
     supportsSubagents: true,
     skillsCliAgent: 'claude-code',
-    subagentProfile: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: 'sonnet', modelParam: true, skillCall: SKILLTOOL_CALL_FORM, spawnArgs: '' },
+    subagentProfile: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: 'sonnet', modelArg: 'model', effortArg: 'effort', skillCall: SKILLTOOL_CALL_FORM, spawnArgs: '' },
   },
   // spawn_agent has no subagent type parameter (live probe 2026-10-06): the call names no type, drops the
   // parent history and gives each subagent a name of its own. Read-only for a reader rests on the prompt,
@@ -69,7 +79,7 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsMcp: true,
     supportsSubagents: false,
     skillsCliAgent: 'codex',
-    subagentProfile: { readerType: '', workerType: '', modelDefault: 'inherit', modelParam: true, skillCall: DEFAULT_SKILL_CALL_FORM, spawnArgs: CODEX_SPAWN_ARGS },
+    subagentProfile: { readerType: '', workerType: '', modelDefault: 'inherit', modelArg: 'model', effortArg: 'reasoning_effort', skillCall: DEFAULT_SKILL_CALL_FORM, spawnArgs: CODEX_SPAWN_ARGS },
   },
   cursor: {
     id: 'cursor',
@@ -81,7 +91,7 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsMcp: true,
     supportsSubagents: false,
     skillsCliAgent: 'cursor',
-    subagentProfile: { readerType: 'explore', workerType: 'generalPurpose', modelDefault: 'inherit', modelParam: false, skillCall: DEFAULT_SKILL_CALL_FORM, spawnArgs: '' },
+    subagentProfile: { readerType: 'explore', workerType: 'generalPurpose', modelDefault: 'inherit', modelArg: '', effortArg: '', skillCall: DEFAULT_SKILL_CALL_FORM, spawnArgs: '' },
   },
   qwen: {
     id: 'qwen',
@@ -93,7 +103,7 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsMcp: true,
     supportsSubagents: false,
     skillsCliAgent: 'qwen',
-    subagentProfile: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: 'inherit', modelParam: false, skillCall: DEFAULT_SKILL_CALL_FORM, spawnArgs: '' },
+    subagentProfile: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: 'inherit', modelArg: '', effortArg: '', skillCall: DEFAULT_SKILL_CALL_FORM, spawnArgs: '' },
   },
   opencode: {
     id: 'opencode',
@@ -105,7 +115,7 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsMcp: true,
     supportsSubagents: false,
     skillsCliAgent: 'opencode',
-    subagentProfile: { readerType: 'explore', workerType: 'general', modelDefault: 'inherit', modelParam: false, skillCall: DEFAULT_SKILL_CALL_FORM, spawnArgs: '' },
+    subagentProfile: { readerType: 'explore', workerType: 'general', modelDefault: 'inherit', modelArg: '', effortArg: '', skillCall: DEFAULT_SKILL_CALL_FORM, spawnArgs: '' },
   },
   antigravity: {
     id: 'antigravity',
@@ -117,7 +127,7 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsMcp: true,
     supportsSubagents: false,
     skillsCliAgent: 'antigravity',
-    subagentProfile: { readerType: 'research', workerType: 'self', modelDefault: 'flash', modelParam: true, skillCall: DEFAULT_SKILL_CALL_FORM, spawnArgs: '' },
+    subagentProfile: { readerType: 'research', workerType: 'self', modelDefault: 'flash', modelArg: 'Model', effortArg: '', skillCall: DEFAULT_SKILL_CALL_FORM, spawnArgs: '' },
   },
   kimi: {
     id: 'kimi',
@@ -129,7 +139,7 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsMcp: true,
     supportsSubagents: true,
     skillsCliAgent: 'kimi-code-cli',
-    subagentProfile: { readerType: 'explore', workerType: 'coder', modelDefault: 'inherit', modelParam: false, skillCall: DEFAULT_SKILL_CALL_FORM, spawnArgs: '' },
+    subagentProfile: { readerType: 'explore', workerType: 'coder', modelDefault: 'inherit', modelArg: '', effortArg: '', skillCall: DEFAULT_SKILL_CALL_FORM, spawnArgs: '' },
   },
   // For runtimes UniKit does not name. Skills go to the shared `.agents/skills` — Antigravity's
   // directory too, which is why the two are never selected together (core/agent-skills-dir.ts) —
@@ -146,7 +156,7 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsMcp: true,
     supportsSubagents: false,
     skillsCliAgent: 'universal',
-    subagentProfile: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: 'inherit', modelParam: false, skillCall: DEFAULT_SKILL_CALL_FORM, spawnArgs: '' },
+    subagentProfile: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: 'inherit', modelArg: '', effortArg: '', skillCall: DEFAULT_SKILL_CALL_FORM, spawnArgs: '' },
   },
 };
 

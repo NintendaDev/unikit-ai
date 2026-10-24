@@ -100,7 +100,7 @@ Two shapes worth calling out:
 | `agents[].installedSubagents` | List of installed subagent names |
 | `agents[].managedSkills` | SHA-256 hash-based change tracking for skill updates |
 | `agents[].managedSubagents` | SHA-256 hash-based change tracking for subagent updates |
-| `extensions` | Array of installed extension records (optional) |
+| `extensions` | Array of installed extension records (optional): `name`, `source`, `version`, `replacedSkills` (the replacements that are on), `selection` (the user's per-item choices - see [Extensions](extensions.md#config-format)) |
 | `rules.installed` | Currently installed dynamic memory, keyed by module then tier (`modules.code.{core,stack}`, `modules.gamedesign.{core,library}`). Each entry is an object `{ name, source, origin?, version?, installed_hash? }`. See [Rules Registry](rules-registry.md#unikitjson-registry-fields) for field descriptions. Legacy `string[]` entries are normalized to `{ name, source: "installer" }` on load, and the pre-2.0.0 flat `{ core, stack }` form is wrapped under the `code` module. |
 | `genres.installed` | Installed genre profiles as a flat list of `{ id, version }` (optional). Written by `unikit-ai genres install` and by `/unikit-gd-spec`'s best-fit resolve; drives which profiles `installGenreProfiles` delivers into `.unikit/system/gamedesign/genres/`. Orthogonal to `rules.installed` - genres are a seed catalog, not a knowledge module. |
 
@@ -135,6 +135,7 @@ git:
   base_branch: main
   create_branches: true
   branch_prefix: feature/
+  experiment_branch_prefix: experiment/
   skip_push_after_commit: false
   pull_requests:
     checkpoints: false
@@ -142,14 +143,27 @@ git:
 
 subagents:
   model:
-    claude: sonnet
+    claude:
+      reader: sonnet
+      validator: sonnet
+      executor: inherit
     codex:
-    cursor:
-    qwen:
-    opencode:
-    antigravity: flash
-    kimi:
-    universal:
+      reader: inherit
+      validator: inherit
+      executor: inherit
+    antigravity:
+      reader: flash
+      validator: flash
+      executor: inherit
+  effort:
+    claude:
+      reader: medium
+      validator: medium
+      executor: inherit
+    codex:
+      reader: medium
+      validator: medium
+      executor: inherit
 ```
 
 ### `language` section
@@ -179,7 +193,7 @@ Where **test runs** are placed in a plan (`plan`), and how wide a run goes when 
 | `testing.run.use_affected_modules` | How a phase test checkpoint and a `/unikit-fix` test run choose their tests. `false` runs every test in the project; `true` runs only the test suites of the changed modules and of the modules that depend on them, found by name search, in one run — and every test when narrowing is not possible. `task N.M` checkpoints always run their own fixtures, and the plan's final checkpoint always runs everything. | `false` |
 | `testing.run.full_run_threshold_percent` | With `use_affected_modules: true`: when the affected suites reach this share of all the project's test suites, every test is run instead. An integer from 1 to 100; any other value falls back to the default with a `WARN [testing]` line. Assigned, not measured — tune it on your project. | `30` |
 
-**Merging runs is a question, not a key.** When a `/unikit-implement` call covers two or more test-checkpoint tasks that can be merged, it asks once, before the first task, whether to run the tests once at the last of them or at every point as planned; words in the call itself (`Phases 5-6, tests at the end of phase 6`) answer it in advance. The answer holds for that call only — on disk it survives as the `⏭️ MERGED` marks in the plan. The plan's final full run is never merged. A config written by an earlier version may still carry the executor's old merge key; nothing reads it any more.
+**Merging runs is a question, not a key.** When a `/unikit-implement` call covers two or more test-checkpoint tasks that can be merged, it asks once, before the first task, whether to run the tests once at the last of them or at every point as planned; words in the call itself (`Phases 5-6, tests at the end of phase 6`) answer it in advance. The answer holds for that call only — on disk it survives as the `⏭️ MERGED` marks in the plan. The plan's final full run is never merged into another point; it is the point the others merge into, so a phase run plus the final run already counts as two. A config written by an earlier version may still carry the executor's old merge key; nothing reads it any more.
 
 **The placement key is recorded, not re-read.** `plan.checkpoints` is read by the planner and **recorded into the plan** as a `Test checkpoints:` line, so changing it later never reinterprets a plan already written.
 
@@ -199,6 +213,7 @@ Existing projects receive the key by either of the two paths in [How new keys re
 | `base_branch` | Default branch for diff/review/merge targets (e.g. `main`, `master`, `develop`). | auto-detected, fallback `main` |
 | `create_branches` | Automatically create feature branches for plans. Applies only when `git.enabled = true`. | `true` |
 | `branch_prefix` | Branch name prefix for new features. Applies only when `create_branches = true`. | `feature/` |
+| `experiment_branch_prefix` | Branch name prefix for experiment plans (a plan built from experiment cards): the branch is `<prefix><YYYY-MM-DD>-<topic>`. Applies only when `create_branches = true`. A project without the key uses the default. | `experiment/` |
 | `skip_push_after_commit` | If `true`, `/unikit-commit` ends after a successful local commit with no push prompt. | `false` |
 | `pull_requests.checkpoints` | Write a PR checkpoint task at the end of every plan module but the last. Recorded into the plan as `PR checkpoints: yes`. Not written when git is off or when the plan is on the base branch. | `false` |
 | `pull_requests.max_level` | `remind` \| `create` \| `merge` — how far `/unikit-pr` goes. A ceiling for any request, and the action taken at a PR checkpoint. Without the GitHub MCP every level acts as `remind`. | `create` |
@@ -209,23 +224,31 @@ Existing projects receive the key by either of the two paths in [How new keys re
 
 ### `subagents` section
 
-Which model the subagents that skills launch run on, one value per agent. The block lists the agents whose subagent call takes a model without any setting of the runtime itself; the other agents have no key.
+Which model, and how much reasoning effort, the subagents that skills and the two coordinators launch use - one value per agent and per **role**, in two blocks, `model` and `effort`. A role says what a launch does: a **reader** collects facts and returns them, a **validator** checks a finished result, an **executor** does work whose result becomes part of the project (code, documents, rules, plans, architecture); which launch has which role is the table in `.unikit/system/subagent-roles.md`. Each block lists the agents whose subagent call takes that argument without any setting of the runtime itself; the other agents have no key.
 
 | Key | Description | Default |
 |-----|-------------|---------|
-| `model.claude` | Claude Code. A tier name: `sonnet`, `opus` or `haiku`. | `sonnet` |
-| `model.codex` | Codex CLI. A model identifier as the model parameter of Codex's `spawn_agent` accepts it - its schema lists the valid names, and they change, so you write it yourself. | `inherit` |
-| `model.antigravity` | Antigravity. `flash`, `pro` or `inherit`. | `flash` |
+| `model.claude.<role>` | Claude Code. A tier name: `sonnet`, `opus` or `haiku`. | `sonnet` for `reader` and `validator`, `inherit` for `executor` |
+| `model.codex.<role>` | Codex CLI. A model identifier as the model parameter of Codex's `spawn_agent` accepts it - its schema lists the valid names, and they change, so you write it yourself. | `inherit` |
+| `model.antigravity.<role>` | Antigravity. `inherit`, `flash_lite`, `flash` or `pro` - the values of the `Model` argument of its subagent call; a tier sets the size of the model, not the depth. | `flash` for `reader` and `validator`, `inherit` for `executor` |
+| `effort.claude.<role>` | Claude Code. A level of the `effort` argument of its subagent call: `low`, `medium`, `high`, `xhigh` or `max`. Which levels a model supports differs. | `medium` for `reader` and `validator`, `inherit` for `executor` |
+| `effort.codex.<role>` | Codex CLI. A level of the `reasoning_effort` argument of `spawn_agent`. The valid levels depend on the model of the subagent, and a wrong one fails with an error that lists them, so no list is kept here. | `medium` for `reader` and `validator`, `inherit` for `executor` |
 
-A value means:
+`<role>` is `reader`, `validator` or `executor`. A value means:
 
-- **a model name** - passed to the subagent with every call, exactly as written;
-- **`inherit`, or an empty value** - nothing is passed: the subagent runs on the model of the session. `inherit` is what the template ships for Codex CLI, whose identifiers go stale; an empty value written by hand means the same, is a deliberate choice and is never filled in again;
-- **no key at all** (including no file, or no `subagents` block) - the built-in default noted above.
+- **a model name** - passed to the subagent with every call of that role, exactly as written;
+- **`inherit`, or an empty value** - nothing is passed: the subagent runs on the model, or the effort, of the agent that launches it. `inherit` is what the template ships for every executor and for the Codex models, whose identifiers go stale; an empty value written by hand means the same, is a deliberate choice and is never filled in again;
+- **no key at all** (including no file, or no `subagents` block) - a model falls back to the built-in model of the role (a reader and a validator: the default noted above; an executor: none, the model of the session); an effort is not passed at all, so a project without the `effort` block behaves as it did before. A single value written directly under an agent, as in earlier releases (`model.claude: sonnet`), is not read: it counts as no key until you move it under `reader`, `validator` or `executor`.
 
-**The skills read this block at run time**, once per skill before the first dispatch, so an edit takes effect on the next command - `unikit-ai update` is not needed, and the installer never reads the file. Only the aliases that name a model read it (`recon-agent`, `check-agent`, `lens-agent`, `recon-writer-agent`); `develop-agent` and `docs-agent` load a skill and never pass a model.
+**The skills and the coordinators read this block at run time**, once per run before the first launch, so an edit takes effect on the next command - `unikit-ai update` is not needed, and the installer never reads the file. Every launch is covered: the delegation aliases (`recon-agent`, `check-agent`, `lens-agent`, `recon-writer-agent`, `develop-agent`, `docs-agent`), the launches without an alias (`/unikit` generating stack rules and the architecture, the market validation of `/unikit-gd-brainstorm`), a launch a skill decides on by itself, and the workers, sidecars and polisher that `unikit-implement-coordinator` and `unikit-plan-coordinator` start. What to pass, and in which order, is the rule in `.unikit/system/subagent-arguments.md`, and which role a launch has is the table in `.unikit/system/subagent-roles.md`; `unikit-ai init` and `unikit-ai update` install both whichever skills you chose. The names of the model and effort arguments are not in the config: they are part of the agent profile and stand in the installed skills as slots of the call (`model: <model>`, `effort: <effort>`) - see [Subagents](subagents.md#subagent-profile-per-agent).
 
-UniKit keeps no list of model names. A name the runtime does not accept makes the launch fail, and the skill repeats the call once on the model of the session with a `WARN [delegation]` line. Cursor, OpenCode, Kimi Code, Qwen Code and Universal / Other have no key in the template, and a missing key means `inherit`: nothing is passed and the subagent runs on the model of the session. The reason is that their subagent call takes no model at all (Cursor, OpenCode), takes one only after you set up the client itself (Kimi Code `[secondary_model]`, Qwen Code `agents.modelGrades`), or belongs to a runtime UniKit does not know in advance (Universal / Other). If you did enable it, add `subagents.model.<agent>` to the file by hand and the skills will pass it. The format comes from the vendor's documentation and has not been checked in a live session: for Kimi Code an alias from `[secondary_model.models]` in `~/.kimi-code/config.toml`, or `primary`; for Qwen Code a grade name from `agents.modelGrades`; for Universal / Other whatever the subagent tool of your agent accepts. The agent types the skills launch come from the agent profile, not from this file - see [Subagents](subagents.md#subagent-profile-per-agent).
+**Which value wins** is decided for the model and for the effort separately: what you ask for - in the request that started the skill, or earlier in the session ("use opus for the subagents", "launch every subagent with effort high") - comes first and holds for every launch whatever its role; then the config key of the launch's role; then the built-in model of the role, or nothing for an effort. A remark about depth in general ("think deeper") is not such a request. An effort level is passed in lower case. A subagent that is itself started by a subagent runs on the effort of its launcher unless one is passed, so the launcher repeats a level you named in the prompt of a nested launch that can launch further subagents. If an effort makes the launch fail, the skill repeats the call once without it (`WARN [delegation] effort ...`) and, if that fails too, once without the model.
+
+**What can override the effort (Claude Code, by its documentation - not checked by a probe):** the environment variable `CLAUDE_CODE_EFFORT_LEVEL` overrides the level of a subagent call, and the setting `maxEffortLevel` or a limit of your organisation caps it, so the level written here may not be the one that runs; a level the model does not support falls to the nearest one below it. For a model the documentation does not list, what the argument does is not known. The argument itself is documented from Claude Code v2.1.292 (the probe of 2026-10-16 ran on 2.1.301); what an older client does with it was not checked - the call can fail, and the skill then repeats it without the effort.
+
+**Antigravity has no effort key:** the subagent call of its client takes no effort argument, so what you can set is the effort of the session itself (`/effort` or `--effort`) and the tier in `subagents.model.antigravity.<role>` - see [Agents](agents.md#antigravity).
+
+UniKit keeps no list of model names or effort levels. A value the runtime does not accept makes the launch fail, and the skill repeats the call with a `WARN [delegation]` line. Cursor, OpenCode, Kimi Code, Qwen Code and Universal / Other have no key in the template and UniKit draws no slot for them: nothing is passed, the subagent runs on the model and the effort of the session, and a key added by hand is not read. The reason is that their subagent call takes no model at all (Cursor, OpenCode), takes one only after you set up the client itself (Kimi Code `[secondary_model]`, Qwen Code `agents.modelGrades`), or belongs to a runtime UniKit does not know in advance (Universal / Other); the effort of Kimi Code is a client setting and not an argument of the call. What these clients accept comes from the vendor's documentation and has not been checked in a live session. The agent types the skills launch come from the agent profile, not from this file - see [Subagents](subagents.md#subagent-profile-per-agent).
 
 ### How new keys reach an existing project
 
@@ -242,7 +265,7 @@ The actualization mode sorts every leaf key of the template into one of six buck
 
 1. Absent, template value is a literal → appended **silently**.
 2. Absent, template value is a `{{PLACEHOLDER}}` → **asked**.
-3. Present but empty → treated exactly as absent. An empty value is a normal state, not a fault: `git.base_branch` is deliberately left empty in no-git mode. Exception: an empty `subagents.model.<agent>` is a deliberate choice (pass no model), so it is kept as it is.
+3. Present but empty → treated exactly as absent. An empty value is a normal state, not a fault: `git.base_branch` is deliberately left empty in no-git mode. Exception: an empty `subagents.model.<agent>.<role>` or `subagents.effort.<agent>.<role>` is a deliberate choice (pass no model, pass no effort), so it is kept as it is; an absent key is appended with its template value, and an agent that holds one scalar where the template has a map of roles (the form of earlier releases) is left as it is and listed as skipped.
 4. Present but outside a **declared** domain → asked. A domain is declared by exactly one thing: an inline `# a | b` comment standing beside the value. An `Options:` or `Examples:` list inside a comment block is prose for the reader, not a domain. Which keys carry one is settled by the template alone — this page deliberately does not list them, so the two cannot drift apart.
 5. Present in your file but absent from the template → **reported, never deleted**. This is usually a key you added on purpose.
 6. `language.rules` and `language.technical_terms` → **not touched at all**.
@@ -646,7 +669,7 @@ After initialization (example for Claude Code):
 ```
 your-unity-project/
 ├── .claude/                      # Agent config dir
-│   ├── skills/                   # 24 code-pipeline skills (+ 11 unikit-gd-* if the Game Design group was selected)
+│   ├── skills/                   # 24 code-pipeline skills (+ 13 unikit-gd-* if the Game Design group was selected)
 │   │   ├── unikit/
 │   │   │   └── references/
 │   │   ├── unikit-architecture/
@@ -682,7 +705,7 @@ your-unity-project/
 │   │   │   └── assets/
 │   │   ├── unikit-verify/
 │   │   │   └── references/
-│   │   └── unikit-gd-*/          # 11 game-design skills, one dir each - see Game-Design Module
+│   │   └── unikit-gd-*/          # 13 game-design skills, one dir each - see Game-Design Module
 │   └── agents/                    # Subagents directory
 │       └── unikit-architecture-sidecar.md    # 8 subagent files (sidecars, coordinators, workers)
 ├── .unikit/                      # UniKit AI working directory
@@ -696,6 +719,11 @@ your-unity-project/
 │   │   ├── research-link.md       # The `## Based on` contract - entry, hashing, drift ladder
 │   │   ├── plan-boundaries.md     # Where a plan, a module and a push start and end - read by verify, implement, commit, pr
 │   │   ├── merge-analysis.md      # How to read a merge before it happens - read by explore and plan when asked to merge a branch
+│   │   ├── balance-handback.md    # The balance hand-back report contract - read by plan, implement, verify and unikit-gd-balance
+│   │   ├── prototype-profile.md   # How a plan built from experiment cards is executed - read by implement, verify, pr, improve, review, fix, devcontext, commit and their subagents
+│   │   ├── subagent-arguments.md  # How the model and the effort of a subagent launch are settled - read by every skill that can launch a subagent and by the two coordinators
+│   │   ├── subagent-roles.md      # Which role (reader, validator, executor) each subagent launch has - read with subagent-arguments.md
+│   │   ├── user-questions.md      # How a skill asks you a question and waits for the answer - read before the first question by every skill and agent file that can ask you one
 │   │   ├── gamedesign/            # Game-design system assets
 │   │   │   ├── gd-principles.md    # The design working contract - slim core
 │   │   │   ├── gd-authoring.md     # + 6 shards, each read only by the skills that need it
@@ -741,7 +769,7 @@ your-unity-project/
 │   │   │   └── <name>/.planning/  # An ultra plan written with saved state - gone once its checks pass
 │   │   ├── patches/               # Fix patches (created by /unikit-fix)
 │   │   └── researches/            # Discovery output (created by /unikit-explore), with INDEX.md
-│   ├── gamedesign/                # GDD workspace (GAME.md, GD-IDS.yaml, systems/, flows/, ...) - created on first /unikit-gd-spec use
+│   ├── gamedesign/                # GDD workspace (GAME.md, GD-IDS.yaml, systems/, flows/, ..., balance/, experiments/) - created on first use (/unikit-gd-spec; balance/ and experiments/ may be created first by /unikit-gd-balance and /unikit-gd-experiment)
 │   ├── skill-context/            # Skill overrides (/unikit-evolve, /unikit-skills-context)
 │   └── evolutions/               # Evolution logs (generated by /unikit-evolve)
 ├── AGENTS.md                     # Project structure map (generated by /unikit)

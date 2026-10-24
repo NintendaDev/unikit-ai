@@ -78,12 +78,12 @@ Deletion candidates are `P1`, `P2`, … in preview order; conflicts are `C1`, `C
 
 ## E.4 Ask
 
-Two questions, asked together — one `AskUserQuestion` call — each only when its section has entries.
+Two questions, asked together — one call of the question tool of your agent (`AskUserQuestion`) — each only when its section has entries.
 
 **Deletion candidates.** Right under the preview, one line lists the ids **everything proposed** means — every `P` id. The options, in this order:
 
 - `Delete everything proposed` — exactly those ids, nothing to type;
-- `Choose by id` — the user types the ids to delete (`P1, P3`);
+- `Choose by id` — the user writes the ids to delete (`P1, P3`) in the free-text answer;
 - `Delete nothing`.
 
 The labels are said in `language.ui` by their meaning. `Choose by id` asks the user to type ids: never render it as "delete the listed ones", which reads as the candidates shown above — the trap that made a user pick it expecting everything to go.
@@ -96,7 +96,7 @@ The labels are said in `language.ui` by their meaning. `Choose by id` asks the u
 
 An `undecided` conflict is never resolved by `Resolve as proposed`: it gets its own follow-up question — `Keep C<n>a` / `Keep C<n>b` / `Leave both`.
 
-Ask with `AskUserQuestion` — ids arrive as the free-text answer; without it, the questions as numbered text, answered by option number or by ids — print them, then end your turn and wait for the answer. `Choose by id` picked without any id → ask once, as plain text, for the ids, and end your turn. The two answers are independent: `Delete nothing` still lets the conflicts be resolved, and `Leave the conflicts` still lets the candidates go. No answer, or both declined → nothing is deleted or changed: `INFO [rules] prune: nothing deleted — file unchanged`. An id that is not in the preview is ignored and named in the report.
+Ask with the question tool of your agent (`AskUserQuestion`) — ids arrive as the free-text answer. `Choose by id` picked without any id → ask for the ids again in a message of your own, with no options. The two answers are independent: `Delete nothing` still lets the conflicts be resolved, and `Leave the conflicts` still lets the candidates go. No answer, or both declined → nothing is deleted or changed: `INFO [rules] prune: nothing deleted — file unchanged`. An id that is not in the preview is ignored and named in the report.
 
 ## E.5 Delete and resolve
 

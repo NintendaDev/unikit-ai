@@ -12,6 +12,8 @@ These steps run **only in full mode**, before the shared planning workflow.
 
 ### Step A: Decide on Git Branch
 
+**An experiment plan** (the input was experiment cards or another experiment source — `{{skills_dir}}/{{self_name}}/references/experiment-plan.md`): this step is replaced by that file's `## The branch and the base`; do not apply the rest of this step.
+
 **If `git.enabled = false` or `git.create_branches = false`:**
 - Skip this step entirely
 - Mark `branch_created = false`, continue to next step
@@ -21,7 +23,7 @@ These steps run **only in full mode**, before the shared planning workflow.
 **Otherwise**, ask the user whether to create a feature branch or stay on the current one:
 
 ```
-AskUserQuestion: Create a feature branch?
+The question tool of your agent (`AskUserQuestion`): Create a feature branch?
 
 Options:
 1. Yes — create <git.branch_prefix><feature-name> (recommended for new work)
@@ -70,8 +72,10 @@ recon-agent(prompt:
 
 ### Step C: Ask About Preferences
 
+**An experiment plan** asks none of the questions below: its settings are fixed by `experiment-plan.md` → `## Settings`; the editor-mode resolution further down still runs.
+
 ```
-AskUserQuestion: Before planning:
+The question tool of your agent (`AskUserQuestion`): Before planning:
 
 1. Include tests in the plan?
    a. Yes, include tests
@@ -167,7 +171,7 @@ When `engine_rules_loaded = true`:
 3. **MCP not configured → ask:**
 
 ```
-AskUserQuestion: This plan contains editor work (scenes, UI, VFX, animation, assets).
+The question tool of your agent (`AskUserQuestion`): This plan contains editor work (scenes, UI, VFX, animation, assets).
 No engine MCP is configured. How should those tasks be carried out?
 
    a. manual — the task is marked `⏸️ MANUAL`; no files are touched, and you get the

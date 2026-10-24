@@ -18,6 +18,8 @@ allowed-tools:
 
 Analyze {{engine_code_language}} code against the project's coding rules and produce a structured review report.
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md`
@@ -34,18 +36,13 @@ This skill uses a named delegation alias for `Agent(...)` calls. The alias is th
 place where its delegate's agent type and call arguments are declared — call sites name
 the alias and never carry a type or a model argument of their own.
 
-**Model argument.** Before the first dispatch of an alias below, read `.unikit/config.yaml`
-(a missing file, block or key is not an error) and settle the model argument once:
-
-1. `subagents.model.{{agent_id}}` holds a model name — pass `model: <name>` with every call,
-   exactly as written (this runtime's own spelling of the model argument, if it differs).
-2. It holds `inherit`, or is present and empty — pass no model argument; the agent runs on the
-   model of this session.
-3. The key is absent — use the built-in default `"{{agent_model_default}}"`; an empty string
-   means pass no model argument.
-
-If the runtime rejects the model name, repeat that call once without the model argument and
-report `WARN [delegation] model "<name>" rejected — retried on the session model`.
+**Subagent arguments.** Before the first subagent you launch, read `.unikit/system/subagent-arguments.md`
+and `.unikit/config.yaml` once and settle the model and effort of every launch as that file says.
+Keys: `subagents.model.{{agent_id}}.<role>`, `subagents.effort.{{agent_id}}.<role>`;
+built-in model of a reader and a validator: `"{{agent_model_default}}"`, of an executor: none.
+If the file cannot be read, print
+`WARN [delegation] subagent-arguments contract missing — built-in model tier used, effort not passed`
+and use that model, no effort.
 
 - **`check-agent`** — fresh-context, read-only findings validator (`+check`). Expands to:
 
@@ -54,11 +51,11 @@ report `WARN [delegation] model "<name>" rejected — retried on the session mod
   ```
 
   Whether the agent is read-only is this runtime's own claim, so the read-only contract
-  rides on the prompt rather than on the dispatch: keep `references/VALIDATOR.md`'s
+  rides on the prompt rather than on the dispatch: keep `{{skills_dir}}/{{self_name}}/references/VALIDATOR.md`'s
   read-only paragraph ("You never modify a file and never run a command that changes state") in whatever is sent.
 
   Fallback: the validator is **never** replaced by inline analysis — see
-  `references/CHECK-MODE.md` (`WARN [+check]: validator failed`).
+  `{{skills_dir}}/{{self_name}}/references/CHECK-MODE.md` (`WARN [+check]: validator failed`).
 
 ## Step 1: Load rules
 
@@ -74,6 +71,10 @@ Read `.unikit/memory/code/RULES_INDEX.md`. Load rules:
 
 Read `.unikit/skill-context/{{self_name}}/SKILL.md` if it exists — project-level overrides that win over this SKILL.md when conflicting.
 
+**The review is of work on a plan whose manifest has `## Experiment Context`** (the session started from such a plan, or the prompt carries a `Prototype plan:` note) → read `.unikit/system/prototype-profile.md` and follow its `## Role: quality and the rest` for the whole review. Missing or unreadable → `WARN [prototype] profile contract missing — reviewing as for an ordinary plan; run unikit-ai update`.
+
+<!-- unikit:extension-point:bootstrap -->
+
 ## Step 2: Route argument and get code
 
 **Parse `+check` first.** If `$ARGUMENTS` contains the `+check` token, strip it out (remember `check = true`) before running the routing chain below, so it is never mistaken for a file path or git ref. `+check` enables the fresh-context findings validator in Step 4.5; without it, that step is skipped entirely.
@@ -86,7 +87,7 @@ Read `.unikit/skill-context/{{self_name}}/SKILL.md` if it exists — project-lev
 4. **Contains `.cs`** → File mode (explicit files)
 5. **Other** → `git rev-parse --verify <arg>`:
    - Valid → Commits mode
-   - Invalid → `AskUserQuestion` (staged / cancel / corrected ref)
+   - Invalid → the question tool of your agent (`AskUserQuestion`) (staged / cancel / corrected ref)
 
 > `@` disambiguates folder paths from git refs with `/`.
 
@@ -105,7 +106,7 @@ Read `.unikit/skill-context/{{self_name}}/SKILL.md` if it exists — project-lev
 
 1. Validate ref via `git rev-parse --verify`. Invalid → ask user
 2. `git log --oneline --reverse <ref>..HEAD` → if empty, inform and **stop**
-3. If >20 commits → `AskUserQuestion` (all / last 20 / cancel)
+3. If >20 commits → the question tool of your agent (`AskUserQuestion`) (all / last 20 / cancel)
 4. `git diff --name-only <ref>..HEAD -- '*.cs'` → read full content for stack rule detection
 5. For each commit: `git show <hash> --stat` and `git show <hash>`
 
@@ -175,7 +176,7 @@ Always run these checks in addition to project rules. If a finding from the chec
 
 ## Step 4.5: Validate Findings (`+check` only)
 
-Run this step **only** when `check = true` (the `+check` flag was parsed in Step 2). Draft the full review internally first (all sections of Step 5, including the gate-result inputs), then — **before** rendering anything to the user — run the procedure in **`references/CHECK-MODE.md`**. It dispatches one fresh-context `check-agent` validator over the **Findings table** rows (one item per row; "Questions", "Positive notes", and per-commit findings are excluded), applies each `keep`/`modify`/`drop` verdict and any severity move across the four levels (🔴 Critical / 🟡 Warning / 🟠 Medium / 🟢 Suggestion), tracks the `hidden` / `adjusted` / `reclassified` counters, and **recomputes** the `unikit-gate-result` block (Step 5 "Machine-readable gate result") from the post-filter table.
+Run this step **only** when `check = true` (the `+check` flag was parsed in Step 2). Draft the full review internally first (all sections of Step 5, including the gate-result inputs), then — **before** rendering anything to the user — run the procedure in **`{{skills_dir}}/{{self_name}}/references/CHECK-MODE.md`**. It dispatches one fresh-context `check-agent` validator over the **Findings table** rows (one item per row; "Questions", "Positive notes", and per-commit findings are excluded), applies each `keep`/`modify`/`drop` verdict and any severity move across the four levels (🔴 Critical / 🟡 Warning / 🟠 Medium / 🟢 Suggestion), tracks the `hidden` / `adjusted` / `reclassified` counters, and **recomputes** the `unikit-gate-result` block (Step 5 "Machine-readable gate result") from the post-filter table.
 
 When `+check` ran successfully, append one line after all review sections and before the `unikit-gate-result` fence:
 

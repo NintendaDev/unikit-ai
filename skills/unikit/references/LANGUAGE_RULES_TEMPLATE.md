@@ -49,7 +49,7 @@ This is narrower than the "always English" list below: genuine technical terms, 
 All user-facing output uses the configured language unless explicitly listed in the "always English" section below. This includes:
 
 - All user-facing messages (questions, reports, status updates, confirmations, summaries)
-- AskUserQuestion prompts and option lists
+- Prompts and option lists of the question tool of your agent (`AskUserQuestion`)
 - Generated artifacts and documents (plans, reports, research notes, roadmaps, patches, fix plans, etc.)
 - Section headings and prose in generated templates and documents
 - Commit message subjects and body text

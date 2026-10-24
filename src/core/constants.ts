@@ -89,11 +89,11 @@ export const REFERENCES_DIR_NAME = 'references';
  * later the `gd-principles` shards in plan (b)). It matches the module id by
  * construction, so it sources the literal from {@link GAMEDESIGN_MODULE_ID}
  * rather than re-hardcoding it. Distinct concept from the memory/data
- * `gamedesign` dirs — this is the system-asset home. Module-local (only
- * {@link systemGamedesignDir} consumes it) so it does not duplicate the
- * `GAMEDESIGN_MODULE_ID` export.
+ * `gamedesign` dirs — this is the system-asset home. Read by {@link systemGamedesignDir}
+ * and by `constants-template.ts`, hence exported; the tag below keeps knip from reading it as a duplicate.
+ * @alias
  */
-const SYSTEM_GAMEDESIGN_DIR_NAME = GAMEDESIGN_MODULE_ID;
+export const SYSTEM_GAMEDESIGN_DIR_NAME = GAMEDESIGN_MODULE_ID;
 
 /**
  * Name of the `genres` subdir under both `data/gamedesign/` (the bundled
@@ -327,6 +327,16 @@ export const RESEARCH_LINK_FILE = 'research-link.md';
 export const PLAN_BOUNDARIES_FILE = 'plan-boundaries.md';
 /** The merge-analysis protocol explore and plan both run; rationale on `installMergeAnalysisContract`. */
 export const MERGE_ANALYSIS_FILE = 'merge-analysis.md';
+/** The balance hand-back report contract; rationale on `installBalanceHandbackContract`. */
+export const BALANCE_HANDBACK_FILE = 'balance-handback.md';
+/** The prototype-profile contract for plans built from experiment cards; rationale on `installPrototypeProfileContract`. */
+export const PROTOTYPE_PROFILE_FILE = 'prototype-profile.md';
+/** The rule for the model and effort arguments of a subagent call; rationale on `installSubagentArgumentsContract`. */
+export const SUBAGENT_ARGUMENTS_FILE = 'subagent-arguments.md';
+/** The table of which role (reader, validator, executor) a subagent launch has; rationale on `installSubagentRolesContract`. */
+export const SUBAGENT_ROLES_FILE = 'subagent-roles.md';
+/** How a skill asks the user a question and waits for the answer; rationale on `installUserQuestionsContract`. */
+export const USER_QUESTIONS_FILE = 'user-questions.md';
 export const MODULES_YML_FILE = 'modules.yml';
 export const ENGINE_RULES_FILE = 'ENGINE_RULES.md';
 
@@ -443,6 +453,10 @@ export * from './constants-artifacts.js';
 export * from './constants-transform.js';
 // How a skill loads another skill for a subagent, and the call-head fragments (same reason, same re-export).
 export * from './constants-skill-call.js';
+// Extension points: anchors, block markers, the registry file name and the skip hints (same reason, same re-export).
+export * from './constants-extension-points.js';
+// Extension item selection: kinds, titles, flag names, menu limits (same reason, same re-export).
+export * from './constants-extension-selection.js';
 
 // --- Migration version anchors (`Migration.since`) ---
 //

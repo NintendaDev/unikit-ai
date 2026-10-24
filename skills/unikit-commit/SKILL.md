@@ -14,6 +14,8 @@ allowed-tools:
 
 Generate commit messages following the [Conventional Commits](https://www.conventionalcommits.org/) specification, with {{engine_name}}-specific safety checks.
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md`
@@ -80,11 +82,14 @@ No narration between commands, and **no mention of a setting that merely did its
    - These are lightweight checks — flag only clear violations as `WARN`, don't block the commit
    - Never modify these files
 
+   <!-- unikit:extension-point:bootstrap -->
+
 4. **Plan Linkage**
    - Check if `.unikit/code/plans/` contains an active plan (look for a `plans/*/PLAN.md` manifest)
    - If a plan exists and the staged changes clearly relate to its tasks, the plan is the source of the message's human part (Step 7): read its `## Overview` and the `WHY:` line of every task the staged changes belong to, and add the `Plan: <folder>` trailer. Phase and task numbers never go into the message — the trailer is the link.
    - Print `INFO [commit] plan: <folder> — source of the message` when a plan is linked, or `INFO [commit] no related plan — the message is written from the diff` when none is.
    - A related plan is optional: without one, the human part is written from the effect the diff makes visible.
+   - **The linked plan's manifest has `## Experiment Context`** → read `.unikit/system/prototype-profile.md` and follow its `## Role: quality and the rest`; the Context Check of item 3 ran before the plan was linked, so apply that section to its findings before they reach the message or the report. Missing or unreadable → `WARN [prototype] profile contract missing — committing as for an ordinary plan; run unikit-ai update`.
    - **Review loop.** The user has been answering a result handed over in this session with edits (`dev-principles.md` item 5a), this commit closes that loop without the user's word of acceptance, and logic changed with no test written → also print `INFO [testing] review loop closed without acceptance: no tests written for <changed logic>`, then commit as usual: write no test and run no suite. A commit that `/unikit-implement` makes itself during its run is not that.
 
    **Ultra bundle check.** Read the first line of the resolved plan manifest. If it equals `<!-- unikit:plan-mode:ultra -->`, this is an ultra bundle: read `.unikit/system/ultra-plan-read.md` now, once, and follow it for reading depth and mutability. A plan without the marker never reads this file. **Discovery itself does not change** — the folder is found the way it always was; only what is read inside it differs.
@@ -212,10 +217,10 @@ When invoked:
 3. Run lightweight context checks against `.unikit/` docs
 4. If errors found — list them and ask user whether to proceed or fix first
 5. Write the commit message by Workflow Step 7 — its check before showing included
-6. Print the full message — subject, body, footer — as plain text in a block of its own, then confirm with the user before committing. The question carries the options only: a question that also holds the message is invisible on a runtime without a question widget. In `## Auto mode` the message is printed the same way and committed without this question.
+6. Print the full message — subject, body, footer — as plain text in a block of its own, then confirm with the user before committing. In `## Auto mode` the message is printed the same way and committed without this question.
 
    ```
-   AskUserQuestion: 💾 Commit with the message above?
+   The question tool of your agent (`AskUserQuestion`): 💾 Commit with the message above?
 
    Options:
    1. Commit as is
@@ -225,7 +230,7 @@ When invoked:
 
    Based on choice:
    - Commit as is → proceed to step 7
-   - Edit message → ask the user for the corrected message via `AskUserQuestion`, then return to step 6 with the new message
+   - Edit message → ask the user for the corrected message via the question tool of your agent (`AskUserQuestion`), then return to step 6 with the new message
    - Cancel → do NOT commit → **STOP**
 
 7. Execute `git commit` with the confirmed message
@@ -242,7 +247,7 @@ When invoked:
      - Otherwise: `git push`
 
      ```
-     AskUserQuestion: Push to remote?
+     The question tool of your agent (`AskUserQuestion`): Push to remote?
 
      Options:
      1. 🔄 Push now
@@ -282,7 +287,7 @@ A split needs an existing commit to split against: when `git rev-parse --verify 
 2. Confirm split plan with the user:
 
    ```
-   AskUserQuestion: Split into separate commits?
+   The question tool of your agent (`AskUserQuestion`): Split into separate commits?
 
    Options:
    1. ✅ Yes, split as suggested
@@ -293,7 +298,7 @@ A split needs an existing commit to split against: when `git rev-parse --verify 
    Based on choice:
    - Yes, split as suggested → proceed to step 3
    - No, commit everything together → write a single message (**Behavior** step 5)
-   - Let me adjust the grouping → ask the user for the adjusted grouping via `AskUserQuestion`, then return to step 2 with the new plan
+   - Let me adjust the grouping → ask the user for the adjusted grouping via the question tool of your agent (`AskUserQuestion`), then return to step 2 with the new plan
 
 3. **Check the grouping before the index is touched.** List the staged paths with `git diff --cached --name-status --no-renames` — a rename shows up as its two halves, and both halves go into the same group. Every staged path belongs to exactly one group; a path in no group, or a rename split between groups, sends you back to step 2 with the problem named.
    A file claimed by two groups is split by hunks: take its staged hunks with `git diff --cached -- <file>` now and assign every hunk to one group. A binary file has no hunks and goes whole into one group. A hunk that cannot be assigned with certainty → do not guess: stop before touching the index and return to step 2 — the user regroups or commits everything together.

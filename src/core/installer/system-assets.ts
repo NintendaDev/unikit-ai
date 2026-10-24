@@ -19,7 +19,7 @@ import { processTemplate } from '../template.js';
 import { logInfo, logWarn } from '../../utils/log.js';
 import {
   REFERENCES_DIR_NAME, ENGINE_RULES_FILE, CLI_CONTRACT_FILE, DEV_PRINCIPLES_FILE,
-  GD_PRINCIPLES_FILE, GATE_RESULT_CONTRACT_FILE, ULTRA_PLAN_READ_FILE, RESEARCH_LINK_FILE, PLAN_BOUNDARIES_FILE, MERGE_ANALYSIS_FILE,
+  GD_PRINCIPLES_FILE, GATE_RESULT_CONTRACT_FILE, ULTRA_PLAN_READ_FILE, RESEARCH_LINK_FILE, PLAN_BOUNDARIES_FILE, MERGE_ANALYSIS_FILE, BALANCE_HANDBACK_FILE, PROTOTYPE_PROFILE_FILE,
   GAMEDESIGN_MODULE_ID,
   GAMEDESIGN_GENRES_DIR_NAME, MODULES_YML_FILE, ENGINE_MCP_DIR_NAME, MCP_RULES_INDEX_FILE,
   MCP_STAMP_SERVER_KEY,
@@ -27,7 +27,7 @@ import {
 } from '../constants.js';
 import type { SelectedEngineServer } from '../mcp-rules.js';
 import { listModules } from '../modules.js';
-import { buildSubagentTemplateVars } from './shared.js';
+import { buildSubagentTemplateVars, installFlatSystemAsset } from './shared.js';
 
 // --- Engine template installation ---
 
@@ -86,23 +86,7 @@ export async function installCliContract(projectDir: string): Promise<void> {
   logInfo('installCliContract', 'installed .unikit/system/cli-contract.md');
 }
 
-// --- Flat system assets ---
-
-/**
- * Copy one `data/<fileName>` into `.unikit/system/<fileName>` verbatim — the shared body of
- * every flat, substitution-free, non-hash-tracked contract below. A missing source is a skip
- * with a warning, never an abort: one absent contract is not a reason to fail init/update.
- */
-async function installFlatSystemAsset(projectDir: string, fileName: string, component: string): Promise<void> {
-  const content = await readTextFile(path.join(getDataDir(), fileName));
-  if (!content) {
-    logWarn(component, `${fileName} not found in data/, skipping`);
-    return;
-  }
-
-  await writeTextFile(path.join(systemDir(projectDir), fileName), content);
-  logInfo(component, `installed .unikit/system/${fileName}`);
-}
+// --- Flat system assets (the shared body, installFlatSystemAsset, lives in shared.ts) ---
 
 // --- Gate-result contract installation ---
 
@@ -164,6 +148,27 @@ export async function installPlanBoundariesContract(projectDir: string): Promise
  */
 export async function installMergeAnalysisContract(projectDir: string): Promise<void> {
   await installFlatSystemAsset(projectDir, MERGE_ANALYSIS_FILE, 'installMergeAnalysisContract');
+}
+
+/**
+ * The balance hand-back report contract — a flat copy from `data/balance-handback.md`, NO
+ * substitution, NOT hash-tracked. A system asset because skills of TWO independently
+ * installed groups read it (/unikit-plan, /unikit-implement, /unikit-verify from the code
+ * group; /unikit-gd-balance from the game-design group) and a per-skill reference would be
+ * unreachable when the other group is not installed.
+ */
+export async function installBalanceHandbackContract(projectDir: string): Promise<void> {
+  await installFlatSystemAsset(projectDir, BALANCE_HANDBACK_FILE, 'installBalanceHandbackContract');
+}
+
+/**
+ * The prototype-profile contract — a flat copy from `data/prototype-profile.md`, NO
+ * substitution, NOT hash-tracked. A system asset because fourteen skills and subagents of the
+ * code group read the same rules for a plan built from experiment cards, and a per-skill copy
+ * would be fourteen copies that drift.
+ */
+export async function installPrototypeProfileContract(projectDir: string): Promise<void> {
+  await installFlatSystemAsset(projectDir, PROTOTYPE_PROFILE_FILE, 'installPrototypeProfileContract');
 }
 
 // --- Dev Principles installation ---
