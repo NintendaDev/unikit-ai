@@ -10789,6 +10789,7 @@ else
     exp_owner "EXP-4:idea-table-owner" '| ID | Experiment | Hypothesis | What We Test | Prototype Cost | Learning Value |' mode-discover.md
     exp_owner "EXP-4:judged-on-owner" 'Judged on: <' template-experiment.md
     exp_owner "EXP-4:based-on-owner" '- Based on:' template-experiment.md
+    exp_owner "EXP-4:rationale-owner" '- Why this design:' template-experiment.md
 
     # (EXP-5) the boundary: the write scope, the reading boundary, the shared contracts name the skill
     EXP_OWN="$({ awk '/^## Ownership Boundaries/{f=1;next} /^## /{f=0} f' "$EXP_SKILL" || true; })"
@@ -10940,7 +10941,7 @@ else
     # R: the references of a card — Based on is both the statement and the reading list; the gate; the balance entry
     exp_ok "EXP-8:R-17" '- Based on: none' "$EXP_REFS/template-experiment.md"
     exp_ok "EXP-8:R-18" 'nothing of the document is copied into the store' "$EXP_REFS/template-experiment.md"
-    exp_ok "EXP-8:R-19" 'Nine yes/no checks' "$EXP_REFS/template-experiment.md"
+    exp_ok "EXP-8:R-19" 'Ten yes/no checks' "$EXP_REFS/template-experiment.md"
     exp_ok "EXP-8:R-20" '## Attaching the research' "$EXP_REFS/from-research.md"
     exp_ok "EXP-8:R-21" 'A research stays where it is' "$EXP_REFS/from-research.md"
     exp_ok "EXP-8:R-22" 'names it in `Based on:`' "$EXP_REFS/mode-specify.md"
@@ -10957,6 +10958,18 @@ else
     exp_ok "EXP-8:R-32" 'a token followed by a fragment is not an item' "$EXP_REFS/template-experiment.md"
     exp_ok "EXP-8:R-33" 'can be read alone' "$EXP_REFS/mode-specify.md"
     exp_no "EXP-8:R-34-sub-number-rule" 'and a sub-number' "$EXP_REFS/card-draft-view.md"
+    # A: the Rationale — the reasons the other sections leave out; the card is alive when a choice has a reason, an alternative, a feeling and a lesson
+    exp_ok "EXP-8:A-01" '- Why this design:' "$EXP_REFS/template-experiment.md"
+    exp_ok "EXP-8:A-02" '- Intended feeling:' "$EXP_REFS/template-experiment.md"
+    exp_ok "EXP-8:A-03" 'a choice without a reason is marked "assumption"' "$EXP_REFS/template-experiment.md"
+    exp_ok "EXP-8:A-04" 'A change of the Rationale alone does not raise' "$EXP_REFS/template-experiment.md"
+    exp_ok "EXP-8:A-05" 'the Rationale after them stays' "$EXP_REFS/mode-evaluate.md"
+    exp_ok "EXP-8:A-06" 'which `assumption`s the evidence tested' "$EXP_REFS/mode-evaluate.md"
+    exp_ok "EXP-8:A-07" 'has a reason or is marked' "$EXP_REFS/mode-specify.md"
+    exp_ok "EXP-8:A-08" 'at least one rejected alternative' "$EXP_REFS/mode-specify.md"
+    exp_ok "EXP-8:A-09" 'card, Rationale' "$EXP_REFS/from-research.md"
+    exp_ok "EXP-8:A-10" 'with `—` in the № column' "$EXP_REFS/card-draft-view.md"
+    exp_ok "EXP-8:A-11" 'draws its reasons from' "$EXP_REFS/balance-link.md"
 
     # (EXP-9) the lexicon: the templates and the sample artifacts carry no technical trace; the scan itself is tested first
     for s in 'PlayerController.cs' 'spawnEnemy()' 'enemy_spawn_timer' 'Assets/Scripts/Player.cs' 'player.Move(x)' 'FlagCaptureManager'; do
@@ -11700,6 +11713,10 @@ else
     exp_ok "EXP-RF3:04" '#### Reference · balance ·' "$EXPL_TASKFMT"
     exp_ok "EXP-RF3:05" '**References.** Every entry of the card' "$EXPL_TASKFMT"
     exp_ok "EXP-RF3:06" 'unikit-plan/references/experiment-references.md' "$ROOT_DIR/scripts/test-install.sh"
+    # the Rationale of a card: the block in the snapshot, the copy rule, the use of an assumption
+    exp_ok "EXP-RF3:07" '#### Rationale' "$EXPL_TASKFMT"
+    exp_ok "EXP-RF3:08" 'when it has one' "$EXPL_TASKFMT"
+    exp_ok "EXP-RF3:09" 'An `assumption` in the Rationale' "$EXPRF_REF"
 fi
 (( EXP_CHK > 0 )) || EXP_WHY+=" EXP-RF1:nothing-checked"
 if [[ -z "$EXP_WHY" ]]; then

@@ -10,7 +10,7 @@ Read **only** when an experiment card is to be written or changed — an idea wa
 4. **Draft** the whole card in the conversation and print it as your own message, in the table form owned by `{{skills_dir}}/{{self_name}}/references/card-draft-view.md`, headline first.
 5. **Check** it by `## Quality of a card` below, by the technical-traces self-check (`storage-and-index.md`) and by `Readiness for planning` (`template-experiment.md`).
 6. **Approve, then write.** One question with the question tool of your agent (`AskUserQuestion`), the recommended option first: `1.` save · `2.` change — the designer writes what to change in the free-text answer · `3.` stop. Nothing is written before the answer. After `1.`: `storage-and-index.md` → `Creating an experiment folder`, then the order of writes. Several chosen ideas → several cards, each with its own chain of writes, in the user's order.
-7. **Report** (terminal block, TIER A): the saved cards by title (the code as a secondary parenthesis), each with its status; for a `Draft`, what is missing; then the closing block.
+7. **Report** (terminal block, TIER A): the saved cards by title (the code as a secondary parenthesis), each with its status; for a `Draft`, what is missing (an empty Rationale keeps a card a `Draft`); then the closing block.
 
 ## Quality of a card
 
@@ -24,6 +24,10 @@ Read **only** when an experiment card is to be written or changed — an idea wa
 - Section 5 carries, as its last line, the sentence from the template, "The card describes a disposable prototype, not production-ready functionality" (the skill never removes it, neither on creation nor on edit).
 - Every item of Success Criteria and Follow-up Decisions can be read alone: it names its subject and says what follows (`template-experiment.md`).
 - A card built from a research or a balance document names it in `Based on:` (`from-research.md`, `balance-link.md`); without it the card stays a draft.
+- Every non-obvious rule has a reason or is marked `assumption`. A reason may be a precedent, a constraint of the game or the designer's own word; a rule with none is not left bare.
+- The main design choice has at least one rejected alternative with the reason it was set aside.
+- The intended feeling of the player is one sentence in the player's terms.
+- A failed result teaches something, and the card says what.
 - A user-combined idea: check the one-factor rule; if two factors move, offer two experiments or record the reason; the user decides.
 
 ## Changing an existing card

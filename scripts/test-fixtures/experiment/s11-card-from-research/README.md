@@ -14,6 +14,7 @@ The designer writes: "A card for the hint arrow, from the research first-session
 - The four outcome tokens stay as they are in the file and a line explains them; every item of the success criteria and of the follow-up decisions can be read alone.
 - Section 4 holds one question sentence and a `Judged on:` line; the success criteria are written quality by quality.
 - The card names the research under `Based on:` (its title, the path of its folder, its date) and the headline of the draft shows the line; nothing of the research is copied into the store.
+- The card ends with a Rationale: the reasons of the key choices taken from the decisions and the findings of the research, the alternatives it rejected, the intended feeling, and what a failure would teach.
 - Nothing is written before the designer approves.
 - The planner, given the card, reads the research named there and uses it: its summary and brief are in the snapshot and the numbers and boundaries a task needs are inside the task.
 

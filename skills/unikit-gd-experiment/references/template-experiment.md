@@ -70,6 +70,13 @@ The card describes a disposable prototype, not production-ready functionality.
 - Evidence: None
 - Confidence: —
 - Assessed version: —
+
+## Rationale
+- Why this design: <each key choice, one line: the choice and its reason or precedent; a choice without a reason is marked "assumption">
+- Intended feeling: <one sentence, in the player's terms>
+- Rejected: <an alternative and why not; a piece set aside for a later experiment is named as such>
+- Not tested on purpose: <what, and why>
+- If it fails: <what the result would teach>
 ```
 
 ## Field rules
@@ -93,10 +100,11 @@ The card describes a disposable prototype, not production-ready functionality.
 - **Success Criteria** — any threshold is marked as a set of preliminary acceptance targets and is never presented as a fact. When `Judged on:` names several qualities, each gets its own signals for every outcome, and Partially Supported means some qualities held and others did not (the card says which).
 - **Success Criteria and Follow-up Decisions are written as items that can be read alone.** An item names its subject (a judged quality, or the outcome of the whole test) and states the condition or the decision in a full sentence: "The hypothesis is supported on <quality> if …", "If the result is inconclusive, repeat the test with …". The outcome tokens stay in the file as the bold openers of the outcome items (`Supported`, `Partially Supported`, `Not Supported`, `Inconclusive`); a token followed by a fragment is not an item, because the reader of one line must know what is supported and what is decided.
 - **Problem, Variants, Minimum Scope, Risks** — as the line of the template says.
+- **Rationale** is the section after section 14 and has no number, so the numbering the planner, the lookup and the index rely on does not move. It holds the reasons the other sections leave out. Evaluate changes the six lines of section 14 only; the Rationale stays. A change of the Rationale alone does not raise `Version`. A card saved before this section existed is read as having none and is not rewritten to add it.
 
 ## Readiness for planning
 
-Ready for Planning is set only when the planner could build the prototype without asking the designer about a rule that matters. The card is independently understandable: it does not lean on a hidden conversation context. Nine yes/no checks:
+Ready for Planning is set only when the planner could build the prototype without asking the designer about a rule that matters. The card is independently understandable: it does not lean on a hidden conversation context. Ten yes/no checks:
 
 1. The hypothesis is testable, the factor is one or the reason for several is named, and `Judged on:` says what the evidence is read against.
 2. It is clear what to build — sections 5 and 6 describe the whole experience.
@@ -107,6 +115,7 @@ Ready for Planning is set only when the planner could build the prototype withou
 7. No material question to the designer is left in the text.
 8. The text holds no technical traces (the self-check in `{{skills_dir}}/{{self_name}}/references/storage-and-index.md`).
 9. A card built from a game-design research or from a balance document names it in `Based on:`.
+10. The Rationale holds a reason for the main choices (an `assumption` marker is a reason), the intended feeling and what a failure would teach. A small experiment needs two or three lines, but not none.
 
 Any "no" keeps the status at `Draft`, and the closing block prints no plan command and names the reason.
 

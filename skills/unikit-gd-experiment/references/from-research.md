@@ -18,7 +18,7 @@ Read **only** when a card is to be written and the request names or attaches a g
 
 ## Ledger — what happens to what the research says
 
-Before the card is drafted, print as your own message a table `| Research item | Goes to |`, at most twelve rows, each cell one short line. An item is a decision, a risk, an open question, a piece of work the research sets apart or postpones, or a tie of a part of the design to a goal. `Goes to` is one of: `card, section <n>` · `another experiment` · `not for this card`. Nothing is dropped silently: a piece the research marks as separate or later is named in section 9 as out of scope and appears here as `another experiment`. The ledger says where things went; it is not a question, and the designer corrects it at the draft.
+Before the card is drafted, print as your own message a table `| Research item | Goes to |`, at most twelve rows, each cell one short line. An item is a decision, a risk, an open question, a piece of work the research sets apart or postpones, or a tie of a part of the design to a goal. `Goes to` is one of: `card, section <n>` · `card, Rationale` · `another experiment` · `not for this card`. Nothing is dropped silently: a piece the research marks as separate or later is named in section 9 as out of scope and appears here as `another experiment`. The ledger says where things went; it is not a question, and the designer corrects it at the draft.
 
 ## What the card judges
 
@@ -46,6 +46,7 @@ Go on with `mode-specify.md` at its facts step, with:
 - the research's decisions as the design (sections 3 and 5-9);
 - the open questions that matter to the player as risks (section 12) and as questions after the session (section 10);
 - the success criteria (section 11) written quality by quality;
+- the Rationale from the decisions, the rejected alternatives and the findings that explain them;
 - a fact the research took from the project keeps its `extracted from code` marker and confidence (`context-and-research.md`); a number it states is a preliminary target.
 
 ## Failures

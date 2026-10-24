@@ -419,6 +419,8 @@ The last task of the plan; it carries `WHY:` and `Hand-back:` and **carries no `
   …
   #### 11. Success Criteria
   …
+  #### Rationale
+  …
   #### Design research · <folder> (names v<k>)
   <the Active Summary of that research, as it stands>
   #### Reference · research · <title> (updated <date>)
@@ -431,7 +433,7 @@ The block above is shown indented by two spaces only so that this file carries n
 
 **`Branch:` and `Base:`.** `Branch:` is the branch the plan lives on — the one created for it, or the current one when none was created; `none` when git is off. `Base:` is the branch the plan's branch was cut from; `none` when no branch was cut. Executors compare the current branch with `Branch:` before they write, and take the base of every diff and check from `Base:` (`.unikit/system/prototype-profile.md`; `.unikit/system/plan-boundaries.md` → `## Base branch`).
 
-**What is copied.** In a plan with cards, for every card, in the order of the `Cards:` list: sections 2 to 11 of `experiment.md` in full (Problem, Hypothesis, What We Test, Design, Gameplay Flow, Variants, Interface and Feedback, Minimum Scope, How to Test, Success Criteria), with their headings lowered by two levels. Section 12 (Risks) is copied only when it changes what is built; sections 13 and 14 (Follow-up Decisions, Evaluation Summary) are never copied. A path without the content is not a snapshot.
+**What is copied.** In a plan with cards, for every card, in the order of the `Cards:` list: sections 2 to 11 of `experiment.md` in full (Problem, Hypothesis, What We Test, Design, Gameplay Flow, Variants, Interface and Feedback, Minimum Scope, How to Test, Success Criteria), with their headings lowered by two levels. Section 12 (Risks) is copied only when it changes what is built; sections 13 and 14 (Follow-up Decisions, Evaluation Summary) are never copied. The Rationale of the card, when it has one, is copied as it stands, after section 11; an older card has none and the snapshot asks for no empty block. A path without the content is not a snapshot.
 
 **Design researches.** A research of the design store (`.unikit/gamedesign/researches/`) whose Active Summary names the card by an `Experiment:` line goes in as one more block of that card, after section 11, under the heading shown above, its Active Summary copied as it stands. No hash is kept and the plan never re-reads it for drift; the version in the heading is the one the research named. A research of the code store is not copied: it is linked under `## Based on` like any other research.
 

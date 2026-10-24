@@ -17,6 +17,7 @@ The card shown for approval is a table, never a numbered or bulleted list of sec
 - The four outcomes keep their tokens from the file — `Supported`, `Partially Supported`, `Not Supported`, `Inconclusive` — and are never translated in the table. When the table holds section 11 or 13, one line under the headline says in the interface language what they mean: the hypothesis is confirmed · confirmed in part · not confirmed · the result cannot be read.
 - Section 1 is one row: category, version, status `Draft` with the date, "no number yet" for a card not yet saved, the link to a balance checkpoint or "stand-alone".
 - The closing sentence of section 5 (the card describes a disposable prototype) is the last row of section 5.
+- The `Rationale` rows come last, with `—` in the № column, because the section has no number in the file; the heading in the `Section` cell is `Rationale`, and each line of the section is one row.
 - A pipe character inside a cell is written `\|`. Nothing is shortened or dropped for the table: every sentence the card will hold is in a row. A card that needs more rows than a designer can review is over-specified — cut what the planner can decide alone, not what the designer must approve.
 
 ## When it is printed again

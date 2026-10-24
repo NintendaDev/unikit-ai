@@ -26,6 +26,7 @@ Nothing read here is only context.
 
 - A decision, a number or a boundary of a reference that a `Must Have` of the card needs goes into the text of the task that builds it, with its value inside the task, because the plan works from the snapshot; the `WHY:` line of the task names the reference.
 - The `Not in this point` of a balance point joins `### OUT OF SCOPE`; its `Constraints` join the constraints of `## Technical Context`; its `Why` is the `WHY:` of the tasks that carry the question.
+- An `assumption` in the Rationale of the card is a risk the prototype has to make observable. What the Rationale names as the reason of the test is not simplified away when a `Can Be Simplified` item is built.
 - The planner does not decide against a decision of a reference.
 - When the card and a reference differ on something that is built, print `WARN [experiment] the card and <title> differ on <what>`; the card wins, because the designer approved it.
 - The closing message names, for each card, the references it was planned with.

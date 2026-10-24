@@ -20,6 +20,6 @@ A balance document is open under `.unikit/gamedesign/balance/`, its current poin
 ## Anchors
 - Anchor: references/balance-link.md :: The reading list
 - Anchor: references/balance-link.md :: balance: <slug>
-- Anchor: references/template-experiment.md :: Nine yes/no checks
+- Anchor: references/template-experiment.md :: Ten yes/no checks
 - Anchor: references/template-experiment.md :: nothing of the document is copied into the store
 - Anchor: ../unikit-plan/references/experiment-references.md :: the card wins, because the designer approved it
