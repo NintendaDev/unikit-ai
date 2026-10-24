@@ -18,6 +18,7 @@ Read **only** when a card is being created or edited, or checked for readiness f
 - Updated: YYYY-MM-DD
 - Related: none
 - Origin: none
+- Based on: none
 
 ## 2. Problem
 <The player or design problem: who is hurt, how it shows today, why it matters.>
@@ -79,6 +80,7 @@ The card describes a disposable prototype, not production-ready functionality.
 - **Created** is set once; **Updated** is today's date (`Bash(date *)`) on every write of the card.
 - **Related** is `none` or `EXP-<nnn>` numbers separated by commas; **Category** is a free word; **Summary** is one or two sentences.
 - **Origin** is `none` or `from balance` with five nested lines; the format of those lines belongs to `{{skills_dir}}/{{self_name}}/references/balance-link.md` and is not repeated here.
+- **Based on** is `none` or one nested line per document the card was built from, `<kind>: <title> · <path> · updated <value>`: kind `research` (a design research: the path of its folder and the `Updated:` of its record) or `balance` (a balance document: the path of its `CHECKPOINTS.md` and the `Updated:` of its header). It is written whenever a research or a balance document was the input of the card and is never left to prose; nothing of the document is copied into the store; a card saved before this line existed is read as `none`. The planner reads the documents it names.
 
 ## What each section must hold
 
@@ -93,7 +95,7 @@ The card describes a disposable prototype, not production-ready functionality.
 
 ## Readiness for planning
 
-Ready for Planning is set only when the planner could build the prototype without asking the designer about a rule that matters. The card is independently understandable: it does not lean on a hidden conversation context. Eight yes/no checks:
+Ready for Planning is set only when the planner could build the prototype without asking the designer about a rule that matters. The card is independently understandable: it does not lean on a hidden conversation context. Nine yes/no checks:
 
 1. The hypothesis is testable, the factor is one or the reason for several is named, and `Judged on:` says what the evidence is read against.
 2. It is clear what to build — sections 5 and 6 describe the whole experience.
@@ -103,6 +105,7 @@ Ready for Planning is set only when the planner could build the prototype withou
 6. There is a way to test it and there are success criteria.
 7. No material question to the designer is left in the text.
 8. The text holds no technical traces (the self-check in `{{skills_dir}}/{{self_name}}/references/storage-and-index.md`).
+9. A card built from a game-design research or from a balance document names it in `Based on:`.
 
 Any "no" keeps the status at `Draft`, and the closing block prints no plan command and names the reason.
 

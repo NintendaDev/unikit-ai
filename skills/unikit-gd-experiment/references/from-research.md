@@ -29,11 +29,20 @@ A research gives the idea and the design, not the measure: it is written around 
 3. Ask **one** question with the question tool of your agent (`AskUserQuestion`), several answers allowed: what should the test show? At most four candidates, the source in the description of each; the ones the designer's own words name come first and are recommended. The designer adds their own in the free-text answer. When no source names a quality, ask the same question open, with no example options.
 4. The answer becomes `Judged on:` — two to four qualities. More than four: ask which to drop, or whether to split the card. This question comes before the questions about how the test is run; each of those says which judged quality its options strengthen or weaken.
 
+## Attaching the research
+
+The research is attached to the card always; the designer is not asked whether to. The card gets one line under `Based on:` in section 1: `research: <title> · <path of the research folder> · updated <the Updated value of its record>`. It is part of the draft, so the designer sees it in the headline, and it is written together with the card. Without it the card is not ready for planning: the planner reads the research through this line.
+
+- Several cards from one research: each card carries the line.
+- A research named later for a card that is already saved is attached the same way, as an edit that does not raise `Version`.
+- A research stays where it is. The card holds its title, path and date, and nothing of it is copied into the store, because a record may carry pointers into the project that no artifact of the store may hold.
+
 ## Then the ordinary card
 
 Go on with `mode-specify.md` at its facts step, with:
 
 - the question of section 4, one sentence that covers every judged quality, and `Judged on:` as chosen;
+- the line of `Based on:` above;
 - the research's decisions as the design (sections 3 and 5-9);
 - the open questions that matter to the player as risks (section 12) and as questions after the session (section 10);
 - the success criteria (section 11) written quality by quality;
@@ -41,6 +50,6 @@ Go on with `mode-specify.md` at its facts step, with:
 
 ## Failures
 
-- A record that cannot be read: print `WARN [experiment] a research could not be read — asking for the idea in words` and take the request the ordinary way.
+- A record that cannot be read: print `WARN [experiment] a research could not be read — asking for the idea in words` and take the request the ordinary way. There is nothing to point at, so no `Based on:` line is written, and the report says so.
 - No Active Summary: read the rest of the record as plain text and say in one line that the summary is missing.
 - No original request: say in one line that the designer's own words were not there, and ask the question of the judged qualities open.

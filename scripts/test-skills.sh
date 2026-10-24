@@ -10788,6 +10788,7 @@ else
     exp_owner "EXP-4:origin-block-owner" 'Balance document:' balance-link.md
     exp_owner "EXP-4:idea-table-owner" '| ID | Experiment | Hypothesis | What We Test | Prototype Cost | Learning Value |' mode-discover.md
     exp_owner "EXP-4:judged-on-owner" 'Judged on: <' template-experiment.md
+    exp_owner "EXP-4:based-on-owner" '- Based on:' template-experiment.md
 
     # (EXP-5) the boundary: the write scope, the reading boundary, the shared contracts name the skill
     EXP_OWN="$({ awk '/^## Ownership Boundaries/{f=1;next} /^## /{f=0} f' "$EXP_SKILL" || true; })"
@@ -10936,6 +10937,15 @@ else
     exp_ok "EXP-8:R-14" 'before the questions about how the test is run' "$EXP_REFS/from-research.md"
     exp_ok "EXP-8:R-15" 'Nothing is dropped silently' "$EXP_REFS/from-research.md"
     exp_ok "EXP-8:R-16" 'A research gives the idea and the design, not the measure' "$EXP_REFS/from-research.md"
+    # R: the references of a card — Based on is both the statement and the reading list; the gate; the balance entry
+    exp_ok "EXP-8:R-17" '- Based on: none' "$EXP_REFS/template-experiment.md"
+    exp_ok "EXP-8:R-18" 'nothing of the document is copied into the store' "$EXP_REFS/template-experiment.md"
+    exp_ok "EXP-8:R-19" 'Nine yes/no checks' "$EXP_REFS/template-experiment.md"
+    exp_ok "EXP-8:R-20" '## Attaching the research' "$EXP_REFS/from-research.md"
+    exp_ok "EXP-8:R-21" 'A research stays where it is' "$EXP_REFS/from-research.md"
+    exp_ok "EXP-8:R-22" 'names it in `Based on:`' "$EXP_REFS/mode-specify.md"
+    exp_ok "EXP-8:R-23" 'what the card is based on (`Based on:`)' "$EXP_REFS/card-draft-view.md"
+    exp_ok "EXP-8:R-24" 'balance: <slug>' "$EXP_REFS/balance-link.md"
 
     # (EXP-9) the lexicon: the templates and the sample artifacts carry no technical trace; the scan itself is tested first
     for s in 'PlayerController.cs' 'spawnEnemy()' 'enemy_spawn_timer' 'Assets/Scripts/Player.cs' 'player.Move(x)' 'FlagCaptureManager'; do
@@ -10959,13 +10969,13 @@ else
     done < <(find "$EXP_FIX" -path '*/project/*' -name '*.md' 2>/dev/null)
     EXP_CHK=$((EXP_CHK + 1)); (( EXP_PROJ_N > 0 )) || EXP_WHY+=" EXP-9:no-samples-scanned"
 
-    # (EXP-10) the eleven scenarios of the specification: each README has its five sections and every anchor still resolves
+    # (EXP-10) the twelve scenarios of the specification: each README has its five sections and every anchor still resolves
     exp_ok "EXP-10:root-honesty" 'checked by text only' "$EXP_FIX/README.md"
     EXP_SC_N=0
     EXP_ANC_N=0
     for sc in s01-empty-invocation s02-boring-first-minutes s03-compare-navigation-hints s04-timed-capture-spec \
               s05-save-without-duplicate-numbers s06-feedback-one-experiment s07-forwarded-mixed-chat \
-              s08-repeat-evaluation s09-handoff-to-planner s10-doubtful-evidence s11-card-from-research; do
+              s08-repeat-evaluation s09-handoff-to-planner s10-doubtful-evidence s11-card-from-research s12-card-from-balance-point; do
         EXP_RM="$EXP_FIX/$sc/README.md"
         EXP_CHK=$((EXP_CHK + 1))
         if [[ ! -s "$EXP_RM" ]]; then EXP_WHY+=" EXP-10:missing($sc)"; continue; fi
@@ -10981,12 +10991,12 @@ else
             grep -qF -- "$EXP_ANC_LIT" "$EXP_DIR/$EXP_ANC_FILE" 2>/dev/null || EXP_WHY+=" EXP-10:${sc%%-*}:anchor-lost(${EXP_ANC_FILE##*/}:${EXP_ANC_LIT:0:24})"
         done < <({ grep -E '^- Anchor: ' "$EXP_RM" || true; } | sed 's/^- Anchor: //')
     done
-    EXP_CHK=$((EXP_CHK + 1)); (( EXP_SC_N == 11 )) || EXP_WHY+=" EXP-10:scenarios=${EXP_SC_N}-of-11"
-    EXP_CHK=$((EXP_CHK + 1)); (( EXP_ANC_N >= 47 )) || EXP_WHY+=" EXP-10:anchors=${EXP_ANC_N}-of-47"
+    EXP_CHK=$((EXP_CHK + 1)); (( EXP_SC_N == 12 )) || EXP_WHY+=" EXP-10:scenarios=${EXP_SC_N}-of-12"
+    EXP_CHK=$((EXP_CHK + 1)); (( EXP_ANC_N >= 50 )) || EXP_WHY+=" EXP-10:anchors=${EXP_ANC_N}-of-50"
     (( EXP_CHK > 0 )) || EXP_WHY+=" EXP-1:nothing-checked"
 fi
 if [[ -z "$EXP_WHY" ]]; then
-    pass "EXP-1…EXP-10 experiment skill: structure, twelve references, single owners, boundary, neutrality, membrane, pinned commitments, lexicon, eleven scenarios checked by text only (${EXP_CHK} checks)"
+    pass "EXP-1…EXP-10 experiment skill: structure, twelve references, single owners, boundary, neutrality, membrane, pinned commitments, lexicon, twelve scenarios checked by text only (${EXP_CHK} checks)"
 else
     fail "EXP-1…EXP-10 experiment skill:$EXP_WHY"
 fi
@@ -11531,7 +11541,7 @@ else
     exp_ok "EXP-L2:11" 'with no hash and no drift tracking' "$EXPL_PLAN_REF"
     exp_ok "EXP-L2:12" 'WARN [experiment] <folder> was written against v<k> of the card' "$EXPL_PLAN_REF"
     exp_ok "EXP-L2:13" 'Step 2 does not match researches by topic either' "$EXPL_PLAN_REF"
-    exp_ok "EXP-L2:14" '(h) A research was linked to a card only by its `Experiment:` line or by the user'\''s answer to the candidate question' "$EXPL_PLAN_REF"
+    exp_ok "EXP-L2:14" '(h) A research was linked to a card only by its `Based on:` line, by its `Experiment:` line or by the user'\''s answer to the candidate question' "$EXPL_PLAN_REF"
     exp_ok "EXP-L2:21" 'a hit outside the markers does not count' "$EXPL_PLAN_REF"
     exp_ok "EXP-L2:15" '**An experiment plan** runs no topic matching in this step' "$EXPL_PLAN"
     exp_ok "EXP-L2:16" 'the snapshot of the cards (and of the design researches that name them)' "$EXPL_PLAN"
@@ -11614,7 +11624,7 @@ exp_no "EXP-K2:02-old-claim" 'will not find the plan by branch' "$EXPP_REF"
 exp_ok "EXP-K2:03" '**No research names the card.**' "$EXPP_REF"
 exp_ok "EXP-K2:04" 'INFO [experiment] <title>: no research names this card' "$EXPP_REF"
 exp_ok "EXP-K2:05" 'Link <title>' "$EXPP_REF"
-exp_ok "EXP-K2:06" "(h) A research was linked to a card only by its \`Experiment:\` line or by the user's answer to the candidate question" "$EXPP_REF"
+exp_ok "EXP-K2:06" "(h) A research was linked to a card only by its \`Based on:\` line, by its \`Experiment:\` line or by the user's answer to the candidate question" "$EXPP_REF"
 exp_ok "EXP-K2:07" 'Nothing is linked by topic' "$EXPP_REF"
 # (EXP-K3) the explorations
 exp_ok "EXP-K3:01" 'they make the `Experiment:` line of the saved summary' "$ROOT_DIR/skills/unikit-explore/SKILL.md"
@@ -11635,6 +11645,55 @@ if [[ -z "$EXP_WHY" ]]; then
     pass "EXP-K1…EXP-K5 experiment plan found by its own record, a research naming no card reported, the explorations keep the line, the question points name the tool (${EXP_CHK} checks)"
 else
     fail "EXP-K1…EXP-K5 experiment link:$EXP_WHY"
+fi
+
+# --- EXP-RF1…EXP-RF3: the references of a card. The experiment side writes `Based on:` (EXP-8:R-17…R-24); the
+# planner side reads every entry and uses it. RF1 — the planner's reference (load line, size, neutrality, sections,
+# the ceiling of experiment-plan.md it hangs on); RF2 — the pinned commitments (reading is not optional, failures are
+# loud, the card wins, nothing is only context); RF3 — the wiring (the pointer and the amended source rule in
+# experiment-plan.md, the blocks in TASK-FORMAT.md, the delivery in test-install.sh). Source assertions, like EXP-K.
+EXP_WHY=""
+EXP_CHK=0
+EXPRF_REF="$ROOT_DIR/skills/unikit-plan/references/experiment-references.md"
+if [[ ! -s "$EXPRF_REF" ]]; then
+    EXP_WHY+=" EXP-RF1:missing-reference"
+else
+    # (EXP-RF1) the reference
+    EXP_CHK=$((EXP_CHK + 1)); [[ "$(sed -n '3p' "$EXPRF_REF")" == "Read **only** when"* ]] || EXP_WHY+=" EXP-RF1:load-line"
+    EXPRF_SZ="$(wc -c < "$EXPRF_REF" | tr -d ' ')"
+    EXP_CHK=$((EXP_CHK + 1)); (( EXPRF_SZ <= 12000 )) || EXP_WHY+=" EXP-RF1:size=${EXPRF_SZ}"
+    EXPRF_PSZ="$(wc -c < "$EXPP_REF" | tr -d ' ')"
+    EXP_CHK=$((EXP_CHK + 1)); (( EXPRF_PSZ <= 12000 )) || EXP_WHY+=" EXP-RF1:experiment-plan-size=${EXPRF_PSZ}"
+    for h in '## Reading' '## Failures and drift' '## The snapshot' '## Use in planning' '## Self-check'; do
+        exp_ok "EXP-RF1:no-heading(${h#\#\# })" "$h" "$EXPRF_REF"
+    done
+    EXP_CHK=$((EXP_CHK + 1)); ! grep -qwE 'Unity|Godot|Unreal|GDScript' "$EXPRF_REF" || EXP_WHY+=" EXP-RF1:engine-word"
+    exp_no "EXP-RF1:agent-variable" '{{agent_' "$EXPRF_REF"
+    exp_no "EXP-RF1:agent-call" 'Agent(' "$EXPRF_REF"
+    exp_no "EXP-RF1:maintainer-record-pointer" '.ai-factory' "$EXPRF_REF"
+    # (EXP-RF2) the commitments
+    exp_ok "EXP-RF2:01" 'Every entry of `Based on:` is read; none is skipped' "$EXPRF_REF"
+    exp_ok "EXP-RF2:02" 'Nothing read here is only context' "$EXPRF_REF"
+    exp_ok "EXP-RF2:03" 'could not be read — planned from the card alone' "$EXPRF_REF"
+    exp_ok "EXP-RF2:04" 'the card wins where they differ' "$EXPRF_REF"
+    exp_ok "EXP-RF2:05" '#### Reference' "$EXPRF_REF"
+    exp_ok "EXP-RF2:06" 'The planner does not decide against a decision of a reference' "$EXPRF_REF"
+    exp_ok "EXP-RF2:07" 'joins `### OUT OF SCOPE`' "$EXPRF_REF"
+    exp_ok "EXP-RF2:08" 'the card wins, because the designer approved it' "$EXPRF_REF"
+    exp_ok "EXP-RF2:09" 'Every `Based on:` entry has its `#### Reference` block or a `WARN` line' "$EXPRF_REF"
+    # (EXP-RF3) the wiring
+    exp_ok "EXP-RF3:01" 'references/experiment-references.md' "$EXPP_REF"
+    exp_ok "EXP-RF3:02" 'a `Based on:` entry or an `Experiment:` line' "$EXPP_REF"
+    exp_ok "EXP-RF3:03" '#### Reference · research ·' "$EXPL_TASKFMT"
+    exp_ok "EXP-RF3:04" '#### Reference · balance ·' "$EXPL_TASKFMT"
+    exp_ok "EXP-RF3:05" '**References.** Every entry of the card' "$EXPL_TASKFMT"
+    exp_ok "EXP-RF3:06" 'unikit-plan/references/experiment-references.md' "$ROOT_DIR/scripts/test-install.sh"
+fi
+(( EXP_CHK > 0 )) || EXP_WHY+=" EXP-RF1:nothing-checked"
+if [[ -z "$EXP_WHY" ]]; then
+    pass "EXP-RF1…EXP-RF3 experiment references: the planner reads every Based on entry, failures are loud, the card wins, the blocks and the delivery are in place (${EXP_CHK} checks)"
+else
+    fail "EXP-RF1…EXP-RF3 experiment references:$EXP_WHY"
 fi
 
 # ─────────────────────────────────────────────

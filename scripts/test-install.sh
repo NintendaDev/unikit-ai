@@ -402,6 +402,10 @@ assert_exists "$CLAUDE_DIR/.claude/skills/unikit-plan/references/balance-plan.md
 # same reasoning applies — a content test cannot see a file that was never delivered.
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-plan/references/experiment-source.md" \
   "unikit-plan experiment-source.md reference installed"
+# The references of an experiment card (the Based on list) are read by the planner only when a card names a
+# document, so a content test cannot see a missing delivery of the file.
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-plan/references/experiment-references.md" \
+  "unikit-plan experiment-references.md reference installed"
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-implement/references/balance-measure.md" \
   "unikit-implement balance-measure.md reference installed"
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-verify/references/balance-checks.md" \

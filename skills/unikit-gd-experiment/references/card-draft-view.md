@@ -4,7 +4,7 @@ Read **only** when a card draft is about to be printed for the designer to appro
 
 ## The headline
 
-Before the table, at most five lines, each one line long, taken from the card and adding nothing to it: the question of section 4; what it is judged on (`Judged on:`); who plays and how many (section 10); what differs between the variants (section 7); what is out of scope (section 9). This is what the designer approves first; the table below is the proof.
+Before the table, at most five lines, each one line long, taken from the card and adding nothing to it: the question of section 4 with what it is judged on (`Judged on:`); what the card is based on (`Based on:`); who plays and how many (section 10); what differs between the variants (section 7); what is out of scope (section 9). This is what the designer approves first; the table below is the proof.
 
 ## The table
 

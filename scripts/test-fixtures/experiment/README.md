@@ -1,6 +1,6 @@
 # Experiment scenarios
 
-Eleven scenarios for `unikit-gd-experiment`, one folder each (`sNN-<name>/README.md`). Every
+Twelve scenarios for `unikit-gd-experiment`, one folder each (`sNN-<name>/README.md`). Every
 scenario here is checked by text only: the guards (EXP-10 in `scripts/test-skills.sh`) read the
 source files of the skill and assert that the formulations each scenario relies on are still
 present. Nothing in this folder was run in a client, and no claim about how a model behaves
