@@ -27,6 +27,7 @@ import {
   PROJECT_RESEARCH_ARTIFACT_MIGRATIONS, PROJECT_WORKSPACE_MIGRATIONS,
 } from '../workspace-migrations/index.js';
 import { PROJECT_MCP_MIGRATIONS } from '../mcp-migrations/index.js';
+import { PROJECT_BRIDGE_MIGRATIONS } from '../bridge-migrations/index.js';
 
 interface MemoryMigrationContext {
   projectDir: string;
@@ -132,6 +133,8 @@ export const PROJECT_MEMORY_MIGRATIONS: readonly Migration<MemoryMigrationContex
   ...PROJECT_PLAN_ARTIFACT_MIGRATIONS,
   ...PROJECT_RESEARCH_ARTIFACT_MIGRATIONS,
   ...PROJECT_PLAN_TIMESTAMP_MIGRATIONS,
+  // 3.0.0 x1 (more steps are appended by later tasks)
+  ...PROJECT_BRIDGE_MIGRATIONS,
 ];
 
 /**

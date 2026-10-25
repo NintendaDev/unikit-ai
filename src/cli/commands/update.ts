@@ -16,7 +16,8 @@ import { installExtensionSkills, installExtensionSubagents } from '../../core/in
 import { syncAllModules } from '../../core/installer/rules-sync.js';
 import { runProjectMemoryMigrations } from '../../core/memory-migrations/index.js';
 import { renderSyncRulesEvents } from './rules.js';
-import { discoverMcpServers, collectMcpRules } from '../../core/mcp.js';
+import { collectMcpRules } from '../../core/mcp.js';
+import { selectionOf } from '../../core/bridges/selection.js';
 import { reconcileMcpSettings } from '../../core/mcp-reconcile.js';
 import { resolveSelectedEngineServer } from '../../core/mcp-rules.js';
 import { swapMcpRecheckNotes } from '../../core/installer/mcp-notes.js';
@@ -31,6 +32,7 @@ import { createRegistry } from '../../core/registry/index.js';
 import { logInfo } from '../../utils/log.js';
 import { applyExtensionInjections, injectionInputFromConfig } from '../../core/extension-injections.js';
 import { formatReason, groupEntriesByStatus, bootstrapNewSkillModuleRules } from './update-helpers.js';
+import { recomputeSelection } from './update-bridges.js';
 import { printInjectionReport } from './injection-report.js';
 import { buildNewItemsChooser, formatPendingNotice } from './extension-selection-ui.js';
 
@@ -98,58 +100,17 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     config = (await loadConfig(projectDir)) ?? config;
     logInfo('update', 'config re-read after migrations');
 
-    // Recompute the vendor codes BEFORE anything reads them.
-    //
-    // `update` never re-asks for servers, so the codes it finds on disk are
-    // whatever the last write left there — and after the `mcp-servers-map`
-    // migration that is deliberately the OLD code (`UnityMCP`), preserved so the
-    // reconciliation can recognise the orphan entry it has to remove. Every
-    // artifact below then substitutes `config.engineMcpKey` into itself:
-    // `updateSkills`, `updateSubagents`, `installDevPrinciples` and both
-    // `build*State` calls. `saveConfig` is the LAST call in the command and does
-    // not touch this field, so without a recompute here the stale code is what
-    // lands in every installed skill.
-    //
-    // That failure does not heal on the next run. `mcpHashComponent` is computed
-    // from the same stale value, so the following `update` sees no divergence
-    // and reinstalls nothing: the prose says `UnityMCP`, `.mcp.json` says
-    // `unity-biome-mcp`, the class-B probe finds no key, and the pipeline
-    // decides the engine MCP is not configured — silently skipping the
-    // compilation and test gates for every run after this one.
-    //
-    // Same ordering trap as `swapMcpRecheckNotes`: recomputing after the skill
-    // loop fixes only the *next* run, recomputing before the config is read
-    // has nothing to read.
-    const discoveredServers = await discoverMcpServers(engineId);
+    // Recompute the vendor codes of BOTH persisted maps before anything reads them: every artifact
+    // below substitutes a code into itself and the source hash is computed from the same pairs, so a
+    // stale code would land in every skill and not heal on the next run. The pass lives in
+    // `update-bridges.ts` (this file is at its size ceiling); it also derives the code of the MCP
+    // bridge from the catalog, which replaced the persisted scalar.
+    const { discoveredServers, storedCodes: storedMcpCodes, mcpBridgeCode, enabledIds } = await recomputeSelection(engineId, config);
+    const selection = selectionOf(config);
 
-    // The codes as they were persisted, kept before the map is rewritten. Exactly
-    // one consumer needs them — the orphan removal in `reconcileMcpSettings`,
-    // which compares "what we registered last time" against "what we register
-    // now". After the loop below that information exists nowhere else.
-    const storedMcpCodes: Record<string, string> = { ...config.mcp.servers };
-
-    for (const [key, storedCode] of Object.entries(storedMcpCodes)) {
-      const server = discoveredServers.get(key);
-      // A selection can outlive the file that produced it (a vendor dropped, an
-      // engine switched). Leave the entry alone: dropping it here would erase a
-      // selection the user may still restore by switching back.
-      if (!server) continue;
-      if (server.code === storedCode) {
-        logInfo('update', `mcp code unchanged: key=${key} code=${storedCode}`);
-        continue;
-      }
-      config.mcp.servers[key] = server.code;
-      logInfo('update', `mcp code rewritten: key=${key} ${storedCode} -> ${server.code}`);
-    }
-
-    const selectedEngineServer = resolveSelectedEngineServer(discoveredServers, Object.keys(config.mcp.servers));
-    const recomputedEngineCode = selectedEngineServer?.entry.code ?? null;
-    if (recomputedEngineCode !== config.engineMcpKey) {
-      logInfo('update', `engineMcpKey recomputed: ${config.engineMcpKey ?? 'null'} -> ${recomputedEngineCode ?? 'null'}`);
-      config.engineMcpKey = recomputedEngineCode;
-    } else {
-      logInfo('update', `engineMcpKey unchanged: ${config.engineMcpKey ?? 'null'}`);
-    }
+    // Transitional: the rules tree and the notes still follow ONE engine server until the per-bridge
+    // delivery replaces both.
+    const selectedEngineServer = resolveSelectedEngineServer(discoveredServers, Object.keys(config.engineBridges.selected));
 
     // Refresh extensions from sources (check for updates)
     let extensions = config.extensions ?? [];
@@ -225,7 +186,7 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     const entriesByAgent = new Map<string, SkillUpdateEntry[]>();
 
     for (const agent of config.agents) {
-      const result = await updateSkills(agent, projectDir, { force, engineId, engineMcpKey: config.engineMcpKey, mcpServers: config.mcp.servers, replacedSkills, installNewSkills });
+      const result = await updateSkills(agent, projectDir, { force, engineId, mcpBridgeCode, selection, replacedSkills, installNewSkills });
       agent.installedSkills = result.installedSkills;
       entriesByAgent.set(agent.id, result.entries);
     }
@@ -241,7 +202,7 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     for (const agent of config.agents) {
       const agentCfg = getAgentConfig(agent.id);
       if (agentCfg.supportsSubagents) {
-        const result = await updateSubagents(agent, projectDir, { force, engineId, engineMcpKey: config.engineMcpKey, mcpServers: config.mcp.servers });
+        const result = await updateSubagents(agent, projectDir, { force, engineId, mcpBridgeCode, selection });
         agent.installedSubagents = result.installedSubagents;
         subagentEntriesByAgent.set(agent.id, result.entries);
       }
@@ -258,10 +219,10 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
         const extensionDir = getExtensionDir(projectDir, ext.name);
         for (const agent of config.agents) {
           if (selected.skills?.length) {
-            await installExtensionSkills(projectDir, agent, extensionDir, selected.skills, engineId, config.engineMcpKey);
+            await installExtensionSkills(projectDir, agent, extensionDir, selected.skills, engineId, mcpBridgeCode);
           }
           if (selected.subagents?.length) {
-            await installExtensionSubagents(projectDir, agent, extensionDir, selected.subagents, engineId, config.engineMcpKey);
+            await installExtensionSubagents(projectDir, agent, extensionDir, selected.subagents, engineId, mcpBridgeCode);
           }
         }
       }
@@ -269,7 +230,7 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
 
     // Inject MCP tool permissions (after all skills — base + extension — are installed)
     console.log(chalk.dim('Injecting MCP tool permissions...\n'));
-    const mcpAllowedTools = collectMcpRules(discoveredServers, Object.keys(config.mcp.servers));
+    const mcpAllowedTools = collectMcpRules(discoveredServers, enabledIds);
     await injectMcpRules(projectDir, config.agents, mcpAllowedTools);
 
     // Reconcile the agents' MCP settings files. Until 2.0.0 `update` never wrote
@@ -286,7 +247,7 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     await reconcileMcpSettings(
       projectDir,
       discoveredServers,
-      Object.keys(config.mcp.servers),
+      enabledIds,
       config.agents.map(agent => agent.id),
       config,
       storedMcpCodes,
@@ -296,7 +257,7 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     // ONE project-level pass over every extension and agent — the function init and `extension *` call.
     if (extensions.length > 0) {
       console.log(chalk.dim('Re-applying extension injections...\n'));
-      const injectionReport = await applyExtensionInjections(injectionInputFromConfig(projectDir, config));
+      const injectionReport = await applyExtensionInjections(injectionInputFromConfig(projectDir, config, mcpBridgeCode));
       printInjectionReport(injectionReport);
     }
 
@@ -372,7 +333,7 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     await installEngineMcpRules(projectDir, selectedEngineServer);
 
     // Update engine development principles (shared system file, plain rewrite)
-    await installDevPrinciples(projectDir, engineId, config.engineMcpKey);
+    await installDevPrinciples(projectDir, engineId, mcpBridgeCode);
 
     // Refresh module registry snapshot (flat rewrite, forward-compat SSOT)
     await installModulesYml(projectDir);
@@ -389,8 +350,8 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     const availableSkills = await getAvailableSkills();
     for (const agent of config.agents) {
       const managedSkills = agent.installedSkills.filter(s => availableSkills.includes(s) && !replacedSkills.has(s));
-      agent.managedSkills = await buildManagedSkillsState(projectDir, agent, managedSkills, engineId, config.engineMcpKey, config.mcp.servers);
-      agent.managedSubagents = await buildManagedSubagentsState(projectDir, agent, agent.installedSubagents, engineId, config.engineMcpKey, config.mcp.servers);
+      agent.managedSkills = await buildManagedSkillsState(projectDir, agent, managedSkills, engineId, selection);
+      agent.managedSubagents = await buildManagedSubagentsState(projectDir, agent, agent.installedSubagents, engineId, selection);
     }
 
     config.version = currentVersion;

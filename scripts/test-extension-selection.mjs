@@ -587,7 +587,7 @@ await group('I', async () => {
             ),
         });
         const result = await reinstallExtensionAssets({
-            projectDir: tmp, engine: 'unity', engineMcpKey: null, agents: [CLAUDE], extensions: [selected],
+            projectDir: tmp, engine: 'unity', mcpBridgeCode: null, agents: [CLAUDE], extensions: [selected],
         });
         assertEq('I1 the extension is reinstalled', result.reinstalled.join(','), 'ext-a');
         assertEq('I1 the enabled skill is there', await exists(path.join(tmp, '.claude/skills/foo/SKILL.md')), true);
@@ -598,7 +598,7 @@ await group('I', async () => {
             (await fs.readFile(path.join(tmp, '.claude/skills/unikit-commit/SKILL.md'), 'utf8')).includes('BASE TEXT'));
 
         await reinstallExtensionAssets({
-            projectDir: tmp, engine: 'unity', engineMcpKey: null, agents: [CLAUDE], extensions: [rec()],
+            projectDir: tmp, engine: 'unity', mcpBridgeCode: null, agents: [CLAUDE], extensions: [rec()],
         });
         assertTrue('I2 a legacy record installs everything, replacement included',
             (await fs.readFile(path.join(tmp, '.claude/skills/unikit-commit/SKILL.md'), 'utf8')).includes('REPLACEMENT TEXT'));
@@ -609,7 +609,7 @@ await group('I', async () => {
 // J — a position injection into a skill the selection left out.
 await group('J', async () => {
     const runPass = (tmp, record) => applyExtensionInjections({
-        projectDir: tmp, engine: 'unity', engineMcpKey: null, agents: [CLAUDE], extensions: [record],
+        projectDir: tmp, engine: 'unity', mcpBridgeCode: null, agents: [CLAUDE], extensions: [record],
     });
     const quietly = async (fn) => {
         const original = console.warn;

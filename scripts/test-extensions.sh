@@ -170,7 +170,7 @@ cat > "$EXT_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -314,7 +314,7 @@ cat > "$REPLACE_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -402,7 +402,7 @@ cat > "$MCP_EXT_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -451,7 +451,7 @@ cat > "$MCP_EXT_CODEX_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -508,7 +508,7 @@ cat > "$IDEMP_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -611,8 +611,8 @@ COMPAT_EXT_RESULT=$(node --input-type=module -e "
 
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ext-compat-'));
   fs.writeFileSync(path.join(tmpDir, '.unikit.json'), JSON.stringify({
-    version: '1.0.0', language: 'en', engine: 'unity', engineMcpKey: null,
-    mcp: { servers: {} },
+    version: '1.0.0', language: 'en', engine: 'unity',
+    mcp: { servers: {} }, engineBridges: { selected: {} },
     agents: [{ id: 'claude', skillsDir: '.claude/skills', subagentsDir: '.claude/agents',
                installedSkills: [], installedSubagents: [] }],
     rules: { installed: { version: '1.0.0', core: [], stack: [] }, declined: [] }
@@ -646,7 +646,7 @@ cat > "$REMOVE_NX_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -700,7 +700,7 @@ cat > "$MINIMAL_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -761,7 +761,7 @@ cat > "$LIST_EMPTY_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -818,7 +818,7 @@ cat > "$INJ_NF_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -886,7 +886,7 @@ cat > "$MULTI_EXT_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -952,7 +952,7 @@ cat > "$CORRUPT_EXT_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1028,7 +1028,7 @@ cat > "$UPDATE_EMPTY_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1067,7 +1067,7 @@ cat > "$UPDATE_UTD_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1124,7 +1124,7 @@ cat > "$UPDATE_VER_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1195,7 +1195,7 @@ cat > "$UPDATE_FAIL_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1269,7 +1269,7 @@ cat > "$LIST_REPL_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1312,7 +1312,7 @@ cat > "$NOSUB_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1375,7 +1375,7 @@ cat > "$PREPEND_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1529,7 +1529,7 @@ cat > "$CMD_MISSING_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1579,7 +1579,7 @@ cat > "$CMD_INSTALL_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1651,7 +1651,7 @@ cat > "$DEDUP_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1750,8 +1750,8 @@ cat > "$MCP_INJECT_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": "UnityMCP",
-  "mcp": { "servers": { "coplay-unity-mcp": "UnityMCP" } },
+  "mcp": { "servers": {} },
+  "engineBridges": { "selected": { "coplay-unity-mcp": "UnityMCP" } },
   "agents": [
     {
       "id": "claude",
@@ -1845,7 +1845,7 @@ cat > "$KEXT_KIMI/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1871,7 +1871,7 @@ cat > "$KEXT_CLAUDE/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1934,7 +1934,7 @@ make_points_project() {   # <dir> <agent id> <skills dir> <subagents dir>
   mkdir -p "$dir"
   cat > "$dir/.unikit.json" << EOF
 {
-  "version": "1.0.0", "language": "en", "engine": "unity", "engineMcpKey": null,
+  "version": "1.0.0", "language": "en", "engine": "unity", "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [ { "id": "$agent", "skillsDir": "$skills", "subagentsDir": "$agents",
                 "installedSkills": ["unikit"], "installedSubagents": [] } ],

@@ -67,7 +67,7 @@ cat > "$CLAUDE_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -488,7 +488,7 @@ cat > "$NOSUB_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -527,7 +527,7 @@ cat > "$CODEX_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -666,7 +666,7 @@ cat > "$QWEN_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -760,7 +760,7 @@ cat > "$ANTIGRAVITY_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -844,7 +844,7 @@ cat > "$KIMI_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": { "context7": "context7", "github": "github" } },
   "agents": [
     {
@@ -1050,7 +1050,7 @@ cat > "$UNIVERSAL_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": { "context7": "context7", "github": "github" } },
   "agents": [
     {
@@ -1172,7 +1172,7 @@ cat > "$LOCAL_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1275,7 +1275,7 @@ cat > "$GODOT_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "godot",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1346,7 +1346,7 @@ cat > "$GODOT_NET_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "godot-net",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1379,7 +1379,7 @@ cat > "$UE5_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unreal-engine-5",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1425,8 +1425,8 @@ cat > "$MCP_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": "EngineMCP",
-  "mcp": { "servers": { "unity-mcp": "EngineMCP", "context7": "context7" } },
+  "mcp": { "servers": { "context7": "context7" } },
+  "engineBridges": { "selected": { "unity-mcp": "EngineMCP" } },
   "agents": [
     {
       "id": "claude",
@@ -1499,7 +1499,7 @@ mkdir -p "$COMPAT_DIR"
 cat > "$COMPAT_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -2063,7 +2063,7 @@ cat > "$CODEX_MCP_RULES_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": { "context7": "context7" } },
   "agents": [
     {
@@ -2118,8 +2118,8 @@ cat > "$MCP_SHARDS_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": "UnityMCP",
-  "mcp": { "servers": { "unity-biome-mcp": "UnityMCP" } },
+  "mcp": { "servers": {} },
+  "engineBridges": { "selected": { "unity-biome-mcp": "UnityMCP" } },
   "agents": [
     {
       "id": "claude",
@@ -2203,8 +2203,8 @@ cat > "$MCP_NOTREE_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": "FixtureTreeless",
-  "mcp": { "servers": { "fixture-treeless-mcp": "FixtureTreeless" } },
+  "mcp": { "servers": {} },
+  "engineBridges": { "selected": { "fixture-treeless-mcp": "FixtureTreeless" } },
   "agents": [
     {
       "id": "claude",
@@ -2368,16 +2368,17 @@ echo "  ✓ resolveExistingEngine(' unity ') -> action=use, engine=unity (trim a
 # Test 14b: MCP picker pre-selection (wizard remembers the previous choice)
 # ─────────────────────────────────────────────────────
 # The wizard is interactive and never runs in this smoke, so the contract is
-# tested through the three exported pure helpers instead of the prompt:
+# tested through the exported pure helpers instead of the prompt:
 #   sortMcpChoices        — order asc, missing order last, ties by fileId
-#   isMcpPreselected      — checkbox: null = fresh (all checked), array = mirror
-#   resolveMcpGroupDefault— radio: INDEX of the restored entry, or undefined
-# The regression this guards: once two servers share one key (Unity ships biome
-# + coplay) the picker becomes a radio, and a radio has no notion of "already
-# installed" — a blind Enter on re-init would silently swap the engine MCP.
+#   isMcpPreselected      — universal checkbox: null = fresh (all checked), array = mirror
+#   defaultBridgeIds      — bridge checkbox on a fresh install: the first MCP bridge of the package order
+#   isBridgePreselected   — bridge checkbox: null = the defaults, array = mirror (empty = none)
+# The regression this guards: the engine's servers used to be a radio with a Skip, and a blind
+# Enter on re-init would silently swap the engine MCP. They are a checkbox group now, and a
+# re-init must show what the project had, not the defaults.
 
 MCP_DEFAULTS=$(cd "$ROOT_DIR" && node --input-type=module -e "
-  const { sortMcpChoices, isMcpPreselected, resolveMcpGroupDefault } =
+  const { sortMcpChoices, isMcpPreselected, defaultBridgeIds, isBridgePreselected } =
     await import('./dist/cli/wizard/prompts.js');
   const { parseMcpServerEntry } = await import('./dist/core/mcp-schema.js');
   const parsePreselect = (value) => parseMcpServerEntry(
@@ -2393,9 +2394,13 @@ MCP_DEFAULTS=$(cd "$ROOT_DIR" && node --input-type=module -e "
 
   process.stdout.write(JSON.stringify({
     sorted:        group.map(e => e.fileId),
-    freshDefault:  resolveMcpGroupDefault(group, null),
-    reinitDefault: resolveMcpGroupDefault(group, ['coplay-unity-mcp']),
-    absentDefault: resolveMcpGroupDefault(group, ['not-in-this-group']),
+    bridgeDefault: [...defaultBridgeIds(group)],
+    cliOnlyDefault: [...defaultBridgeIds([{ fileId: 'cli-a', displayName: 'A', isEngine: true, kind: 'cli', order: 1 }])],
+    bridgeFresh:       isBridgePreselected('unity-biome-mcp', null, defaultBridgeIds(group)),
+    bridgeFreshOther:  isBridgePreselected('coplay-unity-mcp', null, defaultBridgeIds(group)),
+    bridgeReinit:      isBridgePreselected('coplay-unity-mcp', ['coplay-unity-mcp'], defaultBridgeIds(group)),
+    bridgeReinitOther: isBridgePreselected('unity-biome-mcp', ['coplay-unity-mcp'], defaultBridgeIds(group)),
+    bridgeEmpty:       isBridgePreselected('unity-biome-mcp', [], defaultBridgeIds(group)),
     freshChecked:  isMcpPreselected('context7', null),
     reinitChecked: isMcpPreselected('context7', ['context7']),
     reinitUnchecked: isMcpPreselected('context7', ['something-else']),
@@ -2411,18 +2416,23 @@ if [[ "$MCP_DEFAULTS" != *'"sorted":["unity-biome-mcp","coplay-unity-mcp","zz-no
   echo "Assertion failed: sortMcpChoices should order by order asc with missing last, got: $MCP_DEFAULTS"
   exit 1
 fi
-# A fresh install must NOT pin a default — inquirer then pre-selects choice 0,
-# which is the order:1 recommendation.
-if [[ "$MCP_DEFAULTS" == *'"freshDefault"'* ]]; then
-  echo "Assertion failed: resolveMcpGroupDefault(group, null) must be undefined (omitted from JSON), got: $MCP_DEFAULTS"
+# A fresh install checks the first MCP bridge of the package order (the old radio's order:1) and
+# nothing else; a catalog of CLI bridges alone checks nothing. A re-init mirrors the previous choice,
+# and an EMPTY previous choice is not a fresh install.
+if [[ "$MCP_DEFAULTS" != *'"bridgeDefault":["unity-biome-mcp"]'* ]] \
+   || [[ "$MCP_DEFAULTS" != *'"cliOnlyDefault":[]'* ]]; then
+  echo "Assertion failed: defaultBridgeIds must give the first MCP bridge only (and nothing for CLI-only), got: $MCP_DEFAULTS"
   exit 1
 fi
-if [[ "$MCP_DEFAULTS" != *'"reinitDefault":1'* ]]; then
-  echo "Assertion failed: re-init with coplay installed should default to index 1, got: $MCP_DEFAULTS"
+if [[ "$MCP_DEFAULTS" != *'"bridgeFresh":true'* ]] \
+   || [[ "$MCP_DEFAULTS" != *'"bridgeFreshOther":false'* ]]; then
+  echo "Assertion failed: a fresh install must check the default bridge and not the other, got: $MCP_DEFAULTS"
   exit 1
 fi
-if [[ "$MCP_DEFAULTS" == *'"absentDefault"'* ]]; then
-  echo "Assertion failed: nothing from the group installed -> default must be undefined (never pre-select Skip), got: $MCP_DEFAULTS"
+if [[ "$MCP_DEFAULTS" != *'"bridgeReinit":true'* ]] \
+   || [[ "$MCP_DEFAULTS" != *'"bridgeReinitOther":false'* ]] \
+   || [[ "$MCP_DEFAULTS" != *'"bridgeEmpty":false'* ]]; then
+  echo "Assertion failed: a re-init must mirror the previous bridges (an empty array checks none), got: $MCP_DEFAULTS"
   exit 1
 fi
 if [[ "$MCP_DEFAULTS" != *'"freshChecked":true'* ]] \
@@ -2447,7 +2457,7 @@ if [[ "$MCP_DEFAULTS" != *'"parsedJunkHasPreselect":false'* ]] \
   exit 1
 fi
 
-echo "  ✓ MCP picker pre-selection: sorted by order, re-init restores prior choice, fresh falls back to order:1, preselect:false stays unchecked"
+echo "  ✓ MCP picker pre-selection: sorted by order, re-init restores both groups, a fresh install checks the first MCP bridge, preselect:false stays unchecked"
 
 # ─────────────────────────────────────────────────────
 # Test 14c: configByPlatform resolution writes a token-free command
@@ -2601,7 +2611,7 @@ cat > "$GH_GRANTS_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": { "context7": "context7", "github": "github" } },
   "agents": [
     {

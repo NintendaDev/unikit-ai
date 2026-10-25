@@ -22,6 +22,7 @@ import {
   installExtensionSubagents, removeExtensionSubagents,
 } from './installer/extensions.js';
 import { injectMcpRules } from './installer/mcp-injection.js';
+import { resolveMcpBridgeCodeForConfig } from './bridges/selection.js';
 import { stripAllInjections } from './injections.js';
 import { collectPointInjectionFiles } from './extension-injections-schema.js';
 import type { ExtensionInjectionInput } from './extension-injections.js';
@@ -59,6 +60,21 @@ export function assertNoReplacementConflicts(
 
 // --- Install extension assets for all agents ---
 
+/**
+ * Put the grants of the project's selection back into every installed skill and subagent. Both maps
+ * count: the bridges' grants live in the same frontmatter as the universal servers'. `Object.keys(...)`,
+ * not `.length`: on a `Record<string, string>` the index signature makes `servers.length` a valid
+ * `string` EXPRESSION to tsc while being `undefined` at runtime — the guard would silently stop
+ * re-injecting MCP grants into extension skills, with no error anywhere.
+ */
+async function reinjectSelectionGrants(projectDir: string, config: UniKitConfig): Promise<void> {
+  const selectedIds = [...Object.keys(config.mcp?.servers ?? {}), ...Object.keys(config.engineBridges?.selected ?? {})];
+  if (selectedIds.length === 0) return;
+
+  const discoveredServers = await discoverMcpServers(config.engine);
+  await injectMcpRules(projectDir, config.agents, collectMcpRules(discoveredServers, selectedIds));
+}
+
 /** The extension's own files for one agent: its skills, the replacements of base skills, its subagents. */
 async function installExtensionFilesForAgent(
   projectDir: string,
@@ -66,11 +82,11 @@ async function installExtensionFilesForAgent(
   manifest: ExtensionManifest,
   extensionDir: string,
   engineId: string,
-  engineMcpKey: string | null | undefined,
+  mcpBridgeCode: string | null | undefined,
 ): Promise<void> {
   // Install extension skills
   if (manifest.skills && manifest.skills.length > 0) {
-    await installExtensionSkills(projectDir, agent, extensionDir, manifest.skills, engineId, engineMcpKey);
+    await installExtensionSkills(projectDir, agent, extensionDir, manifest.skills, engineId, mcpBridgeCode);
   }
 
   // Install replacement skills (under base skill name, not extension path name)
@@ -82,7 +98,7 @@ async function installExtensionFilesForAgent(
       try {
         await installSkillWithTransformer(
           sourceDir, baseName, projectDir, agent.skillsDir,
-          agent.id, agentConfig, engineId, engineMcpKey,
+          agent.id, agentConfig, engineId, mcpBridgeCode,
         );
       } catch (error) {
         console.warn(`Warning: Could not install replacement skill "${baseName}": ${error}`);
@@ -94,7 +110,7 @@ async function installExtensionFilesForAgent(
   if (manifest.subagents && manifest.subagents.length > 0) {
     const agentConfig = getAgentConfig(agent.id);
     if (agentConfig.supportsSubagents) {
-      await installExtensionSubagents(projectDir, agent, extensionDir, manifest.subagents, engineId, engineMcpKey);
+      await installExtensionSubagents(projectDir, agent, extensionDir, manifest.subagents, engineId, mcpBridgeCode);
     }
   }
 }
@@ -121,7 +137,7 @@ export async function reinstallExtensionAssets(
     // Only what the user left on: a skill or subagent switched off in the selection stays out.
     const selected = filterManifest(manifest, ext.selection);
     for (const agent of input.agents) {
-      await installExtensionFilesForAgent(input.projectDir, agent, selected, extDir, input.engine, input.engineMcpKey);
+      await installExtensionFilesForAgent(input.projectDir, agent, selected, extDir, input.engine, input.mcpBridgeCode);
     }
     reinstalled.push(ext.name);
   }
@@ -137,9 +153,11 @@ export async function installExtensionAssetsForAllAgents(
 ): Promise<void> {
   // Block and reference injections are NOT applied here: the caller runs the project-level pass
   // (`applyExtensionInjections`) once the set of extensions and base skills is final.
+  // The bridge code is read from the catalog once, before the loop.
+  const mcpBridgeCode = await resolveMcpBridgeCodeForConfig(config);
   for (const agent of config.agents) {
     await installExtensionFilesForAgent(
-      projectDir, agent, manifest, extensionDir, config.engine, config.engineMcpKey,
+      projectDir, agent, manifest, extensionDir, config.engine, mcpBridgeCode,
     );
 
     // Configure MCP servers
@@ -172,15 +190,7 @@ export async function installExtensionAssetsForAllAgents(
 
   // Re-inject MCP tool permissions into all installed skills/subagents
   // (replacement skills and extension skills need MCP tools in frontmatter)
-  // `Object.keys(...)`, not `.length`: on a `Record<string, string>` the index
-  // signature makes `servers.length` a valid `string` EXPRESSION to tsc while
-  // being `undefined` at runtime — the guard would silently stop re-injecting
-  // MCP grants into extension skills, with no error anywhere.
-  if (Object.keys(config.mcp?.servers ?? {}).length > 0) {
-    const discoveredServers = await discoverMcpServers(config.engine);
-    const mcpAllowedTools = collectMcpRules(discoveredServers, Object.keys(config.mcp.servers));
-    await injectMcpRules(projectDir, config.agents, mcpAllowedTools);
-  }
+  await reinjectSelectionGrants(projectDir, config);
 }
 
 // --- Remove extension assets for all agents ---
@@ -403,6 +413,7 @@ export async function restoreBaseSkills(
 ): Promise<void> {
   // Re-import dynamically to avoid circular dependency issues
   const { installSkills } = await import('./installer/skills.js');
+  const mcpBridgeCode = await resolveMcpBridgeCodeForConfig(config);
 
   for (const agent of config.agents) {
     const skillsToRestore = skillNames.filter(s => agent.installedSkills.includes(s));
@@ -414,20 +425,12 @@ export async function restoreBaseSkills(
       skills: skillsToRestore,
       agentId: agent.id,
       engineId: config.engine,
-      engineMcpKey: config.engineMcpKey,
+      mcpBridgeCode,
     });
   }
 
   // Re-inject MCP tool permissions into restored skills
-  // `Object.keys(...)`, not `.length`: on a `Record<string, string>` the index
-  // signature makes `servers.length` a valid `string` EXPRESSION to tsc while
-  // being `undefined` at runtime — the guard would silently stop re-injecting
-  // MCP grants into extension skills, with no error anywhere.
-  if (Object.keys(config.mcp?.servers ?? {}).length > 0) {
-    const discoveredServers = await discoverMcpServers(config.engine);
-    const mcpAllowedTools = collectMcpRules(discoveredServers, Object.keys(config.mcp.servers));
-    await injectMcpRules(projectDir, config.agents, mcpAllowedTools);
-  }
+  await reinjectSelectionGrants(projectDir, config);
 
   // Injections are re-rendered by the caller through applyExtensionInjections — one pass over every extension.
 }

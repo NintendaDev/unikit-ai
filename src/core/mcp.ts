@@ -8,6 +8,9 @@ import { isRecord, parseMcpServerEntry } from './mcp-schema.js';
 import { getMcpWriter } from './mcp-writers/index.js';
 import { logInfo } from '../utils/log.js';
 
+/** What kind of bridge an entry is: an MCP server, or a command line. */
+export type BridgeKind = 'mcp' | 'cli';
+
 export interface McpAllowedTools {
   agents: Record<string, string[]>;
   skills: Record<string, string[]>;
@@ -55,6 +58,11 @@ export interface McpServerEntry {
    */
   originDir: string | null;
   isEngine: boolean;
+  /**
+   * `mcp` — an MCP server the agent talks to; `cli` — a command line the agent runs. A file that does
+   * not say is `mcp`: every entry written before the field existed is one.
+   */
+  kind: BridgeKind;
   displayName: string;
   /**
    * The platform-independent server config. Optional because a server may ship

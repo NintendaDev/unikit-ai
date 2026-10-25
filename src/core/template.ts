@@ -34,13 +34,13 @@ export interface TemplateVars extends SystemTemplateVars {
   agent_skill_call_form: SkillCallForm | '';
 }
 
-export function buildEngineVars(engineId: string, engineMcpKey?: string | null): Pick<TemplateVars, 'engine_name' | 'engine_code_language' | 'engine_mcp_tool'> {
+export function buildEngineVars(engineId: string, mcpBridgeCode?: string | null): Pick<TemplateVars, 'engine_name' | 'engine_code_language' | 'engine_mcp_tool'> {
   const config = getEngineConfig(engineId);
 
   return {
     engine_name: config.displayName,
     engine_code_language: config.codeLanguage,
-    engine_mcp_tool: engineMcpKey ?? DEFAULT_ENGINE_MCP_TOOL,
+    engine_mcp_tool: mcpBridgeCode ?? DEFAULT_ENGINE_MCP_TOOL,
   };
 }
 
@@ -81,9 +81,9 @@ export function processTemplate(content: string, vars: TemplateVars): string {
   return expandSkillCalls(named, vars.agent_skill_call_form, vars.skills_dir);
 }
 
-export async function processSkillTemplates(skillDir: string, agent: AgentConfig, engineId?: string, engineMcpKey?: string | null, selfName?: string): Promise<void> {
+export async function processSkillTemplates(skillDir: string, agent: AgentConfig, engineId?: string, mcpBridgeCode?: string | null, selfName?: string): Promise<void> {
   const vars: TemplateVars = engineId
-    ? { ...buildTemplateVars(agent), ...buildEngineVars(engineId, engineMcpKey) }
+    ? { ...buildTemplateVars(agent), ...buildEngineVars(engineId, mcpBridgeCode) }
     : buildTemplateVars(agent);
   if (selfName) vars.self_name = selfName;
   await processDirectoryTemplates(skillDir, vars);

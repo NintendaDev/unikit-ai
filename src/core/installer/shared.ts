@@ -51,7 +51,7 @@ export function stripMdExtension(file: string): string {
 export function buildSubagentTemplateVars(
   selfName: string,
   engineId?: string,
-  engineMcpKey?: string | null,
+  mcpBridgeCode?: string | null,
 ): TemplateVars {
   const vars: TemplateVars = {
     skills_dir: '',
@@ -74,7 +74,7 @@ export function buildSubagentTemplateVars(
     ...SYSTEM_PATH_VARS,
   };
   if (engineId) {
-    Object.assign(vars, buildEngineVars(engineId, engineMcpKey));
+    Object.assign(vars, buildEngineVars(engineId, mcpBridgeCode));
   }
   return vars;
 }
@@ -104,12 +104,12 @@ export async function renderSubagent(
   agentId: string,
   subagentName: string,
   engineId?: string,
-  engineMcpKey?: string | null,
+  mcpBridgeCode?: string | null,
 ): Promise<string | null> {
   const content = await loadSourceForAgent(sourcePath, agentId);
   if (!content) return null;
 
-  const processed = processTemplate(content, buildSubagentTemplateVars(subagentName, engineId, engineMcpKey));
+  const processed = processTemplate(content, buildSubagentTemplateVars(subagentName, engineId, mcpBridgeCode));
   const rendered = getTransformer(agentId).transformSubagent?.(subagentName, processed) ?? processed;
   logInfo('installer', `rendered subagent ${subagentName} for ${agentId}`);
   return rendered;

@@ -13,6 +13,7 @@ import {
   type AgentInstallation, type UniKitConfig,
 } from '../../core/config.js';
 import { getMcpDocsLines, discoverMcpServers, collectMcpRules, buildMcpServerMap } from '../../core/mcp.js';
+import { resolveMcpBridgeCode, type ServerSelection } from '../../core/bridges/selection.js';
 import { reconcileMcpSettings } from '../../core/mcp-reconcile.js';
 import { getMcpEnvLines } from '../../core/mcp-env.js';
 import { resolveSelectedEngineServer } from '../../core/mcp-rules.js';
@@ -43,12 +44,22 @@ export async function initCommand(): Promise<void> {
   // `loadConfig` defaults a missing `version` to the current package version.
   // A fresh project (no config at all) yields `null` → the version half is off,
   // `detect` finds nothing, and the chain is a no-op.
+  //
+  // A step may refuse to run (the 3.0.0 config split throws when it cannot read the catalog, so the
+  // selection is never lost). Outside the `try` below that would surface as an unhandled rejection:
+  // say what happened, and that nothing was changed by the step that threw.
   const projectVersion = await readConfigVersion(projectDir);
   logInfo('init', `running project migrations (currentVersion=${projectVersion ?? 'null'})`);
-  const migrated = await runProjectMemoryMigrations(projectDir, projectVersion);
-  logInfo('init', migrated.applied.length > 0
-    ? `applied: [${migrated.applied.join(', ')}]`
-    : 'no pending migrations');
+  try {
+    const migrated = await runProjectMemoryMigrations(projectDir, projectVersion);
+    logInfo('init', migrated.applied.length > 0
+      ? `applied: [${migrated.applied.join(', ')}]`
+      : 'no pending migrations');
+  } catch (error) {
+    console.error(chalk.red(`Error: project migration failed: ${error instanceof Error ? error.message : String(error)}`));
+    console.error('The project files were left as they were. Fix the cause and run init again.');
+    process.exit(1);
+  }
 
   const hasExistingConfig = await configExists(projectDir);
   const existingConfig = hasExistingConfig ? await loadConfig(projectDir) : null;
@@ -78,11 +89,11 @@ export async function initCommand(): Promise<void> {
       existingConfig?.rulesRegistry ?? null,
       existingConfig?.engine ?? null,
       existingInstalledSkills,
-      // Same null-vs-array contract as existingInstalledSkills: without this a
-      // re-init of a project that picked one engine MCP would silently switch to
-      // whichever alternative sorts first once a second server ships under the
-      // same key.
-      existingConfig ? Object.keys(existingConfig.mcp.servers) : null,
+      // Same null-vs-array contract as existingInstalledSkills: a re-init mirrors both groups of
+      // the previous choice instead of falling back to the defaults.
+      existingConfig
+        ? { mcp: Object.keys(existingConfig.mcp.servers), bridges: Object.keys(existingConfig.engineBridges.selected) }
+        : null,
     );
     const engineId = answers.engine;
 
@@ -127,10 +138,15 @@ export async function initCommand(): Promise<void> {
     // Discover MCP servers for the selected engine
     const discoveredServers = await discoverMcpServers(engineId);
 
-    // The persisted form of the selection: `key → vendor code`. Built once,
-    // here, so the source hashes and the config write cannot disagree about
-    // which code each selected server was registered under.
+    // The persisted form of the selection: `key → vendor code`, one map per group. Built once,
+    // here, so the source hashes and the config write cannot disagree about which code each
+    // selected server was registered under.
     const mcpServerMap = buildMcpServerMap(discoveredServers, answers.mcpServers);
+    const bridgeMap = buildMcpServerMap(discoveredServers, answers.engineBridges);
+    const selection: ServerSelection = { mcp: mcpServerMap, bridges: bridgeMap };
+    // Derived from the catalog and the SET of bridges, the way `update` derives it: one function.
+    const mcpBridgeCode = resolveMcpBridgeCode(discoveredServers, answers.engineBridges);
+    const enabledIds = [...answers.mcpServers, ...answers.engineBridges];
 
     for (const agentSelection of answers.agents) {
       const agentConfig = getAgentConfig(agentSelection.id);
@@ -141,11 +157,11 @@ export async function initCommand(): Promise<void> {
         skills: answers.selectedSkills,
         agentId: agentSelection.id,
         engineId,
-        engineMcpKey: answers.engineMcpKey,
+        mcpBridgeCode,
       });
 
       const subagentFiles = agentConfig.supportsSubagents
-        ? await installSubagents(projectDir, agentConfig.subagentsDir, { agentId: agentSelection.id, engineId, engineMcpKey: answers.engineMcpKey })
+        ? await installSubagents(projectDir, agentConfig.subagentsDir, { agentId: agentSelection.id, engineId, mcpBridgeCode })
         : [];
 
       installedAgents.push({
@@ -162,7 +178,7 @@ export async function initCommand(): Promise<void> {
     if (preservedExtensions.length > 0) {
       console.log(chalk.dim('\nRestoring extensions...\n'));
       const restored = await reinstallExtensionAssets({
-        projectDir, engine: engineId, engineMcpKey: answers.engineMcpKey,
+        projectDir, engine: engineId, mcpBridgeCode,
         agents: installedAgents, extensions: preservedExtensions,
       });
       if (restored.missing.length > 0) {
@@ -176,7 +192,7 @@ export async function initCommand(): Promise<void> {
     await reconcileMcpSettings(
       projectDir,
       discoveredServers,
-      answers.mcpServers,
+      enabledIds,
       installedAgents.map(agent => agent.id),
       // Re-init on a project that installed extensions: their settings keys must
       // stay off limits to the normalisation scan. `null` on a fresh install,
@@ -186,7 +202,7 @@ export async function initCommand(): Promise<void> {
       // run yet, which is the whole point: it is what lets the pass recognise a
       // server whose code moved and delete the entry left under the old one.
       // Hoisting the config write above this call makes every swap a no-op.
-      existingConfig?.mcp.servers ?? {},
+      { ...(existingConfig?.mcp.servers ?? {}), ...(existingConfig?.engineBridges.selected ?? {}) },
     );
 
     // Install engine templates
@@ -194,13 +210,13 @@ export async function initCommand(): Promise<void> {
 
     // Inject MCP tool permissions
     console.log(chalk.dim('Injecting MCP tool permissions...\n'));
-    const mcpAllowedTools = collectMcpRules(discoveredServers, answers.mcpServers);
+    const mcpAllowedTools = collectMcpRules(discoveredServers, enabledIds);
     await injectMcpRules(projectDir, installedAgents, mcpAllowedTools);
 
     // The same project-level pass `update` and `extension *` run, after the MCP grants like in `update`.
     if (preservedExtensions.length > 0) {
       const injectionReport = await applyExtensionInjections({
-        projectDir, engine: engineId, engineMcpKey: answers.engineMcpKey,
+        projectDir, engine: engineId, mcpBridgeCode,
         agents: installedAgents, extensions: preservedExtensions,
       });
       printInjectionReport(injectionReport);
@@ -214,21 +230,25 @@ export async function initCommand(): Promise<void> {
 
     // Build managed skills and subagents state per agent
     for (const agent of installedAgents) {
-      agent.managedSkills = await buildManagedSkillsState(projectDir, agent, agent.installedSkills, engineId, answers.engineMcpKey, mcpServerMap);
-      agent.managedSubagents = await buildManagedSubagentsState(projectDir, agent, agent.installedSubagents, engineId, answers.engineMcpKey, mcpServerMap);
+      agent.managedSkills = await buildManagedSkillsState(projectDir, agent, agent.installedSkills, engineId, selection);
+      agent.managedSubagents = await buildManagedSubagentsState(projectDir, agent, agent.installedSubagents, engineId, selection);
     }
 
-    const selectedEngineServer = resolveSelectedEngineServer(discoveredServers, answers.mcpServers);
+    // Transitional: the rules tree and the notes still follow ONE engine server until the per-bridge
+    // delivery replaces both.
+    const selectedEngineServer = resolveSelectedEngineServer(discoveredServers, answers.engineBridges);
 
     // Save config — rules.installed starts empty; /unikit Step 9 fills it.
     // genres.installed also starts empty; /unikit-gd-spec installs profiles later.
     const config: UniKitConfig = {
       version: getCurrentVersion(),
       engine: engineId,
-      engineMcpKey: answers.engineMcpKey,
       rulesRegistry: answers.rulesRegistry,
       mcp: {
         servers: mcpServerMap,
+      },
+      engineBridges: {
+        selected: bridgeMap,
       },
       agents: installedAgents,
       extensions: preservedExtensions,
@@ -251,7 +271,7 @@ export async function initCommand(): Promise<void> {
     const previousEngineServer = existingConfig
       ? resolveSelectedEngineServer(
           await discoverMcpServers(existingConfig.engine),
-          Object.keys(existingConfig.mcp?.servers ?? {}),
+          Object.keys(existingConfig.engineBridges.selected),
         )
       : null;
 
@@ -300,7 +320,7 @@ export async function initCommand(): Promise<void> {
     await installEngineMcpRules(projectDir, selectedEngineServer);
 
     // Install engine development principles (shared system file)
-    await installDevPrinciples(projectDir, engineId, answers.engineMcpKey);
+    await installDevPrinciples(projectDir, engineId, mcpBridgeCode);
 
     // Install module registry snapshot (forward-compat SSOT)
     await installModulesYml(projectDir);
@@ -328,18 +348,20 @@ export async function initCommand(): Promise<void> {
       console.log('');
     }
 
-    // Global MCP summary
-    if (answers.mcpServers.length > 0) {
-      console.log(chalk.green(`  MCP servers configured: ${answers.mcpServers.join(', ')}`));
-      for (const line of getMcpDocsLines(discoveredServers, answers.mcpServers)) {
+    // Global MCP summary: the universal servers, then the engine bridges, one docs/env block for both
+    if (enabledIds.length > 0) {
+      if (answers.mcpServers.length > 0) {
+        console.log(chalk.green(`  MCP servers configured: ${answers.mcpServers.join(', ')}`));
+      }
+      if (answers.engineBridges.length > 0) {
+        console.log(chalk.green(`  Engine bridges: ${answers.engineBridges.join(', ')}`));
+      }
+      for (const line of getMcpDocsLines(discoveredServers, enabledIds)) {
         console.log(chalk.dim(`    ${line}`));
       }
       // Yellow, not dim: these are things the user has to do, not reference.
-      for (const line of getMcpEnvLines(discoveredServers, answers.mcpServers, answers.agents.map(a => a.id))) {
+      for (const line of getMcpEnvLines(discoveredServers, enabledIds, answers.agents.map(a => a.id))) {
         console.log(chalk.yellow(`    ${line}`));
-      }
-      if (answers.engineMcpKey) {
-        console.log(chalk.dim(`  Engine MCP: ${answers.engineMcpKey}`));
       }
       console.log('');
     }

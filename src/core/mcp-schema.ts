@@ -17,7 +17,7 @@
 
 import path from 'path';
 import { MCP_PLATFORM_KEYS, type McpPlatformKey } from './constants.js';
-import type { McpAllowedTools, McpServerEntry } from './mcp.js';
+import type { BridgeKind, McpAllowedTools, McpServerEntry } from './mcp.js';
 import { logInfo, logWarn } from '../utils/log.js';
 
 /**
@@ -97,6 +97,12 @@ function parseRulesDir(raw: unknown, dirPath: string, fileName: string): string 
   return path.resolve(dirPath, raw);
 }
 
+/** The optional `kind` key: absent means `mcp`; a value that is neither `mcp` nor `cli` is `null`. */
+function parseBridgeKind(raw: unknown): BridgeKind | null {
+  if (raw === undefined) return 'mcp';
+  return raw === 'mcp' || raw === 'cli' ? raw : null;
+}
+
 /**
  * Read the optional `configByPlatform` key into a typed map. Platforms outside
  * {@link MCP_PLATFORM_KEYS} and non-object values are dropped.
@@ -150,6 +156,13 @@ export function parseMcpServerEntry(raw: unknown, dirPath: string, fileName: str
     return null;
   }
 
+  // Present but unknown is a defect worth a warning; absent is `mcp`, the only kind that existed.
+  const kind = parseBridgeKind(raw['kind']);
+  if (kind === null) {
+    logWarn('parseMcpServerEntry', `dropped ${fileName}: unknown kind "${String(raw['kind'])}"`);
+    return null;
+  }
+
   const configByPlatform = parseConfigByPlatform(raw['configByPlatform']);
   if (!raw.config && !configByPlatform) return null;
 
@@ -157,6 +170,7 @@ export function parseMcpServerEntry(raw: unknown, dirPath: string, fileName: str
     key: raw.key as string,
     code: raw.code,
     isEngine: (raw['is_engine'] as boolean) ?? false,
+    kind,
     displayName: raw.displayName as string,
   };
 

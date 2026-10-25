@@ -35,17 +35,26 @@ const LOG_COMPONENT = 'extension-injections';
 export interface ExtensionInjectionInput {
   projectDir: string;
   engine: string;
-  engineMcpKey: string | null | undefined;
+  /** Code of the MCP bridge `{{engine_mcp_tool}}` stands for; the commands derive it, nothing persists it. */
+  mcpBridgeCode: string | null | undefined;
   agents: AgentInstallation[];
   extensions: ExtensionRecord[];
 }
 
-/** The pass input every command builds the same way from the project's config. */
-export function injectionInputFromConfig(projectDir: string, config: UniKitConfig): ExtensionInjectionInput {
+/**
+ * The pass input every command builds the same way from the project's config. The bridge code is a
+ * parameter, not a read of the config: it is derived from the catalog (`resolveMcpBridgeCode`), and
+ * the commands that know the catalog already hold it.
+ */
+export function injectionInputFromConfig(
+  projectDir: string,
+  config: UniKitConfig,
+  mcpBridgeCode: string | null | undefined,
+): ExtensionInjectionInput {
   return {
     projectDir,
     engine: config.engine,
-    engineMcpKey: config.engineMcpKey,
+    mcpBridgeCode,
     agents: config.agents,
     extensions: config.extensions ?? [],
   };
@@ -230,7 +239,7 @@ async function applyPointsToSkill(
 
   const offered = registeredPoints(registry, 'skill', target);
   const replacedBy = input.extensions.find(ext => ext.replacedSkills && Object.hasOwn(ext.replacedSkills, target));
-  const ctxBase = { agent, engine: input.engine, engineMcpKey: input.engineMcpKey };
+  const ctxBase = { agent, engine: input.engine, mcpBridgeCode: input.mcpBridgeCode };
 
   const prepared: PreparedEntry[] = [];
   for (const item of items) {

@@ -187,7 +187,7 @@ write_unikit_config_genres() {
 {
   "version": "$(current_project_version)",
   "engine": "$engine",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [{"id":"claude","installedSkills":[],"installedSubagents":[]}],
   "rules": {
@@ -582,7 +582,7 @@ use_fake_registry() {
 {
   "version": "$(current_project_version)",
   "engine": "$engine",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": $agents_json,
   "rulesRegistry": "$fixture_path",
@@ -642,7 +642,7 @@ MD
 {
   "version": "1.0.1",
   "engine": "$engine",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [{"id":"claude","installedSkills":[],"installedSubagents":[]}],
   "rulesRegistry": "$fixture_path",

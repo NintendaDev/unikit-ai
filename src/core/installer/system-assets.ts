@@ -176,7 +176,7 @@ export async function installPrototypeProfileContract(projectDir: string): Promi
 export async function installDevPrinciples(
   projectDir: string,
   engineId: string,
-  engineMcpKey?: string | null,
+  mcpBridgeCode?: string | null,
 ): Promise<void> {
   const srcPath = path.join(getDataDir(), DEV_PRINCIPLES_FILE);
   const destDir = systemDir(projectDir);
@@ -188,7 +188,7 @@ export async function installDevPrinciples(
     return;
   }
 
-  const vars = buildSubagentTemplateVars('dev-principles', engineId, engineMcpKey);
+  const vars = buildSubagentTemplateVars('dev-principles', engineId, mcpBridgeCode);
   const content = processTemplate(raw, vars);
   await writeTextFile(destPath, content);
   logInfo('installDevPrinciples', 'installed .unikit/system/dev-principles.md');

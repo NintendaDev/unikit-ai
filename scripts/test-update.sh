@@ -72,7 +72,7 @@ cat > "$PROJECT_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": {
     "servers": {}
   },
@@ -247,7 +247,7 @@ cat > "$COMPAT_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "language": "en",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": {
     "servers": []
   },
@@ -318,7 +318,7 @@ cat > "$CLAUDE_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -372,7 +372,7 @@ cat > "$HASH_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -422,7 +422,7 @@ cat > "$ARTIFACT_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -468,7 +468,7 @@ cat > "$SA_DRIFT_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -522,7 +522,7 @@ cat > "$MULTI_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -608,7 +608,7 @@ cat > "$ENGINE_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -680,7 +680,7 @@ cat > "$NEWSKILL_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -722,7 +722,7 @@ cat > "$LEGACY_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -776,7 +776,7 @@ cat > "$SA_REMOVED_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -840,7 +840,7 @@ cat > "$SKILLCTX_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -915,7 +915,7 @@ cat > "$SA_HASH_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -977,7 +977,7 @@ cat > "$SA_ARTIFACT_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1022,7 +1022,7 @@ cat > "$ZERO_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [],
   "rules": {
@@ -1070,7 +1070,7 @@ cat > "$EXTMISSING_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1128,7 +1128,7 @@ cat > "$ENGEXT_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1193,7 +1193,7 @@ cat > "$DRIFTEXT_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1269,7 +1269,7 @@ cat > "$SAFRC_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1318,7 +1318,7 @@ cat > "$SAMMS_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1398,7 +1398,7 @@ cat > "$DEVPRIN_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1567,8 +1567,9 @@ echo "  ✓ genre profiles: update delivers + refreshes installed profiles from 
 CONFIG="$DEVPRIN_CONFIG" node -e "
     const fs=require('fs'); const f=process.env.CONFIG;
     const c=JSON.parse(fs.readFileSync(f,'utf8'));
-    c.engineMcpKey = 'UnityMCP';
-    c.mcp = { servers: ['unity-biome-mcp'] };
+    delete c.engineMcpKey;
+    c.mcp = { servers: {} };
+    c.engineBridges = { selected: { 'unity-biome-mcp': 'unity-biome-mcp' } };
     fs.writeFileSync(f, JSON.stringify(c,null,2));
 "
 MCP_SHARD_DIR="$DEVPRIN_DIR/.unikit/system/engine-mcp"
@@ -1658,8 +1659,8 @@ cat > "$MCPHASH_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": "UnityMCP",
-  "mcp": { "servers": { "coplay-unity-mcp": "UnityMCP" } },
+  "mcp": { "servers": {} },
+  "engineBridges": { "selected": { "coplay-unity-mcp": "UnityMCP" } },
   "agents": [
     {
       "id": "claude",
@@ -1693,7 +1694,7 @@ MCPHASH_CONFIG="$MCPHASH_DIR/.unikit.json"
 CONFIG="$MCPHASH_CONFIG" node -e "
     const fs=require('fs'); const f=process.env.CONFIG;
     const c=JSON.parse(fs.readFileSync(f,'utf8'));
-    c.mcp = { servers: ['unity-biome-mcp'] };
+    c.engineBridges = { selected: { 'unity-biome-mcp': 'unity-biome-mcp' } };
     fs.writeFileSync(f, JSON.stringify(c,null,2));
 "
 MCPHASH_OUT2="$TMPDIR/update-mcp-hash-2.log"
@@ -1745,8 +1746,8 @@ cat > "$ENGSWITCH_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": "UnityMCP",
-  "mcp": { "servers": { "unity-biome-mcp": "UnityMCP" } },
+  "mcp": { "servers": {} },
+  "engineBridges": { "selected": { "unity-biome-mcp": "UnityMCP" } },
   "agents": [
     {
       "id": "claude",
@@ -1775,8 +1776,8 @@ CONFIG="$ENGSWITCH_CONFIG" node -e "
     const fs=require('fs'); const f=process.env.CONFIG;
     const c=JSON.parse(fs.readFileSync(f,'utf8'));
     c.engine = 'godot';
-    c.engineMcpKey = null;
     c.mcp = { servers: {} };
+    c.engineBridges = { selected: {} };
     fs.writeFileSync(f, JSON.stringify(c,null,2));
 "
 ENGSWITCH_OUT2="$TMPDIR/update-engine-switch-2.log"
@@ -1806,7 +1807,7 @@ echo "  ✓ engine switch: unity+biome -> godot+none reinstalls skills and clear
 # reaches: the engine does not change, the selected servers do not change — only the
 # grant list INSIDE the server's own JSON does.
 #
-# `mcpHashComponent` hashes `mcp:<engineMcpKey>|<sorted fileIds>`, i.e. the INPUT of
+# `selectionHashComponent` hashes `mcp:<sorted pairs>|bridges:<sorted pairs>`, i.e. the INPUT of
 # the injection, not its output. Both are identical here, so no artifact's source hash
 # moves and `skipUnchanged` keeps the installed copy. The named grants therefore
 # survive on disk unless `injectMcpRules` removes them itself.
@@ -1830,8 +1831,8 @@ cat > "$NARROW_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": "FixtureTreed",
-  "mcp": { "servers": { "fixture-treed-mcp": "FixtureTreed" } },
+  "mcp": { "servers": {} },
+  "engineBridges": { "selected": { "fixture-treed-mcp": "FixtureTreed" } },
   "agents": [
     {
       "id": "claude",
@@ -2018,8 +2019,8 @@ cat > "$NOTES_CLI_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": "UnityMCP",
-  "mcp": { "servers": { "unity-biome-mcp": "UnityMCP" } },
+  "mcp": { "servers": {} },
+  "engineBridges": { "selected": { "unity-biome-mcp": "UnityMCP" } },
   "agents": [
     {
       "id": "claude",
@@ -2047,8 +2048,8 @@ CONFIG="$NOTES_CLI_DIR/.unikit.json" node -e "
     const fs=require('fs'); const f=process.env.CONFIG;
     const c=JSON.parse(fs.readFileSync(f,'utf8'));
     c.engine = 'godot';
-    c.engineMcpKey = 'fennara';
-    c.mcp = { servers: ['fennara-godot-mcp'] };
+    c.mcp = { servers: {} };
+    c.engineBridges = { selected: { 'fennara-godot-mcp': 'fennara' } };
     fs.writeFileSync(f, JSON.stringify(c,null,2));
 "
 NOTES_CLI_OUT2="$TMPDIR/update-notes-cli-2.log"
@@ -2097,8 +2098,8 @@ CONFIG="$NOTES_CLI_DIR/.unikit.json" node -e "
     const fs=require('fs'); const f=process.env.CONFIG;
     const c=JSON.parse(fs.readFileSync(f,'utf8'));
     c.engine = 'unity';
-    c.engineMcpKey = 'FixtureTreeless';
-    c.mcp = { servers: ['fixture-treeless-mcp'] };
+    c.mcp = { servers: {} };
+    c.engineBridges = { selected: { 'fixture-treeless-mcp': 'FixtureTreeless' } };
     fs.writeFileSync(f, JSON.stringify(c,null,2));
 "
 NOTES_CLI_OUT3="$TMPDIR/update-notes-cli-3.log"
@@ -2317,7 +2318,7 @@ cat > "$INSTALLNEW_DIR/.unikit.json" << 'EOF'
   "version": "1.1.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     { "id": "claude", "skillsDir": ".claude/skills", "subagentsDir": ".claude/agents", "installedSkills": ["unikit"], "installedSubagents": [] }
@@ -2383,7 +2384,7 @@ cat > "$BOTHFLAGS_DIR/.unikit.json" << 'EOF'
   "version": "1.1.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     { "id": "claude", "skillsDir": ".claude/skills", "subagentsDir": ".claude/agents", "installedSkills": ["unikit"], "installedSubagents": [] }
@@ -2421,7 +2422,7 @@ cat > "$AK_DIR/.unikit.json" << 'EOF'
   "version": "1.1.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": { "context7": "context7", "github": "github" } },
   "agents": [
     {
@@ -2588,7 +2589,7 @@ cat > "$UC_DIR/.unikit.json" << 'EOF'
   "version": "1.1.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": { "context7": "context7", "github": "github" } },
   "agents": [
     {
@@ -2694,7 +2695,7 @@ cat > "$UX_DIR/.unikit.json" << 'EOF'
   "version": "1.1.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {

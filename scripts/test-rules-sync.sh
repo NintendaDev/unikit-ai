@@ -56,7 +56,7 @@ write_sync_config() {
 {
   "version": "$(current_project_version)",
   "engine": "$engine",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [],
   "rulesRegistry": "$(fake_registry_path "$fixture")",

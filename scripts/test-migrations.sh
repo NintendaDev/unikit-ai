@@ -123,17 +123,20 @@ write_legacy_config() {
 EOF
 }
 
-# `key → code` map form, i.e. a config the MCP steps have already converted.
+# `key → code` map form WITH the scalar, i.e. a 2.x config the MCP steps have already converted: the
+# engine server is still among the universal ones and `engineMcpKey` still names its code.
+# `extra_servers` is raw JSON members appended to `mcp.servers`, e.g. ', "context7": "context7"'.
 write_map_config() {
     local project="$1"
     local version="$2"
     local code="${3:-UnityMCP}"
+    local extra_servers="${4:-}"
     cat > "$project/.unikit.json" << EOF
 {
   "version": "$version",
   "engine": "unity",
   "engineMcpKey": "$code",
-  "mcp": { "servers": { "unity-biome-mcp": "$code" } },
+  "mcp": { "servers": { "unity-biome-mcp": "$code"$extra_servers } },
   "agents": [
     {
       "id": "claude",
@@ -182,10 +185,10 @@ M1="$TMPDIR/matrix-1.0.0"; mkdir -p "$M1"
 write_legacy_config "$M1" '"version": "1.0.0",'
 seed_flat_memory "$M1"
 M1_APPLIED=$(plan_chain "$M1" "1.0.0")
-if [[ "$M1_APPLIED" == "memory-1-to-2-code-wrap,workspace-1-to-2-code-relocate,mcp-servers-map,mcp-fileid-rename,plan-1-to-2-manifest-merge,research-1-to-2-manifest-merge,plan-2-to-3-timestamps" ]]; then
+if [[ "$M1_APPLIED" == "memory-1-to-2-code-wrap,workspace-1-to-2-code-relocate,mcp-servers-map,mcp-fileid-rename,plan-1-to-2-manifest-merge,research-1-to-2-manifest-merge,plan-2-to-3-timestamps,engine-bridges-config-split" ]]; then
     pass "matrix 1.0.0: every step group applied, ordered by since ($M1_APPLIED)"
 else
-    fail "matrix 1.0.0: expected all seven steps in since order, got '$M1_APPLIED'"
+    fail "matrix 1.0.0: expected all eight steps in since order, got '$M1_APPLIED'"
 fi
 
 # Row 2 — 1.1.0, modular memory + array. The 1.1.0 steps are quiet; every 2.0.0
@@ -195,10 +198,10 @@ M2="$TMPDIR/matrix-1.1.0"; mkdir -p "$M2"
 write_legacy_config "$M2" '"version": "1.1.0",'
 seed_modular_memory "$M2"
 M2_APPLIED=$(plan_chain "$M2" "1.1.0")
-if [[ "$M2_APPLIED" == "mcp-servers-map,mcp-fileid-rename,plan-1-to-2-manifest-merge,research-1-to-2-manifest-merge,plan-2-to-3-timestamps" ]]; then
+if [[ "$M2_APPLIED" == "mcp-servers-map,mcp-fileid-rename,plan-1-to-2-manifest-merge,research-1-to-2-manifest-merge,plan-2-to-3-timestamps,engine-bridges-config-split" ]]; then
     pass "matrix 1.1.0: only the steps anchored above the stamp applied ($M2_APPLIED)"
 else
-    fail "matrix 1.1.0: expected the MCP steps + both merges + the backfill, got '$M2_APPLIED'"
+    fail "matrix 1.1.0: expected the MCP steps + both merges + the backfill + the bridge split, got '$M2_APPLIED'"
 fi
 
 # Row 3 — 2.0.0, modular memory + array. The version half is quiet for the whole
@@ -217,10 +220,10 @@ M3="$TMPDIR/matrix-2.0.0"; mkdir -p "$M3"
 write_legacy_config "$M3" '"version": "2.0.0",'
 seed_modular_memory "$M3"
 M3_APPLIED=$(plan_chain "$M3" "2.0.0")
-if [[ "$M3_APPLIED" == "mcp-servers-map,mcp-fileid-rename" ]]; then
-    pass "matrix 2.0.0: detect carries the MCP steps when the version half is quiet ($M3_APPLIED)"
+if [[ "$M3_APPLIED" == "mcp-servers-map,mcp-fileid-rename,engine-bridges-config-split" ]]; then
+    pass "matrix 2.0.0: detect carries the MCP steps when the version half is quiet, the 3.0.0 split rides the version ($M3_APPLIED)"
 else
-    fail "matrix 2.0.0: expected the MCP steps via detect, got '$M3_APPLIED'"
+    fail "matrix 2.0.0: expected the MCP steps via detect plus the bridge split, got '$M3_APPLIED'"
 fi
 
 # Row 4 — no `version` field at all. `readConfigVersion` answers null, the version
@@ -230,10 +233,10 @@ M4="$TMPDIR/matrix-no-version"; mkdir -p "$M4"
 write_legacy_config "$M4" ''
 seed_modular_memory "$M4"
 M4_APPLIED=$(plan_chain "$M4" "null")
-if [[ "$M4_APPLIED" == "mcp-servers-map,mcp-fileid-rename" ]]; then
+if [[ "$M4_APPLIED" == "mcp-servers-map,mcp-fileid-rename,engine-bridges-config-split" ]]; then
     pass "matrix no-version: detect fires with the version half disabled ($M4_APPLIED)"
 else
-    fail "matrix no-version: expected the MCP steps via detect, got '$M4_APPLIED'"
+    fail "matrix no-version: expected the MCP steps and the bridge split via detect, got '$M4_APPLIED'"
 fi
 
 # Row 5 — a fresh project: no config, no `.unikit/`. The chain must be a no-op,
@@ -244,6 +247,18 @@ if [[ -z "$M5_APPLIED" ]]; then
     pass "matrix fresh: chain is a no-op on a project with nothing on disk"
 else
     fail "matrix fresh: expected no applied steps, got '$M5_APPLIED'"
+fi
+
+# Row 6 — 2.5.0, the project the upgrade to 3.0.0 starts from: the map and the scalar are in place,
+# modular memory is in place, and the only thing above the stamp is the bridge split.
+M6="$TMPDIR/matrix-2.5.0"; mkdir -p "$M6"
+write_map_config "$M6" "2.5.0" "unity-biome-mcp"
+seed_modular_memory "$M6"
+M6_APPLIED=$(plan_chain "$M6" "2.5.0")
+if [[ "$M6_APPLIED" == "engine-bridges-config-split" ]]; then
+    pass "matrix 2.5.0: exactly the bridge split applied ($M6_APPLIED)"
+else
+    fail "matrix 2.5.0: expected only engine-bridges-config-split, got '$M6_APPLIED'"
 fi
 
 # ─────────────────────────────────────────────────────
@@ -266,16 +281,16 @@ seed_modular_memory "$INTERRUPT"
 plan_chain "$INTERRUPT" "1.1.0" > /dev/null        # first pass converts; version stamp never written
 INTERRUPT_AFTER_FIRST=$(node -e "
   const c = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
-  console.log(JSON.stringify(c.mcp.servers));
+  console.log(JSON.stringify([c.mcp.servers, c.engineBridges && c.engineBridges.selected]));
 " "$INTERRUPT/.unikit.json")
 plan_chain "$INTERRUPT" "1.1.0" > /dev/null        # second pass: version still pending, detect quiet
 INTERRUPT_AFTER_SECOND=$(node -e "
   const c = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
-  console.log(JSON.stringify(c.mcp.servers));
+  console.log(JSON.stringify([c.mcp.servers, c.engineBridges && c.engineBridges.selected]));
 " "$INTERRUPT/.unikit.json")
 
-if [[ "$INTERRUPT_AFTER_FIRST" == "$INTERRUPT_AFTER_SECOND" && "$INTERRUPT_AFTER_SECOND" != "{}" ]]; then
-    pass "interrupted chain: a second pass at versionPending leaves the map intact ($INTERRUPT_AFTER_SECOND)"
+if [[ "$INTERRUPT_AFTER_FIRST" == "$INTERRUPT_AFTER_SECOND" && "$INTERRUPT_AFTER_SECOND" != "[{},{}]" ]]; then
+    pass "interrupted chain: a second pass at versionPending leaves both maps intact ($INTERRUPT_AFTER_SECOND)"
 else
     fail "interrupted chain: map changed across a no-work pass ('$INTERRUPT_AFTER_FIRST' -> '$INTERRUPT_AFTER_SECOND')"
 fi
@@ -318,17 +333,17 @@ plan_chain "$RENAME" "1.1.0" > /dev/null
 
 RENAME_KEYS=$(node -e "
   const c = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
-  console.log(Object.keys(c.mcp.servers).sort().join(','));
+  console.log([...Object.keys(c.mcp.servers), ...Object.keys(c.engineBridges.selected)].sort().join(','));
 " "$RENAME/.unikit.json")
 if [[ "$RENAME_KEYS" == "context7,unity-biome-mcp" ]]; then
     pass "rename: config keys carry the new file ids ($RENAME_KEYS)"
 else
-    fail "rename: expected 'context7,unity-biome-mcp' in the config map, got '$RENAME_KEYS'"
+    fail "rename: expected 'context7,unity-biome-mcp' across the config maps, got '$RENAME_KEYS'"
 fi
 
 RENAME_ENGINE_CODE=$(node -e "
   const c = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
-  console.log(c.mcp.servers['unity-biome-mcp']);
+  console.log(c.engineBridges.selected['unity-biome-mcp']);
 " "$RENAME/.unikit.json")
 if [[ "$RENAME_ENGINE_CODE" == "UnityMCP" ]]; then
     pass "rename: the engine server keeps the code it was REGISTERED under (UnityMCP)"
@@ -456,8 +471,8 @@ cat > "$RESERVED/.unikit.json" <<EOF
 {
   "version": "$(current_project_version)",
   "engine": "unity",
-  "engineMcpKey": "unity-biome-mcp",
-  "mcp": { "servers": { "unity-biome-mcp": "unity-biome-mcp" } },
+  "mcp": { "servers": {} },
+  "engineBridges": { "selected": { "unity-biome-mcp": "unity-biome-mcp" } },
   "agents": [],
   "rules": { "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } } },
   "extensions": [{ "name": "my-ext", "source": "local", "version": "1.0.0" }]
@@ -616,12 +631,12 @@ run_update "$E2E" "$TMPDIR/update-e2e.log"
 
 E2E_CONFIG=$(node -e "
   const c = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
-  console.log(c.engineMcpKey + '|' + c.mcp.servers['unity-biome-mcp']);
+  console.log(('engineMcpKey' in c) + '|' + c.engineBridges.selected['unity-biome-mcp'] + '|' + ('unity-biome-mcp' in c.mcp.servers));
 " "$E2E/.unikit.json")
-if [[ "$E2E_CONFIG" == "unity-biome-mcp|unity-biome-mcp" ]]; then
-    pass "update: engineMcpKey and the map both hold the current vendor code"
+if [[ "$E2E_CONFIG" == "false|unity-biome-mcp|false" ]]; then
+    pass "update: the bridge map holds the current vendor code, the scalar is gone and the universal map has no engine server"
 else
-    fail "update: expected 'unity-biome-mcp|unity-biome-mcp', got '$E2E_CONFIG'"
+    fail "update: expected 'false|unity-biome-mcp|false', got '$E2E_CONFIG'"
 fi
 
 E2E_SETTINGS=$(node -e "
@@ -671,7 +686,7 @@ cat > "$EMPTY/.unikit.json" <<EOF
 {
   "version": "$(current_project_version)",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [],
   "rules": { "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } } }
@@ -1663,5 +1678,191 @@ assert_cmd_exit 0 "completed plan: rules sync exits 0 after the upgrade" \
 # could throw, and a re-entered run appended the graph a second time. The step
 # writes no artifacts at all any more — it renames two files and leaves the brief
 # closed — so the retry it guarded against has no code left to happen in.
+
+# ─────────────────────────────────────────────────────
+# Section 10: engine-bridges config split (3.0.0)
+# ─────────────────────────────────────────────────────
+# The step moves the engine server out of `mcp.servers` into `engineBridges.selected` and drops the
+# scalar `engineMcpKey`. It works on the raw JSON, reads the catalog through the one discovery
+# function, and refuses to run when it cannot read the catalog: a normalized config saved after a
+# skipped step would lose the selection with nothing left for `detect` to find.
+
+echo -e "\n${BOLD}Section 10: engine-bridges config split${NC}"
+
+# The parts of a config the split moves, as one comparable string.
+split_summary() {
+    node -e "
+      const c = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
+      process.stdout.write(JSON.stringify({
+        bridges: c.engineBridges ? c.engineBridges.selected : null,
+        universal: c.mcp ? c.mcp.servers : null,
+        scalar: Object.prototype.hasOwnProperty.call(c, 'engineMcpKey'),
+      }));
+    " "$1/.unikit.json"
+}
+
+config_keys() {
+    node -e "process.stdout.write(Object.keys(JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'))).join(','))" "$1/.unikit.json"
+}
+
+# 10a — the two real inputs: a 2.5.0 project and a 2.2.0 project. Same shape, different stamp.
+for S10A_VERSION in 2.5.0 2.2.0; do
+    S10A="$TMPDIR/split-$S10A_VERSION"; mkdir -p "$S10A"
+    write_map_config "$S10A" "$S10A_VERSION" "unity-biome-mcp" ', "context7": "context7"'
+    seed_modular_memory "$S10A"
+    plan_chain "$S10A" "$S10A_VERSION" > /dev/null
+    S10A_SUMMARY=$(split_summary "$S10A")
+    if [[ "$S10A_SUMMARY" == '{"bridges":{"unity-biome-mcp":"unity-biome-mcp"},"universal":{"context7":"context7"},"scalar":false}' ]]; then
+        pass "split $S10A_VERSION: the engine server moved to engineBridges.selected, Context7 stayed, the scalar is gone"
+    else
+        fail "split $S10A_VERSION: unexpected result $S10A_SUMMARY"
+    fi
+    S10A_KEYS=$(config_keys "$S10A")
+    if [[ "$S10A_KEYS" == "version,engine,mcp,engineBridges,agents,rules" ]]; then
+        pass "split $S10A_VERSION: every other key is still there, engineBridges sits right behind mcp"
+    else
+        fail "split $S10A_VERSION: key order/set changed: $S10A_KEYS"
+    fi
+done
+
+# 10b — a 1.x project: the array becomes a map first (2.0.0), then the split. The OLD vendor code survives.
+S10B="$TMPDIR/split-1x"; mkdir -p "$S10B"
+write_legacy_config "$S10B" '"version": "1.1.0",'
+seed_modular_memory "$S10B"
+plan_chain "$S10B" "1.1.0" > /dev/null
+S10B_SUMMARY=$(split_summary "$S10B")
+if [[ "$S10B_SUMMARY" == '{"bridges":{"unity-biome-mcp":"UnityMCP"},"universal":{"context7":"context7"},"scalar":false}' ]]; then
+    pass "split 1.x: the array became a map, the engine server moved under its new file id and kept the code it was registered under"
+else
+    fail "split 1.x: unexpected result $S10B_SUMMARY"
+fi
+
+# 10c — idempotence: a second pass at a pending version writes nothing, and the project is not stale.
+S10C="$TMPDIR/split-idempotent"; mkdir -p "$S10C"
+write_map_config "$S10C" "2.5.0" "unity-biome-mcp" ', "context7": "context7"'
+seed_modular_memory "$S10C"
+plan_chain "$S10C" "2.5.0" > /dev/null
+S10C_SHA=$(sha_of "$S10C/.unikit.json")
+S10C_SECOND=$(plan_chain "$S10C" "2.5.0")
+assert_file_unchanged "$S10C/.unikit.json" "$S10C_SHA" "split: a second pass at the same stamp leaves .unikit.json byte-identical"
+S10C_DETECT=$(cd "$ROOT_DIR" && PROJECT="$S10C" node --input-type=module -e "
+  const { PROJECT_MEMORY_MIGRATIONS } = await import('./dist/core/memory-migrations/index.js');
+  const step = PROJECT_MEMORY_MIGRATIONS.find(s => s.id === 'engine-bridges-config-split');
+  process.stdout.write(String(await step.detect({ projectDir: process.env.PROJECT })));
+")
+if [[ "$S10C_DETECT" == "false" ]]; then
+    pass "split: detect is false once apply has run (a pending detect would exit 8 for every rules command)"
+else
+    fail "split: detect still true after apply ($S10C_DETECT)"
+fi
+
+S10C2="$TMPDIR/split-update-twice"; mkdir -p "$S10C2"
+write_map_config "$S10C2" "2.5.0" "unity-biome-mcp" ', "context7": "context7"'
+inject_fake_registry "$S10C2"
+run_update "$S10C2" "$TMPDIR/split-update-1.log"
+S10C2_FIRST=$(split_summary "$S10C2")
+run_update "$S10C2" "$TMPDIR/split-update-2.log"
+S10C2_SECOND=$(split_summary "$S10C2")
+if [[ "$S10C2_FIRST" == "$S10C2_SECOND" && "$S10C2_FIRST" == *'"bridges":{"unity-biome-mcp":"unity-biome-mcp"}'* ]]; then
+    pass "split: a second update keeps the selection exactly as the first left it"
+else
+    fail "split: selection changed across updates ('$S10C2_FIRST' -> '$S10C2_SECOND')"
+fi
+assert_cmd_exit 0 "split: rules sync exits 0 after the upgrade (not 8)" \
+  "$TMPDIR/split-rules-sync.log" -- env -C "$S10C2" node "$CLI" rules sync
+
+# 10d — the guard: a catalog that cannot be read stops the run, and the selection stays in the file.
+EMPTY_BRIDGES="$TMPDIR/empty-bridges-catalog"; mkdir -p "$EMPTY_BRIDGES"
+S10D="$TMPDIR/split-no-catalog-2x"; mkdir -p "$S10D"
+write_map_config "$S10D" "2.2.0" "unity-biome-mcp" ', "context7": "context7"'
+seed_modular_memory "$S10D"
+inject_fake_registry "$S10D"
+S10D_SHA=$(sha_of "$S10D/.unikit.json")
+assert_cmd_exit 1 "split 2.2.0: an unreadable catalog stops update" \
+  "$TMPDIR/split-no-catalog-2x.log" -- env -C "$S10D" env UNIKIT_BRIDGES_DIR="$(normalize_path_for_json "$EMPTY_BRIDGES")" node "$CLI" update
+assert_contains "$TMPDIR/split-no-catalog-2x.log" 'engine-bridges-config-split' \
+  "split 2.2.0: the message names the step that refused"
+assert_file_unchanged "$S10D/.unikit.json" "$S10D_SHA" \
+  "split 2.2.0: .unikit.json was not changed - the selection is still in the file"
+
+S10D1="$TMPDIR/split-no-catalog-1x"; mkdir -p "$S10D1"
+write_legacy_config "$S10D1" '"version": "1.1.0",'
+seed_modular_memory "$S10D1"
+inject_fake_registry "$S10D1"
+assert_cmd_exit 1 "split 1.x: an unreadable catalog stops update" \
+  "$TMPDIR/split-no-catalog-1x.log" -- env -C "$S10D1" env UNIKIT_BRIDGES_DIR="$(normalize_path_for_json "$EMPTY_BRIDGES")" node "$CLI" update
+# Not a byte comparison: the 2.0.0 rename step legitimately renames the ids inside the array. What must
+# hold is that the choice made in the array form is still there, whole, and nothing of 3.0.0 was written.
+S10D1_STATE=$(node -e "
+  const c = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
+  process.stdout.write(JSON.stringify({ servers: c.mcp.servers, bridges: 'engineBridges' in c, scalar: c.engineMcpKey }));
+" "$S10D1/.unikit.json")
+if [[ "$S10D1_STATE" == '{"servers":["unity-biome-mcp","context7"],"bridges":false,"scalar":"UnityMCP"}' ]]; then
+    pass "split 1.x: the choice made in the array form is preserved, nothing of 3.0.0 was written"
+else
+    fail "split 1.x: the selection did not survive an unreadable catalog: $S10D1_STATE"
+fi
+
+# 10e — nothing to move: a null scalar and an empty map still end in the 3.0.0 shape, without noise.
+S10E="$TMPDIR/split-nothing"; mkdir -p "$S10E"
+cat > "$S10E/.unikit.json" << 'EOF'
+{
+  "version": "2.5.0",
+  "engine": "unity",
+  "engineMcpKey": null,
+  "mcp": { "servers": {} },
+  "agents": [],
+  "rules": { "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } } }
+}
+EOF
+S10E_APPLIED=$(plan_chain "$S10E" "2.5.0")
+S10E_SUMMARY=$(split_summary "$S10E")
+if [[ "$S10E_SUMMARY" == '{"bridges":{},"universal":{},"scalar":false}' ]]; then
+    pass "split: an empty selection ends as an empty engineBridges.selected without the scalar"
+else
+    fail "split: unexpected result for an empty selection $S10E_SUMMARY"
+fi
+
+# 10f — a selection outlives its file: the entry whose code is the old scalar was the engine server.
+S10F="$TMPDIR/split-removed-vendor"; mkdir -p "$S10F"
+cat > "$S10F/.unikit.json" << 'EOF'
+{
+  "version": "2.5.0",
+  "engine": "unity",
+  "engineMcpKey": "OldCode",
+  "mcp": { "servers": { "removed-vendor": "OldCode" } },
+  "agents": [],
+  "rules": { "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } } }
+}
+EOF
+plan_chain "$S10F" "2.5.0" > /dev/null
+S10F_SUMMARY=$(split_summary "$S10F")
+if [[ "$S10F_SUMMARY" == '{"bridges":{"removed-vendor":"OldCode"},"universal":{},"scalar":false}' ]]; then
+    pass "split: a server whose file is gone is still recognised by the old scalar"
+else
+    fail "split: unexpected result for a removed vendor $S10F_SUMMARY"
+fi
+
+# 10g — no scalar at all, but the map holds an engine server (a 1.x-era hand-written config).
+S10G="$TMPDIR/split-no-scalar"; mkdir -p "$S10G"
+cat > "$S10G/.unikit.json" << 'EOF'
+{
+  "version": "2.2.0",
+  "engine": "unity",
+  "mcp": { "servers": { "unity-biome-mcp": "unity-biome-mcp", "context7": "context7" } },
+  "agents": [],
+  "rules": { "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } } }
+}
+EOF
+plan_chain "$S10G" "2.2.0" > /dev/null
+S10G_SUMMARY=$(split_summary "$S10G")
+if [[ "$S10G_SUMMARY" == '{"bridges":{"unity-biome-mcp":"unity-biome-mcp"},"universal":{"context7":"context7"},"scalar":false}' ]]; then
+    pass "split: a config without the scalar is split by the catalog alone"
+else
+    fail "split: unexpected result without the scalar $S10G_SUMMARY"
+fi
+S10G_SHA=$(sha_of "$S10G/.unikit.json")
+plan_chain "$S10G" "2.2.0" > /dev/null
+assert_file_unchanged "$S10G/.unikit.json" "$S10G_SHA" "split: converged - a second pass writes nothing"
 
 print_summary_and_exit "Migration + MCP reconciliation Smoke Tests"
