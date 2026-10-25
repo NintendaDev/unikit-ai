@@ -22,6 +22,15 @@ const __dirname = path.dirname(__filename);
  */
 export const MCP_DIR_ENV_VAR = 'UNIKIT_MCP_DIR';
 
+/**
+ * Dev/test-only override for the packaged engine-bridge catalog (`engine-bridges/`), the
+ * mirror of {@link MCP_DIR_ENV_VAR}: that one stays with the universal servers, this one
+ * with the bridges. Same layer rule, same single point of read ({@link getBridgesDir}).
+ */
+export const BRIDGES_DIR_ENV_VAR = 'UNIKIT_BRIDGES_DIR';
+
+const BRIDGES_PACKAGE_DIR = 'engine-bridges';
+
 function getPackageRoot(): string {
   return path.resolve(__dirname, '..', '..');
 }
@@ -45,6 +54,16 @@ export function getMcpDir(): string {
     return override;
   }
   return path.join(getPackageRoot(), 'mcp');
+}
+
+/** Root of the engine-bridge catalog; the dev/test seam is `UNIKIT_BRIDGES_DIR` (see `getMcpDir`). */
+export function getBridgesDir(): string {
+  const override = process.env[BRIDGES_DIR_ENV_VAR];
+  if (override) {
+    logInfo('getBridgesDir', `Engine bridge catalog overridden via ${BRIDGES_DIR_ENV_VAR}=${override}`);
+    return override;
+  }
+  return path.join(getPackageRoot(), BRIDGES_PACKAGE_DIR);
 }
 
 export function getDataDir(): string {

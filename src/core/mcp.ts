@@ -1,7 +1,8 @@
 import path from 'path';
-import { readJsonFile, readTextFile, writeTextFile, getMcpDir, ensureDir, fileExists, listFiles } from '../utils/fs.js';
+import { readJsonFile, readTextFile, writeTextFile, getMcpDir, getBridgesDir, ensureDir, fileExists, listFiles } from '../utils/fs.js';
 import { getAgentConfig } from './agents.js';
 import { MCP_TOOL_ENTRY_PREFIX, type McpPlatformKey } from './constants.js';
+import { UNIVERSAL_MCP_DIR_NAME } from './constants-bridges.js';
 import { getEngineConfig } from './engines.js';
 import { isRecord, parseMcpServerEntry } from './mcp-schema.js';
 import { getMcpWriter } from './mcp-writers/index.js';
@@ -14,7 +15,8 @@ export interface McpAllowedTools {
 
 export interface McpServerEntry {
   /**
-   * The server's INTERNAL identity — the basename of its JSON file under `mcp/`.
+   * The server's INTERNAL identity — the basename of its JSON file under
+   * `mcp/universal/` or `engine-bridges/<engine>/`.
    * It never leaves the package: nothing is written under it, no grant is
    * prefixed with it, and no user ever types it. It is what `config.mcp.servers`
    * keys on and what the rules tree, the delivery stamp and the findings log are
@@ -36,7 +38,7 @@ export interface McpServerEntry {
   code: string;
   /**
    * Which catalog directory this entry was scanned out of: the name of the
-   * engine's `mcp/<mcpDir>/` folder, or `null` for a server read from
+   * engine's `engine-bridges/<bridgesDir>/` folder, or `null` for a server read from
    * `mcp/universal/`.
    *
    * Filled at scan time because that is the only place the directory is known —
@@ -47,7 +49,7 @@ export interface McpServerEntry {
    * honest axis anyway — "these are the servers for this engine" is exactly what
    * the folder means, and it needs no field to be kept in sync.
    *
-   * It is an INTERNAL discriminator, never shown: `mcp/unity` in a prompt would
+   * It is an INTERNAL discriminator, never shown: `engine-bridges/unity` in a prompt would
    * leak the package's layout at the user. The radio prints the engine's display
    * name instead.
    */
@@ -76,7 +78,7 @@ export interface McpServerEntry {
    * Never affects the order servers are written into a settings file.
    *
    * The group used to be "the servers sharing a `key`"; it is now "the
-   * `is_engine` servers of one `mcp/<dir>/` folder" — see {@link originDir}.
+   * `is_engine` servers of one `engine-bridges/<dir>/` folder" — see {@link originDir}.
    */
   order?: number;
   /**
@@ -97,7 +99,7 @@ export interface McpServerEntry {
    * Absolute path to this server's rules tree (`INDEX.md` and whatever else it
    * grew) — the exceptions this server imposes, never a list of what it can do.
    * The JSON stores the path relative to the config's own directory; it is
-   * resolved here so consumers never need to know which `mcp/<engine>/` dir the
+   * resolved here so consumers never need to know which `engine-bridges/<engine>/` dir the
    * entry came from. Absent = no known exceptions, which degrades nothing.
    */
   rulesDir?: string;
@@ -130,20 +132,20 @@ async function scanMcpDirectory(dirPath: string, originDir: string | null): Prom
 }
 
 export async function discoverMcpServers(engineId: string): Promise<DiscoveredServers> {
-  const mcpDir = getMcpDir();
+  const mcpRoot = getMcpDir();
   const merged: DiscoveredServers = new Map();
 
   // Scan universal servers
-  const universalDir = path.join(mcpDir, 'universal');
+  const universalDir = path.join(mcpRoot, UNIVERSAL_MCP_DIR_NAME);
   const universalServers = await scanMcpDirectory(universalDir, null);
   for (const [fileId, entry] of universalServers) {
     merged.set(fileId, entry);
   }
 
   // Scan engine-specific servers (override universal on fileId collision)
-  const engineMcpDir = getEngineConfig(engineId).mcpDir;
-  const engineDir = path.join(mcpDir, engineMcpDir);
-  const engineServers = await scanMcpDirectory(engineDir, engineMcpDir);
+  const bridgesDir = getEngineConfig(engineId).bridgesDir;
+  const engineDir = path.join(getBridgesDir(), bridgesDir);
+  const engineServers = await scanMcpDirectory(engineDir, bridgesDir);
   for (const [fileId, entry] of engineServers) {
     if (merged.has(fileId)) {
       console.log(`MCP: engine server "${fileId}" overrides universal server with same filename`);
@@ -154,7 +156,7 @@ export async function discoverMcpServers(engineId: string): Promise<DiscoveredSe
   // Validate: at least one engine MCP
   const engineMcps = getEngineMcpServers(merged);
   if (engineMcps.length === 0) {
-    throw new Error(`MCP: engine "${engineId}" has no MCP server with is_engine=true`);
+    throw new Error(`MCP: engine "${engineId}" has no entry with is_engine=true under engine-bridges/${bridgesDir}`);
   }
 
   // Validate: all is_engine=true entries must carry DISTINCT vendor codes.

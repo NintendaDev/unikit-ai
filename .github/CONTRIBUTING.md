@@ -63,7 +63,8 @@ unikit-ai/
 ├── src/              # TypeScript source (cli / core / utils)
 ├── skills/           # Built-in skills (unikit-* prefix)
 ├── subagents/        # Built-in subagents
-├── mcp/              # MCP server templates per engine + universal
+├── mcp/              # Universal MCP server templates
+├── engine-bridges/   # Engine bridge catalog per engine (MCP servers + rules trees)
 ├── data/             # CLI contract, dev principles, manifests
 ├── scripts/          # Bash test runners and download-rules.sh
 ├── rules-registry/   # Bundled snapshot of unikit-ai-rules

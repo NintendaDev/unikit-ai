@@ -3,7 +3,7 @@ export interface EngineConfig {
   displayName: string;
   codeLanguage: string;
   memoryDir: string;
-  mcpDir: string;
+  bridgesDir: string;
   skillTemplates: Record<string, string>;
 }
 
@@ -13,7 +13,7 @@ const ENGINE_REGISTRY: Record<string, EngineConfig> = {
     displayName: 'Unity',
     codeLanguage: 'C#',
     memoryDir: 'unity',
-    mcpDir: 'unity',
+    bridgesDir: 'unity',
     skillTemplates: {
       unikit: 'UNITY_RULES.md',
       'unikit-architecture': 'UNITY_RULES.md',
@@ -27,7 +27,7 @@ const ENGINE_REGISTRY: Record<string, EngineConfig> = {
     displayName: 'Godot 4',
     codeLanguage: 'GDScript',
     memoryDir: 'godot',
-    mcpDir: 'godot',
+    bridgesDir: 'godot',
     skillTemplates: {
       unikit: 'GODOT_RULES.md',
       'unikit-architecture': 'GODOT_RULES.md',
@@ -41,7 +41,7 @@ const ENGINE_REGISTRY: Record<string, EngineConfig> = {
     displayName: 'Godot 4 .NET',
     codeLanguage: 'C#',
     memoryDir: 'godot-net',
-    mcpDir: 'godot',
+    bridgesDir: 'godot',
     skillTemplates: {
       unikit: 'GODOT_NET_RULES.md',
       'unikit-architecture': 'GODOT_NET_RULES.md',
@@ -55,7 +55,7 @@ const ENGINE_REGISTRY: Record<string, EngineConfig> = {
     displayName: 'Unreal Engine 5',
     codeLanguage: 'C++',
     memoryDir: 'unreal-engine-5',
-    mcpDir: 'unreal-engine-5',
+    bridgesDir: 'unreal-engine-5',
     skillTemplates: {
       unikit: 'UNREAL_ENGINE_5_RULES.md',
       'unikit-architecture': 'UNREAL_ENGINE_5_RULES.md',

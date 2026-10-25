@@ -27,7 +27,7 @@ export UNIKIT_TEST_SKIP_BUILD=1
 # The nested suites each work in their own temp project and only read the package, so they
 # run in the background while the inline guards below go on, and each result is collected at
 # the Part that used to run it (the printed order does not change). A suite must never edit
-# a tracked file in place — copy it and point UNIKIT_MCP_DIR at the copy (test-update.sh,
+# a tracked file in place — copy it and point UNIKIT_MCP_DIR / UNIKIT_BRIDGES_DIR at the copy (test-update.sh,
 # test-migrations.sh do). UNIKIT_TEST_SERIAL=1 runs them one after another, as before.
 CHILD_DIR="$(mktemp -d)"
 trap 'kill $(jobs -p) 2>/dev/null || true; rm -rf "$CHILD_DIR"' EXIT
@@ -473,8 +473,11 @@ echo -e "\n${BOLD}=== Validate engine is_engine MCP presence ===${NC}\n"
 
 declare -A ENGINE_MCP_DIRS=(["unity"]="unity" ["godot"]="godot" ["godot-net"]="godot" ["unreal-engine-5"]="unreal-engine-5")
 
+# The engine servers live in engine-bridges/<engine>/; mcp/ keeps only the universal ones.
+BRIDGES_DIR="$ROOT_DIR/engine-bridges"
+
 for engine_id in "unity" "godot" "godot-net" "unreal-engine-5"; do
-    mcp_dir="$ROOT_DIR/mcp/${ENGINE_MCP_DIRS[$engine_id]}"
+    mcp_dir="$BRIDGES_DIR/${ENGINE_MCP_DIRS[$engine_id]}"
     ENGINE_MCP_RESULT=$(node -e "
       const fs = require('fs');
       const path = require('path');
@@ -495,7 +498,7 @@ for engine_id in "unity" "godot" "godot-net" "unreal-engine-5"; do
     if [[ "$ENGINE_MCP_RESULT" == "ok" ]]; then
         pass "engine $engine_id has MCP with is_engine=true"
     else
-        fail "engine $engine_id - no MCP file with is_engine=true in mcp/${ENGINE_MCP_DIRS[$engine_id]}/"
+        fail "engine $engine_id - no MCP file with is_engine=true in engine-bridges/${ENGINE_MCP_DIRS[$engine_id]}/"
     fi
 done
 
@@ -544,7 +547,7 @@ fi
 
 # unity/ — validate all MCP JSON files
 UNITY_MCP_COUNT=0
-for mcp_file in "$MCP_DIR"/unity/*.json; do
+for mcp_file in "$BRIDGES_DIR"/unity/*.json; do
     [[ -f "$mcp_file" ]] || continue
     UNITY_MCP_COUNT=$((UNITY_MCP_COUNT + 1))
     fname=$(basename "$mcp_file")
@@ -553,21 +556,21 @@ for mcp_file in "$MCP_DIR"/unity/*.json; do
           "m.key && m.displayName && (m.config || m.configByPlatform) ? 'ok' : 'missing'" 2>/dev/null || echo "missing")
         if [[ "$HAS_FIELDS" == "ok" ]]; then
             KEY_VAL=$(json_field "$mcp_file" "m.key" 2>/dev/null)
-            pass "mcp/unity/$fname (valid structure, key=$KEY_VAL)"
+            pass "engine-bridges/unity/$fname (valid structure, key=$KEY_VAL)"
         else
-            fail "mcp/unity/$fname — missing key, displayName, or config/configByPlatform"
+            fail "engine-bridges/unity/$fname — missing key, displayName, or config/configByPlatform"
         fi
     else
-        fail "mcp/unity/$fname — invalid JSON"
+        fail "engine-bridges/unity/$fname — invalid JSON"
     fi
 done
 if [[ "$UNITY_MCP_COUNT" -eq 0 ]]; then
-    fail "mcp/unity/ — no MCP JSON files found"
+    fail "engine-bridges/unity/ — no MCP JSON files found"
 fi
 
 # godot/ — validate all MCP JSON files
 GODOT_MCP_COUNT=0
-for mcp_file in "$MCP_DIR"/godot/*.json; do
+for mcp_file in "$BRIDGES_DIR"/godot/*.json; do
     [[ -f "$mcp_file" ]] || continue
     GODOT_MCP_COUNT=$((GODOT_MCP_COUNT + 1))
     fname=$(basename "$mcp_file")
@@ -576,39 +579,39 @@ for mcp_file in "$MCP_DIR"/godot/*.json; do
           "m.key && m.displayName && (m.config || m.configByPlatform) ? 'ok' : 'missing'" 2>/dev/null || echo "missing")
         if [[ "$HAS_FIELDS" == "ok" ]]; then
             KEY_VAL=$(json_field "$mcp_file" "m.key" 2>/dev/null)
-            pass "mcp/godot/$fname (valid structure, key=$KEY_VAL)"
+            pass "engine-bridges/godot/$fname (valid structure, key=$KEY_VAL)"
         else
-            fail "mcp/godot/$fname — missing key, displayName, or config/configByPlatform"
+            fail "engine-bridges/godot/$fname — missing key, displayName, or config/configByPlatform"
         fi
     else
-        fail "mcp/godot/$fname — invalid JSON"
+        fail "engine-bridges/godot/$fname — invalid JSON"
     fi
 done
 if [[ "$GODOT_MCP_COUNT" -eq 0 ]]; then
-    fail "mcp/godot/ — no MCP JSON files found"
+    fail "engine-bridges/godot/ — no MCP JSON files found"
 fi
 
 # unreal-engine-5/ must have chir24-unreal-mcp.json
-if [[ -f "$MCP_DIR/unreal-engine-5/chir24-unreal-mcp.json" ]]; then
-    if validate_json "$MCP_DIR/unreal-engine-5/chir24-unreal-mcp.json"; then
-        HAS_FIELDS=$(json_field "$MCP_DIR/unreal-engine-5/chir24-unreal-mcp.json" \
+if [[ -f "$BRIDGES_DIR/unreal-engine-5/chir24-unreal-mcp.json" ]]; then
+    if validate_json "$BRIDGES_DIR/unreal-engine-5/chir24-unreal-mcp.json"; then
+        HAS_FIELDS=$(json_field "$BRIDGES_DIR/unreal-engine-5/chir24-unreal-mcp.json" \
           "m.key && m.displayName && (m.config || m.configByPlatform) ? 'ok' : 'missing'" 2>/dev/null || echo "missing")
         if [[ "$HAS_FIELDS" == "ok" ]]; then
-            KEY_VAL=$(json_field "$MCP_DIR/unreal-engine-5/chir24-unreal-mcp.json" "m.key" 2>/dev/null)
-            IS_ENGINE=$(json_field "$MCP_DIR/unreal-engine-5/chir24-unreal-mcp.json" "m.is_engine === true ? 'true' : 'false'" 2>/dev/null)
+            KEY_VAL=$(json_field "$BRIDGES_DIR/unreal-engine-5/chir24-unreal-mcp.json" "m.key" 2>/dev/null)
+            IS_ENGINE=$(json_field "$BRIDGES_DIR/unreal-engine-5/chir24-unreal-mcp.json" "m.is_engine === true ? 'true' : 'false'" 2>/dev/null)
             if [[ -n "$KEY_VAL" && "$IS_ENGINE" == "true" ]]; then
-                pass "mcp/unreal-engine-5/chir24-unreal-mcp.json (valid structure, key=$KEY_VAL, is_engine=true)"
+                pass "engine-bridges/unreal-engine-5/chir24-unreal-mcp.json (valid structure, key=$KEY_VAL, is_engine=true)"
             else
-                fail "mcp/unreal-engine-5/chir24-unreal-mcp.json — key='$KEY_VAL', is_engine=$IS_ENGINE (expected non-empty key + is_engine=true)"
+                fail "engine-bridges/unreal-engine-5/chir24-unreal-mcp.json — key='$KEY_VAL', is_engine=$IS_ENGINE (expected non-empty key + is_engine=true)"
             fi
         else
-            fail "mcp/unreal-engine-5/chir24-unreal-mcp.json — missing key, displayName, or config/configByPlatform"
+            fail "engine-bridges/unreal-engine-5/chir24-unreal-mcp.json — missing key, displayName, or config/configByPlatform"
         fi
     else
-        fail "mcp/unreal-engine-5/chir24-unreal-mcp.json — invalid JSON"
+        fail "engine-bridges/unreal-engine-5/chir24-unreal-mcp.json — invalid JSON"
     fi
 else
-    fail "mcp/unreal-engine-5/chir24-unreal-mcp.json — missing"
+    fail "engine-bridges/unreal-engine-5/chir24-unreal-mcp.json — missing"
 fi
 
 # ─────────────────────────────────────────────
@@ -618,7 +621,7 @@ fi
 # single file in isolation (two by directory loop, two by pinned filename) and
 # keeps no accumulator between files, so `order` uniqueness within a `key` group
 # is not expressible there at all, and the structural checks would have to be
-# written out four times. One node pass over mcp/*/*.json covers both.
+# written out four times. One node pass over mcp/*/*.json and engine-bridges/*/*.json covers both.
 #
 # Checks:
 #   - `order`, when present, is a number
@@ -654,6 +657,7 @@ fi
 MCP_SCHEMA_RESULT=$(node -e "
   const fs=require('fs'), path=require('path');
   const root=process.argv[1];
+  const bridgesRoot=process.argv[2];
   const KNOWN_PLATFORMS=['win32','darwin','linux'];
   const why=[];
   const orderByKey=new Map();   // directory -> Map<order, fileId>
@@ -682,16 +686,25 @@ MCP_SCHEMA_RESULT=$(node -e "
     else if (node&&typeof node==='object') for (const [k,v] of Object.entries(node)) walkEnv(v,trail.concat(k),rel);
   };
 
-  for (const dir of fs.readdirSync(root)) {
-    const dirPath=path.join(root, dir);
-    if (!fs.statSync(dirPath).isDirectory()) continue;
+  // Two roots since the catalog split: mcp/ (universal servers) and engine-bridges/ (the engine's bridges).
+  let scanned=0;
+  const dirs=[];
+  for (const [label, base] of [['mcp', root], ['engine-bridges', bridgesRoot]])
+    for (const d of fs.readdirSync(base))
+      if (fs.statSync(path.join(base, d)).isDirectory()) dirs.push([label+'/'+d, path.join(base, d)]);
+  for (const [dir, dirPath] of dirs) {
     for (const f of fs.readdirSync(dirPath)) {
       if (!f.endsWith('.json')) continue;
+      scanned++;
       const rel=dir+'/'+f;
       let m;
       const rawText=fs.readFileSync(path.join(dirPath,f),'utf8');
       try { m=JSON.parse(rawText); }
       catch { why.push('parse-error:'+rel); continue; }
+
+      // BR-1: a file sits in the root its name says - bridges declare is_engine, universal servers never do.
+      if (dir.startsWith('engine-bridges/') && m.is_engine !== true) why.push('BR-1:bridge-without-is_engine:'+rel);
+      if (dir==='mcp/universal' && m.is_engine === true) why.push('BR-1:universal-declares-is_engine:'+rel);
 
       if (m.preselect !== undefined && typeof m.preselect !== 'boolean') why.push('GH-1:preselect-not-boolean:'+rel);
       if (m.preselect !== undefined && m.is_engine === true) why.push('GH-1:preselect-on-engine:'+rel);
@@ -699,6 +712,8 @@ MCP_SCHEMA_RESULT=$(node -e "
       for (const lit of ['ghp_','github_pat_','gho_']) if (rawText.includes(lit)) why.push('GH-3:literal-token-'+lit+':'+rel);
 
       if (m.order !== undefined && typeof m.order !== 'number') why.push('order-not-number:'+rel);
+      // A bridge is ordered by the catalog (the default order of BRIDGES.md), so order is required there.
+      if (dir.startsWith('engine-bridges/') && typeof m.order !== 'number') why.push('bridge-without-order:'+rel);
 
       for (const dead of ['shards','instruction','verified'])
         if (m[dead] !== undefined) why.push('retired-key-'+dead+':'+rel);
@@ -752,6 +767,14 @@ MCP_SCHEMA_RESULT=$(node -e "
     }
   }
 
+  // BR-1: mcp/ keeps only universal/, and engine-bridges/ holds exactly the folders the engine registry names.
+  const subdirs=(base)=>fs.readdirSync(base).filter(d=>fs.statSync(path.join(base, d)).isDirectory()).sort();
+  if (subdirs(root).join()!=='universal') why.push('BR-1:mcp-subdirs:'+subdirs(root).join('+'));
+  const engSrc=fs.readFileSync(path.join(root,'..','src','core','engines.ts'),'utf8');
+  const wantDirs=[...new Set(engSrc.split('bridgesDir: ').slice(1).map(s=>s.split(Q)[1]))].sort();
+  if (wantDirs.length===0||wantDirs.join()!==subdirs(bridgesRoot).join()) why.push('BR-1:engine-bridges-subdirs:'+subdirs(bridgesRoot).join('+')+'!='+wantDirs.join('+'));
+  if (scanned<8) why.push('scanned-only-'+scanned);
+
   const ghPath=path.join(root,'universal','github.json');
   if (!fs.existsSync(ghPath)) why.push('GH-4:github-json-missing');
   else {
@@ -766,11 +789,12 @@ MCP_SCHEMA_RESULT=$(node -e "
     for (const bad of ['*','create_branch','create_or_update_file','delete_file']) if (got.includes(bad)) why.push('GH-4:forbidden-grant-'+bad);
   }
   if (envTokens<1) why.push('GH-2:no-env-token-in-catalog');
-  console.log(why.length ? why.join(' ') : 'ok '+envTokens);
-" "$MCP_DIR" 2>/dev/null || echo "pass-error")
+  console.log(why.length ? why.join(' ') : 'ok '+envTokens+' '+scanned);
+" "$MCP_DIR" "$BRIDGES_DIR" 2>/dev/null || echo "pass-error")
 
 if [[ "$MCP_SCHEMA_RESULT" == "ok "* ]]; then
-    pass "MCP schema fields valid across all configs (order/configByPlatform/docs/rules + order unique, shards+instruction+verified gone; GH-1…GH-3 preselect, env tokens (${MCP_SCHEMA_RESULT#ok }), no literal token)"
+    MCP_SCHEMA_COUNTS="${MCP_SCHEMA_RESULT#ok }"
+    pass "MCP schema fields valid across all configs of mcp/ and engine-bridges/ (${MCP_SCHEMA_COUNTS##* } scanned; order/configByPlatform/docs/rules + order unique and required on bridges, shards+instruction+verified gone; BR-1 layout; GH-1…GH-3 preselect, env tokens (${MCP_SCHEMA_COUNTS%% *}), no literal token)"
 else
     fail "MCP schema fields invalid: $MCP_SCHEMA_RESULT"
 fi
@@ -6126,7 +6150,7 @@ fi
 # EM: engine-MCP rules layer (EM-1…EM-7)
 # ─────────────────────────────────────────────
 # The shard corpus (mcp/*/shards/**) was dropped with the rules-tree cutover; the
-# per-server profile now lives in mcp/<engine>/rules/<server>/{INDEX,verification}.md.
+# per-server profile now lives in engine-bridges/<engine>/rules/<server>/{INDEX,verification}.md.
 # The guards here lock the SOURCE side — the reader lines in the skills, the dead-name
 # sweep on the repaired configs, and the init.ts call site that no runtime test reaches.
 # EM-8 (the fennara .gd doctrine override) died with its shard: the fact it guarded is
@@ -6182,7 +6206,7 @@ fi
 # biome verification.md now that the rules tree is the delivered asset. What that file
 # must say is the NEGATIVE of the convention — the verdict is produced by a run, never
 # pre-declared — so the two halves of EM-3 point in opposite directions on purpose.
-EM_BIOME_VERIFICATION="$ROOT_DIR/mcp/unity/rules/unity-biome-mcp/verification.md"
+EM_BIOME_VERIFICATION="$ROOT_DIR/engine-bridges/unity/rules/unity-biome-mcp/verification.md"
 EM3_WHY=""
 grep -qF 'GATE LIFTED' "$UNIKIT_VERIFY_SKILL" || EM3_WHY+=" verify-skill"
 grep -qF 'GATE LIFTED' "$EM_DEV_PRINCIPLES"   || EM3_WHY+=" dev-principles"
@@ -6203,8 +6227,10 @@ fi
 # passed fs.existsSync and then failed every call with NOT_CONNECTED.
 # The coplay half was removed with the port change: `8085` is what the Unity plugin passes on
 # the launch line, so a guard forbidding it forbade the measured value.
-EM_CHIR24_JSON="$ROOT_DIR/mcp/unreal-engine-5/chir24-unreal-mcp.json"
+EM_CHIR24_JSON="$ROOT_DIR/engine-bridges/unreal-engine-5/chir24-unreal-mcp.json"
 EM4_WHY=""
+# A missing file must fail: grep on it errors out, and `grep … && …` would read that as "not found".
+[[ -f "$EM_CHIR24_JSON" ]] || EM4_WHY+=" chir24-json-missing"
 for dead in manage_pipeline manage_performance manage_game_framework manage_behavior_tree manage_navigation UE_PROJECT_PATH; do
     grep -qF "$dead" "$EM_CHIR24_JSON" && EM4_WHY+=" chir24:$dead"
 done
@@ -6265,12 +6291,16 @@ fi
 # duplicates the ordering and editorialises it. Directory-scoped so the ban cannot be
 # reintroduced in whichever Godot config is added next.
 EM6_WHY=""
-for godot_json in "$ROOT_DIR"/mcp/godot/*.json; do
+EM6_SEEN=0
+for godot_json in "$ROOT_DIR"/engine-bridges/godot/*.json; do
     [[ -f "$godot_json" ]] || continue
+    EM6_SEEN=$((EM6_SEEN + 1))
     grep -qF '[Recommended]' "$godot_json" && EM6_WHY+=" $(basename "$godot_json")"
 done
-if [[ -z "$EM6_WHY" ]]; then
-    pass "EM-6 no [Recommended] tag in any mcp/godot/*.json displayName"
+if [[ $EM6_SEEN -lt 3 ]]; then
+    fail "EM-6 only $EM6_SEEN config(s) under engine-bridges/godot/*.json — the guard lost its objects"
+elif [[ -z "$EM6_WHY" ]]; then
+    pass "EM-6 no [Recommended] tag in any engine-bridges/godot/*.json displayName ($EM6_SEEN scanned)"
 else
     fail "EM-6 [Recommended] tag survives in:$EM6_WHY"
 fi
@@ -6279,8 +6309,9 @@ fi
 # per OS. Both tokens must be present in the JSON (an accidental absolute path would work
 # on the author's machine and nowhere else) and both must resolve at configure time, which
 # the platform-agnostic install assertion in test-install.sh covers.
-EM_FENNARA_JSON="$ROOT_DIR/mcp/godot/fennara-godot-mcp.json"
+EM_FENNARA_JSON="$ROOT_DIR/engine-bridges/godot/fennara-godot-mcp.json"
 EM7_WHY=""
+[[ -f "$EM_FENNARA_JSON" ]] || EM7_WHY+=" fennara-json-missing"
 grep -qF '{{localappdata}}' "$EM_FENNARA_JSON" || EM7_WHY+=" no-localappdata-token"
 grep -qF '{{home}}' "$EM_FENNARA_JSON"         || EM7_WHY+=" no-home-token"
 if [[ -z "$EM7_WHY" ]]; then
@@ -6525,7 +6556,7 @@ fi
 # itself the day someone moves the tree.
 ED14_WHY=""
 ED14_SEEN=0
-for rt_index in "$ROOT_DIR"/mcp/*/rules/*/INDEX.md; do
+for rt_index in "$ROOT_DIR"/engine-bridges/*/rules/*/INDEX.md; do
     [[ -f "$rt_index" ]] || continue
     ED14_SEEN=$((ED14_SEEN + 1))
     rt_id="$(basename "$(dirname "$rt_index")")"
@@ -6539,7 +6570,7 @@ for rt_index in "$ROOT_DIR"/mcp/*/rules/*/INDEX.md; do
     done < <(rt_table_column "$rt_index" '## Check' 2)
 done
 if [[ $ED14_SEEN -eq 0 ]]; then
-    fail "ED-14 no mcp/*/rules/*/INDEX.md found — the guard has no object left"
+    fail "ED-14 no engine-bridges/*/rules/*/INDEX.md found — the guard has no object left"
 elif [[ -z "$ED14_WHY" ]]; then
     pass "ED-14 every check-table area is one of the 12 ($ED14_SEEN rules tree(s) scanned)"
 else
@@ -7953,7 +7984,7 @@ RT_HEADINGS=('## Access' '## Live failure classes' '## Shape and cost' '## Check
 # say about that", which is the one wrong answer this file exists to prevent.
 RT1_WHY=""
 RT1_SEEN=0
-for rt_index in "$ROOT_DIR"/mcp/*/rules/*/INDEX.md; do
+for rt_index in "$ROOT_DIR"/engine-bridges/*/rules/*/INDEX.md; do
     [[ -f "$rt_index" ]] || continue
     RT1_SEEN=$((RT1_SEEN + 1))
     rt_id="$(basename "$(dirname "$rt_index")")"
@@ -7964,7 +7995,7 @@ for rt_index in "$ROOT_DIR"/mcp/*/rules/*/INDEX.md; do
     done
 done
 if [[ $RT1_SEEN -eq 0 ]]; then
-    fail "RT-1 no mcp/*/rules/*/INDEX.md found — the guard has no object left"
+    fail "RT-1 no engine-bridges/*/rules/*/INDEX.md found — the guard has no object left"
 elif [[ -z "$RT1_WHY" ]]; then
     pass "RT-1 all seven INDEX.md headings present ($RT1_SEEN rules tree(s) scanned)"
 else
@@ -7977,8 +8008,10 @@ fi
 # of a class the profile was written to flag. Reuses LA_CLASSES — a second copy of the
 # nine names is exactly the drift a closed taxonomy exists to make impossible.
 RT2_WHY=""
-for rt_index in "$ROOT_DIR"/mcp/*/rules/*/INDEX.md; do
+RT2_SEEN=0
+for rt_index in "$ROOT_DIR"/engine-bridges/*/rules/*/INDEX.md; do
     [[ -f "$rt_index" ]] || continue
+    RT2_SEEN=$((RT2_SEEN + 1))
     rt_id="$(basename "$(dirname "$rt_index")")"
     while IFS= read -r rt_class; do
         [[ -n "$rt_class" ]] || continue
@@ -7989,8 +8022,10 @@ for rt_index in "$ROOT_DIR"/mcp/*/rules/*/INDEX.md; do
         [[ $rt_known -eq 1 ]] || RT2_WHY+=" $rt_id:${rt_class// /-}"
     done < <(rt_table_column "$rt_index" '## Live failure classes' 1)
 done
-if [[ -z "$RT2_WHY" ]]; then
-    pass "RT-2 every Live-failure-classes row is one of the nine taxonomy names"
+if [[ $RT2_SEEN -eq 0 ]]; then
+    fail "RT-2 no engine-bridges/*/rules/*/INDEX.md found — the guard has no object left"
+elif [[ -z "$RT2_WHY" ]]; then
+    pass "RT-2 every Live-failure-classes row is one of the nine taxonomy names ($RT2_SEEN rules tree(s) scanned)"
 else
     fail "RT-2 failure class outside the taxonomy of nine:$RT2_WHY"
 fi
@@ -8121,7 +8156,7 @@ RT10_TOKENS=('no silent no-ops' '✅ working' 'Strengths' 'instead of')
 # empty, ids are unique, and the id prefix is the area.
 RT7_WHY=""
 RT7_SEEN=0
-for rt_index in "$ROOT_DIR"/mcp/*/rules/*/INDEX.md; do
+for rt_index in "$ROOT_DIR"/engine-bridges/*/rules/*/INDEX.md; do
     [[ -f "$rt_index" ]] || continue
     RT7_SEEN=$((RT7_SEEN + 1))
     rt_id="$(basename "$(dirname "$rt_index")")"
@@ -8145,7 +8180,7 @@ for rt_index in "$ROOT_DIR"/mcp/*/rules/*/INDEX.md; do
     done
 done
 if [[ $RT7_SEEN -eq 0 ]]; then
-    fail "RT-7 no mcp/*/rules/*/INDEX.md found — the guard has no object left"
+    fail "RT-7 no engine-bridges/*/rules/*/INDEX.md found — the guard has no object left"
 elif [[ -z "$RT7_WHY" ]]; then
     pass "RT-7 check table non-empty, ids unique, id prefix == area ($RT7_SEEN rules tree(s) scanned)"
 else
@@ -8159,15 +8194,19 @@ fi
 # one file is not the absence of a pre-lifted gate in another, which is why this check is
 # separate and points elsewhere.
 RT8_WHY=""
-for rt_index in "$ROOT_DIR"/mcp/*/rules/*/INDEX.md; do
+RT8_SEEN=0
+for rt_index in "$ROOT_DIR"/engine-bridges/*/rules/*/INDEX.md; do
     [[ -f "$rt_index" ]] || continue
+    RT8_SEEN=$((RT8_SEEN + 1))
     rt_id="$(basename "$(dirname "$rt_index")")"
     while IFS= read -r rt_hit; do
         [[ -n "$rt_hit" ]] && RT8_WHY+=" $rt_id:line-${rt_hit%%:*}"
     done < <(grep -nF 'GATE LIFTED' "$rt_index" || true)
 done
-if [[ -z "$RT8_WHY" ]]; then
-    pass "RT-8 no pre-lifted gate in any rules-tree INDEX.md"
+if [[ $RT8_SEEN -eq 0 ]]; then
+    fail "RT-8 no engine-bridges/*/rules/*/INDEX.md found — the guard has no object left"
+elif [[ -z "$RT8_WHY" ]]; then
+    pass "RT-8 no pre-lifted gate in any rules-tree INDEX.md ($RT8_SEEN rules tree(s) scanned)"
 else
     fail "RT-8 GATE LIFTED written in advance:$RT8_WHY"
 fi
@@ -8177,7 +8216,7 @@ fi
 # a time with nothing noticing until it is whole again.
 RT9_WHY=""
 RT9_SEEN=0
-for rt_index in "$ROOT_DIR"/mcp/*/rules/*/INDEX.md; do
+for rt_index in "$ROOT_DIR"/engine-bridges/*/rules/*/INDEX.md; do
     [[ -f "$rt_index" ]] || continue
     RT9_SEEN=$((RT9_SEEN + 1))
     rt_id="$(basename "$(dirname "$rt_index")")"
@@ -8185,7 +8224,7 @@ for rt_index in "$ROOT_DIR"/mcp/*/rules/*/INDEX.md; do
     [[ $RT9_LEN -le $RT9_BUDGET ]] || RT9_WHY+=" $rt_id:${RT9_LEN}>${RT9_BUDGET}"
 done
 if [[ $RT9_SEEN -eq 0 ]]; then
-    fail "RT-9 no mcp/*/rules/*/INDEX.md found — the guard has no object left"
+    fail "RT-9 no engine-bridges/*/rules/*/INDEX.md found — the guard has no object left"
 elif [[ -z "$RT9_WHY" ]]; then
     pass "RT-9 every INDEX.md within the $RT9_BUDGET-line budget ($RT9_SEEN rules tree(s) scanned)"
 else
@@ -8208,11 +8247,11 @@ while IFS= read -r rt_file; do
             RT10_WHY+=" ${rt_file#"$ROOT_DIR/"}:${rt_hit%%:*}(${rt_token// /-})"
         done < <(grep -nF "$rt_token" "$rt_file" || true)
     done
-done < <(find "$ROOT_DIR"/mcp -type f -path '*/rules/*' 2>/dev/null)
+done < <(find "$ROOT_DIR"/engine-bridges -type f -path '*/rules/*' 2>/dev/null)
 if [[ $RT10_SEEN -eq 0 ]]; then
-    fail "RT-10 no files under mcp/*/rules/** — the guard has no object left"
+    fail "RT-10 no files under engine-bridges/*/rules/** — the guard has no object left"
 elif [[ -z "$RT10_WHY" ]]; then
-    pass "RT-10 none of the four measured genre tokens in mcp/*/rules/** ($RT10_SEEN file(s) scanned)"
+    pass "RT-10 none of the four measured genre tokens in engine-bridges/*/rules/** ($RT10_SEEN file(s) scanned)"
 else
     fail "RT-10 genre token in the rules tree:$RT10_WHY"
 fi
@@ -8268,12 +8307,12 @@ nn_scan() {
 # name would be most tempting and shortest-lived — the whole architecture rests on these
 # files carrying checks rather than a catalog.
 NN1_TARGETS=()
-for rt_rule_file in "$ROOT_DIR"/mcp/*/rules/*/*.md; do
+for rt_rule_file in "$ROOT_DIR"/engine-bridges/*/rules/*/*.md; do
     [[ -f "$rt_rule_file" ]] || continue
     NN1_TARGETS+=("$rt_rule_file")
 done
 if [[ ${#NN1_TARGETS[@]} -eq 0 ]]; then
-    fail "NN-1 no mcp/*/rules/**/*.md found — the guard has no object left"
+    fail "NN-1 no engine-bridges/*/rules/**/*.md found — the guard has no object left"
 else
     NN1_HITS="$(nn_scan "${NN1_TARGETS[@]}")"
     if [[ -z "$NN1_HITS" ]]; then
@@ -12039,7 +12078,8 @@ fi
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}=== MCP allowed-tools structure validation ===${NC}\n"
 
-for mcp_json in "$MCP_DIR"/*/; do
+ALLOWED_TOOLS_SEEN=0
+for mcp_json in "$MCP_DIR"/*/ "$BRIDGES_DIR"/*/; do
     for json_file in "$mcp_json"*.json; do
         [[ ! -f "$json_file" ]] && continue
         rel_name="${json_file#"$ROOT_DIR/"}"
@@ -12048,6 +12088,7 @@ for mcp_json in "$MCP_DIR"/*/; do
         if [[ "$HAS_ALLOWED" != "yes" ]]; then
             continue
         fi
+        ALLOWED_TOOLS_SEEN=$((ALLOWED_TOOLS_SEEN + 1))
 
         ALLOWED_VALID=$(node -e "
           const m=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));
@@ -12117,6 +12158,9 @@ for mcp_json in "$MCP_DIR"/*/; do
 
     done
 done
+if [[ $ALLOWED_TOOLS_SEEN -eq 0 ]]; then
+    fail "MCP allowed-tools: no config with allowed-tools found under mcp/ or engine-bridges/ — the guard has no object left"
+fi
 
 # ─────────────────────────────────────────────
 # Part 7e: All is_engine=true entries carry DISTINCT codes per engine scope
@@ -12140,7 +12184,7 @@ KEY_UNIQUENESS_ERRORS=0
 for engine in "${!ENGINE_MCP_DIRS[@]}"; do
     mcp_dir="${ENGINE_MCP_DIRS[$engine]}"
     UNIVERSAL_DIR_PATH="$MCP_DIR/universal"
-    ENGINE_DIR_PATH="$MCP_DIR/$mcp_dir"
+    ENGINE_DIR_PATH="$BRIDGES_DIR/$mcp_dir"
 
     # Collect codes from is_engine=true entries across universal + engine directories
     RESULT=$(node -e "
@@ -12267,13 +12311,19 @@ echo -e "\n${BOLD}Part 7e3: MCP key/code/docs invariants${NC}"
 MCP_IDENTITY_RESULT=$(node -e "
   const fs=require('fs'), path=require('path');
   const root=process.argv[1];
+  const bridgesRoot=process.argv[2];
   const why=[];
 
-  for (const dir of fs.readdirSync(root)) {
-    const dirPath=path.join(root, dir);
-    if (!fs.statSync(dirPath).isDirectory()) continue;
+  // Two roots since the catalog split: mcp/ (universal servers) and engine-bridges/ (the engine's bridges).
+  let scanned=0;
+  const dirs=[];
+  for (const [label, base] of [['mcp', root], ['engine-bridges', bridgesRoot]])
+    for (const d of fs.readdirSync(base))
+      if (fs.statSync(path.join(base, d)).isDirectory()) dirs.push([label+'/'+d, path.join(base, d)]);
+  for (const [dir, dirPath] of dirs) {
     for (const f of fs.readdirSync(dirPath)) {
       if (!f.endsWith('.json')) continue;
+      scanned++;
       const rel=dir+'/'+f;
       const fileId=f.replace(/\.json\$/, '');
       let m;
@@ -12296,11 +12346,12 @@ MCP_IDENTITY_RESULT=$(node -e "
     }
   }
 
-  console.log(why.length ? why.join(' ') : 'ok');
-" "$MCP_DIR" 2>/dev/null || echo "pass-error")
+  if (scanned<8) why.push('scanned-only-'+scanned);
+  console.log(why.length ? why.join(' ') : 'ok '+scanned);
+" "$MCP_DIR" "$BRIDGES_DIR" 2>/dev/null || echo "pass-error")
 
-if [[ "$MCP_IDENTITY_RESULT" == "ok" ]]; then
-    pass "MCP catalog: key == fileId, code present, rules-tree servers declare a context7 id matching their INDEX"
+if [[ "$MCP_IDENTITY_RESULT" == "ok "* ]]; then
+    pass "MCP catalog: key == fileId, code present, rules-tree servers declare a context7 id matching their INDEX (${MCP_IDENTITY_RESULT#ok } scanned)"
 else
     fail "MCP catalog identity invariants violated: $MCP_IDENTITY_RESULT"
 fi
@@ -12359,6 +12410,27 @@ if [[ "$MIGRATION_ANCHOR_RESULT" == "ok" ]]; then
     pass "migration chains: since is valid semver, non-decreasing, never above the package version; no step without since AND detect"
 else
     fail "migration chain anchors violated: $MIGRATION_ANCHOR_RESULT"
+fi
+
+# ─────────────────────────────────────────────
+# Part 7e5: engine bridges (family BR)
+# ─────────────────────────────────────────────
+# The catalog seams, the selection, the hash, the BRIDGES.md renderer and the bridge migrations
+# (scripts/test-bridges.mjs). Pure logic on the compiled build; every project it touches is a
+# temporary directory.
+echo -e "\n${BOLD}Part 7e5: engine bridges (BR-*)${NC}"
+
+set +e
+BRIDGES_OUTPUT=$(node "$ROOT_DIR/scripts/test-bridges.mjs" 2>&1)
+BRIDGES_EXIT=$?
+set -e
+
+if [[ $BRIDGES_EXIT -eq 0 ]]; then
+    pass "Engine bridge guards"
+    echo "$BRIDGES_OUTPUT" | tail -1 | sed 's/^/    /'
+else
+    fail "Engine bridge guards"
+    echo "$BRIDGES_OUTPUT" | sed 's/^/      /'
 fi
 
 # ─────────────────────────────────────────────

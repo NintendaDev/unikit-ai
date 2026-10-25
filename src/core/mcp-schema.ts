@@ -1,6 +1,7 @@
 // --- MCP JSON schema parsing ---
 //
-// Turns one raw `mcp/<engine>/<name>.json` object into a typed `McpServerEntry`.
+// Turns one raw `engine-bridges/<engine>/<name>.json` (or `mcp/universal/<name>.json`) object
+// into a typed `McpServerEntry`.
 // Split out of `mcp.ts` for the same reason as `mcp-rules.ts` and
 // `mcp-platform.ts`: that module carries discovery, configuration, rule
 // collection and frontmatter injection, and the schema kept growing a field per
@@ -77,7 +78,7 @@ function parseDocs(raw: unknown, fileName: string): McpServerEntry['docs'] | nul
  * tree (`INDEX.md` plus whatever else it grew). The JSON stores the path
  * relative to its own directory, exactly as the retired `shards` pointers did;
  * it is resolved to absolute here so no consumer needs to know which
- * `mcp/<engine>/` dir the entry came from.
+ * `engine-bridges/<engine>/` dir the entry came from.
  *
  * Returns `null` when the key is absent — a server without a rules tree is a
  * normal state, and by the "no rules is not no rights" invariant it degrades
@@ -122,7 +123,7 @@ function parseConfigByPlatform(raw: unknown): Partial<Record<McpPlatformKey, Rec
  * @param raw      the parsed JSON object.
  * @param dirPath  directory the JSON was read from — the `rules` pointer is
  *                 relative to it and is resolved to an absolute path here so no
- *                 consumer needs to know which `mcp/<engine>/` dir it came from.
+ *                 consumer needs to know which `engine-bridges/<engine>/` dir it came from.
  * @param fileName the JSON's own file name, quoted in warn messages so a
  *                 malformed field names its source without the caller having to
  *                 re-derive it.

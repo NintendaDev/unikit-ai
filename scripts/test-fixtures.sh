@@ -512,11 +512,14 @@ template_var_names_ere() {
 
 # use_fake_mcp_catalog <fixture_name>
 #
-# Exports UNIKIT_MCP_DIR at the fixture catalog so the installer discovers fixture
-# servers rather than the shipped ones. Behaviour tests of the installer use this;
-# the STRUCTURE of the shipped catalog stays the object of Part 5 / 5b / 7e3, which
-# read `mcp/` directly. Callers that need the shipped catalog back call
-# `unuse_fake_mcp_catalog` — the variable is process-wide, not per-project.
+# Exports UNIKIT_MCP_DIR and UNIKIT_BRIDGES_DIR at the fixture catalog so the installer
+# discovers fixture servers rather than the shipped ones. The two are switched together:
+# a scenario holds `mcp/` (the universal servers) and `engine-bridges/` (the bridges of
+# the engine), and half a catalog would mix a fixture with the shipped one. Behaviour
+# tests of the installer use this; the STRUCTURE of the shipped catalog stays the object
+# of Part 5 / 5b / 7e3, which read `mcp/` and `engine-bridges/` directly. Callers that
+# need the shipped catalog back call `unuse_fake_mcp_catalog` — the variables are
+# process-wide, not per-project.
 #
 # Deliberately NOT exported suite-wide, unlike UNIKIT_OFFICIAL_REGISTRY_URL: that one
 # is redirected everywhere because no test wants a live network round-trip, while the
@@ -530,11 +533,16 @@ use_fake_mcp_catalog() {
         echo "use_fake_mcp_catalog: fixture '$fixture_name' missing at $fixture_path" >&2
         exit 1
     fi
-    export UNIKIT_MCP_DIR="$fixture_path"
+    if [[ ! -d "$fixture_path/mcp" || ! -d "$fixture_path/engine-bridges" ]]; then
+        echo "use_fake_mcp_catalog: fixture '$fixture_name' needs both mcp/ and engine-bridges/ under $fixture_path" >&2
+        exit 1
+    fi
+    export UNIKIT_MCP_DIR="$fixture_path/mcp"
+    export UNIKIT_BRIDGES_DIR="$fixture_path/engine-bridges"
 }
 
 unuse_fake_mcp_catalog() {
-    unset UNIKIT_MCP_DIR
+    unset UNIKIT_MCP_DIR UNIKIT_BRIDGES_DIR
 }
 
 # use_fake_registry <project_dir> <engine> <fixture_name> [agents_override]

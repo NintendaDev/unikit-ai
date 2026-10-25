@@ -2261,7 +2261,7 @@ assert_exists "$MCP_NOTREE_DIR/.claude/skills/unikit-memory/scripts/material-pre
 # yet a bare `assert_exists` on .../rules/fixture-treed-mcp/INDEX.md still passed — the
 # orphaned directory outlives the pointer, so the guard would keep confirming an invariant
 # the fixture had stopped satisfying. Same shape Part 5b uses on the shipped configs.
-MCP_NOTREE_TREED_JSON="$(fake_mcp_catalog_path two-unity-servers)/unity/fixture-treed-mcp.json"
+MCP_NOTREE_TREED_JSON="$(fake_mcp_catalog_path two-unity-servers)/engine-bridges/unity/fixture-treed-mcp.json"
 if ! MCP_NOTREE_TREED_JSON="$MCP_NOTREE_TREED_JSON" node -e "
     const fs = require('fs'), path = require('path');
     const p = process.env.MCP_NOTREE_TREED_JSON;

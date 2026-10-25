@@ -29,7 +29,8 @@ if [[ "${UNIKIT_TEST_REAL_GREP:-0}" != "1" ]]; then
             case "$_gs_file" in
                 "${ROOT_DIR:-/nonexistent}"/skills/* | "${ROOT_DIR:-/nonexistent}"/subagents/* | \
                 "${ROOT_DIR:-/nonexistent}"/data/* | "${ROOT_DIR:-/nonexistent}"/docs/* | \
-                "${ROOT_DIR:-/nonexistent}"/mcp/* | "${ROOT_DIR:-/nonexistent}"/src/*)
+                "${ROOT_DIR:-/nonexistent}"/mcp/* | "${ROOT_DIR:-/nonexistent}"/engine-bridges/* | \
+                "${ROOT_DIR:-/nonexistent}"/src/*)
                     if [[ -z ${GREP_SHIM_CACHE[$_gs_file]+x} ]]; then
                         GREP_SHIM_CACHE[$_gs_file]="$(<"$_gs_file")"
                     fi

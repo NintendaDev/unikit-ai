@@ -28,7 +28,8 @@ This is the main navigation. Lists and details live in the source of truth — n
 | Transformer adapters | `src/core/transformers/` | code |
 | MCP writers (per settings format) | `src/core/mcp-writers/` | code |
 | Rules registry transports | `src/core/registry/` | code |
-| MCP server templates | `mcp/{universal,unity,godot,unreal-engine-5}/*.json` | filesystem |
+| Universal MCP server templates | `mcp/universal/*.json` | filesystem |
+| Engine bridge catalog (engine MCP servers and their rules trees) | `engine-bridges/{unity,godot,unreal-engine-5}/*.json` (+ `rules/<server>/`) | filesystem |
 | Memory rules (core/stack per engine) | repo `NintendaDev/unikit-ai-rules` (+ `rules-registry/` snapshot) | external |
 | Tests and validators | `scripts/test-*.sh` (entry: `test-skills.sh`) | bash |
 
@@ -43,7 +44,8 @@ unikit-ai/
 │   └── utils/            #   leaf infra (fs-extra wrappers, hashing)
 ├── skills/               # Built-in skills (unikit-* prefix), copied to user projects
 ├── subagents/            # Built-in subagents (sidecars + coordinators)
-├── mcp/                  # MCP server templates per engine + universal/
+├── mcp/                  # Universal MCP server templates (universal/)
+├── engine-bridges/       # Engine bridge catalog per engine (MCP servers + rules trees)
 ├── data/                 # CLI contract, dev principles, manifests, templates
 ├── rules-registry/       # Bundled snapshot of NintendaDev/unikit-ai-rules
 │                         # (git-ignored, cloned at publish/CI/dev by scripts/download-rules.sh)
