@@ -9,7 +9,7 @@ import {
   buildManagedSubagentsState, updateSubagents,
   type SubagentUpdateEntry,
 } from '../../core/installer/subagents.js';
-import { installEngineTemplates, installCliContract, installGateResultContract, installUltraPlanReadContract, installResearchLinkContract, installPlanBoundariesContract, installMergeAnalysisContract, installBalanceHandbackContract, installPrototypeProfileContract, installDevPrinciples, installEngineMcpRules, readDeliveredEngineMcpServer, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
+import { installEngineTemplates, installCliContract, installGateResultContract, installUltraPlanReadContract, installResearchLinkContract, installPlanBoundariesContract, installMergeAnalysisContract, installBalanceHandbackContract, installPrototypeProfileContract, installDevPrinciples, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
 import { installSubagentArgumentsContract, installSubagentRolesContract, installUserQuestionsContract } from '../../core/installer/system-contracts.js';
 import { injectMcpRules } from '../../core/installer/mcp-injection.js';
 import { installExtensionSkills, installExtensionSubagents } from '../../core/installer/extensions.js';
@@ -17,10 +17,10 @@ import { syncAllModules } from '../../core/installer/rules-sync.js';
 import { runProjectMemoryMigrations } from '../../core/memory-migrations/index.js';
 import { renderSyncRulesEvents } from './rules.js';
 import { collectMcpRules } from '../../core/mcp.js';
-import { selectionOf } from '../../core/bridges/selection.js';
+import { catalogBridgeIds, selectionOf } from '../../core/bridges/selection.js';
 import { reconcileMcpSettings } from '../../core/mcp-reconcile.js';
-import { resolveSelectedEngineServer } from '../../core/mcp-rules.js';
-import { swapMcpRecheckNotes } from '../../core/installer/mcp-notes.js';
+import { installEngineBridges, readPreviousBridgeSet } from '../../core/installer/engine-bridges.js';
+import { swapBridgeNotes } from '../../core/installer/bridge-notes.js';
 import { getAgentConfig } from '../../core/agents.js';
 import { exitOnSharedSkillsDir } from '../guards.js';
 import { fileExists } from '../../utils/fs.js';
@@ -107,10 +107,6 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     // bridge from the catalog, which replaced the persisted scalar.
     const { discoveredServers, storedCodes: storedMcpCodes, mcpBridgeCode, enabledIds } = await recomputeSelection(engineId, config);
     const selection = selectionOf(config);
-
-    // Transitional: the rules tree and the notes still follow ONE engine server until the per-bridge
-    // delivery replaces both.
-    const selectedEngineServer = resolveSelectedEngineServer(discoveredServers, Object.keys(config.engineBridges.selected));
 
     // Refresh extensions from sources (check for updates)
     let extensions = config.extensions ?? [];
@@ -316,21 +312,19 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     // Refresh the user-questions contract (read before their first question by the skills that carry its pointer)
     await installUserQuestionsContract(projectDir);
 
-    // `update` does not re-ask for servers, but the selection still moves under
-    // it: editing `.unikit.json` and re-running is how an engine switch reaches
-    // this command, and everything else here already honours it (skills are
-    // reinstalled, stale grants cleared, the rules tree swept). The findings log
-    // has to follow the same switch, or a note about the old server stays active
-    // under the new one and reads as evidence about it.
+    // `update` does not re-ask for servers, but the selection still moves under it: editing
+    // `.unikit.json` and re-running is how an engine switch reaches this command, and everything else
+    // here already honours it (skills are reinstalled, stale grants cleared, the trees swept). The
+    // findings logs have to follow the same switch, or a note about a dropped bridge stays active and
+    // reads as evidence about the ones that are left.
     //
-    // The previous id comes from the stamp in the tree currently on disk — the
-    // only before-state this command has, since the config is already the new
-    // answer. Read it BEFORE installEngineMcpRules overwrites the stamp.
-    const previousEngineServer = await readDeliveredEngineMcpServer(projectDir);
-    await swapMcpRecheckNotes(projectDir, previousEngineServer, selectedEngineServer?.fileId ?? null);
+    // The previous set comes from the BRIDGES.md currently on disk — the only before-state this command
+    // has, since the config is already the new answer. Read it BEFORE installEngineBridges rewrites it.
+    const previousBridges = await readPreviousBridgeSet(projectDir);
+    await swapBridgeNotes(projectDir, previousBridges, Object.keys(config.engineBridges.selected), catalogBridgeIds(discoveredServers));
 
-    // Refresh the selected server's rules tree (orphan-deletes a stale engine's copy)
-    await installEngineMcpRules(projectDir, selectedEngineServer);
+    // Refresh BRIDGES.md and the rules trees (orphan-deletes a dropped bridge's tree and the 2.x folder)
+    await installEngineBridges(projectDir, engineId, discoveredServers, Object.keys(config.engineBridges.selected));
 
     // Update engine development principles (shared system file, plain rewrite)
     await installDevPrinciples(projectDir, engineId, mcpBridgeCode);

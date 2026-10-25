@@ -475,7 +475,7 @@ The block above is shown indented by two spaces only so that this file carries n
 
 `## MCP Findings` lives in the manifest at `##` level, next to `## Commit Plan` and **above** `## Technical Context`. `/unikit-mcp-trap` reads the heading down to the next `##`; a findings table demoted to `###`, or placed inside `## Technical Context`, is invisible to it.
 
-An executor that hits a misleading engine MCP response records it **here, in the plan, and nowhere else**. It does not edit `.unikit/MCP-RECHECK-NOTES.md` itself: one observation is a bad sample and a bad line lives for months, so the durable surface passes through a human running `/unikit-mcp-trap`.
+An executor that hits a misleading engine MCP response records it **here, in the plan, and nowhere else**. It does not edit the notes of a bridge (`.unikit/bridge-notes/<bridge>.md`) itself: one observation is a bad sample and a bad line lives for months, so the durable surface passes through a human running `/unikit-mcp-trap`.
 
 | column | what goes in it |
 |--------|-----------------|

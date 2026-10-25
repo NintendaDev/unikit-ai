@@ -402,12 +402,11 @@ export function systemGamedesignGenresDir(projectDir: string): string {
 }
 
 /**
- * `<projectDir>/.unikit/system/engine-mcp` — home for the rules tree of the
- * selected engine MCP server. Written by `installEngineMcpRules` as a recursive
- * copy of that server's `rules` directory; outside hash tracking and
- * flat-rewritten on every init/update, so a MCP or engine switch never leaves a
- * stale profile behind (the installer orphan-deletes everything the new
- * selection did not contribute).
+ * `<projectDir>/.unikit/system/engine-mcp` — the rules-tree folder of the 2.x
+ * layout, where the one selected engine MCP server delivered its tree. Since
+ * 3.0.0 the trees live in `engine-bridges/<bridge>/` and `installEngineBridges`
+ * sweeps this folder on every init/update; the 2.0.0 rename step still reads
+ * it (legacy accessor, no longer written).
  */
 export function systemEngineMcpDir(projectDir: string): string {
   return path.join(systemDir(projectDir), ENGINE_MCP_DIR_NAME);

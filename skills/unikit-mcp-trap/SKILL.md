@@ -2,7 +2,7 @@
 name: unikit-mcp-trap
 description: >-
   Record a finding about the configured engine MCP server into
-  .unikit/MCP-RECHECK-NOTES.md — the project's log of what has to be re-checked
+  .unikit/bridge-notes/ — the project's log of what has to be re-checked
   here. Use right after a call reported success while changing nothing, ate an
   argument, or validated a broken state, e.g. "write this down", "record this MCP
   finding", "the server lied — note it", "add a recheck note", "trap this". Takes
@@ -14,7 +14,7 @@ description: >-
   never a named workaround, never a claim about what the server can or cannot do.
   Makes zero MCP calls and needs no editor. To replay, retire, or upstream
   existing notes use /unikit-mcp-audit instead.
-argument-hint: "[the finding in one line | path to a plan file | empty]  (writes .unikit/MCP-RECHECK-NOTES.md; zero MCP calls)"
+argument-hint: "[the finding in one line | path to a plan file | empty]  (writes .unikit/bridge-notes/; zero MCP calls)"
 allowed-tools:
   - Read
   - Write
@@ -34,7 +34,7 @@ metadata:
 # MCP Trap — record a finding
 
 Write one durable line about the engine MCP server this project talks to, into
-`.unikit/MCP-RECHECK-NOTES.md`.
+`.unikit/bridge-notes/<bridge>.md`.
 
 **This skill makes zero calls to the engine MCP.** It needs no editor, no running
 project, and no gate. A finding is something that was *already observed*; re-observing
@@ -78,19 +78,20 @@ Silently load — do not narrate:
 
 1. **`{{skills_dir}}/{{self_name}}/references/notes-format.md`** — the format this skill
    owns. Mandatory; without it, do not write.
-2. **`.unikit/system/engine-mcp/INDEX.md`**, first lines only — the delivery stamp
-   (`server:`). This is the configured server, the second side of every header
-   comparison. File absent → there are no known exceptions for this server; that
-   restricts nothing and switches nothing to `⏸️ MANUAL`. Carry the server as unknown
+2. **`.unikit/system/engine-bridges/BRIDGES.md`** and the first lines of the
+   **`.unikit/system/engine-bridges/<bridge>/INDEX.md`** of the bridge in question — the
+   delivery stamp (`bridge:`). This is the configured bridge, the second side of every
+   header comparison. File absent → there are no known exceptions for this bridge; that
+   restricts nothing and switches nothing to `⏸️ MANUAL`. Carry the bridge as unknown
    and say so once.
-3. **`.unikit/MCP-RECHECK-NOTES.md`** if it exists — its header (`server:` / `audited:`)
+3. **`.unikit/bridge-notes/<bridge>.md`** if it exists — its header (`bridge:` / `audited:`)
    and the ids already taken.
 
 **Header mismatch is a WARN, never a stop.** If the notes header names a different
-server than the stamp, print exactly one line and keep going:
+bridge than the file it sits in, print exactly one line and keep going:
 
 ```
-WARN [mcp-trap] server in notes header ≠ configured (<notes> ≠ <configured>)
+WARN [bridges] notes header ≠ bridge (<header> ≠ <bridge>)
 ```
 
 The existing entries stay in force — they are *suspect*, not void, and suspect entries
@@ -250,12 +251,12 @@ form. If it cannot be expressed as a check, it does not belong in this file.
 
 ## Step 6 — write
 
-Write `.unikit/MCP-RECHECK-NOTES.md` per `references/notes-format.md`:
+Write `.unikit/bridge-notes/<bridge>.md` per `references/notes-format.md`:
 
-- **File absent** → create it with the full header (`server:` from the delivery stamp,
+- **File absent** → create it with the full header (`bridge:` from the delivery stamp,
   `audited: never`), both section headings, and the accepted rows.
 - **File present** → append rows to both tables, allocating fresh ids. Do **not** touch
-  the header: `server:` describes where the existing entries came from, and `audited:`
+  the header: `bridge:` describes where the existing entries came from, and `audited:`
   belongs to `/unikit-mcp-audit`.
 
 Both halves of a note are written together, always. A check with no observation behind
@@ -264,7 +265,7 @@ it cannot be replayed, retired, or upstreamed — it is a rumour with an id.
 Then confirm what landed:
 
 ```
-CLAIM:    <n> findings recorded in .unikit/MCP-RECHECK-NOTES.md
+CLAIM:    <n> findings recorded in .unikit/bridge-notes/<bridge>.md
 EVIDENCE: <the ids written> · read back from the file after the write
 VERDICT:  CONFIRMED | NOT CONFIRMED
 ```
@@ -278,7 +279,7 @@ writes as much as to a server's.
   catalog lookup. If the finding needs replaying, that is `/unikit-mcp-audit`.
 - **Never edits a plan.** Plans are read through the findings window and left untouched;
   the transfer is recorded on the notes side, as `from:`.
-- **Never edits the packaged rules tree.** `.unikit/system/engine-mcp/` is rewritten by
+- **Never edits the packaged rules tree.** `.unikit/system/engine-bridges/` is rewritten by
   every `init` / `update`; an edit there is lost, and lost silently. A finding that
   deserves to ship to everyone goes upstream through `/unikit-mcp-audit`.
 - **Never writes `⏸️ MANUAL`,** and never treats a missing rules file as a restriction.

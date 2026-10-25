@@ -526,7 +526,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 
 ### unikit-mcp-trap
 - **Purpose:** Record a finding about the configured engine MCP server into
-  `.unikit/MCP-RECHECK-NOTES.md` — the project's log of what has to be re-checked here.
+  `.unikit/bridge-notes/<bridge>.md` — the project's log of what has to be re-checked there.
   Zero MCP calls, no editor needed. Writes in one genre only: a check to perform, never a
   lifted gate and never a named workaround.
 - **When:** right after a call reported success while changing nothing, ate an argument, or
@@ -534,7 +534,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **In:** three forms — the finding in one line; a path to a plan file (harvests that plan's
   `## MCP Findings` table only, the session is not touched); or nothing, which harvests the
   session first and then offers to scan the tables of plans touched since the last audit.
-- **Out:** `.unikit/MCP-RECHECK-NOTES.md`.
+- **Out:** `.unikit/bridge-notes/<bridge>.md`.
 - **Optional.** Pairs with `/unikit-mcp-audit`, which curates what this writes.
 
 ### unikit-mcp-audit
@@ -544,7 +544,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **When:** "audit the MCP notes", "are these findings still true", "the server was updated —
   revisit the notes".
 - **In:** nothing, a note id (`R2`), or one of `stamp` / `replay` / `retire` / `upstream`.
-- **Out:** an updated `.unikit/MCP-RECHECK-NOTES.md` (+ an upstream diff, printed).
+- **Out:** an updated `.unikit/bridge-notes/<bridge>.md` (+ an upstream diff, printed).
 - **Optional.** Mutates a live editor when replaying. It takes no pre-flight measurements: it
   tells you how to prepare the editor, names everything it will create, and asks once — that
   confirmation is the whole gate. Works only inside a `UNIKIT_AUDIT_<runid>` sandbox and never

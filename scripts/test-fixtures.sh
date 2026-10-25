@@ -237,9 +237,9 @@ assert_not_contains() {
 }
 
 # ─────────────────────────────────────────────
-# Failure diagnostics for the engine-MCP surface
+# Failure diagnostics for the engine-bridge surface
 # ─────────────────────────────────────────────
-# Dumps the two states no assertion message can carry: what the engine-mcp tree actually
+# Dumps the two states no assertion message can carry: what the engine-bridges layer actually
 # holds, and which findings-log files exist. `Missing path: .../INDEX.md` cannot tell an
 # empty tree from a partially delivered one from a file delivered under another name, and
 # the temp projects are removed by the very next line of the trap that calls this — so a
@@ -258,18 +258,18 @@ dump_mcp_state() {
     while IFS= read -r entry; do
         [[ -n "$entry" ]] || continue
         found=1
-        echo "--- engine-mcp tree: ${entry#"$root"/} ---"
+        echo "--- engine-bridges layer: ${entry#"$root"/} ---"
         ls -la "$entry" 2>&1 || true
-    done < <(find "$root" -type d -name engine-mcp 2>/dev/null || true)
-    [[ $found -eq 1 ]] || echo "--- engine-mcp tree: none under the test root (absence is half the diagnosis) ---"
+    done < <(find "$root" -type d \( -name engine-bridges -o -name engine-mcp \) 2>/dev/null || true)
+    [[ $found -eq 1 ]] || echo "--- engine-bridges layer: none under the test root (absence is half the diagnosis) ---"
 
     found=0
     while IFS= read -r entry; do
         [[ -n "$entry" ]] || continue
         found=1
         echo "--- findings log: ${entry#"$root"/} ---"
-    done < <(find "$root" -name 'MCP-RECHECK-NOTES*' 2>/dev/null || true)
-    [[ $found -eq 1 ]] || echo "--- findings log: no MCP-RECHECK-NOTES* file under the test root ---"
+    done < <(find "$root" \( -path '*/bridge-notes/*' -o -name 'MCP-RECHECK-NOTES*' \) -type f 2>/dev/null || true)
+    [[ $found -eq 1 ]] || echo "--- findings log: no bridge-notes or MCP-RECHECK-NOTES file under the test root ---"
 }
 
 assert_exists() {

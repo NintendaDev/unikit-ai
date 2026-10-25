@@ -185,10 +185,10 @@ M1="$TMPDIR/matrix-1.0.0"; mkdir -p "$M1"
 write_legacy_config "$M1" '"version": "1.0.0",'
 seed_flat_memory "$M1"
 M1_APPLIED=$(plan_chain "$M1" "1.0.0")
-if [[ "$M1_APPLIED" == "memory-1-to-2-code-wrap,workspace-1-to-2-code-relocate,mcp-servers-map,mcp-fileid-rename,plan-1-to-2-manifest-merge,research-1-to-2-manifest-merge,plan-2-to-3-timestamps,engine-bridges-config-split" ]]; then
+if [[ "$M1_APPLIED" == "memory-1-to-2-code-wrap,workspace-1-to-2-code-relocate,mcp-servers-map,mcp-fileid-rename,plan-1-to-2-manifest-merge,research-1-to-2-manifest-merge,plan-2-to-3-timestamps,engine-bridges-config-split,bridge-notes-relocate" ]]; then
     pass "matrix 1.0.0: every step group applied, ordered by since ($M1_APPLIED)"
 else
-    fail "matrix 1.0.0: expected all eight steps in since order, got '$M1_APPLIED'"
+    fail "matrix 1.0.0: expected all nine steps in since order, got '$M1_APPLIED'"
 fi
 
 # Row 2 — 1.1.0, modular memory + array. The 1.1.0 steps are quiet; every 2.0.0
@@ -198,7 +198,7 @@ M2="$TMPDIR/matrix-1.1.0"; mkdir -p "$M2"
 write_legacy_config "$M2" '"version": "1.1.0",'
 seed_modular_memory "$M2"
 M2_APPLIED=$(plan_chain "$M2" "1.1.0")
-if [[ "$M2_APPLIED" == "mcp-servers-map,mcp-fileid-rename,plan-1-to-2-manifest-merge,research-1-to-2-manifest-merge,plan-2-to-3-timestamps,engine-bridges-config-split" ]]; then
+if [[ "$M2_APPLIED" == "mcp-servers-map,mcp-fileid-rename,plan-1-to-2-manifest-merge,research-1-to-2-manifest-merge,plan-2-to-3-timestamps,engine-bridges-config-split,bridge-notes-relocate" ]]; then
     pass "matrix 1.1.0: only the steps anchored above the stamp applied ($M2_APPLIED)"
 else
     fail "matrix 1.1.0: expected the MCP steps + both merges + the backfill + the bridge split, got '$M2_APPLIED'"
@@ -220,7 +220,7 @@ M3="$TMPDIR/matrix-2.0.0"; mkdir -p "$M3"
 write_legacy_config "$M3" '"version": "2.0.0",'
 seed_modular_memory "$M3"
 M3_APPLIED=$(plan_chain "$M3" "2.0.0")
-if [[ "$M3_APPLIED" == "mcp-servers-map,mcp-fileid-rename,engine-bridges-config-split" ]]; then
+if [[ "$M3_APPLIED" == "mcp-servers-map,mcp-fileid-rename,engine-bridges-config-split,bridge-notes-relocate" ]]; then
     pass "matrix 2.0.0: detect carries the MCP steps when the version half is quiet, the 3.0.0 split rides the version ($M3_APPLIED)"
 else
     fail "matrix 2.0.0: expected the MCP steps via detect plus the bridge split, got '$M3_APPLIED'"
@@ -255,10 +255,10 @@ M6="$TMPDIR/matrix-2.5.0"; mkdir -p "$M6"
 write_map_config "$M6" "2.5.0" "unity-biome-mcp"
 seed_modular_memory "$M6"
 M6_APPLIED=$(plan_chain "$M6" "2.5.0")
-if [[ "$M6_APPLIED" == "engine-bridges-config-split" ]]; then
-    pass "matrix 2.5.0: exactly the bridge split applied ($M6_APPLIED)"
+if [[ "$M6_APPLIED" == "engine-bridges-config-split,bridge-notes-relocate" ]]; then
+    pass "matrix 2.5.0: exactly the two 3.0.0 steps applied ($M6_APPLIED)"
 else
-    fail "matrix 2.5.0: expected only engine-bridges-config-split, got '$M6_APPLIED'"
+    fail "matrix 2.5.0: expected only the two 3.0.0 steps, got '$M6_APPLIED'"
 fi
 
 # ─────────────────────────────────────────────────────
@@ -351,16 +351,21 @@ else
     fail "rename: expected the preserved old code 'UnityMCP', got '$RENAME_ENGINE_CODE'"
 fi
 
-assert_exists "$RENAME/.unikit/MCP-RECHECK-NOTES.archive.coplay-unity-mcp.md" \
-  "rename: the plain archive follows its server"
-assert_exists "$RENAME/.unikit/MCP-RECHECK-NOTES.archive.coplay-unity-mcp.1.md" \
+assert_exists "$RENAME/.unikit/bridge-notes/archive/coplay-unity-mcp.md" \
+  "rename: the plain archive follows its server (and then its bridge)"
+assert_exists "$RENAME/.unikit/bridge-notes/archive/coplay-unity-mcp.1.md" \
   "rename: the INDEXED archive keeps its index"
-assert_exists "$RENAME/.unikit/MCP-RECHECK-NOTES.archive.unity-mcp-coplay-notes.md" \
+# The 2.0.0 step did not touch a name that merely starts with a renamed id, so the 3.0.0 step
+# met it as an archive of an unknown bridge and moved it under that very name - never under a
+# prefix-renamed one.
+assert_exists "$RENAME/.unikit/bridge-notes/archive/unity-mcp-coplay-notes.md" \
   "rename: a name that merely starts with a renamed id is left alone"
+assert_not_exists "$RENAME/.unikit/bridge-notes/archive/coplay-unity-mcp-notes.md" \
+  "rename: ...and no prefix replacement made a new name out of it"
 assert_not_exists "$RENAME/.unikit/MCP-RECHECK-NOTES.archive.unity-mcp-coplay.md" \
   "rename: the old archive name is gone (moved, not copied)"
 
-assert_contains "$RENAME/.unikit/MCP-RECHECK-NOTES.md" '^server:  unity-biome-mcp$' \
+assert_contains "$RENAME/.unikit/bridge-notes/unity-biome-mcp.md" '^bridge:  unity-biome-mcp$' \
   "rename: the notes HEADER is rewritten (the Bootstrap comparison, not just the file name)"
 assert_contains "$RENAME/.unikit/system/engine-mcp/INDEX.md" '^server: unity-biome-mcp$' \
   "rename: the delivery STAMP is rewritten"
@@ -368,12 +373,12 @@ assert_contains "$RENAME/.unikit/system/engine-mcp/INDEX.md" '^server: unity-bio
 # A rename must NOT look like a server switch. `update` reads the previous server
 # out of the stamp; leave the old id there and `swapMcpRecheckNotes` parks the
 # ACTIVE log as an archive of a server that no longer exists.
-assert_exists "$RENAME/.unikit/MCP-RECHECK-NOTES.md" \
+assert_exists "$RENAME/.unikit/bridge-notes/unity-biome-mcp.md" \
   "rename: the active findings log stays active (a rename is not a swap)"
-assert_not_exists "$RENAME/.unikit/MCP-RECHECK-NOTES.archive.unity-biome-mcp.md" \
+assert_not_exists "$RENAME/.unikit/bridge-notes/archive/unity-biome-mcp.md" \
   "rename: no archive is created for the server that is still selected"
 
-RENAME_NOTES_SHA_AFTER=$(sha_of "$RENAME/.unikit/MCP-RECHECK-NOTES.md")
+RENAME_NOTES_SHA_AFTER=$(sha_of "$RENAME/.unikit/bridge-notes/unity-biome-mcp.md")
 if [[ "$RENAME_NOTES_SHA_BEFORE" != "$RENAME_NOTES_SHA_AFTER" ]]; then
     pass "rename: the findings log was rewritten in place (header changed, file did not move)"
 else
@@ -1864,5 +1869,136 @@ fi
 S10G_SHA=$(sha_of "$S10G/.unikit.json")
 plan_chain "$S10G" "2.2.0" > /dev/null
 assert_file_unchanged "$S10G/.unikit.json" "$S10G_SHA" "split: converged - a second pass writes nothing"
+
+# ─────────────────────────────────────────────────────
+# Section 11: bridge notes relocation (3.0.0)
+# ─────────────────────────────────────────────────────
+# The 2.x log sat at the root of .unikit/ and named its owner INSIDE (the `server:` header). The step
+# moves by that header: the active log to bridge-notes/<id>.md, an archive to bridge-notes/archive/ by the
+# id in its name, and the header key becomes `bridge:`. A file whose owner cannot be told stays, and a
+# target that is taken is never overwritten.
+
+echo -e "\n${BOLD}Section 11: bridge notes relocation${NC}"
+
+# The seed of Section 3: an active log with a double-space header, a plain archive and an indexed one.
+seed_legacy_notes() {
+    local project="$1"
+    mkdir -p "$project/.unikit"
+    cat > "$project/.unikit/MCP-RECHECK-NOTES.md" << 'EOF'
+# MCP findings
+
+server:  unity-biome-mcp
+version: 1.37.2
+
+## Findings
+
+server: mentioned again in the body must stay as it is
+EOF
+    printf 'server:  coplay-unity-mcp\n' > "$project/.unikit/MCP-RECHECK-NOTES.archive.coplay-unity-mcp.md"
+    printf 'server:  coplay-unity-mcp\n' > "$project/.unikit/MCP-RECHECK-NOTES.archive.coplay-unity-mcp.1.md"
+}
+
+# 11a — the move itself: places, header key, the rest of the content byte for byte.
+S11A="$TMPDIR/notes-relocate"; mkdir -p "$S11A"
+write_map_config "$S11A" "2.5.0" "unity-biome-mcp"
+seed_modular_memory "$S11A"
+seed_legacy_notes "$S11A"
+S11A_BODY_BEFORE=$(sed '/^server:  unity-biome-mcp$/d' "$S11A/.unikit/MCP-RECHECK-NOTES.md")
+plan_chain "$S11A" "2.5.0" > /dev/null
+assert_exists "$S11A/.unikit/bridge-notes/unity-biome-mcp.md" "notes: the active log moved to bridge-notes/<bridge>.md"
+assert_contains "$S11A/.unikit/bridge-notes/unity-biome-mcp.md" '^bridge:  unity-biome-mcp$' \
+  "notes: the header key is bridge: and the two spaces after it are kept"
+assert_contains "$S11A/.unikit/bridge-notes/unity-biome-mcp.md" '^server: mentioned again in the body must stay as it is$' \
+  "notes: a server: line below the header is not touched"
+S11A_BODY_AFTER=$(sed '/^bridge:  unity-biome-mcp$/d' "$S11A/.unikit/bridge-notes/unity-biome-mcp.md")
+if [[ "$S11A_BODY_BEFORE" == "$S11A_BODY_AFTER" ]]; then
+    pass "notes: everything but the header line is byte-identical"
+else
+    fail "notes: the content below the header changed in the move"
+fi
+assert_exists "$S11A/.unikit/bridge-notes/archive/coplay-unity-mcp.md" "notes: the plain archive moved under archive/"
+assert_exists "$S11A/.unikit/bridge-notes/archive/coplay-unity-mcp.1.md" "notes: the indexed archive keeps its index"
+assert_not_exists "$S11A/.unikit/MCP-RECHECK-NOTES.md" "notes: the old active file is gone (moved, not copied)"
+assert_not_exists "$S11A/.unikit/MCP-RECHECK-NOTES.archive.coplay-unity-mcp.md" "notes: the old archive is gone"
+
+# 11b — convergence: a second pass moves nothing and nothing is pending (a pending step is exit 8 for every rules command)
+S11B_DETECT=$(cd "$ROOT_DIR" && PROJECT="$S11A" node --input-type=module -e "
+  const { PROJECT_MEMORY_MIGRATIONS } = await import('./dist/core/memory-migrations/index.js');
+  const step = PROJECT_MEMORY_MIGRATIONS.find(s => s.id === 'bridge-notes-relocate');
+  process.stdout.write(String(await step.detect({ projectDir: process.env.PROJECT })));
+")
+if [[ "$S11B_DETECT" == "false" ]]; then
+    pass "notes: detect is false once the files have moved"
+else
+    fail "notes: detect still true after apply ($S11B_DETECT)"
+fi
+S11B_SHA=$(sha_of "$S11A/.unikit/bridge-notes/unity-biome-mcp.md")
+plan_chain "$S11A" "2.5.0" > /dev/null
+assert_file_unchanged "$S11A/.unikit/bridge-notes/unity-biome-mcp.md" "$S11B_SHA" "notes: a second pass leaves the moved log byte-identical"
+
+S11B2="$TMPDIR/notes-relocate-sync"; mkdir -p "$S11B2"
+write_map_config "$S11B2" "2.5.0" "unity-biome-mcp"
+seed_legacy_notes "$S11B2"
+inject_fake_registry "$S11B2"
+run_update "$S11B2" "$TMPDIR/notes-relocate-update.log"
+assert_cmd_exit 0 "notes: rules sync exits 0 after the upgrade (not 8)" \
+  "$TMPDIR/notes-relocate-sync.log" -- env -C "$S11B2" node "$CLI" rules sync
+
+# 11c — an owner that cannot be told: the file stays, detect does not wait for it, one warning
+S11C="$TMPDIR/notes-no-owner"; mkdir -p "$S11C"
+write_map_config "$S11C" "2.5.0" "unity-biome-mcp"
+seed_modular_memory "$S11C"
+printf '# Findings with no header\n\nsomething\n' > "$S11C/.unikit/MCP-RECHECK-NOTES.md"
+S11C_DETECT=$(cd "$ROOT_DIR" && PROJECT="$S11C" node --input-type=module -e "
+  const { PROJECT_MEMORY_MIGRATIONS } = await import('./dist/core/memory-migrations/index.js');
+  const step = PROJECT_MEMORY_MIGRATIONS.find(s => s.id === 'bridge-notes-relocate');
+  process.stdout.write(String(await step.detect({ projectDir: process.env.PROJECT })));
+")
+S11C_STDERR=$(cd "$ROOT_DIR" && PROJECT="$S11C" node --input-type=module -e "
+  const { runProjectMemoryMigrations } = await import('./dist/core/memory-migrations/index.js');
+  await runProjectMemoryMigrations(process.env.PROJECT, '2.5.0');
+" 2>&1 >/dev/null)
+assert_exists "$S11C/.unikit/MCP-RECHECK-NOTES.md" "notes: a log with no owner line stays where it is"
+if [[ "$S11C_DETECT" == "false" && "$S11C_STDERR" == *'no "server:" line'* ]]; then
+    pass "notes: a log with no owner is not pending forever and is named in one warning"
+else
+    fail "notes: detect=$S11C_DETECT, stderr=$S11C_STDERR"
+fi
+
+# 11d — the target is taken: nothing is overwritten, the source stays, the warning says so
+S11D="$TMPDIR/notes-target-taken"; mkdir -p "$S11D"
+write_map_config "$S11D" "2.5.0" "unity-biome-mcp"
+seed_modular_memory "$S11D"
+seed_legacy_notes "$S11D"
+mkdir -p "$S11D/.unikit/bridge-notes"
+echo "ALREADY_THERE" > "$S11D/.unikit/bridge-notes/unity-biome-mcp.md"
+S11D_STDERR=$(cd "$ROOT_DIR" && PROJECT="$S11D" node --input-type=module -e "
+  const { runProjectMemoryMigrations } = await import('./dist/core/memory-migrations/index.js');
+  await runProjectMemoryMigrations(process.env.PROJECT, '2.5.0');
+" 2>&1 >/dev/null)
+assert_contains "$S11D/.unikit/bridge-notes/unity-biome-mcp.md" '^ALREADY_THERE$' "notes: an existing target is not overwritten"
+assert_exists "$S11D/.unikit/MCP-RECHECK-NOTES.md" "notes: the source of a refused move stays"
+assert_exists "$S11D/.unikit/bridge-notes/archive/coplay-unity-mcp.md" "notes: the other files still move"
+if [[ "$S11D_STDERR" == *'already exists'* ]]; then
+    pass "notes: the refused move is announced"
+else
+    fail "notes: no warning for a refused move: $S11D_STDERR"
+fi
+
+# 11e — CRLF files keep their line endings
+S11E="$TMPDIR/notes-crlf"; mkdir -p "$S11E"
+write_map_config "$S11E" "2.5.0" "unity-biome-mcp"
+seed_modular_memory "$S11E"
+mkdir -p "$S11E/.unikit"
+printf '# MCP findings\r\n\r\nserver: unity-biome-mcp\r\n\r\n## Findings\r\n' > "$S11E/.unikit/MCP-RECHECK-NOTES.md"
+plan_chain "$S11E" "2.5.0" > /dev/null
+S11E_CR_COUNT=$(tr -cd '\r' < "$S11E/.unikit/bridge-notes/unity-biome-mcp.md" | wc -c | tr -d ' ')
+S11E_LF_COUNT=$(tr -cd '\n' < "$S11E/.unikit/bridge-notes/unity-biome-mcp.md" | wc -c | tr -d ' ')
+if [[ "$S11E_CR_COUNT" == "$S11E_LF_COUNT" && "$S11E_LF_COUNT" -gt 0 ]] \
+   && grep -qF "bridge: unity-biome-mcp" "$S11E/.unikit/bridge-notes/unity-biome-mcp.md"; then
+    pass "notes: a CRLF file keeps every line ending while its header key changes"
+else
+    fail "notes: CRLF endings changed in the move (CR=$S11E_CR_COUNT, LF=$S11E_LF_COUNT)"
+fi
 
 print_summary_and_exit "Migration + MCP reconciliation Smoke Tests"

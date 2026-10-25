@@ -2,8 +2,8 @@
 //
 // Turns one raw `engine-bridges/<engine>/<name>.json` (or `mcp/universal/<name>.json`) object
 // into a typed `McpServerEntry`.
-// Split out of `mcp.ts` for the same reason as `mcp-rules.ts` and
-// `mcp-platform.ts`: that module carries discovery, configuration, rule
+// Split out of `mcp.ts` for the same reason as `mcp-platform.ts` and
+// `bridges/selection.ts`: that module carries discovery, configuration, rule
 // collection and frontmatter injection, and the schema kept growing a field per
 // task. The dependency runs one way — this module imports types from `mcp.ts`,
 // never the reverse.
@@ -18,6 +18,7 @@
 import path from 'path';
 import { MCP_PLATFORM_KEYS, type McpPlatformKey } from './constants.js';
 import type { BridgeKind, McpAllowedTools, McpServerEntry } from './mcp.js';
+import { parseDetect, parseDocsSources, parseRequires, parseSetup } from './bridges/schema-fields.js';
 import { logInfo, logWarn } from '../utils/log.js';
 
 /**
@@ -63,6 +64,12 @@ function parseDocs(raw: unknown, fileName: string): McpServerEntry['docs'] | nul
   }
   if (typeof raw.repo === 'string' && raw.repo.length > 0) {
     docs.repo = raw.repo;
+  }
+  // `sources` rides on a block that already says something: pointers alone, with neither a Context7
+  // id nor a repository, are not a `docs` block and take the warning below.
+  const sources = parseDocsSources(raw.sources, fileName);
+  if (sources && (docs.context7 !== undefined || docs.repo !== undefined)) {
+    docs.sources = sources;
   }
 
   if (docs.context7 === undefined && docs.repo === undefined) {
@@ -207,9 +214,23 @@ export function parseMcpServerEntry(raw: unknown, dirPath: string, fileName: str
     entry.rulesDir = rulesDir;
   }
 
+  // The fields every kind of bridge shares: each is kept only when it parsed to something.
+  const setup = parseSetup(raw['setup'], fileName);
+  if (setup) {
+    entry.setup = setup;
+  }
+  const requires = parseRequires(raw['requires'], fileName);
+  if (requires) {
+    entry.requires = requires;
+  }
+  const detect = parseDetect(raw['detect'], fileName);
+  if (detect) {
+    entry.detect = detect;
+  }
+
   logInfo(
     'parseMcpServerEntry',
-    `${fileName}: key=${entry.key} code=${entry.code} is_engine=${entry.isEngine}`,
+    `${fileName}: key=${entry.key} code=${entry.code} is_engine=${entry.isEngine} kind=${entry.kind} sources=${entry.docs?.sources?.length ?? 0}`,
   );
 
   return entry;

@@ -3,9 +3,11 @@ import { readJsonFile, readTextFile, writeTextFile, getMcpDir, getBridgesDir, en
 import { getAgentConfig } from './agents.js';
 import { MCP_TOOL_ENTRY_PREFIX, type McpPlatformKey } from './constants.js';
 import { UNIVERSAL_MCP_DIR_NAME } from './constants-bridges.js';
+import { getBridgeAdapter } from './bridges/adapter.js';
 import { getEngineConfig } from './engines.js';
 import { isRecord, parseMcpServerEntry } from './mcp-schema.js';
 import { getMcpWriter } from './mcp-writers/index.js';
+import type { BridgeDetect, BridgeRequires, BridgeSetupLine, DocsSource } from './bridges/types.js';
 import { logInfo } from '../utils/log.js';
 
 /** What kind of bridge an entry is: an MCP server, or a command line. */
@@ -102,7 +104,7 @@ export interface McpServerEntry {
    * hand-written `instruction` prose, which restated vendor documentation and
    * went stale claim by claim.
    */
-  docs?: { context7?: string; repo?: string };
+  docs?: { context7?: string; repo?: string; sources?: DocsSource[] };
   /**
    * Absolute path to this server's rules tree (`INDEX.md` and whatever else it
    * grew) — the exceptions this server imposes, never a list of what it can do.
@@ -111,6 +113,12 @@ export interface McpServerEntry {
    * entry came from. Absent = no known exceptions, which degrades nothing.
    */
   rulesDir?: string;
+  /** Lines of preparation the user performs (or the agent, once confirmed); see {@link BridgeSetupLine}. */
+  setup?: BridgeSetupLine[];
+  /** Version floors below which the bridge is unavailable. */
+  requires?: BridgeRequires;
+  /** What the wizard may look at, without running anything, to pre-select the bridge. */
+  detect?: BridgeDetect;
 }
 
 export type DiscoveredServers = Map<string, McpServerEntry>;
@@ -240,18 +248,17 @@ export function collectMcpRules(
   for (const [fileId, server] of discoveredServers) {
     if (!enabled.has(fileId) || !server.allowedTools) continue;
 
-    const prefix = `${MCP_TOOL_ENTRY_PREFIX}${server.code}__`;
+    // The form of a grant is the bridge kind's business (adapter point 2), not this loop's.
+    const adapter = getBridgeAdapter(server.kind);
 
     for (const [agentName, tools] of Object.entries(server.allowedTools.agents ?? {})) {
       if (!merged.agents[agentName]) merged.agents[agentName] = [];
-      const prefixed = tools.map(t => `${prefix}${t}`);
-      merged.agents[agentName].push(...prefixed);
+      merged.agents[agentName].push(...adapter.grantEntries(server, tools));
     }
 
     for (const [skillName, tools] of Object.entries(server.allowedTools.skills ?? {})) {
       if (!merged.skills[skillName]) merged.skills[skillName] = [];
-      const prefixed = tools.map(t => `${prefix}${t}`);
-      merged.skills[skillName].push(...prefixed);
+      merged.skills[skillName].push(...adapter.grantEntries(server, tools));
     }
   }
 

@@ -22,6 +22,7 @@ const BRIDGES_DIR_ENV_VAR = 'UNIKIT_BRIDGES_DIR';
 const PACKAGE_BRIDGES_DIR_NAME = 'engine-bridges';
 const SEAM_TMP_PREFIX = 'br-s1-';
 const MIN_BRIDGE_FILES = 6;
+const MIN_BRIDGES_WITH_SOURCES = 4;
 
 // ── Harness ──────────────────────────────────────────────────────────────────
 
@@ -292,6 +293,291 @@ await group('BR-7a', async () => {
     assertEq('BR-7a', 'a server whose file is gone is recognised by the old scalar', removed.engineBridges, { selected: { 'removed-vendor': 'OldCode' } });
 
     report('BR-7a', 'config split checks ran', passed - before, []);
+});
+
+// ── BR-2: the entry fields every bridge shares, and the pointers to documentation ──
+
+// Runs `fn` with console.warn captured; returns what it printed. The parsers warn instead of throwing.
+function captureWarnings(fn) {
+    const original = console.warn;
+    const lines = [];
+    console.warn = (...args) => { lines.push(args.join(' ')); };
+    try {
+        return { result: fn(), lines };
+    } finally {
+        console.warn = original;
+    }
+}
+
+// Same, for an async body.
+async function captureWarningsAsync(fn) {
+    const original = console.warn;
+    const lines = [];
+    console.warn = (...args) => { lines.push(args.join(' ')); };
+    try {
+        return { result: await fn(), lines };
+    } finally {
+        console.warn = original;
+    }
+}
+
+await group('BR-2', async () => {
+    const { parseMcpServerEntry } = await dist('core/mcp-schema.js');
+    const bridgesRoot = path.join(ROOT, PACKAGE_BRIDGES_DIR_NAME);
+    const violations = [];
+    const orderByDir = new Map();
+    let files = 0;
+    let withSources = 0;
+
+    for (const engineDir of fs.readdirSync(bridgesRoot)) {
+        const dirPath = path.join(bridgesRoot, engineDir);
+        if (!fs.statSync(dirPath).isDirectory()) continue;
+        for (const file of fs.readdirSync(dirPath)) {
+            if (!file.endsWith('.json')) continue;
+            files++;
+            const rel = `${PACKAGE_BRIDGES_DIR_NAME}/${engineDir}/${file}`;
+            const { result: entry, lines } = captureWarnings(() => parseMcpServerEntry(JSON.parse(fs.readFileSync(path.join(dirPath, file), 'utf8')), dirPath, file));
+            if (lines.length > 0) violations.push(`${rel}: the parser warned: ${lines.join(' | ')}`);
+            if (entry === null) continue;
+
+            if (typeof entry.order !== 'number') violations.push(`${rel}: a bridge has no numeric order`);
+            const seen = orderByDir.get(engineDir) ?? new Map();
+            if (typeof entry.order === 'number' && seen.has(entry.order)) violations.push(`${rel}: order ${entry.order} is also ${seen.get(entry.order)}`);
+            if (typeof entry.order === 'number') seen.set(entry.order, file);
+            orderByDir.set(engineDir, seen);
+
+            const sources = entry.docs?.sources ?? [];
+            if (sources.length > 0) withSources++;
+            const ids = new Set();
+            const intos = new Set();
+            for (const source of sources) {
+                if (ids.has(source.id)) violations.push(`${rel}: docs source id "${source.id}" repeats`);
+                if (intos.has(source.into)) violations.push(`${rel}: docs source into "${source.into}" repeats`);
+                ids.add(source.id);
+                intos.add(source.into);
+                if (source.kind === 'git' && !source.repo.startsWith('https://')) violations.push(`${rel}: git source "${source.id}" is not https`);
+            }
+        }
+    }
+    if (withSources < MIN_BRIDGES_WITH_SOURCES) violations.push(`only ${withSources} bridge(s) carry docs.sources, expected at least ${MIN_BRIDGES_WITH_SOURCES}`);
+    report('BR-2', 'every bridge parses without a warning, has a unique numeric order and clean docs.sources', files, violations);
+
+    // The negative half: a malformed optional value is dropped with a warning, the entry survives.
+    const base = { key: 'x', code: 'x', displayName: 'X', is_engine: true, config: { command: 'x' }, docs: { repo: 'https://example.test/x' } };
+    const parsed = (patch) => captureWarnings(() => parseMcpServerEntry({ ...base, ...patch }, '.', 'x.json'));
+
+    const badSource = parsed({ docs: { ...base.docs, sources: [
+        { kind: 'git', repo: 'https://example.test/x', into: 'a' },
+        { kind: 'git', id: 'dup', repo: 'https://example.test/x', into: 'b' },
+        { kind: 'git', id: 'dup', repo: 'https://example.test/x', into: 'c' },
+        { kind: 'git', id: 'outside', repo: 'https://example.test/x', into: '../up' },
+        { kind: 'git', id: 'plain-http', repo: 'http://example.test/x', into: 'd' },
+    ] } });
+    assertEq('BR-2', 'a docs source without an id, a repeated id, an into outside the folder and a non-https repo are dropped',
+        badSource.result.docs.sources.map(source => source.id), ['dup']);
+    assertEq('BR-2', 'each dropped source is announced', badSource.lines.length, 4);
+
+    const badSetup = parsed({ setup: [{ by: 'robot', run: 'x' }, { by: 'human', run: 'install it' }] });
+    assertEq('BR-2', 'a setup line with an unknown actor is dropped, the good one stays', badSetup.result.setup, [{ by: 'human', run: 'install it' }]);
+    assertEq('BR-2', 'a dropped setup line is announced once', badSetup.lines.length, 1);
+
+    const requires = parsed({ requires: { cli: '1.0.0-beta.14', package: '0.9', engineVersion: '6000.0', extra: 'ignored' } }).result.requires;
+    assertEq('BR-2', 'requires keeps a prerelease, a short version and an engine version', requires, { engineVersion: '6000.0', cli: '1.0.0-beta.14', package: '0.9' });
+    assertEq('BR-2', 'a requires value that is not a version is dropped', parsed({ requires: { cli: 'newest' } }).result.requires, undefined);
+    assertEq('BR-2', 'detect keeps a bare binary name and drops a path', parsed({ detect: { binary: 'tool', projectVersionFile: 'a/../b' } }).result.detect, { binary: 'tool' });
+    assertEq('BR-2', 'a kind that is neither mcp nor cli drops the entry', parsed({ kind: 'robot' }).result, null);
+    assertEq('BR-2', 'a missing kind is mcp', parsed({}).result.kind, 'mcp');
+});
+
+// ── BR-3: the BRIDGES.md renderer ────────────────────────────────────────────
+
+await group('BR-3', async () => {
+    const { renderBridgesManifest } = await dist('core/bridges/manifest.js');
+    const before = passed;
+
+    const entry = (code, extra = {}) => ({ key: code, code, isEngine: true, kind: 'mcp', displayName: code, originDir: 'unity', ...extra });
+    const input = (order) => ({
+        engineId: 'unity',
+        bridges: order.map(id => ({
+            fileId: id,
+            hasRulesTree: id === 'mcp-a',
+            entry: id === 'mcp-a'
+                ? entry('mcp-a', { docs: { context7: '/x/a', repo: 'https://example.test/a', sources: [{ kind: 'git', id: 's', repo: 'https://example.test/a', into: 's' }] } })
+                : entry('mcp-b', { setup: [{ by: 'human', run: 'install b' }, { by: 'agent-confirmed', run: 'configure b' }] }),
+        })),
+        engineDocSources: [{ kind: 'git', id: 'eng', repo: 'https://example.test/e', into: 'eng' }],
+        engineContext7: ['/x/engine'],
+    });
+
+    const text = renderBridgesManifest(input(['mcp-a', 'mcp-b']));
+    const lines = text.split('\n');
+    assertEq('BR-3', 'the first line says the file is generated', lines[0].startsWith('<!-- Generated by unikit-ai'), true);
+    assertEq('BR-3', 'the default order is the bridges in the order given', text.includes('\ndefault order: mcp-a > mcp-b\n'), true);
+    assertEq('BR-3', 'one block per bridge, in order', lines.filter(line => line.startsWith('## ')), ['## mcp-a', '## mcp-b', '## Engine-level documentation']);
+    assertEq('BR-3', 'a bridge with a tree names its INDEX, one without says none',
+        [text.includes('- rules: .unikit/system/engine-bridges/mcp-a/INDEX.md\n'), text.includes('- rules: none\n')], [true, true]);
+    assertEq('BR-3', 'setup lines carry who performs them', [text.includes('- setup (human): install b'), text.includes('- setup (agent, confirm first): configure b')], [true, true]);
+    assertEq('BR-3', 'the notes of a bridge are named after it', text.includes('- notes: .unikit/bridge-notes/mcp-a.md\n'), true);
+    assertEq('BR-3', 'the docs sources are a JSON block', text.includes('- docs sources:\n```json\n['), true);
+    assertEq('BR-3', 'the same input renders the same text', renderBridgesManifest(input(['mcp-a', 'mcp-b'])), text);
+    assertEq('BR-3', 'no undefined or null leaks into the text', /undefined|\bnull\b/.test(text), false);
+    assertEq('BR-3', 'a text ends in exactly one newline', text.endsWith('\n') && !text.endsWith('\n\n'), true);
+    assertEq('BR-3', 'the user order is described, not stored', text.includes('user order: the list under engine_bridges.order in .unikit/config.yaml'), true);
+
+    report('BR-3', 'renderer checks ran', passed - before, []);
+});
+
+// ── BR-5a: the adapter seam ──────────────────────────────────────────────────
+
+await group('BR-5a', async () => {
+    const { getBridgeAdapter } = await dist('core/bridges/adapter.js');
+    const before = passed;
+
+    const adapter = getBridgeAdapter('mcp');
+    assertEq('BR-5a', 'an MCP bridge grants mcp__<code>__<tool>', adapter.grantEntries({ code: 'x' }, ['*', 't']), ['mcp__x__*', 'mcp__x__t']);
+    assertEq('BR-5a', 'an MCP bridge is registered in the settings file', adapter.registersInSettings, true);
+    assertEq('BR-5a', 'an unregistered kind throws', (() => { try { getBridgeAdapter('nope'); return false; } catch { return true; } })(), true);
+
+    report('BR-5a', 'adapter checks ran', passed - before, []);
+});
+
+// ── BR-3b: the installer of BRIDGES.md and the per-bridge trees ──────────────
+
+function treeSnapshot(dir) {
+    const out = [];
+    const walk = (current) => {
+        for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+            const full = path.join(current, entry.name);
+            if (entry.isDirectory()) walk(full);
+            else out.push(`${path.relative(dir, full)}:${fs.readFileSync(full, 'utf8').length}:${fs.statSync(full).mtimeMs}`);
+        }
+    };
+    if (fs.existsSync(dir)) walk(dir);
+    return out.sort();
+}
+
+await group('BR-3b', async () => {
+    const { installEngineBridges, readPreviousBridgeSet } = await dist('core/installer/engine-bridges.js');
+    const { discoverMcpServers } = await dist('core/mcp.js');
+    const before = passed;
+
+    const discovered = await discoverMcpServers('unity');
+    const project = tempProject('br-3b-');
+    const layer = path.join(project, '.unikit', 'system', 'engine-bridges');
+    try {
+        assertEq('BR-3b', 'there is no record of a previous set before the first install', await readPreviousBridgeSet(project), null);
+
+        await installEngineBridges(project, 'unity', discovered, ['unity-biome-mcp', 'coplay-unity-mcp']);
+        assertEq('BR-3b', 'two bridges deliver two trees and BRIDGES.md',
+            ['unity-biome-mcp/INDEX.md', 'coplay-unity-mcp/INDEX.md', 'BRIDGES.md'].map(rel => fs.existsSync(path.join(layer, rel))), [true, true, true]);
+        const manifest = fs.readFileSync(path.join(layer, 'BRIDGES.md'), 'utf8');
+        assertEq('BR-3b', 'BRIDGES.md carries the default order of the package', manifest.includes('\ndefault order: unity-biome-mcp > coplay-unity-mcp\n'), true);
+        assertEq('BR-3b', 'every delivered markdown file carries the stamp of its own bridge',
+            fs.readFileSync(path.join(layer, 'coplay-unity-mcp', 'INDEX.md'), 'utf8').includes('\nbridge: coplay-unity-mcp\n'), true);
+        assertEq('BR-3b', 'the previous set is read back from BRIDGES.md', await readPreviousBridgeSet(project), ['unity-biome-mcp', 'coplay-unity-mcp']);
+
+        const snapshot = treeSnapshot(layer);
+        await installEngineBridges(project, 'unity', discovered, ['unity-biome-mcp', 'coplay-unity-mcp']);
+        assertEq('BR-3b', 'a second identical install changes nothing in the layer', treeSnapshot(layer).map(s => s.replace(/:[0-9.]+$/, '')), snapshot.map(s => s.replace(/:[0-9.]+$/, '')));
+
+        await installEngineBridges(project, 'unity', discovered, ['coplay-unity-mcp']);
+        assertEq('BR-3b', 'dropping a bridge removes its whole tree and its block', [fs.existsSync(path.join(layer, 'unity-biome-mcp')), fs.readFileSync(path.join(layer, 'BRIDGES.md'), 'utf8').includes('## unity-biome-mcp')], [false, false]);
+
+        fs.mkdirSync(path.join(project, '.unikit', 'system', 'engine-mcp'), { recursive: true });
+        fs.writeFileSync(path.join(project, '.unikit', 'system', 'engine-mcp', 'x.md'), 'old');
+        await installEngineBridges(project, 'unity', discovered, ['coplay-unity-mcp']);
+        assertEq('BR-3b', 'the 2.x engine-mcp folder is swept', fs.existsSync(path.join(project, '.unikit', 'system', 'engine-mcp')), false);
+
+        await installEngineBridges(project, 'unity', discovered, []);
+        assertEq('BR-3b', 'an empty selection leaves no layer at all', fs.existsSync(layer), false);
+    } finally {
+        fs.rmSync(project, { recursive: true, force: true });
+    }
+
+    report('BR-3b', 'installer checks ran', passed - before, []);
+});
+
+// ── BR-6: notes follow the set of bridges ────────────────────────────────────
+
+await group('BR-6', async () => {
+    const { swapBridgeNotes } = await dist('core/installer/bridge-notes.js');
+    const before = passed;
+
+    const project = tempProject('br-6-');
+    const notes = path.join(project, '.unikit', 'bridge-notes');
+    const active = (id) => path.join(notes, `${id}.md`);
+    const archived = (id, index) => path.join(notes, 'archive', index ? `${id}.${index}.md` : `${id}.md`);
+    const put = (file, text) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text); };
+    const read = (file) => (fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null);
+    const known = new Set(['a', 'b', 'c']);
+    try {
+        put(active('a'), 'A');
+        await swapBridgeNotes(project, ['a'], ['b'], known);
+        assertEq('BR-6', 'a bridge that left has its log parked under its own id', [read(active('a')), read(archived('a'))], [null, 'A']);
+
+        put(active('b'), 'B');
+        await swapBridgeNotes(project, ['b'], ['a'], known);
+        assertEq('BR-6', 'a bridge that came back gets its own log restored', [read(active('a')), read(archived('b'))], ['A', 'B']);
+
+        put(archived('a'), 'ORPHAN');
+        put(active('a'), 'A2');
+        const collision = await captureWarningsAsync(() => swapBridgeNotes(project, ['a'], ['b'], known));
+        assertEq('BR-6', 'a taken archive slot is never overwritten', [read(archived('a')), read(archived('a', 1))], ['ORPHAN', 'A2']);
+        assertEq('BR-6', 'the collision is announced', collision.lines.some(line => line.includes('archive name taken')), true);
+
+        put(active('a'), 'A3'); put(active('b'), 'B3'); put(archived('c'), 'C');
+        await captureWarningsAsync(() => swapBridgeNotes(project, ['a', 'b'], ['b', 'c'], known)); // a taken slot again: expected noise
+        assertEq('BR-6', 'a set that changes in part moves only the difference', [read(active('b')), read(active('a')), read(active('c'))], ['B3', null, 'C']);
+
+        put(active('a'), 'A4'); put(path.join(notes, 'mine.md'), 'USER');
+        await captureWarningsAsync(() => swapBridgeNotes(project, null, ['b'], known)); // a taken slot again: expected noise
+        assertEq('BR-6', 'with no record of the previous set only a known bridge is parked', [read(active('a')), read(path.join(notes, 'mine.md'))], [null, 'USER']);
+
+        const snapshot = treeSnapshot(notes);
+        await swapBridgeNotes(project, ['b'], ['b'], known);
+        assertEq('BR-6', 'the same set touches nothing', treeSnapshot(notes), snapshot);
+    } finally {
+        fs.rmSync(project, { recursive: true, force: true });
+    }
+
+    report('BR-6', 'notes swap checks ran', passed - before, []);
+});
+
+// ── BR-7b: the 3.0.0 notes relocation, in process ────────────────────────────
+
+await group('BR-7b', async () => {
+    const { runProjectMemoryMigrations } = await dist('core/memory-migrations/index.js');
+    const before = passed;
+
+    const project = tempProject('br-7b-');
+    const unikit = path.join(project, '.unikit');
+    try {
+        writeRawConfig(project, {
+            version: '2.5.0', engine: 'unity', engineMcpKey: 'unity-biome-mcp',
+            mcp: { servers: { 'unity-biome-mcp': 'unity-biome-mcp' } }, agents: [],
+            rules: { installed: { version: '1.0.0', modules: { code: { core: [], stack: [] } } } },
+        });
+        fs.mkdirSync(path.join(unikit, 'memory', 'code', 'core'), { recursive: true });
+        fs.mkdirSync(path.join(unikit, 'memory', 'code', 'stack'), { recursive: true });
+        fs.mkdirSync(path.join(unikit, 'code'), { recursive: true });
+        fs.writeFileSync(path.join(unikit, 'MCP-RECHECK-NOTES.md'), '# F\n\nserver:  unity-biome-mcp\n\n## Findings\n\nkeep\n');
+        fs.writeFileSync(path.join(unikit, 'MCP-RECHECK-NOTES.archive.coplay-unity-mcp.1.md'), 'server: coplay-unity-mcp\n');
+        await runProjectMemoryMigrations(project, '2.5.0');
+
+        assertEq('BR-7b', 'the active log moved and its header key changed with the spacing kept',
+            fs.readFileSync(path.join(unikit, 'bridge-notes', 'unity-biome-mcp.md'), 'utf8'), '# F\n\nbridge:  unity-biome-mcp\n\n## Findings\n\nkeep\n');
+        assertEq('BR-7b', 'an indexed archive moved under archive/ with its index', fs.existsSync(path.join(unikit, 'bridge-notes', 'archive', 'coplay-unity-mcp.1.md')), true);
+        assertEq('BR-7b', 'nothing of the old layout is left', fs.readdirSync(unikit).filter(name => name.startsWith('MCP-RECHECK-NOTES')), []);
+
+        fs.writeFileSync(path.join(unikit, 'MCP-RECHECK-NOTES.md'), '# No owner here\n');
+        const skipped = await captureWarningsAsync(() => runProjectMemoryMigrations(project, '2.5.0'));
+        assertEq('BR-7b', 'a log with no owner line stays where it is', fs.existsSync(path.join(unikit, 'MCP-RECHECK-NOTES.md')), true);
+        assertEq('BR-7b', 'and it is named in one warning', skipped.lines.filter(line => line.includes('no "server:" line')).length, 1);
+    } finally {
+        fs.rmSync(project, { recursive: true, force: true });
+    }
+
+    report('BR-7b', 'notes migration checks ran', passed - before, []);
 });
 
 // (groups of later tasks are appended above this line, each under its own banner)

@@ -26,6 +26,11 @@ export function selectionOf(config: Pick<UniKitConfig, 'mcp' | 'engineBridges'>)
   return { mcp: { ...config.mcp.servers }, bridges: { ...config.engineBridges.selected } };
 }
 
+/** The file ids of the catalog's engine bridges: the only names the notes swap may read as a bridge. */
+export function catalogBridgeIds(discovered: DiscoveredServers): Set<string> {
+  return new Set([...discovered].filter(([, entry]) => entry.isEngine).map(([fileId]) => fileId));
+}
+
 export interface OrderedBridge {
   fileId: string;
   entry: McpServerEntry;

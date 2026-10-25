@@ -5,7 +5,7 @@ import { buildManagedSkillsState, installSkills, removeSkillsByName } from '../.
 import { resolveSkillPrune } from '../../core/skill-groups.js';
 import { buildManagedSubagentsState, installSubagents } from '../../core/installer/subagents.js';
 import { injectMcpRules } from '../../core/installer/mcp-injection.js';
-import { installEngineTemplates, installCliContract, installGateResultContract, installUltraPlanReadContract, installResearchLinkContract, installPlanBoundariesContract, installMergeAnalysisContract, installBalanceHandbackContract, installPrototypeProfileContract, installDevPrinciples, installEngineMcpRules, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
+import { installEngineTemplates, installCliContract, installGateResultContract, installUltraPlanReadContract, installResearchLinkContract, installPlanBoundariesContract, installMergeAnalysisContract, installBalanceHandbackContract, installPrototypeProfileContract, installDevPrinciples, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
 import { installSubagentArgumentsContract, installSubagentRolesContract, installUserQuestionsContract } from '../../core/installer/system-contracts.js';
 import { memoryDir } from '../../core/constants.js';
 import {
@@ -13,11 +13,11 @@ import {
   type AgentInstallation, type UniKitConfig,
 } from '../../core/config.js';
 import { getMcpDocsLines, discoverMcpServers, collectMcpRules, buildMcpServerMap } from '../../core/mcp.js';
-import { resolveMcpBridgeCode, type ServerSelection } from '../../core/bridges/selection.js';
+import { catalogBridgeIds, resolveMcpBridgeCode, type ServerSelection } from '../../core/bridges/selection.js';
 import { reconcileMcpSettings } from '../../core/mcp-reconcile.js';
 import { getMcpEnvLines } from '../../core/mcp-env.js';
-import { resolveSelectedEngineServer } from '../../core/mcp-rules.js';
-import { swapMcpRecheckNotes } from '../../core/installer/mcp-notes.js';
+import { installEngineBridges } from '../../core/installer/engine-bridges.js';
+import { swapBridgeNotes } from '../../core/installer/bridge-notes.js';
 import { getAgentConfig } from '../../core/agents.js';
 import { collectExtensionSkillNames, removeAgentSetup } from '../../core/installer/agent-removal.js';
 import { getAgentOnboarding } from '../../core/transformer.js';
@@ -234,10 +234,6 @@ export async function initCommand(): Promise<void> {
       agent.managedSubagents = await buildManagedSubagentsState(projectDir, agent, agent.installedSubagents, engineId, selection);
     }
 
-    // Transitional: the rules tree and the notes still follow ONE engine server until the per-bridge
-    // delivery replaces both.
-    const selectedEngineServer = resolveSelectedEngineServer(discoveredServers, answers.engineBridges);
-
     // Save config — rules.installed starts empty; /unikit Step 9 fills it.
     // genres.installed also starts empty; /unikit-gd-spec installs profiles later.
     const config: UniKitConfig = {
@@ -259,26 +255,15 @@ export async function initCommand(): Promise<void> {
         installed: [],
       },
     };
-    // Park / restore the MCP findings log BEFORE the config write: the previous
-    // selection is read from `existingConfig`, and `saveConfig` overwrites it.
-    // Running this afterwards makes the swap a no-op and leaves the outgoing
-    // server's findings active under the incoming one.
-    //
-    // The previous id is resolved against the PREVIOUS engine's catalog, not
-    // `discoveredServers` (which was scanned for the newly chosen engine). An
-    // engine switch is precisely the case the swap exists for, and resolving it
-    // against the new catalog would find nothing and park nothing.
-    const previousEngineServer = existingConfig
-      ? resolveSelectedEngineServer(
-          await discoverMcpServers(existingConfig.engine),
-          Object.keys(existingConfig.engineBridges.selected),
-        )
-      : null;
-
-    await swapMcpRecheckNotes(
+    // Park / restore the findings logs of the bridges that left / came back BEFORE the config write:
+    // the previous set is read from `existingConfig`, and `saveConfig` overwrites it. Running this
+    // afterwards makes the swap a no-op and leaves a dropped bridge's findings active. The previous
+    // ids are file ids, so an engine switch needs no catalog of the previous engine to park them.
+    await swapBridgeNotes(
       projectDir,
-      previousEngineServer?.fileId ?? null,
-      selectedEngineServer?.fileId ?? null,
+      existingConfig ? Object.keys(existingConfig.engineBridges.selected) : null,
+      answers.engineBridges,
+      catalogBridgeIds(discoveredServers),
     );
 
     await saveConfig(projectDir, config);
@@ -316,8 +301,8 @@ export async function initCommand(): Promise<void> {
     // Install the user-questions contract (read before their first question by the skills that carry its pointer)
     await installUserQuestionsContract(projectDir);
 
-    // Deliver the rules tree of the selected engine MCP server
-    await installEngineMcpRules(projectDir, selectedEngineServer);
+    // Deliver BRIDGES.md and the rules tree of every selected bridge (sweeps the 2.x engine-mcp folder)
+    await installEngineBridges(projectDir, engineId, discoveredServers, answers.engineBridges);
 
     // Install engine development principles (shared system file)
     await installDevPrinciples(projectDir, engineId, mcpBridgeCode);

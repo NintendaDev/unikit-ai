@@ -277,21 +277,21 @@ Load the project knowledge base once, before the first task.
 
 Stack rules and rule topics are NOT loaded here — they are loaded lazily per-phase in Step 3.0.
 
-**Engine-MCP rules (conditional, engine-neutral) — once per session, zero calls:**
+**Engine bridges (conditional, engine-neutral) — once per session, zero calls:**
 
-5. `.unikit/system/engine-mcp/INDEX.md`, **base section only** — the delivery stamp (`server:`) and every section **except** the `## Check` table, which is grepped per task, by area (Step 3.2).
-6. `.unikit/MCP-RECHECK-NOTES.md`, **header only** (`server:` / `audited:`) — this project's own accumulated findings. Compare that header against the delivery stamp from item 5. On a mismatch print exactly one line and **apply the entries anyway**:
+5. `.unikit/system/engine-bridges/BRIDGES.md` — the whole file (one short block per bridge) — and, for **each** bridge whose block names a rules tree, that tree's `.unikit/system/engine-bridges/<bridge>/INDEX.md`, **base section only**: the delivery stamp (`bridge:`) and every section **except** the `## Check` table, which is grepped per task, by area (Step 3.2).
+6. For each bridge listed in `BRIDGES.md`: `.unikit/bridge-notes/<bridge>.md`, **header only** (`bridge:` / `audited:`) — this project's own accumulated findings, and they apply to that bridge only. Compare the header against the bridge the file is named for. On a mismatch print exactly one line and **apply the entries anyway**:
 
    ```
-   WARN [engine-mcp] notes header ≠ configured server (<notes> ≠ <configured>)
+   WARN [bridges] notes header ≠ bridge (<header> ≠ <bridge>)
    ```
 
    The entries are suspect, not void; retiring them belongs to `/unikit-mcp-audit`.
 
-**Either file absent → skip it, print one line, and continue with every right you had:**
+**A file absent → skip it, print one line, and continue with every right you had** (no `BRIDGES.md` reads as "no bridge selected"):
 
 ```
-MCP rules: no INDEX.md — no known exceptions for this server, rights unchanged
+Bridge rules: <bridge> has no INDEX.md — no known exceptions for it, rights unchanged
 ```
 
 No rules means no known exceptions, never no capabilities. Absence never disables the engine MCP and never turns a target into `⏸️ MANUAL` (`.unikit/system/dev-principles.md` → **A9**).
@@ -443,7 +443,7 @@ After successful implementation, update the manifest:
 **Editor task handed to the user (`Editor tasks: manual`)** — a third outcome, neither done nor pending:
 - Write `- [x]` and append the marker `⏸️ MANUAL` to the task text: `- [x] Task 2.1 — wire the pause button ⏸️ MANUAL`. It counts by the `⏸️ MANUAL` rule of Step 2 and is reported separately (Step 4).
 
-**The task produced an MCP finding (Step 3.2)** — append its row to the plan's `## MCP Findings` table in this same `Edit`, by `dev-principles.md` → **D7**: `F<n>`, `observed` from `Bash(date *)`, semantic dedup. Not at the end of the phase, not at the end of the run. In every case — an `Editor:` task or not (the Step 3.6 console read, a test run) — a misleading call is also a candidate line in the run report (the raw call and the raw answer), and `.unikit/MCP-RECHECK-NOTES.md` is never written from here.
+**The task produced an MCP finding (Step 3.2)** — append its row to the plan's `## MCP Findings` table in this same `Edit`, by `dev-principles.md` → **D7**: `F<n>`, `observed` from `Bash(date *)`, semantic dedup. Not at the end of the phase, not at the end of the run. In every case — an `Editor:` task or not (the Step 3.6 console read, a test run) — a misleading call is also a candidate line in the run report (the raw call and the raw answer), and `.unikit/bridge-notes/<bridge>.md` is never written from here.
 
 **A test-checkpoint task (Step 3.2)** — ticked and recorded by `references/test-runs.md` → `## Step 3.4`.
 
@@ -659,7 +659,7 @@ Read the plan's `## MCP Findings` table.
 - **Rows present** → offer to move them to the durable surface:
 
 ```
-<n> MCP findings recorded in this plan. Transfer them to .unikit/MCP-RECHECK-NOTES.md?
+<n> MCP findings recorded in this plan. Transfer them to the notes of their bridge (.unikit/bridge-notes/)?
 ```
 
   On agreement, invoke `unikit-mcp-trap` with the argument `<path to the plan file>` — the explicit path makes it read this plan and nothing else.

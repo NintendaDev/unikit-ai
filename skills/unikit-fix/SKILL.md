@@ -179,21 +179,21 @@ Stack rules are loaded on-demand later — when investigation reveals which fram
 
 **The fix runs against a plan whose manifest has `## Experiment Context`** (the session started from such a plan, or the prompt carries a `Prototype plan:` note) → read `.unikit/system/prototype-profile.md` now, once, and follow its `## Role: quality and the rest` — Steps 5 and 7.3, and the prompt of a delegate, follow it. Missing or unreadable → `WARN [prototype] profile contract missing — fixing as for an ordinary plan; run unikit-ai update`.
 
-**Engine-MCP rules (conditional, engine-neutral) — once per session, zero calls:**
+**Engine bridges (conditional, engine-neutral) — once per session, zero calls:**
 
-5. `.unikit/system/engine-mcp/INDEX.md`, **base section only** — the delivery stamp (`server:`) plus every section **except** the `## Check` table — access, the live failure classes, shape and cost, what is irreversible, the lane, and what to do when the file is silent. Those are the exceptions that hold for every task here. **Do not read the `## Check` table now** — it is grepped per editor task, by area (Step 3).
-6. `.unikit/MCP-RECHECK-NOTES.md`, **header only** (`server:` / `audited:`) — this project's own accumulated findings. Compare that header against the delivery stamp from item 5. On a mismatch print exactly one line and **apply the entries anyway**:
+5. `.unikit/system/engine-bridges/BRIDGES.md` — the whole file (one short block per bridge) — and, for **each** bridge whose block names a rules tree, that tree's `.unikit/system/engine-bridges/<bridge>/INDEX.md`, **base section only**: the delivery stamp (`bridge:`) plus every section **except** the `## Check` table — access, the live failure classes, shape and cost, what is irreversible, the lane, and what to do when the file is silent. Those are the exceptions that hold for every task here. **Do not read the `## Check` table now** — it is grepped per editor task, by area (Step 3).
+6. For each bridge listed in `BRIDGES.md`: `.unikit/bridge-notes/<bridge>.md`, **header only** (`bridge:` / `audited:`) — this project's own accumulated findings, and they apply to that bridge only. Compare the header against the bridge the file is named for. On a mismatch print exactly one line and **apply the entries anyway**:
 
    ```
-   WARN [engine-mcp] notes header ≠ configured server (<notes> ≠ <configured>)
+   WARN [bridges] notes header ≠ bridge (<header> ≠ <bridge>)
    ```
 
    The entries are *suspect*, not void, and a suspect check still fails safe. Retiring them belongs to `/unikit-mcp-audit`, never to this skill.
 
-**Either file absent → skip it, print one line, and continue with every right you had:**
+**A file absent → skip it, print one line, and continue with every right you had** (no `BRIDGES.md` reads as "no bridge selected"):
 
 ```
-MCP rules: no INDEX.md — no known exceptions for this server, rights unchanged
+Bridge rules: <bridge> has no INDEX.md — no known exceptions for it, rights unchanged
 ```
 
 No rules means no known exceptions, never no capabilities. Absence never disables the engine MCP and never turns a target into `⏸️ MANUAL` (`.unikit/system/dev-principles.md` → **A9**).
@@ -445,7 +445,7 @@ When implementing inline, apply:
 
 **When the fix touches the editor's serialized state** — a scene, a prefab, a component, an asset, UI, VFX, animation, project settings — rather than source text, carry it out through the engine MCP by `.unikit/system/dev-principles.md` → **D6** (its part below the lazy-read boundary is read now if this session has not read it yet). **No rules file, or no check line for this area → nothing changes:** it is never a reason to declare the fix impossible or to mark it `⏸️ MANUAL` (A9).
 
-**A call that misled you is a finding** (**D7**): a candidate line in the fix report and, when this fix runs against a plan, a row in that plan's `## MCP Findings` table, written on finishing the step that produced it — `observed` is the date you observed it (`Bash(date *)`). **Never write `.unikit/MCP-RECHECK-NOTES.md` from here.** The library reference has two triggers (**D8**).
+**A call that misled you is a finding** (**D7**): a candidate line in the fix report and, when this fix runs against a plan, a row in that plan's `## MCP Findings` table, written on finishing the step that produced it — `observed` is the date you observed it (`Bash(date *)`). **Never write `.unikit/bridge-notes/<bridge>.md` from here.** The library reference has two triggers (**D8**).
 
 After the fix is implemented, you MUST continue through ALL remaining steps (4 → 5 → 6 → 7).
 

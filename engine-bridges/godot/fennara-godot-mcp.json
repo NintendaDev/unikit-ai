@@ -6,7 +6,10 @@
   "displayName": "Fennara Godot AI [Free] (Godot 4.5+)",
   "docs": {
     "context7": "/fennaraofficial/fennara-godot-ai",
-    "repo": "https://github.com/fennaraOfficial/fennara-godot-ai"
+    "repo": "https://github.com/fennaraOfficial/fennara-godot-ai",
+    "sources": [
+      { "kind": "git", "id": "docs", "repo": "https://github.com/fennaraOfficial/fennara-godot-ai", "path": "docs", "include": ["*.md"], "exclude": ["i18n/**"], "into": "docs" }
+    ]
   },
   "rules": "rules/fennara-godot-mcp/",
   "configByPlatform": {

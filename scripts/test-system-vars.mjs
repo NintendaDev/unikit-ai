@@ -37,7 +37,7 @@ const POSIX = '/';
 const FRAMEWORK_DIR = '.unikit';
 const CONSTANTS_FILE = 'src/core/constants.ts';
 const REGISTRY_FILE = 'src/core/constants-template.ts';
-const REGISTRY_IMPORT_ALLOWED = ['./constants.js'];
+const REGISTRY_IMPORT_ALLOWED = ['./constants.js', './constants-bridges.js'];
 // SV-9b: where the warning for an unknown name is called from, and the module it lives in.
 const INJECTIONS_FILE = 'src/core/extension-injections.ts';
 const UNKNOWN_VARS_FILE = 'src/core/extension-unknown-vars.ts';
@@ -97,12 +97,12 @@ const VERBOSE_ENV = 'SV_VERBOSE';
 // The public names, pinned (SV-1b): adding, removing or renaming one takes two edits — here and in
 // the registry. A name is public API of extensions, like an extension-point anchor.
 const PINNED_NAMES = [
-    'system_dir', 'system_gamedesign_dir', 'system_genres_dir', 'system_engine_mcp_dir',
+    'system_dir', 'system_gamedesign_dir', 'system_genres_dir', 'system_engine_bridges_dir',
     'cli_contract', 'dev_principles', 'modules_yml', 'gate_result_contract', 'ultra_plan_read_contract',
     'research_link_contract', 'plan_boundaries_contract', 'merge_analysis_contract', 'balance_handback_contract',
     'prototype_profile_contract', 'subagent_arguments_contract', 'subagent_roles_contract', 'user_questions_contract',
     'gd_principles', 'gd_authoring', 'gd_lifecycle', 'gd_flow_axis', 'gd_content_axis', 'gd_provenance', 'gd_critique',
-    'design_read_contract', 'engine_mcp_rules_index', 'engine_mcp_rules_verification', 'language_rules',
+    'design_read_contract', 'engine_bridges_manifest', 'language_rules',
 ];
 const USER_QUESTIONS_NAME = 'user_questions_contract';
 const USER_QUESTIONS_VALUE = '.unikit/system/user-questions.md';
@@ -121,7 +121,7 @@ const DELIVERY_CONDITIONAL = 'cli-conditional';
 const DELIVERY_SKILL = 'skill';
 const SYSTEM_DIR_NAME_VAR = 'system_dir';
 const GAMEDESIGN_DIR_NAME_VAR = 'system_gamedesign_dir';
-const ENGINE_MCP_DIR_VAR = 'system_engine_mcp_dir';
+const ENGINE_BRIDGES_DIR_VAR = 'system_engine_bridges_dir';
 const GENRES_DIR_VAR = 'system_genres_dir';
 // SV-3 (--tree): the rules tree of the selected engine MCP server, and the exit code of a bad call.
 const ENGINE_TREE_YES = 'yes';
@@ -222,7 +222,7 @@ function findLiterals(text) {
 
 // Why a literal is not allowed, or null. `rows` is the registry table.
 // Allowed: equal to the value of a row (file or directory), or inside a directory whose content is
-// free (a `cli-conditional` directory: `engine-mcp/`, `gamedesign/genres/`). Under an unconditional
+// free (a `cli-conditional` directory: `engine-bridges/`, `gamedesign/genres/`). Under an unconditional
 // directory (`system/`, `system/gamedesign/`) only an exact row is allowed — every path lies under
 // `.unikit/system`, so a subtree rule there would make the guard always green.
 function classifyLiteral(literal, rows) {
@@ -297,7 +297,7 @@ if (treeMode) {
         const violations = [];
         const systemDir = dirValue(SYSTEM_DIR_NAME_VAR);
         const gamedesignDir = dirValue(GAMEDESIGN_DIR_NAME_VAR);
-        const engineDir = dirValue(ENGINE_MCP_DIR_VAR);
+        const engineDir = dirValue(ENGINE_BRIDGES_DIR_VAR);
         const genresDir = dirValue(GENRES_DIR_VAR);
         const absolute = (value) => path.join(projectDir, ...value.split(POSIX));
         const relative = (file) => path.relative(projectDir, file).split(path.sep).join(POSIX);
@@ -306,8 +306,8 @@ if (treeMode) {
         const engineTreeExpected = engineTree === ENGINE_TREE_YES;
 
         // Every file on disk: a registry row of the same path — except the two free trees, whose
-        // content is not the registry's to list (the rules tree of the selected engine MCP server,
-        // which holds only its two named files as rows, and the installed genre profiles).
+        // content is not the registry's to list (the engine-bridge layer, which holds only BRIDGES.md as a row
+        // beside the rules tree of every selected bridge, and the installed genre profiles).
         const delivered = (await walk(absolute(systemDir))).map(relative);
         for (const value of delivered) {
             if (value.startsWith(`${engineDir}${POSIX}`) || value.startsWith(`${genresDir}${POSIX}`)) continue;
@@ -321,8 +321,8 @@ if (treeMode) {
             if (!dirValues.has(value)) violations.push(`${value}: a directory is delivered, but no registry row has this path`);
         }
 
-        // Every row: a file or directory that `init`/`update` always write must be there; the rules
-        // tree of the engine MCP server is there exactly when the project selected a server with one;
+        // Every row: a file or directory that `init`/`update` always write must be there; the
+        // engine-bridge layer is there exactly when the project selected a bridge;
         // a file a skill writes (`skill`) and the installed genre profiles are not checked.
         for (const row of rows) {
             if (row.delivery === DELIVERY_SKILL || row.name === GENRES_DIR_VAR) continue;
@@ -687,7 +687,7 @@ if (!treeMode) {
             { name: 'sample_file', kind: FILE_KIND, delivery: DELIVERY_CLI, value: '.unikit/system/sample.md' },
             { name: 'sample_gd_dir', kind: DIR_KIND, delivery: DELIVERY_CLI, value: '.unikit/system/gamedesign' },
             { name: 'sample_gd_file', kind: FILE_KIND, delivery: DELIVERY_CLI, value: '.unikit/system/gamedesign/sample-gd.md' },
-            { name: 'sample_free_tree', kind: DIR_KIND, delivery: DELIVERY_CONDITIONAL, value: '.unikit/system/engine-mcp' },
+            { name: 'sample_free_tree', kind: DIR_KIND, delivery: DELIVERY_CONDITIONAL, value: '.unikit/system/engine-bridges' },
             { name: 'sample_genres', kind: DIR_KIND, delivery: DELIVERY_CONDITIONAL, value: '.unikit/system/gamedesign/genres' },
         ];
         const messages = (text) => findLiterals(text).map((literal) => classifyLiteral(literal, sampleRows)).filter(Boolean);
@@ -695,7 +695,7 @@ if (!treeMode) {
         check('literal: a registry path is allowed', messages('Read `.unikit/system/sample.md` first.'), []);
         check('literal: a path with trailing punctuation is allowed', messages('See .unikit/system/gamedesign/sample-gd.md.'), []);
         check('literal: the directory with a trailing slash is allowed', messages('The `.unikit/system/` directory.'), []);
-        check('literal: a file inside a free tree is allowed', messages('.unikit/system/engine-mcp/anything.md and .unikit/system/gamedesign/genres/x.json'), []);
+        check('literal: a file inside a free tree is allowed', messages('.unikit/system/engine-bridges/anything.md and .unikit/system/gamedesign/genres/x.json'), []);
         check('literal: a glob and a placeholder are prose', messages('`.unikit/system/**` and `.unikit/system/gamedesign/genres/<id>.json`'), []);
         check('literal: an unknown flat file is one message', messages('Read `.unikit/system/nope.md`.').length, 1);
         check('literal: an unknown file under gamedesign/ is one message (no subtree rule there)', messages('.unikit/system/gamedesign/nope.md').length, 1);

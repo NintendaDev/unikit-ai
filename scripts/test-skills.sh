@@ -2526,7 +2526,7 @@ fi
 # ids straight from engines.ts and assert the test array matches, so a new engine fails HERE
 # first; the dev then updates ENGINES (which cascades into RD-2b's RECON_ENGINE_TOKENS map +
 # the code-recon.md matrix). engines.ts is the source of truth; this is its single mirror-check.
-CANON_ENGINE_IDS=$(grep -oE "id: '[^']+'" "$ROOT_DIR/src/core/engines.ts" | sed "s/^id: '//; s/'$//" | sort | tr '\n' ' ')
+CANON_ENGINE_IDS=$(grep -oE "^    id: '[^']+'" "$ROOT_DIR/src/core/engines.ts" | sed "s/^ *id: '//; s/'$//" | sort | tr '\n' ' ')
 TEST_ENGINE_IDS=$(printf '%s\n' "${ENGINES[@]}" | sort | tr '\n' ' ')
 if [[ "$CANON_ENGINE_IDS" == "$TEST_ENGINE_IDS" ]]; then
     pass "RD-2a engine-list sync: test ENGINES matches src/core/engines.ts ENGINE_REGISTRY ($CANON_ENGINE_IDS)"
@@ -6164,35 +6164,35 @@ EM_FIX_SKILL="$ROOT_DIR/skills/unikit-fix/SKILL.md"
 EM_DEVCONTEXT_SKILL="$ROOT_DIR/skills/unikit-devcontext/SKILL.md"
 EM_DEV_PRINCIPLES="$ROOT_DIR/data/dev-principles.md"
 
-# (EM-1) INDEX.md is the entry point of the delivered rules tree and is read by ALL FOUR
-# pipeline skills. A delivered asset with no reader line is dead weight; this is the only
-# thing that keeps the four in sync. (It replaced capabilities.md with the rules-tree
-# cutover — the shard corpus, and that file with it, no longer exists.)
+# (EM-1) BRIDGES.md is the entry point of the delivered bridge layer and, with the INDEX.md of
+# each bridge's rules tree, is read by ALL FOUR pipeline skills. A delivered asset with no
+# reader line is dead weight; this is the only thing that keeps the four in sync. (It replaced
+# the single engine-mcp/INDEX.md with the per-bridge layout of 3.0.0.)
 EM1_WHY=""
-grep -qF 'engine-mcp/INDEX.md' "$EM_IMPLEMENT_SKILL"  || EM1_WHY+=" implement"
-grep -qF 'engine-mcp/INDEX.md' "$EM_FIX_SKILL"        || EM1_WHY+=" fix"
-grep -qF 'engine-mcp/INDEX.md' "$UNIKIT_VERIFY_SKILL" || EM1_WHY+=" verify"
-grep -qF 'engine-mcp/INDEX.md' "$EM_DEVCONTEXT_SKILL" || EM1_WHY+=" devcontext"
+for em1_skill in "implement:$EM_IMPLEMENT_SKILL" "fix:$EM_FIX_SKILL" "verify:$UNIKIT_VERIFY_SKILL" "devcontext:$EM_DEVCONTEXT_SKILL"; do
+    grep -qF 'engine-bridges/BRIDGES.md' "${em1_skill#*:}" || EM1_WHY+=" ${em1_skill%%:*}:BRIDGES.md"
+    grep -qF 'engine-bridges/<bridge>/INDEX.md' "${em1_skill#*:}" || EM1_WHY+=" ${em1_skill%%:*}:INDEX.md"
+done
 if [[ -z "$EM1_WHY" ]]; then
-    pass "EM-1 engine-mcp INDEX.md read by all four pipeline skills"
+    pass "EM-1 BRIDGES.md and the INDEX.md of each bridge read by all four pipeline skills"
 else
-    fail "EM-1 engine-mcp INDEX.md reader line MISSING in:$EM1_WHY"
+    fail "EM-1 bridge-layer reader line MISSING in:$EM1_WHY"
 fi
 
-# (EM-2) The rules-tree binding: MCP-RECHECK-NOTES.md → all four readers of the check
+# (EM-2) The rules-tree binding: bridge-notes/<bridge>.md → all four readers of the check
 # tables; verification.md → verify ONLY. The negative half is the load-bearing one:
 # verification.md is the per-gate calibration behind the GATE LIFTED verdict, and that
 # verdict means nothing outside unikit-verify. Splitting the calibration across two
 # readers is how two skills come to disagree about what is lifted.
 EM2_WHY=""
-grep -qF 'MCP-RECHECK-NOTES.md' "$EM_IMPLEMENT_SKILL"  || EM2_WHY+=" notes:implement-missing"
-grep -qF 'MCP-RECHECK-NOTES.md' "$EM_FIX_SKILL"        || EM2_WHY+=" notes:fix-missing"
-grep -qF 'MCP-RECHECK-NOTES.md' "$EM_DEVCONTEXT_SKILL" || EM2_WHY+=" notes:devcontext-missing"
-grep -qF 'MCP-RECHECK-NOTES.md' "$UNIKIT_VERIFY_SKILL" || EM2_WHY+=" notes:verify-missing"
-grep -qF 'engine-mcp/verification.md'    "$UNIKIT_VERIFY_SKILL" || EM2_WHY+=" verification:verify-missing"
-grep -qF 'engine-mcp/verification.md' "$EM_IMPLEMENT_SKILL"  && EM2_WHY+=" verification:leaked-into-implement"
-grep -qF 'engine-mcp/verification.md' "$EM_FIX_SKILL"        && EM2_WHY+=" verification:leaked-into-fix"
-grep -qF 'engine-mcp/verification.md' "$EM_DEVCONTEXT_SKILL" && EM2_WHY+=" verification:leaked-into-devcontext"
+grep -qF 'bridge-notes/<bridge>.md' "$EM_IMPLEMENT_SKILL"  || EM2_WHY+=" notes:implement-missing"
+grep -qF 'bridge-notes/<bridge>.md' "$EM_FIX_SKILL"        || EM2_WHY+=" notes:fix-missing"
+grep -qF 'bridge-notes/<bridge>.md' "$EM_DEVCONTEXT_SKILL" || EM2_WHY+=" notes:devcontext-missing"
+grep -qF 'bridge-notes/<bridge>.md' "$UNIKIT_VERIFY_SKILL" || EM2_WHY+=" notes:verify-missing"
+grep -qF 'engine-bridges/<bridge>/verification.md' "$UNIKIT_VERIFY_SKILL" || EM2_WHY+=" verification:verify-missing"
+grep -qF '<bridge>/verification.md' "$EM_IMPLEMENT_SKILL"  && EM2_WHY+=" verification:leaked-into-implement"
+grep -qF '<bridge>/verification.md' "$EM_FIX_SKILL"        && EM2_WHY+=" verification:leaked-into-fix"
+grep -qF '<bridge>/verification.md' "$EM_DEVCONTEXT_SKILL" && EM2_WHY+=" verification:leaked-into-devcontext"
 if [[ -z "$EM2_WHY" ]]; then
     pass "EM-2 rules-tree binding: notes → all four readers · verification → verify ONLY"
 else
@@ -6245,31 +6245,32 @@ fi
 # exercises update.ts; a dropped init.ts call would be invisible to lint, knip (still called
 # from update.ts) and every smoke test. These greps are the only coverage of the init side.
 #
-# swapMcpRecheckNotes joins installEngineMcpRules here because its failure mode is worse than
-# a missing delivery and completely silent: the notes of the outgoing server stay active under
-# the incoming one, and every reader then treats another server's findings as evidence.
+# swapBridgeNotes joins installEngineBridges here because its failure mode is worse than
+# a missing delivery and completely silent: the notes of a dropped bridge stay active next to
+# the ones that are left, and every reader then treats another bridge's findings as evidence.
 EM5_WHY=""
-for fn in installEngineMcpRules swapMcpRecheckNotes; do
+for fn in installEngineBridges swapBridgeNotes; do
     grep -qF "$fn(" "$ROOT_DIR/src/cli/commands/init.ts"   || EM5_WHY+=" init.ts:$fn"
     grep -qF "$fn(" "$ROOT_DIR/src/cli/commands/update.ts" || EM5_WHY+=" update.ts:$fn"
 done
 if [[ -z "$EM5_WHY" ]]; then
-    pass "EM-5 installEngineMcpRules + swapMcpRecheckNotes wired in both init.ts and update.ts"
+    pass "EM-5 installEngineBridges + swapBridgeNotes wired in both init.ts and update.ts"
 else
-    fail "EM-5 rules-tree delivery NOT wired in:$EM5_WHY"
+    fail "EM-5 bridge delivery NOT wired in:$EM5_WHY"
 fi
 
 # (SA-1) Every system-asset installer in system-assets.ts and system-contracts.ts is called from BOTH init.ts and
-# update.ts. Derivative, not a name list: a new `export async function installX` is covered
-# by construction, and the overlap with EM-5 above is deliberate — EM-5 pins two specific
-# functions for a stronger reason (silent findings-log corruption on a missed call), SA-1
-# pins the general shape all of today's installers share.
+# update.ts (and installEngineBridges, which lives in installer/engine-bridges.ts). Derivative,
+# not a name list: a new `export async function installX` is covered by construction, and the
+# overlap with EM-5 above is deliberate — EM-5 pins two specific functions for a stronger reason
+# (silent findings-log corruption on a missed call), SA-1 pins the general shape all of today's
+# installers share.
 # Anchored on the call LINE (`await installX(`), not the substring `installX(`: a plain
 # grep -F would count a commented-out `// await installX(` as wiring, missing the most
 # natural way to disable a call. All of today's calls have the form `    await installX(`.
-SA_INSTALLERS="$(sed -n 's/^export async function \(install[A-Za-z]*\)(.*/\1/p' "$ROOT_DIR/src/core/installer/system-assets.ts" "$ROOT_DIR/src/core/installer/system-contracts.ts")"
+SA_INSTALLERS="$(sed -n 's/^export async function \(install[A-Za-z]*\)(.*/\1/p' "$ROOT_DIR/src/core/installer/system-assets.ts" "$ROOT_DIR/src/core/installer/system-contracts.ts" "$ROOT_DIR/src/core/installer/engine-bridges.ts")"
 if [[ -z "$SA_INSTALLERS" ]]; then
-    fail "SA-1 no install* exports found in system-assets.ts and system-contracts.ts — the guard has no object"
+    fail "SA-1 no install* exports found in system-assets.ts, system-contracts.ts and engine-bridges.ts — the guard has no object"
 else
     SA_WHY=""
     SA_COUNT=0
@@ -6817,7 +6818,7 @@ ED16_RESULT=$(node -e '
   const SECTION="## Editor Target Checks";
   const PLAN_S1="## §1 ";
   const MANUAL_NEGATION="never turns a target into `⏸️ MANUAL`";
-  const ANCHORS=["A2",".unikit/system/engine-mcp/"];
+  const ANCHORS=["A2",".unikit/system/engine-bridges/"];
   const why=[]; let sections=0;
 
   const sectionOf=(text,prefix)=>{
@@ -6870,7 +6871,7 @@ ED16_RESULT=$(node -e '
   "$ROOT_DIR/data/engine-templates/skills/unikit-verify" 2>/dev/null || echo "node-error")
 
 if [[ "$ED16_RESULT" == "ok" ]]; then
-    pass "ED-16 Editor Target Checks in all 4 verify templates: no pre-lifted gate, ⏸️ MANUAL negation stated, A2 + engine-mcp anchors, kind sets match their plan template"
+    pass "ED-16 Editor Target Checks in all 4 verify templates: no pre-lifted gate, ⏸️ MANUAL negation stated, A2 + engine-bridges anchors, kind sets match their plan template"
 else
     fail "ED-16 editor-target-check contract drift: $ED16_RESULT"
 fi
@@ -7256,7 +7257,7 @@ fi
 TS2_WHY=""
 if [[ -s "$TS_DEVPRIN" ]]; then
     grep -qF 'for all functionality' "$TS_DEVPRIN" && TS2_WHY+=" TS-2:blanket-wording-returned"
-    grep -qF 'marks the tests gate **GATE LIFTED** for the configured server' "$TS_DEVPRIN" || TS2_WHY+=" TS-2:gate-lifted-sentence-lost"
+    grep -qF 'marks the tests gate **GATE LIFTED** for that bridge' "$TS_DEVPRIN" || TS2_WHY+=" TS-2:gate-lifted-sentence-lost"
 else
     TS2_WHY+=" TS-2:dev-principles-missing"
 fi
@@ -8034,7 +8035,7 @@ fi
 # on its prose. That example is what both skills copy from, and it is the one object in
 # the repository shaped like a real notes file. Two sections because there are two readers
 # (executors grep the check table, the audit replays the protocol); two header fields
-# because `server:` is what tells a finding about THIS server from one inherited from
+# because `bridge:` is what tells a finding about THIS bridge from one inherited from
 # another, and `audited:` is the cursor trap reads to decide which plans are new. A third
 # field, `version:`, used to sit between them and was dropped: it was copied out of the
 # delivery stamp the package writes, so the comparison it fed had the same constant on
@@ -8047,13 +8048,13 @@ else
     for rt_section in '## Check' '## Observation protocol'; do
         echo "$RT3_SHAPE" | grep -qF "$rt_section" || RT3_WHY+=" section:${rt_section// /-}"
     done
-    for rt_field in 'server:' 'audited:'; do
+    for rt_field in 'bridge:' 'audited:'; do
         echo "$RT3_SHAPE" | grep -qF "$rt_field" || RT3_WHY+=" header:$rt_field"
     done
     echo "$RT3_SHAPE" | grep -qE '^version:' && RT3_WHY+=" header:version-returned"
 fi
 if [[ -z "$RT3_WHY" ]]; then
-    pass "RT-3 notes shape: two sections + server:/audited: header, no version"
+    pass "RT-3 notes shape: two sections + bridge:/audited: header, no version"
 else
     fail "RT-3 notes shape drift in notes-format.md:$RT3_WHY"
 fi
@@ -8092,29 +8093,38 @@ else
 fi
 
 # (RT-5) The notes file is the accumulated knowledge of the project, and the only right
-# the installer has over it is to RENAME it when the selected server changes. The day some
+# the installer has over it is to RENAME it when the set of selected bridges changes. The day some
 # installer module starts writing its content, the contract inverts silently: an `update`
-# would begin overwriting findings that cost a human a live editor to produce. The
-# resolver `mcpRecheckNotesPath(` is the mechanical handle on that — it may appear only
-# where it is declared and inside the swap module that owns the rename.
-RT5_HITS="$(grep -rln 'mcpRecheckNotesPath(' "$ROOT_DIR/src" --include='*.ts' 2>/dev/null || true)"
+# would begin overwriting findings that cost a human a live editor to produce. The resolvers
+# `mcpRecheckNotesPath(` (the 2.x file) and `bridgeNotesPath(` (the 3.0.0 file of one bridge) are
+# the mechanical handle on that — each may appear only where it is declared, inside the swap
+# module that owns the rename, and in the migration that moves the old file to the new place.
+# The set of files found must not be empty: a guard that looked at nothing proves nothing.
 RT5_WHY=""
-while IFS= read -r rt_file; do
-    [[ -n "$rt_file" ]] || continue
-    case "$(basename "$rt_file")$(dirname "$rt_file" | sed 's|.*/||')" in
-        # The declaration, the swap module that owns the rename — and the MCP
-        # MIGRATION, which is the one thing here that is not the installer. It
-        # rewrites the `server:` header when a file id is renamed under the
-        # project's feet; leaving that line stale makes every pipeline skill
-        # print "notes header ≠ configured server" forever, and nothing but a
-        # human can clear it. The exception is narrow by construction: a
-        # migration runs once per project and writes no findings.
-        constants.ts*|mcp-notes.ts*|index.tsmcp-migrations) ;;
-        *) RT5_WHY+=" $(basename "$rt_file")" ;;
-    esac
-done <<< "$RT5_HITS"
-if [[ -z "$RT5_WHY" ]]; then
-    pass "RT-5 mcpRecheckNotesPath( confined to constants.ts + mcp-notes.ts (rename only)"
+RT5_SEEN=0
+for rt5_resolver in 'mcpRecheckNotesPath(' 'bridgeNotesPath('; do
+    RT5_HITS="$(grep -rlF "$rt5_resolver" "$ROOT_DIR/src" --include='*.ts' 2>/dev/null || true)"
+    while IFS= read -r rt_file; do
+        [[ -n "$rt_file" ]] || continue
+        RT5_SEEN=$((RT5_SEEN + 1))
+        rt5_rel="${rt_file#"$ROOT_DIR/src/"}"
+        case "$rt5_resolver:$rt5_rel" in
+            # 2.x resolver: the declaration, and the MCP MIGRATION, which is the one thing here that
+            # is not the installer. It rewrites the `server:` header when a file id is renamed under
+            # the project's feet; leaving that line stale makes every pipeline skill print a notes
+            # header warning forever, and nothing but a human can clear it. The exception is narrow
+            # by construction: a migration runs once per project and writes no findings.
+            'mcpRecheckNotesPath(:core/constants.ts'|'mcpRecheckNotesPath(:core/mcp-migrations/'*) ;;
+            # 3.0.0 resolver: the declaration, the swap module, and the migration that relocates the notes
+            'bridgeNotesPath(:core/constants-bridges.ts'|'bridgeNotesPath(:core/installer/bridge-notes.ts'|'bridgeNotesPath(:core/bridge-migrations/'*|'bridgeNotesPath(:core/installer/engine-bridges.ts') ;;
+            *) RT5_WHY+=" $rt5_rel($rt5_resolver)" ;;
+        esac
+    done <<< "$RT5_HITS"
+done
+if [[ $RT5_SEEN -eq 0 ]]; then
+    fail "RT-5 no use of mcpRecheckNotesPath( or bridgeNotesPath( found in src/ — the guard has no object left"
+elif [[ -z "$RT5_WHY" ]]; then
+    pass "RT-5 the notes resolvers are confined to their declarations, the swap module and the migrations ($RT5_SEEN file(s) scanned)"
 else
     fail "RT-5 the installer reaches the notes file outside the swap step:$RT5_WHY"
 fi
@@ -9163,8 +9173,8 @@ if [[ -z "$AR_WHY" ]]; then
     grep -qF '2. Archive anyway' "$AR_SKILL" || AR_WHY+=" AR-3:no-archive-anyway"
     grep -qF 'a declined row leaves no back-reference' "$AR_SKILL" || AR_WHY+=" AR-3:override-unexplained"
     # A transferred finding can lose its back-reference legitimately: the installer parks the notes
-    # on a server switch, and /unikit-mcp-audit removes a retired note with its from: (review finding).
-    grep -qF '.unikit/MCP-RECHECK-NOTES.archive.*.md' "$AR_SKILL" || AR_WHY+=" AR-3:parked-notes-unread"
+    # of a bridge that leaves the selection, and /unikit-mcp-audit removes a retired note with its from: (review finding).
+    grep -qF '.unikit/bridge-notes/archive/*.md' "$AR_SKILL" || AR_WHY+=" AR-3:parked-notes-unread"
     grep -qF 'removes a note it retires together with its back-reference' "$AR_SKILL" || AR_WHY+=" AR-3:retire-unexplained"
     # (AR-4) an open rule candidate is a follow-up like a finding — it asks, never stops — and
     # the question names the skill that actually flips an open candidate.
@@ -9474,7 +9484,8 @@ if [[ -z "$BX_WHY" ]]; then
     for f in "${BAL_GRAMMAR_FORMS[@]}"; do bx_lacks "BC-1:form-restated-in-skill(${f})" "$f" "$UNIKIT_VERIFY_SKILL"; done
     # 65000 -> 65400: unikit-verify gained the 397-byte user-questions pointer and lost its inline text tier
     # 65400 -> 65800: the branch match gained the 380-byte rule that finds an experiment plan by its own record (EXP-K1)
-    bx_max "BC-1:skill-size" 65800 "$UNIKIT_VERIFY_SKILL"
+    # 65800 -> 66100: the 3.0.0 layout (a block per bridge in the Bootstrap); lowered again when the routing prose moves to a reference
+    bx_max "BC-1:skill-size" 66100 "$UNIKIT_VERIFY_SKILL"
 
     # (BC-2) verify's branch: headings, the two level sentences, and the one place of suggested_next
     BX_CHK=$((BX_CHK + 1))
@@ -9557,7 +9568,8 @@ if [[ -z "$BX_WHY" ]]; then
     # 52600 -> 53100: unikit-implement gained the 552-byte subagent-arguments pointer (it had none)
     # 53100 -> 53200: it gained the 397-byte user-questions pointer and lost its inline text tier
     # 53200 -> 53600: the branch match gained the 380-byte rule that finds an experiment plan by its own record (EXP-K1)
-    bx_max "BM-6:implement-skill-size" 53600 "$UNIKIT_IMPLEMENT_SKILL"
+    # 53600 -> 53900: the 3.0.0 layout (a block per bridge in the Bootstrap); lowered again when the routing prose moves to a reference
+    bx_max "BM-6:implement-skill-size" 53900 "$UNIKIT_IMPLEMENT_SKILL"
     # (BC-4) a measurement the user skipped is a skipped row, not a blocker
     bx_has "BC-4:skipped-measure-is-a-blocker" '⏭️ SKIPPED' "$BC_REF"
     # (BC-5) a name stated in ## Not measured is accounted for — a measurement the user skipped is not a blocker
@@ -12431,6 +12443,27 @@ if [[ $BRIDGES_EXIT -eq 0 ]]; then
 else
     fail "Engine bridge guards"
     echo "$BRIDGES_OUTPUT" | sed 's/^/      /'
+fi
+
+# (BR-8a) The 2.x layout is gone from every text the package ships. Step 1: no literal path of the
+# single-server rules folder under .unikit/system/ in skills/, subagents/ or data/. SV-5 forbids an
+# unknown path under .unikit/system/ already; this names the reason and counts what it looked at.
+# Step 2 (the findings log at the root of .unikit/) is added when the last reader moves.
+BR8A_WHY=""
+BR8A_SEEN=0
+while IFS= read -r br8a_file; do
+    [[ -n "$br8a_file" ]] || continue
+    BR8A_SEEN=$((BR8A_SEEN + 1))
+    if grep -qF '.unikit/system/engine-mcp' "$br8a_file"; then
+        BR8A_WHY+=" ${br8a_file#"$ROOT_DIR/"}"
+    fi
+done < <(find "$ROOT_DIR/skills" "$ROOT_DIR/subagents" "$ROOT_DIR/data" -type f -name '*.md' 2>/dev/null)
+if [[ $BR8A_SEEN -eq 0 ]]; then
+    fail "BR-8a no markdown found under skills/, subagents/ and data/ — the guard has no object left"
+elif [[ -z "$BR8A_WHY" ]]; then
+    pass "BR-8a no shipped text names the 2.x .unikit/system/engine-mcp path ($BR8A_SEEN files scanned)"
+else
+    fail "BR-8a the 2.x engine-mcp path survives in:$BR8A_WHY"
 fi
 
 # ─────────────────────────────────────────────

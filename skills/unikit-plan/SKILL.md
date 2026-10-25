@@ -204,7 +204,7 @@ Silently load the project knowledge base before any exploration — do not narra
 
    **If the file is absent** — a **normal path**, not an error (an engine whose planning vocabulary has not shipped yet): set `engine_rules_loaded = false`. Every step that writes an `Editor:` field, the `Editor tasks` setting or a confirmation line reads that flag (Step 5, Step 6, `mode-full.md`, `mode-fast.md`, `mode-add.md`). `add` mode runs this step too.
 
-6. **Read `.unikit/system/engine-mcp/INDEX.md` — the base section only**: the delivery stamp plus every section **except** the `## Check` table — the exceptions that shape planning: where a commit boundary falls, what may never run in parallel, how the work splits into phases. Set `mcp_index_loaded = true`.
+6. **Read `.unikit/system/engine-bridges/BRIDGES.md`, and for each bridge whose block names a rules tree its `.unikit/system/engine-bridges/<bridge>/INDEX.md` — the base section only**: the delivery stamp plus every section **except** the `## Check` table — the exceptions that shape planning: where a commit boundary falls, what may never run in parallel, how the work splits into phases. Set `mcp_index_loaded = true`.
 
    **Do not read the `## Check` table** — it is the executors', grepped per task by area.
 
@@ -487,7 +487,7 @@ That is the entire question — **not** which tool does it, **not** how it is ca
 - a kind of work with no route → do not schedule it as engine-MCP work: express the change in a form that has a route, or keep the task and name the missing capability in its `WHY:`. **Do not pre-write `⏸️ MANUAL` into the task** — it is a runtime verdict (A9);
 - an evidence class that is not reachable → rewrite the acceptance criterion against a class that is, or say plainly in `## Overview` that it cannot be closed here. Never silently downgrade it to the cheapest observation available.
 
-**The planner never:** calls anything that changes state, reads the `## Check` table, reads `.unikit/MCP-RECHECK-NOTES.md`, or opens Context7.
+**The planner never:** calls anything that changes state, reads the `## Check` table, reads the notes of a bridge (`.unikit/bridge-notes/`), or opens Context7.
 
 **No engine MCP configured, or discovery yields nothing → skip.** Plan against the base principles, unchanged.
 

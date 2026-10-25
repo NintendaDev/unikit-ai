@@ -121,10 +121,10 @@ The absence of a rules file is not a restriction.
 
 | file | who reads it | how |
 |---|---|---|
-| `.unikit/system/engine-mcp/INDEX.md` — the base section | everyone using the engine MCP | in full, once, at Bootstrap |
-| `.unikit/system/engine-mcp/INDEX.md` — the check table | implement · fix · devcontext · verify | by grep: your `kind`'s area plus every cross-cutting area |
-| `.unikit/system/engine-mcp/verification.md` | `/unikit-verify` **only** | in full |
-| `.unikit/MCP-RECHECK-NOTES.md` | implement · fix · devcontext · verify | by grep, the same areas |
+| `.unikit/system/engine-bridges/<bridge>/INDEX.md` — the base section | everyone using the engine MCP | in full, once, at Bootstrap |
+| `.unikit/system/engine-bridges/<bridge>/INDEX.md` — the check table | implement · fix · devcontext · verify | by grep: your `kind`'s area plus every cross-cutting area |
+| `.unikit/system/engine-bridges/<bridge>/verification.md` | `/unikit-verify` **only** | in full |
+| `.unikit/bridge-notes/<bridge>.md` | implement · fix · devcontext · verify | by grep, the same areas |
 
 A file that is absent is skipped: its reader prints one line and keeps every right it had — see A9.
 
@@ -149,7 +149,7 @@ A file that is absent is skipped: its reader prints one line and keeps every rig
 
    Everything else — the engine and its frameworks, trivial accessors, generated code — gets no tests. **Smell check:** if a designer changing a number, or a new catalog row, field or enemy, turns a test red while the system is intact, the test is pinned to a tunable value or to a growing list — rewrite it as bounds or an invariant, or take the expected value from the fixture.
 
-   If `.unikit/system/engine-mcp/verification.md` marks the tests gate **GATE LIFTED** for the configured server, that overrides the run-through-MCP part of this rule — the requirement to *have* tests stands, only the way to execute them changes. `GATE LIFTED` is a **runtime verdict of `/unikit-verify`**: it is established by trying, finding no affordance, and presenting the evidence of absence. It is never pre-written into a rules file. File absent, or this skill does not read it → the base rule applies.
+   If the `verification.md` of a bridge (`.unikit/system/engine-bridges/<bridge>/`) marks the tests gate **GATE LIFTED** for that bridge, that overrides the run-through-MCP part of this rule — the requirement to *have* tests stands, only the way to execute them changes. `GATE LIFTED` is a **runtime verdict of `/unikit-verify`**: it is established by trying, finding no affordance, and presenting the evidence of absence. It is never pre-written into a rules file. File absent, or this skill does not read it → the base rule applies.
 
 5a. **Tests follow acceptance.** A result you have handed over — a phase, a plan, a fix — is under review while the user looks at it and answers with edits. The review loop is defined by that state, not by the kind of edit: visuals, feel, layout, tuning and code changes all wait alike. Inside the loop make the edit and compile; for a visual or data edit also take the read-back or the frame (A2). Write no new test and run no suite. Say `INFO [testing] review loop: tests deferred until you accept` once, at the first edit of the loop, and do not repeat it.
 
@@ -264,7 +264,7 @@ The procedure every executor follows when a change to the editor's serialized st
 
 1. **Candidates from the live catalog, by intent.** Take the change's area — for an `Editor:` task, the one its `kind` names — and its action, and pick 3-5 candidate affordances out of the tool list you actually hold. That list is the only place a name may come from — not this file, not a rules file, not memory. A name recalled instead of read is a `catalog phantom` you invented.
 2. **Ask the server for the schema** of those 3-5 before calling any of them. A one-line or empty declaration does not mean "no parameters".
-3. **Grep by area.** Read the `## Check` table of `.unikit/system/engine-mcp/INDEX.md` and of `.unikit/MCP-RECHECK-NOTES.md`, filtered to the change's own area **plus every cross-cutting area**: `rollback · console · batch · compile · transport · visual`. The cross-cutting six are read **always**: the lines are short, and the moment one becomes applicable is not knowable in advance.
+3. **Grep by area.** Read the `## Check` table of `.unikit/system/engine-bridges/<bridge>/INDEX.md` and of `.unikit/bridge-notes/<bridge>.md`, for each bridge in `BRIDGES.md`, filtered to the change's own area **plus every cross-cutting area**: `rollback · console · batch · compile · transport · visual`. The cross-cutting six are read **always**: the lines are short, and the moment one becomes applicable is not knowable in advance.
 4. **Execute, then read the changed state back.** Close the claim with the evidence class its claim class requires (A2). A response code is not evidence; the evidence is the read-back of what you claimed to change.
 
 **No rules file, or no check line for this area → nothing changes.** Every right you had, you keep (A9). `⏸️ MANUAL` is reached only by trying, finding no route at all, and having the evidence of that absence to show (D3).
@@ -285,11 +285,11 @@ The row:
 - **dedup is semantic, not mechanical** — drop a candidate that says the same thing about the same `area` as a row already there, judged by meaning rather than by string match. Being loose is deliberate: a duplicate that slips through costs one line, a wrong merge destroys the `evidence` of an observation, and evidence cannot be reconstructed;
 - the columns and their contract: `unikit-plan/references/TASK-FORMAT.md` → `### MCP findings section`.
 
-**Never write `.unikit/MCP-RECHECK-NOTES.md` yourself.** One observation is a bad sample and a bad line lives for months; the durable surface passes through a human running the `unikit-mcp-trap` skill.
+**Never write `.unikit/bridge-notes/<bridge>.md` yourself.** One observation is a bad sample and a bad line lives for months; the durable surface passes through a human running the `unikit-mcp-trap` skill.
 
 ### D8. The library reference
 
-The documentation source the header of `.unikit/system/engine-mcp/INDEX.md` names for the configured server. Its identifier is carried there, so nothing is resolved at run time. **Only a reader granted that server reaches for it**; for every other reader of this file D8 is inert — the same as an unconfigured reference (below). Reach for it on exactly two occasions, and **never at Bootstrap**:
+The documentation source the header of the bridge's `.unikit/system/engine-bridges/<bridge>/INDEX.md` names for it. Its identifier is carried there, so nothing is resolved at run time. **Only a reader granted that server reaches for it**; for every other reader of this file D8 is inert — the same as an unconfigured reference (below). Reach for it on exactly two occasions, and **never at Bootstrap**:
 
 1. **an unfamiliar area** — what approaches the authors propose; once per area per session;
 2. **a dead end** — you hold the schema and the capability still is not there.

@@ -59,22 +59,23 @@ Relevant to the dev pipeline:
 - `dev-principles.md` — the canonical engine development principles + workflow. Read on Bootstrap
   by `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-improve`, `/unikit-devcontext`,
   `/unikit-mcp-audit`, and the `unikit-implement-coordinator` and `unikit-implement-worker` agents.
-- `engine-mcp/{INDEX,verification}.md` — the **rules tree of the engine MCP server the project
-  actually selected**, delivered verbatim from the package with a provenance stamp. It records
+- `engine-bridges/BRIDGES.md` and `engine-bridges/<bridge>/{INDEX,verification}.md` — `BRIDGES.md` lists the **engine bridges the project actually selected**
+  (the package's default order and one block per bridge); next to it, **one rules tree per
+  bridge**, delivered verbatim from the package with a provenance stamp. A tree records
   **exceptions, not capabilities**: no tool names, no inventory of what the server cannot do —
   only checks to perform. `INDEX.md` carries a base section (read in full, once, at Bootstrap by
   everyone using the engine MCP) plus a check table keyed by **area**, which implement / fix /
   devcontext / verify read by grep — their own work kind's area, plus every cross-cutting area.
   `verification.md` is read by `/unikit-verify` **only**, and calibrates which gates are
   reachable; **GATE LIFTED** is a runtime verdict verify reaches by trying and producing the
-  evidence of absence — it is never pre-written into the file. Switching MCP or engine replaces
-  the tree (stale files are deleted). Not every MCP server ships one, and a missing file changes
-  nothing: no known exceptions is not the same as no capabilities, so nothing is disabled and
-  nothing becomes manual.
-- `.unikit/MCP-RECHECK-NOTES.md` — **not** a system asset, and deliberately outside
-  `system/`: the project's own findings about that server, in the same area-keyed form, read by
-  the same greps. `init` / `update` never rewrite it (only rename it when the server changes).
-  Written by `/unikit-mcp-trap`, curated by `/unikit-mcp-audit`.
+  evidence of absence — it is never pre-written into the file. Changing the selection or the engine
+  replaces the trees (stale files are deleted, and so is the 2.x `engine-mcp/` folder). Not every
+  bridge ships a tree, and a missing file changes nothing: no known exceptions is not the same as
+  no capabilities, so nothing is disabled and nothing becomes manual.
+- `.unikit/bridge-notes/<bridge>.md` — **not** a system asset, and deliberately outside
+  `system/`: the project's own findings about that bridge, in the same area-keyed form, read by
+  the same greps. `init` / `update` never rewrite them (only rename a file into `archive/` when
+  its bridge leaves the selection, and back). Written by `/unikit-mcp-trap`, curated by `/unikit-mcp-audit`.
 - `cli-contract.md`, `gate-result-contract.md`, `modules.yml`, `gamedesign/` — contracts read on
   demand by the skills that need them.
 - `ultra-plan-read.md` — the ultra plan bundle reader contract, read by `/unikit-implement`,

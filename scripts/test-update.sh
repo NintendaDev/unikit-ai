@@ -44,7 +44,7 @@ restore_package_state() {
     if [[ -n "$FIXTURE_JSON" && -n "$FIXTURE_JSON_BACKUP" && -f "$FIXTURE_JSON_BACKUP" ]]; then
         cp "$FIXTURE_JSON_BACKUP" "$FIXTURE_JSON"
     fi
-    # A failing run gets the engine-mcp evidence dumped before the temp tree goes: the
+    # A failing run gets the engine-bridge evidence dumped before the temp tree goes: the
     # assertion that aborted printed one path and nothing about the state around it.
     if [[ $exit_code -ne 0 ]]; then
         dump_mcp_state "$TMPDIR"
@@ -1554,15 +1554,16 @@ fi
 echo "  ✓ genre profiles: update delivers + refreshes installed profiles from data/ (update.ts wiring)"
 
 # ─────────────────────────────────────────────
-# Test 30e: engine-mcp assets on update — the ONLY mechanical guard on the update.ts
-# wiring. Three legs, because the same call has three branches and only one of them is
+# Test 30e: engine-bridge assets on update — the ONLY mechanical guard on the update.ts
+# wiring. Four legs, because the same call has four branches and only one of them is
 # about writing files:
 #   Leg 1 — a pre-cutover shard profile on disk is SWEPT (the migration path). System
 #           assets have NO migration chain, so this orphan-delete is the only thing that
 #           will ever remove the three shards a pre-cutover project still carries.
-#   Leg 2 — the selected server's rules tree is DELIVERED, stamped (the fresh path).
+#   Leg 2 — the selected bridge's rules tree is DELIVERED, stamped (the fresh path).
 #   Leg 3 — a hand-edited copy is REFRESHED, and a file the tree does not contain is
 #           removed (tamper-refresh + recursive orphan-delete).
+#   Leg 4 — the 2.x folder engine-mcp/, with a stamp of the old kind, is removed whole.
 # ─────────────────────────────────────────────
 CONFIG="$DEVPRIN_CONFIG" node -e "
     const fs=require('fs'); const f=process.env.CONFIG;
@@ -1572,48 +1573,52 @@ CONFIG="$DEVPRIN_CONFIG" node -e "
     c.engineBridges = { selected: { 'unity-biome-mcp': 'unity-biome-mcp' } };
     fs.writeFileSync(f, JSON.stringify(c,null,2));
 "
-MCP_SHARD_DIR="$DEVPRIN_DIR/.unikit/system/engine-mcp"
+MCP_LEGACY_DIR="$DEVPRIN_DIR/.unikit/system/engine-mcp"
+MCP_SHARD_DIR="$DEVPRIN_DIR/.unikit/system/engine-bridges/unity-biome-mcp"
 
 # Leg 1 — the UPGRADE path. Every project installed before the cutover carries the three
-# shards on disk, and the orphan-delete inside installEngineMcpRules is the only thing
-# that will ever remove them: system assets have no migration chain. Two of the three
-# names are absent from the rules tree and go as orphans; `verification.md` survives as a
-# NAME and is overwritten instead — which is the point of seeding all three with the same
-# marker. A sweep that only removed files would leave the pre-cutover body in place under
-# a name the new tree still uses, and no assertion on the other two would notice.
-mkdir -p "$MCP_SHARD_DIR"
+# shards on disk, in the old folder engine-mcp/, and the sweep inside installEngineBridges
+# is the only thing that will ever remove them: system assets have no migration chain.
+# Since 3.0.0 the folder is removed whole, whatever it holds. The tree of the bridge is
+# seeded with the same marker under a name the new tree reuses (`verification.md`): a
+# sweep that only removed files would leave a pre-cutover body in place under it.
+mkdir -p "$MCP_LEGACY_DIR" "$MCP_SHARD_DIR"
 for shard in capabilities scene-authoring verification; do
-    echo "STALE_PRE_CUTOVER_PROFILE" > "$MCP_SHARD_DIR/$shard.md"
+    echo "STALE_PRE_CUTOVER_PROFILE" > "$MCP_LEGACY_DIR/$shard.md"
 done
+echo "STALE_PRE_CUTOVER_PROFILE" > "$MCP_SHARD_DIR/verification.md"
 
 MCP_SHARD_OUT1="$TMPDIR/update-mcp-shards-1.log"
 (cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$MCP_SHARD_OUT1" 2>&1)
 
-for shard in capabilities scene-authoring; do
-    assert_not_exists "$MCP_SHARD_DIR/$shard.md" \
+for shard in capabilities scene-authoring verification; do
+    assert_not_exists "$MCP_LEGACY_DIR/$shard.md" \
         "update sweeps the pre-cutover engine-mcp $shard.md (no stale profile survives)"
 done
+assert_not_exists "$MCP_LEGACY_DIR" "update removes the 2.x engine-mcp folder altogether"
 assert_not_contains "$MCP_SHARD_DIR/verification.md" 'STALE_PRE_CUTOVER_PROFILE' \
-    "a pre-cutover shard whose name the rules tree reuses is overwritten, not left in place"
-echo "  ✓ engine-mcp: a pre-cutover profile is swept / overwritten on update (update.ts wiring)"
+    "a stale file whose name the rules tree reuses is overwritten, not left in place"
+echo "  ✓ engine-bridges: a pre-cutover profile is swept / overwritten on update (update.ts wiring)"
 
 # The same update that swept the shards delivered the tree in their place — one call,
 # both branches, which is why Leg 1 does not need its own re-run.
 assert_exists "$MCP_SHARD_DIR/INDEX.md" \
-    "update delivers the selected server's rules tree in place of the swept shards"
-assert_contains "$MCP_SHARD_DIR/INDEX.md" '^server: unity-biome-mcp$' \
-    "the delivered tree is stamped with the server it came from"
+    "update delivers the selected bridge's rules tree in place of the swept shards"
+assert_contains "$MCP_SHARD_DIR/INDEX.md" '^bridge: unity-biome-mcp$' \
+    "the delivered tree is stamped with the bridge it came from"
 
 # Leg 2 — the FRESH path. Nothing on disk, a populated selection: the tree is created.
-rm -rf "$MCP_SHARD_DIR"
+rm -rf "$DEVPRIN_DIR/.unikit/system/engine-bridges"
 MCP_SHARD_OUT2="$TMPDIR/update-mcp-shards-2.log"
 (cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$MCP_SHARD_OUT2" 2>&1)
 
 assert_exists "$MCP_SHARD_DIR/INDEX.md" \
-    "selecting an engine MCP delivers its rules tree on a clean project"
+    "selecting an engine bridge delivers its rules tree on a clean project"
 assert_exists "$MCP_SHARD_DIR/verification.md" \
     "the whole tree is delivered, not just its entry point"
-echo "  ✓ engine-mcp: the selected server's rules tree is delivered on update"
+assert_exists "$DEVPRIN_DIR/.unikit/system/engine-bridges/BRIDGES.md" \
+    "BRIDGES.md is delivered with the tree"
+echo "  ✓ engine-bridges: the selected bridge's rules tree is delivered on update"
 
 # Leg 3 — TAMPER-REFRESH + recursive orphan-delete. System assets are not hash-tracked,
 # so a hand-edited copy must be overwritten on the next update rather than kept; and the
@@ -1630,7 +1635,18 @@ assert_not_contains "$MCP_SHARD_DIR/INDEX.md" 'HAND_EDITED' \
     "a hand-edited rules file is rewritten on update (system assets are not hash-tracked)"
 assert_not_exists "$MCP_SHARD_DIR/stale-subdir/orphan.txt" \
     "orphan-delete reaches a nested non-markdown file (recursive, not *.md-only)"
-echo "  ✓ engine-mcp: tamper-refresh restores the tree and sweeps a nested orphan"
+echo "  ✓ engine-bridges: tamper-refresh restores the tree and sweeps a nested orphan"
+
+# Leg 4 — the 2.x folder with a stamp of the old kind (`server:`), as a project upgraded
+# in place would still have it. It is not a tree of this release and nothing reads it.
+mkdir -p "$MCP_LEGACY_DIR"
+printf 'server: unity-biome-mcp\n\n# Tree\n' > "$MCP_LEGACY_DIR/INDEX.md"
+echo "OLD" > "$MCP_LEGACY_DIR/capabilities.md"
+MCP_SHARD_OUT4="$TMPDIR/update-mcp-shards-4.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$MCP_SHARD_OUT4" 2>&1)
+assert_not_exists "$MCP_LEGACY_DIR" "a 2.x engine-mcp folder with an old-kind stamp is removed whole on update"
+assert_exists "$MCP_SHARD_DIR/INDEX.md" "...and the tree of the bridge is still there"
+echo "  ✓ engine-bridges: the 2.x engine-mcp folder is removed whole"
 
 # ─────────────────────────────────────────────
 # Test 30f: the MCP selection is part of the skill source hash
@@ -1910,70 +1926,93 @@ unuse_fake_mcp_catalog
 echo "  ✓ narrowed grants: dead mcp__ names removed without a reinstall, hand-authored entries kept"
 
 # ─────────────────────────────────────────────
-# Test 30i: the MCP findings log follows the server it belongs to
+# Test 30i: the findings log follows the bridge it belongs to
 # ─────────────────────────────────────────────
-# `.unikit/MCP-RECHECK-NOTES.md` records what one MCP server was caught doing.
-# Carried across a server switch it would be worse than lost — it would read as
-# evidence about a server that never produced it. So the installer parks it under
-# the outgoing server's id and restores it on the way back.
+# `.unikit/bridge-notes/<bridge>.md` records what one bridge was caught doing.
+# Carried across a switch it would be worse than lost — it would read as evidence
+# about a bridge that never produced it. So the installer parks the log of a bridge
+# that left the selection in `archive/<bridge>.md` and restores it when the bridge
+# comes back: the difference of the two SETS, bridge by bridge.
 #
-# Module-level rather than CLI-level, and the reason is a contract, not
-# convenience: the swap's live caller is `init`, whose previous selection comes
-# from the config it is about to overwrite. `update` never re-asks for servers, so
-# its call is a documented no-op and drives none of this. That leaves `init`, and
-# `init` is a wizard no smoke test can drive. Same precedent as the TomlMcpWriter
-# and `sortMcpChoices` checks: exercise the unit through node.
+# Module-level rather than CLI-level, and the reason is a contract, not convenience:
+# the swap's call from `init` takes its previous set from the config it is about to
+# overwrite, which no smoke test can drive (the wizard is interactive). Same precedent
+# as the TomlMcpWriter and `sortMcpChoices` checks: exercise the unit through node.
+# The `update` path is Test 30j.
 #
-# Covered: park under the OUTGOING id, restore the incoming server's own file,
-# never overwrite a taken archive slot, and idempotence when nothing changed.
+# Covered: park under the OUTGOING id, restore the incoming bridge's own file, never
+# overwrite a taken archive slot, idempotence, a set of several bridges changing in part,
+# the fallback when there is no record of the previous set (only known ids are touched),
+# and the warning for a bridge whose notes are both active and archived.
 
 NOTES_SWAP_TMP=$(mktemp -d)
 NOTES_SWAP_ERR="$TMPDIR/update-notes-swap.err"
 NOTES_SWAP_RESULT=$(cd "$ROOT_DIR" && NOTES_ROOT="$NOTES_SWAP_TMP" node --input-type=module -e "
   import fs from 'fs';
   import path from 'path';
-  import { swapMcpRecheckNotes } from './dist/core/installer/mcp-notes.js';
+  import { swapBridgeNotes } from './dist/core/installer/bridge-notes.js';
 
   const root = process.env.NOTES_ROOT;
-  const unikit = path.join(root, '.unikit');
-  fs.mkdirSync(unikit, { recursive: true });
-  const active = path.join(unikit, 'MCP-RECHECK-NOTES.md');
-  const archive = id => path.join(unikit, 'MCP-RECHECK-NOTES.archive.' + id + '.md');
+  const notesDir = path.join(root, '.unikit', 'bridge-notes');
+  const archiveDir = path.join(notesDir, 'archive');
+  fs.mkdirSync(notesDir, { recursive: true });
+  const active = id => path.join(notesDir, id + '.md');
+  const archive = (id, n) => path.join(archiveDir, n ? id + '.' + n + '.md' : id + '.md');
+  const put = (file, text) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text); };
+  const known = new Set(['unity-biome-mcp', 'fennara-godot-mcp', 'a', 'b', 'c']);
   const why = [];
   const read = f => (fs.existsSync(f) ? fs.readFileSync(f, 'utf8').trim() : null);
 
   // park: biome -> fennara
-  fs.writeFileSync(active, 'BIOME_FINDING');
-  await swapMcpRecheckNotes(root, 'unity-biome-mcp', 'fennara-godot-mcp');
-  if (fs.existsSync(active)) why.push('active-survived-the-switch');
+  put(active('unity-biome-mcp'), 'BIOME_FINDING');
+  await swapBridgeNotes(root, ['unity-biome-mcp'], ['fennara-godot-mcp'], known);
+  if (fs.existsSync(active('unity-biome-mcp'))) why.push('active-survived-the-switch');
   if (read(archive('unity-biome-mcp')) !== 'BIOME_FINDING') why.push('parked-under-wrong-id-or-rewritten');
 
   // restore: fennara -> biome, with fennara's own notes parked in turn
-  fs.writeFileSync(active, 'FENNARA_FINDING');
-  await swapMcpRecheckNotes(root, 'fennara-godot-mcp', 'unity-biome-mcp');
-  if (read(active) !== 'BIOME_FINDING') why.push('restore-did-not-return-the-servers-own-notes');
+  put(active('fennara-godot-mcp'), 'FENNARA_FINDING');
+  await swapBridgeNotes(root, ['fennara-godot-mcp'], ['unity-biome-mcp'], known);
+  if (read(active('unity-biome-mcp')) !== 'BIOME_FINDING') why.push('restore-did-not-return-the-bridges-own-notes');
   if (read(archive('fennara-godot-mcp')) !== 'FENNARA_FINDING') why.push('outgoing-notes-not-parked-on-restore');
   if (fs.existsSync(archive('unity-biome-mcp'))) why.push('archive-left-beside-the-restored-active');
 
   // a taken archive slot is never overwritten — it is evidence of an interrupted run
-  fs.writeFileSync(archive('unity-biome-mcp'), 'ORPHAN_FROM_A_BROKEN_RUN');
-  fs.writeFileSync(active, 'SECOND_BIOME_FINDING');
-  await swapMcpRecheckNotes(root, 'unity-biome-mcp', 'fennara-godot-mcp');
+  put(archive('unity-biome-mcp'), 'ORPHAN_FROM_A_BROKEN_RUN');
+  put(active('unity-biome-mcp'), 'SECOND_BIOME_FINDING');
+  await swapBridgeNotes(root, ['unity-biome-mcp'], ['fennara-godot-mcp'], known);
   if (read(archive('unity-biome-mcp')) !== 'ORPHAN_FROM_A_BROKEN_RUN') why.push('taken-archive-slot-overwritten');
-  if (read(path.join(unikit, 'MCP-RECHECK-NOTES.archive.unity-biome-mcp.1.md')) !== 'SECOND_BIOME_FINDING')
-    why.push('collision-not-indexed');
+  if (read(archive('unity-biome-mcp', 1)) !== 'SECOND_BIOME_FINDING') why.push('collision-not-indexed');
 
-  // idempotence: same server in and out touches nothing
-  const before = fs.readdirSync(unikit).sort().join('|');
-  await swapMcpRecheckNotes(root, 'fennara-godot-mcp', 'fennara-godot-mcp');
-  if (fs.readdirSync(unikit).sort().join('|') !== before) why.push('no-op-branch-touched-the-disk');
+  // idempotence: the same set in and out touches nothing
+  const snapshot = () => [notesDir, archiveDir].flatMap(d => fs.readdirSync(d).map(n => d + '/' + n)).sort().join('|');
+  const before = snapshot();
+  await swapBridgeNotes(root, ['fennara-godot-mcp'], ['fennara-godot-mcp'], known);
+  if (snapshot() !== before) why.push('no-op-branch-touched-the-disk');
+
+  // a set in part: (a, b) -> (b, c): b stays, a is parked, c comes back from the archive
+  put(active('a'), 'A_FINDING'); put(active('b'), 'B_FINDING'); put(archive('c'), 'C_FINDING');
+  await swapBridgeNotes(root, ['a', 'b'], ['b', 'c'], known);
+  if (read(active('b')) !== 'B_FINDING') why.push('kept-bridge-was-touched');
+  if (fs.existsSync(active('a')) || read(archive('a')) !== 'A_FINDING') why.push('dropped-bridge-not-parked');
+  if (read(active('c')) !== 'C_FINDING' || fs.existsSync(archive('c'))) why.push('returning-bridge-not-restored');
+
+  // no record of the previous set: only the notes of KNOWN bridges are read as the previous set
+  put(active('a'), 'A_AGAIN'); put(path.join(notesDir, 'zz-mine.md'), 'USER_OWN_FILE');
+  await swapBridgeNotes(root, null, ['b'], known);
+  if (fs.existsSync(active('a'))) why.push('fallback-left-a-known-bridge-active');
+  if (read(path.join(notesDir, 'zz-mine.md')) !== 'USER_OWN_FILE') why.push('fallback-touched-a-file-that-is-not-a-bridge');
+
+  // active AND archived: left as they are, and said so
+  put(active('c'), 'C_ACTIVE'); put(archive('c'), 'C_ARCHIVED');
+  await swapBridgeNotes(root, ['b'], ['b', 'c'], known);
+  if (read(active('c')) !== 'C_ACTIVE' || read(archive('c')) !== 'C_ARCHIVED') why.push('both-states-were-merged-or-moved');
 
   console.log(why.length ? why.join(' ') : 'ok');
 " 2>"$NOTES_SWAP_ERR" || echo "swap-error")
 rm -rf "$NOTES_SWAP_TMP"
 
 if [[ "$NOTES_SWAP_RESULT" != "ok" ]]; then
-    echo "Assertion failed: MCP recheck-notes swap is broken: $NOTES_SWAP_RESULT"
+    echo "Assertion failed: the bridge notes swap is broken: $NOTES_SWAP_RESULT"
     echo "--- stderr ---"; cat "$NOTES_SWAP_ERR" 2>/dev/null || true; echo "--------------"
     exit 1
 fi
@@ -1981,15 +2020,20 @@ fi
 # The collision branch must also SAY so. Indexing the archive silently would leave the
 # orphan of an interrupted run sitting on disk with nothing pointing at it: the notes are
 # hand-authored, no installer step ever revisits them, and the only moment anyone can
-# learn that two files now claim the same server is the run that made it happen.
+# learn that two files now claim the same bridge is the run that made it happen.
 if ! grep -qF 'archive name taken' "$NOTES_SWAP_ERR"; then
     echo "Assertion failed: an indexed archive slot was written without a WARN"
     echo "  (the .N file is the outcome; the warning is the only notice the operator gets)"
     echo "--- stderr ---"; cat "$NOTES_SWAP_ERR" 2>/dev/null || true; echo "--------------"
     exit 1
 fi
+if ! grep -qF 'both active and archived' "$NOTES_SWAP_ERR"; then
+    echo "Assertion failed: a bridge with notes both active and archived was restored over, or silently skipped"
+    echo "--- stderr ---"; cat "$NOTES_SWAP_ERR" 2>/dev/null || true; echo "--------------"
+    exit 1
+fi
 
-echo "  ✓ recheck notes: parked under the outgoing server, restored on the way back, archives never overwritten (collision warns)"
+echo "  ✓ bridge notes: parked under the outgoing bridge, restored on the way back, a set changes bridge by bridge, archives never overwritten (collision warns)"
 
 # ─────────────────────────────────────────────
 # Test 30j: an engine switch through `update` parks the findings log too
@@ -2000,18 +2044,17 @@ echo "  ✓ recheck notes: parked under the outgoing server, restored on the way
 # above proves the command honours it everywhere else (skills reinstalled, stale
 # grants cleared). The findings log has to follow the same switch.
 #
-# The ordering is the whole point and it fails silently: the previous server id
-# comes from the provenance stamp in the tree on disk, and `installEngineMcpRules`
-# overwrites that stamp. Read it after, and the "previous" server is the new one,
-# the swap no-ops, and biome's findings sit active under fennara looking like
-# evidence about fennara.
+# The ordering is the whole point and it fails silently: the previous set comes
+# from the BRIDGES.md on disk, and `installEngineBridges` rewrites that file. Read it
+# after, and the "previous" set is the new one, the swap no-ops, and biome's findings
+# sit active under fennara looking like evidence about fennara.
 #
 # Three steps, not two. Step 2 (biome to fennara) is about the notes: they follow the
-# server, and whether the incoming server has a tree is irrelevant to that. Step 3
-# (fennara to gdai) is about the sweep, and for that the incoming server MUST be
-# treeless -- otherwise "empty" stops being the correct end state and the orphan-delete
-# branch is never executed at all. Folding them into one step holds both assertions
-# hostage to whether one particular server happened to grow a tree.
+# bridge, and whether the incoming bridge has a tree is irrelevant to that. Step 3
+# (fennara to a treeless bridge) is about the sweep, and for that the incoming bridge
+# MUST be treeless -- otherwise "empty" stops being the correct end state and the
+# orphan-delete branch is never executed at all. Folding them into one step holds both
+# assertions hostage to whether one particular server happened to grow a tree.
 
 NOTES_CLI_DIR="$TMPDIR/update-notes-engine-switch"
 mkdir -p "$NOTES_CLI_DIR"
@@ -2038,10 +2081,11 @@ inject_fake_registry "$NOTES_CLI_DIR"
 NOTES_CLI_OUT1="$TMPDIR/update-notes-cli-1.log"
 (cd "$NOTES_CLI_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$NOTES_CLI_OUT1" 2>&1)
 
-# The log is user-authored (`/unikit-mcp-trap` writes it); seed it by hand, because
+# The log is user-authored (`/unikit-bridge-trap` writes it); seed it by hand, because
 # the installer must only ever rename this file, never create or rewrite it.
-NOTES_CLI_ACTIVE="$NOTES_CLI_DIR/.unikit/MCP-RECHECK-NOTES.md"
-NOTES_CLI_ARCHIVE="$NOTES_CLI_DIR/.unikit/MCP-RECHECK-NOTES.archive.unity-biome-mcp.md"
+NOTES_CLI_ACTIVE="$NOTES_CLI_DIR/.unikit/bridge-notes/unity-biome-mcp.md"
+NOTES_CLI_ARCHIVE="$NOTES_CLI_DIR/.unikit/bridge-notes/archive/unity-biome-mcp.md"
+mkdir -p "$(dirname "$NOTES_CLI_ACTIVE")"
 echo "BIOME_FINDING" > "$NOTES_CLI_ACTIVE"
 
 CONFIG="$NOTES_CLI_DIR/.unikit.json" node -e "
@@ -2056,43 +2100,39 @@ NOTES_CLI_OUT2="$TMPDIR/update-notes-cli-2.log"
 (cd "$NOTES_CLI_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$NOTES_CLI_OUT2" 2>&1)
 
 if [[ -f "$NOTES_CLI_ACTIVE" ]]; then
-    echo "Assertion failed: an engine switch through update left the old server's findings active"
-    echo "  (the previous id is read from the delivered stamp — reading it AFTER"
-    echo "   installEngineMcpRules rewrites the stamp makes the swap a silent no-op)"
+    echo "Assertion failed: an engine switch through update left the old bridge's findings active"
+    echo "  (the previous set is read from the BRIDGES.md on disk — reading it AFTER"
+    echo "   installEngineBridges rewrites the file makes the swap a silent no-op)"
     echo "--- content still active ---"
     cat "$NOTES_CLI_ACTIVE"
     echo "----------------------------"
     exit 1
 fi
 assert_exists "$NOTES_CLI_ARCHIVE" \
-    "the log is parked under the id of the server that produced it"
+    "the log is parked under the id of the bridge that produced it"
 assert_contains "$NOTES_CLI_ARCHIVE" 'BIOME_FINDING' \
     "parking is a rename — the installer never rewrites note content"
 
 # Tree -> tree. Both trees name their files the same way, so orphan-delete does not
-# fire here at all and "empty" is not the correct end state: the replacement is proved
-# by the stamp. Before fennara this path was untestable -- there was no second tree on
-# one engine.
-NOTES_CLI_RULES="$NOTES_CLI_DIR/.unikit/system/engine-mcp"
+# fire on a shared name and "empty" is not the correct end state: the replacement is
+# proved by the stamp, and by the old bridge's folder being gone.
+NOTES_CLI_BRIDGES="$NOTES_CLI_DIR/.unikit/system/engine-bridges"
+NOTES_CLI_RULES="$NOTES_CLI_BRIDGES/fennara-godot-mcp"
 assert_exists "$NOTES_CLI_RULES/INDEX.md" \
-    "the incoming server's own rules tree is delivered in place of the outgoing one"
-assert_contains "$NOTES_CLI_RULES/INDEX.md" '^server: fennara-godot-mcp$' \
-    "the delivered tree is stamped with the server that replaced the previous one"
-assert_not_contains "$NOTES_CLI_RULES/INDEX.md" 'unity-biome-mcp' \
-    "nothing of the outgoing server's tree survives the replacement"
+    "the incoming bridge's own rules tree is delivered"
+assert_contains "$NOTES_CLI_RULES/INDEX.md" '^bridge: fennara-godot-mcp$' \
+    "the delivered tree is stamped with the bridge that replaced the previous one"
+assert_not_exists "$NOTES_CLI_BRIDGES/unity-biome-mcp" \
+    "nothing of the outgoing bridge's tree survives the replacement"
+assert_not_contains "$NOTES_CLI_BRIDGES/BRIDGES.md" 'unity-biome-mcp' \
+    "BRIDGES.md lists only the bridge that replaced the previous one"
 
 # Step 3 - the sweep. Deliberately separated from step 2: there the assertion is that
-# the notes follow the server, here that the outgoing server's tree leaves with it.
-# The incoming server MUST be treeless, otherwise "empty" stops being the correct end
-# state and with it goes the only branch on which orphan-delete runs at all. Fennara no
-# longer qualifies - it grows a tree; GDAI no longer qualifies either as of its own
-# conformance run (2026-09-04) - it grows a tree too; neither does Coding-Solo as of
-# its own conformance run (2026-09-05) - all three Godot servers now carry a tree.
-# chir24-unreal-mcp (Unreal Engine 5) no longer qualifies either as of its own
-# conformance run - it now carries a tree too, closing out every real is_engine server
-# in the shipped mcp/ catalog. There is no real treeless is_engine server left to target,
-# so this step falls back to the fixture catalog (the same one test-install.sh Test 13c
-# uses) for its one genuinely treeless is_engine server.
+# the notes follow the bridge, here that the outgoing bridge's tree leaves with it.
+# The incoming bridge MUST be treeless, otherwise "empty" stops being the correct end
+# state and with it goes the only branch on which orphan-delete runs at all. Every real
+# bridge of the shipped catalog ships a tree now, so this step falls back to the fixture
+# catalog (the same one test-install.sh Test 13c uses) for its one genuinely treeless one.
 use_fake_mcp_catalog "two-unity-servers"
 CONFIG="$NOTES_CLI_DIR/.unikit.json" node -e "
     const fs=require('fs'); const f=process.env.CONFIG;
@@ -2106,12 +2146,12 @@ NOTES_CLI_OUT3="$TMPDIR/update-notes-cli-3.log"
 (cd "$NOTES_CLI_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$NOTES_CLI_OUT3" 2>&1)
 unuse_fake_mcp_catalog
 
-assert_not_exists "$NOTES_CLI_RULES/INDEX.md" \
-    "a switch to a treeless server sweeps the outgoing server's rules tree (INDEX.md does not survive)"
-assert_not_exists "$NOTES_CLI_RULES/verification.md" \
-    "the sweep covers the whole tree, not just its entry point"
+assert_not_exists "$NOTES_CLI_RULES" \
+    "a switch to a treeless bridge sweeps the outgoing bridge's rules tree (the folder does not survive)"
+assert_contains "$NOTES_CLI_BRIDGES/BRIDGES.md" '^## fixture-treeless-mcp$' \
+    "BRIDGES.md lists the bridge that was selected last"
 
-echo "  ✓ recheck notes: an engine switch parks the log; a switch to a treeless server sweeps the tree"
+echo "  ✓ bridge notes: an engine switch parks the log; a switch to a treeless bridge sweeps the tree"
 
 # ─────────────────────────────────────────────
 # Test 30k: ultra-plan-read.md is delivered on update — the ONLY mechanical guard for

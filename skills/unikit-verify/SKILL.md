@@ -212,22 +212,22 @@ Bootstrap loads coding rules and principles ONCE upfront so Step 4.3 fixes can b
 
 Stack rules are loaded on-demand if Step 4.3 fixes reveal framework-specific issues.
 
-**Engine-MCP rules (conditional, engine-neutral) — once per session, zero calls:**
+**Engine bridges (conditional, engine-neutral) — once per session, zero calls:**
 
-5. `.unikit/system/engine-mcp/INDEX.md`, **base section only** — the delivery stamp (`server:`) plus every section **except** the `## Check` table — access, the live failure classes, shape and cost, what is irreversible, the lane, and what to do when the file is silent. Those are the exceptions that hold for every target here. **Do not read the `## Check` table now** — it is grepped per editor target, by area (Step 1).
-6. `.unikit/MCP-RECHECK-NOTES.md`, **header only** (`server:` / `audited:`) — this project's own accumulated findings. Compare that header against the delivery stamp from item 5. On a mismatch print exactly one line and **apply the entries anyway**:
+5. `.unikit/system/engine-bridges/BRIDGES.md` — the whole file (one short block per bridge) — and, for **each** bridge whose block names a rules tree, that tree's `.unikit/system/engine-bridges/<bridge>/INDEX.md`, **base section only**: the delivery stamp (`bridge:`) plus every section **except** the `## Check` table — access, the live failure classes, shape and cost, what is irreversible, the lane, and what to do when the file is silent. Those are the exceptions that hold for every target here. **Do not read the `## Check` table now** — it is grepped per editor target, by area (Step 1).
+6. For each bridge listed in `BRIDGES.md`: `.unikit/bridge-notes/<bridge>.md`, **header only** (`bridge:` / `audited:`) — this project's own accumulated findings, and they apply to that bridge only. Compare the header against the bridge the file is named for. On a mismatch print exactly one line and **apply the entries anyway**:
 
    ```
-   WARN [engine-mcp] notes header ≠ configured server (<notes> ≠ <configured>)
+   WARN [bridges] notes header ≠ bridge (<header> ≠ <bridge>)
    ```
 
    The entries are *suspect*, not void, and a suspect check still fails safe. Retiring them belongs to `/unikit-mcp-audit`.
-7. `.unikit/system/engine-mcp/verification.md` — **this skill and no other reads it.** It is the per-gate calibration for the configured server: for each gate, whether it is reachable and **what class of evidence closes it**. It grants nothing and lifts nothing (see the gate rule in Step 2); it tells you which observation counts.
+7. For each such bridge, `.unikit/system/engine-bridges/<bridge>/verification.md` — **this skill and no other reads it.** It is the per-gate calibration for that bridge: for each gate, whether it is reachable and **what class of evidence closes it**. It grants nothing and lifts nothing (see the gate rule in Step 2); it tells you which observation counts.
 
 **Any of them absent → skip it, print one line, and continue with every right you had:**
 
 ```
-MCP rules: no INDEX.md — no known exceptions for this server, rights unchanged
+Bridge rules: <bridge> has no INDEX.md — no known exceptions for it, rights unchanged
 ```
 
 No rules means no known exceptions, never no capabilities. Absence never disables the engine MCP and never turns a target into `⏸️ MANUAL` (`.unikit/system/dev-principles.md` → **A9**), and it never lifts a gate — a missing calibration leaves every gate in force.
@@ -309,10 +309,10 @@ Launch one Explore task per audited phase. For each phase, provide:
 **Editor targets are excluded from the Explore fan-out.** A task with an `Editor:` line changed the editor's serialized state; there is nothing in the sources to find, so an Explore agent would honestly return `❌ NOT FOUND` and block correctly completed work. The subagents also have no engine tools — the `allowed-tools` grants in `mcp/*.json` are issued to `unikit-verify`, not to its children. So:
 
 - **Editor tasks stay in this skill's own context** and are verified by **reading the editor state back through the engine MCP**, never with Glob/Grep. The per-kind checks are engine knowledge — see `{{skills_dir}}/{{self_name}}/references/ENGINE_RULES.md` → `## Editor Target Checks`.
-- **The file exists but carries no `## Editor Target Checks` section** → a normal A9 degradation, not a dead end. Verify the target anyway: close it with an evidence class from `.unikit/system/dev-principles.md` (A2, and D3 when the first route is unavailable), reading the project's own rules in `.unikit/system/engine-mcp/` first. This is **never** `Engine MCP unavailable` and **never** `⏸️ MANUAL` — a missing section means the per-kind signals were not written down for this engine yet, never that the affordance is absent.
+- **The file exists but carries no `## Editor Target Checks` section** → a normal A9 degradation, not a dead end. Verify the target anyway: close it with an evidence class from `.unikit/system/dev-principles.md` (A2, and D3 when the first route is unavailable), reading the project's own rules in `.unikit/system/engine-bridges/` first. This is **never** `Engine MCP unavailable` and **never** `⏸️ MANUAL` — a missing section means the per-kind signals were not written down for this engine yet, never that the affordance is absent.
 - **Verify against the editor, never against the plan.** The acceptance criterion is closed by what the editor reports now, not by what the plan said would happen and not by what the implementation report claimed. Re-reading the plan's own words back is not verification: it makes a planning error invisible, because the two sides of the comparison have the same author.
 - **Per target, before the read-back:** steps 1–3 of `.unikit/system/dev-principles.md` → **D6** — candidates from the live catalog by intent, their schemas, the `## Check` tables grepped by area. No matching line changes nothing: an absent exception is not an absent capability (A9).
-- **A call that misled you is a finding** (`dev-principles.md` → **D7**): a candidate line in the verification report and a row in the plan's `## MCP Findings` table, written on the pass over the target that produced it, never in the verification summary — `observed` is the date you observed it (`Bash(date *)`). **Never write `.unikit/MCP-RECHECK-NOTES.md` from here.**
+- **A call that misled you is a finding** (`dev-principles.md` → **D7**): a candidate line in the verification report and a row in the plan's `## MCP Findings` table, written on the pass over the target that produced it, never in the verification summary — `observed` is the date you observed it (`Bash(date *)`). **Never write `.unikit/bridge-notes/<bridge>.md` from here.**
 - **MCP unavailable** → `⏭️ SKIPPED (editor target, MCP unavailable)`. Not a failure.
 - **Task marked `⏸️ MANUAL` in the plan** → `⏸️ MANUAL`. Not a blocker: the user took it on deliberately. Report the target so it stays visible.
 
@@ -357,7 +357,7 @@ Statuses:
 
 ## Step 2: Code Quality Verification
 
-**Gate calibration — `.unikit/system/engine-mcp/verification.md` (read in Step 0).**
+**Gate calibration — `.unikit/system/engine-bridges/<bridge>/verification.md`, one per bridge (read in Step 0).**
 
 Step 2.1 and the strict-mode run of Step 2.2 each have a bail-out branch for "engine MCP unavailable". That is not the only way a gate can fail to close: the tool may be reachable while the *capability* is not — a run that starts and never reports, a validator that answers clean by construction. Three outcomes, and only three:
 

@@ -1,13 +1,13 @@
 ---
 name: unikit-mcp-audit
 description: >-
-  Curate .unikit/MCP-RECHECK-NOTES.md — the project's log of findings about the
+  Curate .unikit/bridge-notes/ — the project's log of findings about the
   configured engine MCP server. Four jobs: re-stamp (the server moved, so every
   entry is suspect), replay (reproduce a `replay: safe` finding inside a
   disposable sandbox to see whether it still holds), retire (offer to drop what was
   fixed or went upstream), and upstream (print a ready diff for the packaged
   INDEX.md). Use for "audit the MCP notes", "are these findings still true",
-  "recheck the MCP traps", "clean up MCP-RECHECK-NOTES", "the server was updated —
+  "recheck the MCP traps", "clean up the bridge notes", "the server was updated —
   revisit the notes". Replaying mutates a live editor, so it starts by telling you
   how to prepare it — save your scene, open an empty one — and asks once before
   touching anything. Everything it creates lives under a single UNIKIT_AUDIT_<runid>
@@ -32,13 +32,13 @@ metadata:
 
 # MCP Audit — curate the recheck notes
 
-`.unikit/MCP-RECHECK-NOTES.md` accumulates. Findings get fixed upstream, calls disappear,
+`.unikit/bridge-notes/<bridge>.md` accumulates. Findings get fixed upstream, calls disappear,
 servers move. Left alone the file drifts from a protection into a superstition — every
 row costing a call, none of them still true.
 
 This skill is the pass that keeps it honest. It is a **project** tool, not a release
 tool: it curates what this project observed, and it never edits the packaged rules tree
-(`.unikit/system/engine-mcp/` is rewritten by every `init` / `update`, so an edit there
+(`.unikit/system/engine-bridges/` is rewritten by every `init` / `update`, so an edit there
 is lost, and lost silently).
 
 **The format is not owned here.** `/unikit-mcp-trap` owns
@@ -67,12 +67,12 @@ Silently load — do not narrate:
    classes (A3), the area vocabulary (A8), and `no rules ≠ no rights` (A9). Read it
    whole — the part below its `LAZY-READ BOUNDARY` marker too: this skill touches editor
    state, so it is a first Editor task by definition.
-3. **`.unikit/system/engine-mcp/INDEX.md`** — the delivery stamp (`server:`) and the
+3. **`.unikit/system/engine-bridges/<bridge>/INDEX.md`** of the bridge being curated (named in `BRIDGES.md`) — the delivery stamp (`bridge:`) and the
    base section, including **how a project-relative asset path is written for this
    engine** (see "The asset root is a contract" below). File absent →
    there are no known exceptions; that restricts nothing and switches nothing to
    `⏸️ MANUAL`.
-4. **`.unikit/MCP-RECHECK-NOTES.md`** — the file being curated. Absent → say so and
+4. **`.unikit/bridge-notes/<bridge>.md`** — the file being curated. Absent → say so and
    stop; there is nothing to audit and nothing to create.
 
 Then pick the run id: `<runid>` is a short token unique to this run (a timestamp is
@@ -89,7 +89,7 @@ When a replay needs an asset, it goes under a **project-relative audit folder**:
 ```
 
 **The literal form of that root is engine-specific and must not appear in this file.**
-Take it from `.unikit/system/engine-mcp/INDEX.md` → the access/base section, which states
+Take it from the `.unikit/system/engine-bridges/<bridge>/INDEX.md` of the bridge replayed → the access/base section, which states
 how project-relative paths are written for the configured engine. Not stated there → ask
 the user once, and record the answer for this run only.
 
@@ -102,7 +102,7 @@ matrix into `references/code-recon.md`.
 
 ## Job 1 — stamp
 
-Compare the notes header (`server:`) against the delivery stamp.
+Compare the notes header (`bridge:`) against the delivery stamp.
 
 Different → print one line and continue:
 
@@ -317,7 +317,7 @@ merges, the local row becomes a duplicate and the next audit retires it under Jo
 - **Never deletes or edits anything it did not create in this run.**
 - **Never repeats a failed sweep blindly** — it reports what remains, by name.
 - **Never edits the packaged rules tree**, and never edits a plan.
-- **Never rewrites `server:`** in the notes header to make a mismatch go away. The
+- **Never rewrites `bridge:`** in the notes header to make a mismatch go away. The
   mismatch is information: it is what makes rows suspect.
 - **Never writes `⏸️ MANUAL`** because rules are missing, and never treats an
   unreachable editor as proof that a capability is absent — that is a stop-condition

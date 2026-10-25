@@ -21,6 +21,7 @@ import { CONFIG_FILE, DEFAULT_ENGINE_ID } from '../constants.js';
 import { BRIDGE_MIGRATE_LOG_TAG, MIGRATION_SINCE_ENGINE_BRIDGES } from '../constants-bridges.js';
 import { discoverMcpServers } from '../mcp.js';
 import type { Migration } from '../migrations/types.js';
+import { PROJECT_NOTES_MIGRATIONS } from './notes.js';
 
 export interface BridgeMigrationContext {
   projectDir: string;
@@ -145,4 +146,5 @@ const engineBridgesConfigSplit: Migration<BridgeMigrationContext> = {
 
 export const PROJECT_BRIDGE_MIGRATIONS: readonly Migration<BridgeMigrationContext>[] = [
   engineBridgesConfigSplit,
+  ...PROJECT_NOTES_MIGRATIONS,
 ];

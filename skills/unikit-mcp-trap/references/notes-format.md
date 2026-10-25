@@ -1,6 +1,6 @@
-# `.unikit/MCP-RECHECK-NOTES.md` — the format
+# `.unikit/bridge-notes/<bridge>.md` — the format
 
-The project's log of what has to be re-checked about **this** engine MCP server.
+The project's log of what has to be re-checked about **one** engine bridge. One file per bridge: a finding is a statement about the bridge it was observed on, and the name of the file says which.
 
 **This file is the specification, and `/unikit-mcp-trap` owns it.** `/unikit-mcp-audit`
 reads the same spec to curate what trap wrote (provider-owns-spec, the same arrangement
@@ -8,11 +8,11 @@ reads the same spec to curate what trap wrote (provider-owns-spec, the same arra
 Neither skill may drift from it privately — a note is written by one skill and replayed
 by another, months apart.
 
-**Where it lives, and why there.** `.unikit/MCP-RECHECK-NOTES.md` sits at the root of
+**Where it lives, and why there.** `.unikit/bridge-notes/<bridge>.md` sits under
 `.unikit/`, deliberately outside `.unikit/system/`. Everything under `system/` is
-rewritten by every `init` / `update`; this file is the project's own accumulated
-knowledge and no installer sweep may reach it. The installer only ever **renames** it,
-when the selected server changes.
+rewritten by every `init` / `update`; these files are the project's own accumulated
+knowledge and no installer sweep may reach them. The installer only ever **renames** a
+file (into `archive/` and back), when its bridge leaves the selection or returns.
 
 ---
 
@@ -22,7 +22,7 @@ when the selected server changes.
 # MCP — what to re-check here
 <!-- Written by /unikit-mcp-trap · curated by /unikit-mcp-audit · install only renames it -->
 
-server:  <file id of the selected engine MCP server>
+bridge:  <file id of the bridge these entries were observed on>
 audited: <YYYY-MM-DD, or `never`>
 
 ## Check                                        ← read by the AGENT, by grep
@@ -75,11 +75,11 @@ disagree with the ids for no gain.
 
 | field | written by | meaning |
 |---|---|---|
-| `server:` | trap, on creation | the file id of the server these entries were observed on |
+| `bridge:` | trap, on creation | the file id of the bridge these entries were observed on |
 | `audited:` | audit only | date of the last curation pass; `never` on a fresh file |
 
-`server:` is compared against the delivery stamp at the top of
-`.unikit/system/engine-mcp/INDEX.md`. **A mismatch is one WARN and nothing else** — the
+`bridge:` is compared against the file name it sits under and against the delivery stamp at the top of
+`.unikit/system/engine-bridges/<bridge>/INDEX.md`. **A mismatch is one WARN and nothing else** — the
 entries are *suspect*, and still applied. A stale check costs one call; dropping checks
 because the server moved costs the protection they existed for.
 
@@ -175,7 +175,7 @@ cost of the two mistakes is not comparable, so the tie goes to `manual`.
 | # | case | what happens |
 |---|---|---|
 | 1 | **new finding** | the executor puts a candidate in its run report and in the plan's `## MCP Findings` — never in this file; a human runs `/unikit-mcp-trap` |
-| 2 | **the server changed** | the header names a different server than the delivery stamp: every row is suspect, **applied anyway**, one WARN |
+| 2 | **the bridge changed** | the header names a different bridge than the file it sits in: every row is suspect, **applied anyway**, one WARN |
 | 3 | **trap fixed** | the audit replays the evidence of a `replay: safe` row → offers to retire it |
 | 4 | **the call disappeared** | the replay fails → same outcome as "fixed"; no separate mechanism needed |
 | 5 | **finding went upstream** | the packaged `INDEX.md` gained it → the audit sees the duplicate → offers to drop the local row |
@@ -193,27 +193,27 @@ through a human on purpose.
 
 | line | lives in | retired by | how |
 |---|---|---|---|
-| a packaged trap | `mcp/<engine>/rules/<server>/INDEX.md` | the maintainers | a conformance run plus a diff |
-| a local note | `.unikit/MCP-RECHECK-NOTES.md` | the project's own people | an audit that replays the evidence |
+| a packaged trap | `engine-bridges/<engine>/rules/<bridge>/INDEX.md` | the maintainers | a conformance run plus a diff |
+| a local note | `.unikit/bridge-notes/<bridge>.md` | the project's own people | an audit that replays the evidence |
 
 The audit is a **project** tool, not a release tool. It never edits the packaged tree —
 that folder is rewritten by every `init` / `update`, so an edit there is lost silently.
 
 ---
 
-## When the server changes
+## When the set of bridges changes
 
-One file per server, always — active **or** archived, never both. On a change of the
-selected engine MCP server the installer renames the active file to
-`MCP-RECHECK-NOTES.archive.<previous server>.md`, and restores the archive of the new
-server if one exists. Contents are never rewritten by the installer.
+One file per bridge, always — active **or** archived, never both. When a bridge leaves the
+selection the installer renames its active file to `archive/<bridge>.md`, and restores the
+archive of a bridge that comes back. Contents are never rewritten by the installer.
 
-Consequence for both skills: the header is the only thing that says which server the
-rows belong to, and it must never be silently "corrected" to match the current one. A
-header that disagrees with the delivery stamp is information — that is exactly case 2.
+Consequence for both skills: the header is the only thing that says which bridge the rows
+belong to besides the file name, and it must never be silently "corrected" to match the
+current one. A header that disagrees with the file it sits in is information — that is
+exactly case 2.
 
 Because the rename runs on every completed swap, that disagreement should be unreachable
-in the ordinary course: it means the run that switched servers did not finish, or the file
+in the ordinary course: it means the run that changed the selection did not finish, or the file
 was carried in by hand from another project. Both are worth one WARN and no more. Neither
 is worth dropping the entries over — a check written against another server is at worst a
 redundant call, and the genre above is what guarantees that.

@@ -6,7 +6,11 @@
   "displayName": "Unity Biome MCP (Unity 6000.0+)",
   "docs": {
     "context7": "/german-krasnikov/unity-biome-mcp",
-    "repo": "https://github.com/german-krasnikov/unity-biome-mcp"
+    "repo": "https://github.com/german-krasnikov/unity-biome-mcp",
+    "sources": [
+      { "kind": "git", "id": "client-skills", "repo": "https://github.com/german-krasnikov/unity-biome-mcp", "ref": "master", "path": "unity-plugin/ClientSkills", "include": ["**/*.md"], "into": "client-skills" },
+      { "kind": "git", "id": "docs", "repo": "https://github.com/german-krasnikov/unity-biome-mcp", "ref": "master", "path": "docs", "include": ["**/*.md"], "exclude": ["i18n/**"], "into": "docs" }
+    ]
   },
   "rules": "rules/unity-biome-mcp/",
   "config": {

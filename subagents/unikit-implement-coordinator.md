@@ -213,7 +213,7 @@ For each task in the phase, sequentially:
 4. If material issues found, fix and re-verify (max 2 rounds)
 5. Mark `[x]` or `[!]` in the manifest. **Third branch — an editor target handed to the user:** mark `[x]` and append `⏸️ MANUAL` to the task text. It does not block "phase complete" (the user took it on deliberately) and it is never picked up again by a later run, but it is not counted as implemented either — carry it into the summary from the worker's `manual_targets:`
 
-   **Fourth branch — the task produced an MCP finding.** In this branch you are the executor: no worker was spawned, so nobody else can write the row. Append it to the plan's `## MCP Findings` table in the same pass that marks the task, by `dev-principles.md` → **D7**. **Never write `.unikit/MCP-RECHECK-NOTES.md` yourself** — the durable surface passes through a human running `/unikit-mcp-trap`.
+   **Fourth branch — the task produced an MCP finding.** In this branch you are the executor: no worker was spawned, so nobody else can write the row. Append it to the plan's `## MCP Findings` table in the same pass that marks the task, by `dev-principles.md` → **D7**. **Never write `.unikit/bridge-notes/<bridge>.md` yourself** — the durable surface passes through a human running `/unikit-mcp-trap`.
 
    **Fifth branch — a test-checkpoint task.** In this branch you are the executor, so there is nobody to withhold it from: execute it in the ordinary order, by `## Step 3.2` of that test-run reference, and write the result into the manifest's `## Test Runs` in the same pass that marks the task.
 
@@ -403,7 +403,7 @@ Awaiting results: <n> task(s) — <task id and instruction, one per line>
 Hand-back: <report path> · 🧭 <command from the task's to: field>
 Rule candidates: <n> recorded — /unikit-implement will propose them at the end of the call
 MCP findings: <n> recorded — run /unikit-mcp-trap <plan path> to move them into
-  .unikit/MCP-RECHECK-NOTES.md
+  .unikit/bridge-notes/
 
 ⏎ This agent session is complete. Please close it (Ctrl+C or /exit)
   and return to your main Claude Code session to continue working.

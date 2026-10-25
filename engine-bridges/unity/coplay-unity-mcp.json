@@ -6,7 +6,10 @@
   "displayName": "Coplay Unity MCP (Unity 2021.3 LTS+)",
   "docs": {
     "context7": "/coplaydev/unity-mcp",
-    "repo": "https://github.com/CoplayDev/unity-mcp"
+    "repo": "https://github.com/CoplayDev/unity-mcp",
+    "sources": [
+      { "kind": "git", "id": "unity-mcp-skill", "repo": "https://github.com/CoplayDev/unity-mcp", "ref": "beta", "path": "unity-mcp-skill", "include": ["**/*.md"], "into": "unity-mcp-skill" }
+    ]
   },
   "rules": "rules/coplay-unity-mcp/",
   "config": {
