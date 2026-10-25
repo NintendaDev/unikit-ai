@@ -244,7 +244,7 @@ Ownership is command-scoped to avoid conflicting writers:
 | `/unikit-implement` | `.unikit/code/plans/*/PLAN.md` (status updates) | Marks tasks complete |
 | `/unikit-todo` | `.unikit/TODO.md` | Lightweight task list |
 | `/unikit-docs` | `README.md`, `docs/*.md`, `AGENTS.md` | Documentation generation |
-| `/unikit-commit` `/unikit-review` `/unikit-verify` | read-only context | Gate and report; `/unikit-verify` writes only plan bookkeeping (`## Test Runs`, `## Rule Candidates`, `## MCP Findings`) and the `implemented_version` stamp, `/unikit-commit` makes commits |
+| `/unikit-commit` `/unikit-review` `/unikit-verify` | read-only context | Gate and report; `/unikit-verify` writes only plan bookkeeping (`## Test Runs`, `## Rule Candidates`, `## Engine Bridge Findings`) and the `implemented_version` stamp, `/unikit-commit` makes commits |
 
 The `gamedesign` module has its own artifact-ownership map (`GAME.md`, `GD-IDS.yaml`, `systems/`, `flows/`, `content-types/`, `reviews/`) - see [Game-Design Module](gamedesign.md).
 
@@ -372,7 +372,7 @@ Post-completion, in order:
 - Proposes candidate rules **as a question** and records only the ones you pick. No skill appends to `.unikit/RULES.md` on its own; candidates live in the plan's `## Rule Candidates` section and survive a `/clear`
 - Triggers documentation checkpoint if `Docs: yes`
 - Decides what to do with the plan file
-- **Offers to move MCP findings to the durable log** - if the plan's `## MCP Findings` table has rows, hands the plan path to `/unikit-mcp-trap`; if it has none, says nothing at all. This comes *before* review and commit on purpose: findings are the only part of a run with no other keeper, and placed after a code-quality discussion they end up "later"
+- **Offers to move MCP findings to the durable log** - if the plan's `## Engine Bridge Findings` table has rows, hands the plan path to `/unikit-bridge-trap`; if it has none, says nothing at all. This comes *before* review and commit on purpose: findings are the only part of a run with no other keeper, and placed after a code-quality discussion they end up "later"
 - Offers `/unikit-review` then `/unikit-commit` - **invoked as skills, in your session**, not delegated to a subagent. That distinction is real: a subagent carries findings into a context you cannot see, `file:line` references stop being clickable, and you cannot ask a follow-up question about a finding. Of the post-completion steps only the documentation checkpoint is delegated (to `docs-agent`), because its output is a file rather than a conversation
 
 #### Tests follow acceptance

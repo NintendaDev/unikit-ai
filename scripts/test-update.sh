@@ -2797,5 +2797,141 @@ assert_not_exists "$UX_DIR/.agents" "the refused extension commands must write n
 
 echo "  ✓ universal: next to Claude one .mcp.json and an idle second update with per-tree repair; next to Antigravity update and extension commands stop with exit 1 before writing"
 
+# ─────────────────────────────────────────────
+# Test 35: skill renames — the new name takes the old one's place, per agent, with no question
+# ─────────────────────────────────────────────
+# unikit-mcp-trap / unikit-mcp-audit became unikit-bridge-trap / unikit-bridge-audit in 3.0.0.
+# Without the rename table a project would lose both skills in CI: the old directory is removed
+# as "not in the package", and the new name is only "new" (skipped without --install-new).
+#
+# Two agents. The first has both old skills installed; the second never had them and must NOT
+# get the new ones (the set of newly offered skills is global, the rename is per agent).
+# A skill-context directory of the old name belongs to the user: it is named, not moved.
+
+RENAME_DIR="$TMPDIR/update-skill-rename"
+mkdir -p "$RENAME_DIR/.claude/skills/unikit-mcp-trap" "$RENAME_DIR/.claude/skills/unikit-mcp-audit" \
+         "$RENAME_DIR/.unikit/skill-context/unikit-mcp-trap"
+echo "OLD TRAP" > "$RENAME_DIR/.claude/skills/unikit-mcp-trap/SKILL.md"
+echo "OLD AUDIT" > "$RENAME_DIR/.claude/skills/unikit-mcp-audit/SKILL.md"
+echo "MY OVERRIDE" > "$RENAME_DIR/.unikit/skill-context/unikit-mcp-trap/SKILL.md"
+cat > "$RENAME_DIR/.unikit.json" << 'EOF'
+{
+  "version": "2.5.0",
+  "engine": "unity",
+  "mcp": { "servers": {} },
+  "engineBridges": { "selected": {} },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit", "unikit-mcp-trap", "unikit-mcp-audit"],
+      "installedSubagents": []
+    },
+    {
+      "id": "codex",
+      "skillsDir": ".codex/skills",
+      "subagentsDir": ".codex/agents",
+      "installedSkills": ["unikit"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": { "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } } }
+}
+EOF
+inject_fake_registry "$RENAME_DIR"
+
+RENAME_OUT1="$TMPDIR/update-skill-rename-1.log"
+(cd "$RENAME_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$RENAME_OUT1" 2>&1)
+
+assert_exists "$RENAME_DIR/.claude/skills/unikit-bridge-trap/SKILL.md" "rename: the first agent gets the new trap skill without --install-new"
+assert_exists "$RENAME_DIR/.claude/skills/unikit-bridge-audit/SKILL.md" "rename: the first agent gets the new audit skill without --install-new"
+assert_not_exists "$RENAME_DIR/.claude/skills/unikit-mcp-trap" "rename: the old trap directory is gone"
+assert_not_exists "$RENAME_DIR/.claude/skills/unikit-mcp-audit" "rename: the old audit directory is gone"
+assert_not_exists "$RENAME_DIR/.codex/skills/unikit-bridge-trap" "rename: an agent that never had the old skill does not get the new one"
+assert_not_exists "$RENAME_DIR/.codex/skills/unikit-bridge-audit" "rename: ...nor the other one"
+
+RENAME_STATE=$(node -e "
+  const c = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
+  const claude = c.agents.find(a => a.id === 'claude'), codex = c.agents.find(a => a.id === 'codex');
+  process.stdout.write(JSON.stringify({
+    installed: claude.installedSkills.filter(s => /trap|audit/.test(s)).sort(),
+    managed: Object.keys(claude.managedSkills || {}).filter(s => /trap|audit/.test(s)).sort(),
+    codex: codex.installedSkills.filter(s => /trap|audit/.test(s)),
+  }));
+" "$RENAME_DIR/.unikit.json")
+if [[ "$RENAME_STATE" == '{"installed":["unikit-bridge-audit","unikit-bridge-trap"],"managed":["unikit-bridge-audit","unikit-bridge-trap"],"codex":[]}' ]]; then
+    echo "  ✓ rename: installedSkills and managedSkills carry the new names, the other agent none"
+else
+    echo "Assertion failed: renamed skills are not recorded as expected: $RENAME_STATE"
+    exit 1
+fi
+
+assert_contains "$RENAME_OUT1" 'renamed from unikit-mcp-trap' "rename: the report says the new skill replaces the old one"
+assert_contains "$RENAME_OUT1" 'renamed from unikit-mcp-audit' "rename: ...for both skills"
+assert_not_contains "$RENAME_OUT1" 'unikit-bridge-trap (new in package)' "rename: a rename target is not offered as a new skill"
+assert_contains "$RENAME_OUT1" 'renamed skill' "rename: the user's skill-context of the old name is named in a warning"
+assert_exists "$RENAME_DIR/.unikit/skill-context/unikit-mcp-trap/SKILL.md" "rename: the user's own directory is left where it is"
+
+# Idempotence: the old names are gone, the new ones match their hash.
+RENAME_SHA=$(sha_of "$RENAME_DIR/.unikit.json")
+RENAME_SKILL_SHA=$(sha_of "$RENAME_DIR/.claude/skills/unikit-bridge-trap/SKILL.md")
+RENAME_OUT2="$TMPDIR/update-skill-rename-2.log"
+(cd "$RENAME_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$RENAME_OUT2" 2>&1)
+assert_same_sha "$RENAME_DIR/.unikit.json" "$RENAME_SHA" "rename: a second update leaves .unikit.json byte-identical"
+assert_same_sha "$RENAME_DIR/.claude/skills/unikit-bridge-trap/SKILL.md" "$RENAME_SKILL_SHA" "rename: ...and the renamed skill"
+assert_not_contains "$RENAME_OUT2" 'renamed from' "rename: nothing is renamed twice"
+echo "  ✓ skill renames: per agent, without a question, reported once, idempotent"
+
+# Test 35b: an extension that REPLACED a base skill which has been renamed. `update` removes the old
+# directory (and the replacement in it) and installs the new base skill; the replacement has to come
+# back under the new name, and the record in .unikit.json has to follow.
+RENAME_EXT_DIR="$TMPDIR/update-skill-rename-ext"
+mkdir -p "$RENAME_EXT_DIR/.claude/skills/unikit-mcp-trap" "$RENAME_EXT_DIR/.unikit/extensions/ext-old/skills/trap"
+printf -- '---\nname: unikit-mcp-trap\ndescription: Trap replaced by an extension\n---\n\n# Custom Trap (from extension)\n' > "$RENAME_EXT_DIR/.unikit/extensions/ext-old/skills/trap/SKILL.md"
+cp "$RENAME_EXT_DIR/.unikit/extensions/ext-old/skills/trap/SKILL.md" "$RENAME_EXT_DIR/.claude/skills/unikit-mcp-trap/SKILL.md"
+cat > "$RENAME_EXT_DIR/.unikit/extensions/ext-old/extension.json" << 'EOF'
+{ "name": "ext-old", "version": "1.0.0", "replaces": { "skills/trap": "unikit-mcp-trap" } }
+EOF
+cat > "$RENAME_EXT_DIR/.unikit.json" << 'EOF'
+{
+  "version": "2.5.0",
+  "engine": "unity",
+  "mcp": { "servers": {} },
+  "engineBridges": { "selected": {} },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit", "unikit-mcp-trap"],
+      "installedSubagents": []
+    }
+  ],
+  "extensions": [
+    { "name": "ext-old", "source": "local", "version": "1.0.0", "replacedSkills": { "unikit-mcp-trap": "skills/trap" } }
+  ],
+  "rules": { "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } } }
+}
+EOF
+inject_fake_registry "$RENAME_EXT_DIR"
+RENAME_EXT_OUT="$TMPDIR/update-skill-rename-ext.log"
+(cd "$RENAME_EXT_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$RENAME_EXT_OUT" 2>&1)
+assert_not_exists "$RENAME_EXT_DIR/.claude/skills/unikit-mcp-trap" "rename + extension: the old directory is gone"
+assert_contains "$RENAME_EXT_DIR/.claude/skills/unikit-bridge-trap/SKILL.md" 'Custom Trap \(from extension\)' \
+  "rename + extension: the extension's replacement is back under the new base name"
+RENAME_EXT_KEYS=$(node -e "
+  const c = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
+  console.log(Object.keys(c.extensions[0].replacedSkills || {}).join(','));
+" "$RENAME_EXT_DIR/.unikit.json")
+if [[ "$RENAME_EXT_KEYS" != "unikit-bridge-trap" ]]; then
+    echo "Assertion failed: the extension record should name the replaced base skill under its new name, got: $RENAME_EXT_KEYS"
+    exit 1
+fi
+RENAME_EXT_SHA=$(sha_of "$RENAME_EXT_DIR/.claude/skills/unikit-bridge-trap/SKILL.md")
+(cd "$RENAME_EXT_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/update-skill-rename-ext-2.log" 2>&1)
+assert_same_sha "$RENAME_EXT_DIR/.claude/skills/unikit-bridge-trap/SKILL.md" "$RENAME_EXT_SHA" "rename + extension: a second update keeps the replacement"
+echo "  ✓ skill renames: an extension's replacement of a renamed base skill is put back under the new name"
+
 echo ""
 echo "update smoke tests passed"

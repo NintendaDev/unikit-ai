@@ -31,7 +31,11 @@ import { loadExtensionManifest, getExtensionDir } from '../../core/extensions.js
 import { createRegistry } from '../../core/registry/index.js';
 import { logInfo } from '../../utils/log.js';
 import { applyExtensionInjections, injectionInputFromConfig } from '../../core/extension-injections.js';
-import { formatReason, groupEntriesByStatus, bootstrapNewSkillModuleRules } from './update-helpers.js';
+import { reinstallExtensionAssets } from '../../core/extension-ops.js';
+import {
+  formatReason, groupEntriesByStatus, bootstrapNewSkillModuleRules,
+  withoutRenameTargets, warnRenamedSkillContext, extensionsReplacingRenamedSkills,
+} from './update-helpers.js';
 import { recomputeSelection } from './update-bridges.js';
 import { printInjectionReport } from './injection-report.js';
 import { buildNewItemsChooser, formatPendingNotice } from './extension-selection-ui.js';
@@ -143,7 +147,8 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     // ships it but it is installed for NO agent yet (union across all agents).
     const packageSkills = await getAvailableSkills();
     const installedUnion = new Set(config.agents.flatMap(a => a.installedSkills));
-    const newSkills = packageSkills.filter(s => !installedUnion.has(s));
+    // A rename target whose old name is installed is seeded by updateSkills: it is not "new" and is not asked about.
+    const newSkills = withoutRenameTargets(packageSkills.filter(s => !installedUnion.has(s)), installedUnion);
 
     // Resolve the opt-in install set for new skills. Lifted to function scope so
     // the rules-bootstrap step (after createRegistry below) can target the
@@ -189,6 +194,7 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
 
     // Install/refresh engine templates
     await installEngineTemplates(projectDir, engineId, config.agents);
+    await warnRenamedSkillContext(projectDir, installedUnion);
 
     // Update subagents per agent
     console.log(chalk.dim('Updating subagents...\n'));
@@ -222,6 +228,13 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
           }
         }
       }
+    }
+
+    // A base skill that was renamed lost the replacement an extension had put into its directory: put it back
+    // under the new base name (the extension's own manifest and record already read the new name).
+    const renamedReplacements = extensionsReplacingRenamedSkills(extensions, installedUnion);
+    if (renamedReplacements.length > 0) {
+      await reinstallExtensionAssets({ projectDir, engine: engineId, mcpBridgeCode, agents: config.agents, extensions: renamedReplacements });
     }
 
     // Inject MCP tool permissions (after all skills — base + extension — are installed)

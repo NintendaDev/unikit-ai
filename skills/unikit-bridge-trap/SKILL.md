@@ -1,20 +1,19 @@
 ---
-name: unikit-mcp-trap
+name: unikit-bridge-trap
 description: >-
-  Record a finding about the configured engine MCP server into
-  .unikit/bridge-notes/ — the project's log of what has to be re-checked
-  here. Use right after a call reported success while changing nothing, ate an
-  argument, or validated a broken state, e.g. "write this down", "record this MCP
-  finding", "the server lied — note it", "add a recheck note", "trap this". Takes
-  three forms of input: the finding in one line, a path to a plan file (harvests
-  the "## MCP Findings" table of that plan and nothing else), or nothing at all —
-  then it takes findings already in the session first, and offers to scan the
-  tables of plans touched since the last audit. The table only, never the plan
-  body. Writes in the one allowed genre — a check to perform; never a lifted gate,
-  never a named workaround, never a claim about what the server can or cannot do.
-  Makes zero MCP calls and needs no editor. To replay, retire, or upstream
-  existing notes use /unikit-mcp-audit instead.
-argument-hint: "[the finding in one line | path to a plan file | empty]  (writes .unikit/bridge-notes/; zero MCP calls)"
+  Record a finding about an engine bridge into .unikit/bridge-notes/<bridge>.md — the
+  project's log of what has to be re-checked there. Use right after a call reported success
+  while changing nothing, ate an argument, or validated a broken state, e.g. "write this
+  down", "record this bridge finding", "the server lied — note it", "add a recheck note",
+  "trap this". Input: the finding in one line, a path to a plan file
+  (harvests the "## Engine Bridge Findings" table of that plan and nothing else), or nothing at all
+  — then it takes findings already in the session first, and offers to scan the tables of
+  plans touched since the last audit. The table only, never the plan body. Each finding goes
+  to the notes of the bridge it came through. Writes in the one allowed genre — a check to
+  perform; never a lifted gate, never a named workaround, never a claim about what a bridge
+  can or cannot do. Makes zero bridge calls and needs no editor. To replay, retire, or
+  upstream existing notes use /unikit-bridge-audit instead.
+argument-hint: "[the finding in one line | path to a plan file | empty]  (writes .unikit/bridge-notes/<bridge>.md; zero bridge calls)"
 allowed-tools:
   - Read
   - Write
@@ -27,16 +26,16 @@ disable-model-invocation: false
 user-invocable: true
 metadata:
   author: unikit
-  version: "1.1"
+  version: "2.0"
   category: tools
 ---
 
-# MCP Trap — record a finding
+# Bridge Trap — record a finding
 
-Write one durable line about the engine MCP server this project talks to, into
+Write one durable line about the engine bridge a call went through, into
 `.unikit/bridge-notes/<bridge>.md`.
 
-**This skill makes zero calls to the engine MCP.** It needs no editor, no running
+**This skill makes zero calls to any bridge.** It needs no editor, no running
 project, and no gate. A finding is something that was *already observed*; re-observing
 it here would cost a session and could record the wrong thing. The executor that hit the
 trap does **not** write these notes either — one observation is a bad sample, and a bad
@@ -44,7 +43,7 @@ line lives for months. The durable surface goes through a human, and this skill 
 crossing.
 
 **This skill owns the notes format.** `references/notes-format.md` is the shared
-specification: this skill writes to it, `/unikit-mcp-audit` curates against it. Load it
+specification: this skill writes to it, `/unikit-bridge-audit` curates against it. Load it
 before writing anything.
 
 **User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
@@ -78,24 +77,24 @@ Silently load — do not narrate:
 
 1. **`{{skills_dir}}/{{self_name}}/references/notes-format.md`** — the format this skill
    owns. Mandatory; without it, do not write.
-2. **`.unikit/system/engine-bridges/BRIDGES.md`** and the first lines of the
-   **`.unikit/system/engine-bridges/<bridge>/INDEX.md`** of the bridge in question — the
-   delivery stamp (`bridge:`). This is the configured bridge, the second side of every
-   header comparison. File absent → there are no known exceptions for this bridge; that
+2. **`.unikit/system/engine-bridges/BRIDGES.md`** — which bridges the project has (a `—` in
+   a plan row is resolved by it, see Step 5) — and the first lines of the
+   **`.unikit/system/engine-bridges/<bridge>/INDEX.md`** of each target bridge — the delivery
+   stamp (`bridge:`). File absent → there are no known exceptions for that bridge; that
    restricts nothing and switches nothing to `⏸️ MANUAL`. Carry the bridge as unknown
    and say so once.
-3. **`.unikit/bridge-notes/<bridge>.md`** if it exists — its header (`bridge:` / `audited:`)
-   and the ids already taken.
+3. **`.unikit/bridge-notes/<bridge>.md`** of each target bridge, if it exists — its header
+   (`bridge:` / `audited:`) and the ids already taken.
 
 **Header mismatch is a WARN, never a stop.** If the notes header names a different
 bridge than the file it sits in, print exactly one line and keep going:
 
 ```
-WARN [bridges] notes header ≠ bridge (<header> ≠ <bridge>)
+WARN [bridge-trap] notes header ≠ file (<header> ≠ <file>)
 ```
 
 The existing entries stay in force — they are *suspect*, not void, and suspect entries
-still fail safe. Retiring them is `/unikit-mcp-audit`'s job, not this skill's.
+still fail safe. Retiring them is `/unikit-bridge-audit`'s job, not this skill's.
 
 <!-- unikit:extension-point:bootstrap -->
 
@@ -107,7 +106,7 @@ differ in what is read, not merely in where they start.
 | form | what happens |
 |---|---|
 | **the finding in one line** — `the snapshot reported ready with zero files` | straight to Step 5 with that one candidate. No session scan, no plan scan, no disk read beyond Bootstrap |
-| **a path to a plan file** — `.unikit/code/plans/2026-08-18_ui/PLAN.md` | read the `## MCP Findings` window of **that plan only** (Step 3) → Step 4 → Step 5. The session is **not** harvested and no other plan is looked at |
+| **a path to a plan file** — `.unikit/code/plans/2026-08-18_ui/PLAN.md` | read the `## Engine Bridge Findings` window of **that plan only** (Step 3) → Step 4 → Step 5. The session is **not** harvested and no other plan is looked at |
 | **empty** | the default pass: Step 1 (session) → Step 2 (offer to scan plans) → Step 3 |
 
 **On an explicit path, the Step 1 shortcut is off.** That shortcut — *something found in the
@@ -117,9 +116,13 @@ and wrong the moment somebody did. The form exists mainly to be called from the 
 shortcut would fire every time and the path would be ignored in exactly the scenario it was
 added for. Named source wins; the session is not consulted at all.
 
-**A path that does not exist, or carries no `## MCP Findings` heading** → say so in one line
-and stop. Do not silently fall back to scanning: the caller named a file, and a different
-file's findings are not a smaller answer to that request, they are a wrong one.
+**A path that does not exist, or carries neither the `## Engine Bridge Findings` heading nor the
+2.x heading `## MCP Findings`** → say so in one line and stop. Do not silently fall back to
+scanning: the caller named a file, and a different file's findings are not a smaller answer
+to that request, they are a wrong one.
+
+**A plan in the 2.x form** — heading `## MCP Findings`, or a table without the `bridge` column —
+is read as it stands: every row's bridge is `—`.
 
 ## Step 1 — the current session
 
@@ -151,7 +154,7 @@ This glob is load-bearing: a stale one matches nothing and the run reports *no f
 which is indistinguishable from success. Whenever the plan manifest is renamed, this line
 changes with it.
 
-The glob stays one file per plan even for an ultra bundle: `## MCP Findings` lives in the
+The glob stays one file per plan even for an ultra bundle: `## Engine Bridge Findings` lives in the
 manifest, never in a phase file, so trap never walks `phase-*.md`.
 
 **Declined → print one line and stop:**
@@ -167,7 +170,8 @@ nothing to find", and the next run would repeat the same offer against the same 
 
 Agreed, or a plan path was given → read **only the findings table**:
 
-1. `Grep` the heading `## MCP Findings` in the plan.
+1. `Grep` the heading `## Engine Bridge Findings` in the plan (or, in a plan of the 2.x form,
+   `## MCP Findings`).
 2. Take the window from that heading to the next `##` heading. **On a bulk scan** (the
    empty form, many candidate plans) stop at 30 lines if the next `##` has not arrived by
    then; **on an explicit plan path** there is no line cap — one named file, nothing to
@@ -181,7 +185,7 @@ turns into an expensive one.
 **A window that closed on the cap is announced, never silent:**
 
 ```
-WARN [mcp-trap] <plan>: the findings table is longer than the read window — <n> rows not read
+WARN [bridge-trap] <plan>: the findings table is longer than the read window — <n> rows not read
 ```
 
 The cap used to be unreachable: the table was filled once, in a run's closing report, so
@@ -193,7 +197,8 @@ against the named plan to take the rest.
 ## Step 4 — drop what was already transferred
 
 Every note carries `from: <plan>#<id>` in its observation row when it came from a plan.
-Drop every candidate row whose `<plan>#<id>` already appears in the notes.
+Drop every candidate row whose `<plan>#<id>` already appears in **the notes of any bridge**
+(`.unikit/bridge-notes/*.md` and `.unikit/bridge-notes/archive/*.md`).
 
 This is why no registry of processed plans is needed: the cursor is the `audited:` date
 plus the `from:` back-references, both of which live in the notes file itself. A repeat
@@ -218,12 +223,19 @@ draft **both halves** the format requires:
 is keyed by area precisely so it survives a server change, and a key outside that
 vocabulary is unreachable by the greps the executors run.
 
-**How a plan row becomes two notes rows.** The plan's six columns split across the line:
+**Which bridge.** A row's `bridge` names the notes file. A row with `—`: if `BRIDGES.md` lists
+exactly one bridge of kind `mcp`, the row belongs to it; with several (or none), ask once with the
+question tool of your agent (`AskUserQuestion`): `Which bridge did this finding come through?` —
+one option per bridge listed in `BRIDGES.md`, in the order the file gives, **no recommended
+option**. Never guess a bridge and never write a row to a file that was not named.
+
+**How a plan row becomes two notes rows.** The plan's **seven** columns split across the line:
 
 | plan column | goes to |
 |---|---|
 | `area`, `confirm that` | the `## Check` row, above the line |
 | `observed`, `evidence`, `from` | the `## Observation protocol` row, below the line |
+| `bridge` | decides **which notes file** the two rows are written to; not carried into the file |
 | `id` | **not** carried — notes ids are `R<n>`, allocated here; the plan's `F<n>` is recorded in `from:` as `<plan>#<id>` |
 | — | `replay` has no plan column. It is decided **here**, defaulting to `manual` |
 
@@ -257,7 +269,7 @@ Write `.unikit/bridge-notes/<bridge>.md` per `references/notes-format.md`:
   `audited: never`), both section headings, and the accepted rows.
 - **File present** → append rows to both tables, allocating fresh ids. Do **not** touch
   the header: `bridge:` describes where the existing entries came from, and `audited:`
-  belongs to `/unikit-mcp-audit`.
+  belongs to `/unikit-bridge-audit`.
 
 Both halves of a note are written together, always. A check with no observation behind
 it cannot be replayed, retired, or upstreamed — it is a rumour with an id.
@@ -275,18 +287,18 @@ writes as much as to a server's.
 
 ## What this skill never does
 
-- **Never calls the engine MCP.** No verification of the finding, no re-observation, no
-  catalog lookup. If the finding needs replaying, that is `/unikit-mcp-audit`.
+- **Never calls a bridge.** No verification of the finding, no re-observation, no
+  catalog lookup. If the finding needs replaying, that is `/unikit-bridge-audit`.
 - **Never edits a plan.** Plans are read through the findings window and left untouched;
   the transfer is recorded on the notes side, as `from:`.
 - **Never edits the packaged rules tree.** `.unikit/system/engine-bridges/` is rewritten by
   every `init` / `update`; an edit there is lost, and lost silently. A finding that
-  deserves to ship to everyone goes upstream through `/unikit-mcp-audit`.
+  deserves to ship to everyone goes upstream through `/unikit-bridge-audit`.
 - **Never writes `⏸️ MANUAL`,** and never treats a missing rules file as a restriction.
   Absence of rules means no known exceptions, not absence of capability.
 
 ## See also
 
-- `/unikit-mcp-audit` — curate what is here: re-stamp, replay, retire, upstream.
+- `/unikit-bridge-audit` — curate what is here: re-stamp, replay, retire, upstream.
 - `.unikit/system/dev-principles.md` — the evidence contract (A1/A2), the nine failure
   classes (A3), and the `kind` / area vocabularies (A8) this skill keys its rows by.

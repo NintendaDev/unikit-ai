@@ -73,8 +73,8 @@ Keep it to one question + one follow-up. Never fan out into a questionnaire.
 | "add a rule" / "always do X" | capture convention | `/unikit-rules <rule>` | — |
 | "make rules from this book/article/docs/PDF" | distil sources | `/unikit-memory <source(s)>` (`--module gamedesign` for design) | code or design knowledge? |
 | "share my rules across projects" | registry | `/unikit-rules-registry create\|update\|sync` | local folder registry? |
-| "the MCP said ok but nothing changed" / "the server lied" | record an MCP finding | `/unikit-mcp-trap [finding]`; curate later with `/unikit-mcp-audit` | is the observation already in this session? |
-| "are these MCP findings still true" / "the server was updated" | curate MCP findings | `/unikit-mcp-audit [id\|stamp\|replay\|retire\|upstream]` | replay needs a live editor |
+| "the MCP said ok but nothing changed" / "the server lied" | record an MCP finding | `/unikit-bridge-trap [finding]`; curate later with `/unikit-bridge-audit` | is the observation already in this session? |
+| "are these MCP findings still true" / "the server was updated" | curate MCP findings | `/unikit-bridge-audit [id\|stamp\|replay\|retire\|upstream]` | replay needs a live editor |
 | "write the docs" / "update the README" | project documentation | `/unikit-docs` | code docs or GDD export (`/unikit-gd-docs`)? |
 | "keep a task list" / "what was I doing" | task checklist | `/unikit-todo` | — |
 | "customize how a skill behaves" | skill override | `/unikit-skills-context <skill> "<rule>"` | — |

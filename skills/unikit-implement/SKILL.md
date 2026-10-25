@@ -249,7 +249,7 @@ Drift is printed **once**, here at plan load — not before each task. Execution
 - `Testing: yes | no` — whether tests are written (Step 3.8) and run (test-checkpoint tasks, Steps 2.5 and 3.2). Under `Testing: yes` read `{{skills_dir}}/{{self_name}}/references/test-runs.md` now, once — Steps 2.5, 3.2, 3.4 and 3.8 follow it; under `Testing: no` never read it. File missing or unreadable → print `WARN [testing] test-run reference missing — test-checkpoint tasks are reported as blockers; run unikit-ai update` and then: every test-checkpoint task is a Step 3.3 blocker, Step 2.5 asks nothing and marks nothing (the points stay as written), and Step 3.8 writes tests by the Step 3.2 choice.
 - `Test checkpoints: task | phase | plan` → where the test-checkpoint tasks stand (Steps 2.5 and 3.2). **Line absent under `Testing: yes` → the plan is legacy:** its placement was never declared; its run points are run commands in the task text (`### Tests`, `### Verification`, the implementation steps) plus test-checkpoint tasks recognisable only by their heading. Confidence is lower here, and the Step 4 report says so in one line. Under `Testing: no` the line is omitted by design (`{{skills_dir}}/unikit-plan/references/TASK-FORMAT.md`), and such a plan is not legacy.
 - `Docs: yes | no` → the documentation checkpoint of Step 5.3
-- `Editor tasks: mcp | manual | direct` → how tasks carrying an `Editor:` line are carried out (Step 3.2). **Line absent:** `mcp` if MCP server `{{engine_mcp_tool}}` is present in `{{settings_file}}` at the project root (the Step 3.6 probe), otherwise `manual`. Never default to `direct` — it is irreversible and only ever an explicit choice.
+- `Editor tasks: engine-bridge | manual | direct` (the 2.x spelling `mcp` is read as the same value) → how tasks carrying an `Editor:` line are carried out (Step 3.2). **Line absent:** `engine-bridge` if MCP server `{{engine_mcp_tool}}` is present in `{{settings_file}}` at the project root (the Step 3.6 probe), otherwise `manual`. Never default to `direct` — it is irreversible and only ever an explicit choice.
 
 - `PR checkpoints: yes` → the product behaviour of a PR checkpoint task; without the line, a PR checkpoint task is legacy.
 
@@ -286,7 +286,7 @@ Stack rules and rule topics are NOT loaded here — they are loaded lazily per-p
    WARN [bridges] notes header ≠ bridge (<header> ≠ <bridge>)
    ```
 
-   The entries are suspect, not void; retiring them belongs to `/unikit-mcp-audit`.
+   The entries are suspect, not void; retiring them belongs to `/unikit-bridge-audit`.
 
 **A file absent → skip it, print one line, and continue with every right you had** (no `BRIDGES.md` reads as "no bridge selected"):
 
@@ -393,7 +393,7 @@ When implementing inline, use the rules from Bootstrap + Phase Rules Refresh, th
 
 **Tasks carrying an `Editor:` line** target the editor's serialized state, not source files. Handle each `Editor:` line — `[kind] <container> → <target> : <action>` — by the `Editor tasks` mode parsed in Step 1:
 
-- **`mcp`** — carry it out through the engine MCP by `.unikit/system/dev-principles.md` → **D6**, on **every** such task; a call that misled you is a finding (**D7**); the library reference has two triggers and none of them is Bootstrap (**D8**). No rules file, or no check line for this area, changes nothing (A9).
+- **`engine-bridge`** — carry it out through the engine bridges by `.unikit/system/dev-principles.md` → **D6**, on **every** such task; a call that misled you is a finding (**D7**); the library reference has two triggers and none of them is Bootstrap (**D8**). No rules file, or no check line for this area, changes nothing (A9).
 - **`manual`** — do **not** touch any file. Mark the task `⏸️ MANUAL` (Step 3.4) and hand the user the exact instruction in the form `[kind] container → target : action`, one line per target.
 - **`direct`** — **a rollback point must exist before editing** (this is mandatory and the whole reason the mode is gated):
   - Files this run changed and has not committed yet → stage only those and commit them: invoke `unikit-commit`, like every other commit of this run — never with a `git commit` of your own; with auto-commit on (Step 3.9) it passes `auto` too. The user cancels that commit, or it does not complete → do not edit: put the task back on `manual` and print `WARN [editor] <task>: no pre-edit commit — direct edit skipped, task back on manual` — without that commit there is no rollback point.
@@ -443,7 +443,7 @@ After successful implementation, update the manifest:
 **Editor task handed to the user (`Editor tasks: manual`)** — a third outcome, neither done nor pending:
 - Write `- [x]` and append the marker `⏸️ MANUAL` to the task text: `- [x] Task 2.1 — wire the pause button ⏸️ MANUAL`. It counts by the `⏸️ MANUAL` rule of Step 2 and is reported separately (Step 4).
 
-**The task produced an MCP finding (Step 3.2)** — append its row to the plan's `## MCP Findings` table in this same `Edit`, by `dev-principles.md` → **D7**: `F<n>`, `observed` from `Bash(date *)`, semantic dedup. Not at the end of the phase, not at the end of the run. In every case — an `Editor:` task or not (the Step 3.6 console read, a test run) — a misleading call is also a candidate line in the run report (the raw call and the raw answer), and `.unikit/bridge-notes/<bridge>.md` is never written from here.
+**The task produced an MCP finding (Step 3.2)** — append its row to the plan's `## Engine Bridge Findings` table in this same `Edit`, by `dev-principles.md` → **D7**: `F<n>`, `observed` from `Bash(date *)`, `bridge` — the id of the bridge the misleading call went through, semantic dedup. A table in the 2.x form is converted first (`TASK-FORMAT.md` → `### Engine bridge findings section`). Not at the end of the phase, not at the end of the run. In every case — an `Editor:` task or not (the Step 3.6 console read, a test run) — a misleading call is also a candidate line in the run report (the raw call and the raw answer), and `.unikit/bridge-notes/<bridge>.md` is never written from here.
 
 **A test-checkpoint task (Step 3.2)** — ticked and recorded by `references/test-runs.md` → `## Step 3.4`.
 
@@ -457,7 +457,7 @@ After successful implementation, update the manifest:
 - `rule` carries **one line, one directive** — exactly what would go into `.unikit/RULES.md`. `full formulation` carries the long version with its rationale, under no length limit.
 - **Dedup is semantic:** a candidate saying the same thing as a row already present — of any status, `declined` included — is not added.
 - **Nothing here reaches `.unikit/RULES.md`.** Step 5.2 proposes the candidates to the user; only `/unikit-rules`, invoked with the batch the user selected, writes that file.
-- The plan carries no `## Rule Candidates` section (a legacy plan) → create it at `##` level under `## MCP Findings`, or above `## Dependency Graph` when that one is absent too, and print `INFO [rules] section ## Rule Candidates created`.
+- The plan carries no `## Rule Candidates` section (a legacy plan) → create it at `##` level under `## Engine Bridge Findings`, or above `## Dependency Graph` when that one is absent too, and print `INFO [rules] section ## Rule Candidates created`.
 
 Use the Edit tool to make these changes surgically.
 
@@ -651,9 +651,9 @@ Yes → delete `.unikit/code/PLAN.md`; No → leave it.
 
 **If using a folder plan** (`.unikit/code/plans/<folder>/`): keep it. **Never offer to delete `.unikit/code/plans/<folder>/PLAN.md`.** A finished folder plan leaves the active list only through `/unikit-archive`, which Step 5.8 names (not for a balance plan).
 
-**5.5: MCP Findings handoff**
+**5.5: Engine Bridge Findings handoff**
 
-Read the plan's `## MCP Findings` table.
+Read the plan's `## Engine Bridge Findings` table.
 
 - **No rows** (or no such heading) → say nothing at all — not even a "no findings this run" line — and go to 5.6.
 - **Rows present** → offer to move them to the durable surface:
@@ -662,7 +662,7 @@ Read the plan's `## MCP Findings` table.
 <n> MCP findings recorded in this plan. Transfer them to the notes of their bridge (.unikit/bridge-notes/)?
 ```
 
-  On agreement, invoke `unikit-mcp-trap` with the argument `<path to the plan file>` — the explicit path makes it read this plan and nothing else.
+  On agreement, invoke `unikit-bridge-trap` with the argument `<path to the plan file>` — the explicit path makes it read this plan and nothing else.
 
 **5.6: Verify or Commit**
 

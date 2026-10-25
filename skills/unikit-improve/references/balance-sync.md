@@ -31,7 +31,7 @@ Nothing is added past `Hand-back:`: no task, no phase, no module after the last 
 
 ## Executor data
 
-`## Measurements` is carried over whole together with `## MCP Findings`, `## Rule Candidates` and `## Test Runs`; its rows are not edited.
+`## Measurements` is carried over whole together with `## Engine Bridge Findings`, `## Rule Candidates` and `## Test Runs`; its rows are not edited.
 
 ## Grammar checks
 

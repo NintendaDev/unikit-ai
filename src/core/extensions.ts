@@ -7,6 +7,7 @@ import {
 } from '../utils/fs.js';
 import type { ExtensionRecord } from './config.js';
 import { parseInjections, type ExtensionInjection } from './extension-injections-schema.js';
+import { renameManifestSkillNames } from './skill-renames.js';
 import {
   deriveReplacedSkills, listExtensionItems, normalizeToItems, type ExtensionSelection,
 } from './extension-selection.js';
@@ -196,9 +197,10 @@ export function validateManifest(manifest: unknown): { valid: true; manifest: Ex
     }
   }
 
+  // The renamed base skills an extension names (replaces, injection targets) are read under their new names.
   return {
     valid: true,
-    manifest: {
+    manifest: renameManifestSkillNames({
       name: m.name as string,
       version: m.version as string,
       description: typeof m.description === 'string' ? m.description : undefined,
@@ -208,7 +210,7 @@ export function validateManifest(manifest: unknown): { valid: true; manifest: Ex
       replaces: m.replaces as Record<string, string> | undefined,
       injections,
       mcpServers: m.mcpServers as ExtensionMcpServer[] | undefined,
-    },
+    }, m.name as string),
   };
 }
 

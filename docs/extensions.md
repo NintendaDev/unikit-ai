@@ -543,6 +543,8 @@ Every skill below offers one point, `bootstrap`, at the end of its context-loadi
 | `unikit` | `bootstrap` | Step 0 (Load Existing Config), before the config-actualization mode | - |
 | `unikit-architecture` | `bootstrap` | Step 1 (Load Existing Context) | - |
 | `unikit-archive` | `bootstrap` | Step 0 (Context) | - |
+| `unikit-bridge-audit` | `bootstrap` | Bootstrap | There is no notes file for the bridge in `.unikit/bridge-notes/` |
+| `unikit-bridge-trap` | `bootstrap` | Bootstrap | - |
 | `unikit-commit` | `bootstrap` | Item 3 of the main list (Context Check), indented as part of the item | - |
 | `unikit-devcontext` | `bootstrap` | Rules Loading, the last lines of the file | - |
 | `unikit-docs` | `bootstrap` | Step 0 (Load Project Context) | - |
@@ -551,8 +553,6 @@ Every skill below offers one point, `bootstrap`, at the end of its context-loadi
 | `unikit-fix` | `bootstrap` | Step 0.2 (Load Fix Context) | - |
 | `unikit-implement` | `bootstrap` | Step 1.5 (Bootstrap Rules & Principles) | `--list`, `status` |
 | `unikit-improve` | `bootstrap` | Step 0.5 (Bootstrap Context) | - |
-| `unikit-mcp-audit` | `bootstrap` | Bootstrap | There is no `.unikit/MCP-RECHECK-NOTES.md` |
-| `unikit-mcp-trap` | `bootstrap` | Bootstrap | - |
 | `unikit-memory` | `bootstrap` | Step 0.5 (Resolve the Active Module) | - |
 | `unikit-plan` | `bootstrap` | Step 0.5 (Bootstrap Context) | `--list`, resuming an ultra plan, a merge plan |
 | `unikit-pr` | `bootstrap` | Step 0 (Context) | - |

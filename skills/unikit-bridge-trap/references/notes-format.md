@@ -2,7 +2,7 @@
 
 The project's log of what has to be re-checked about **one** engine bridge. One file per bridge: a finding is a statement about the bridge it was observed on, and the name of the file says which.
 
-**This file is the specification, and `/unikit-mcp-trap` owns it.** `/unikit-mcp-audit`
+**This file is the specification, and `/unikit-bridge-trap` owns it.** `/unikit-bridge-audit`
 reads the same spec to curate what trap wrote (provider-owns-spec, the same arrangement
 `{{skills_dir}}/unikit-gd-explore/references/delegation-contract.md` has with `unikit-gd-brainstorm`).
 Neither skill may drift from it privately — a note is written by one skill and replayed
@@ -20,7 +20,7 @@ file (into `archive/` and back), when its bridge leaves the selection or returns
 
 ```markdown
 # MCP — what to re-check here
-<!-- Written by /unikit-mcp-trap · curated by /unikit-mcp-audit · install only renames it -->
+<!-- Written by /unikit-bridge-trap · curated by /unikit-bridge-audit · install only renames it -->
 
 bridge:  <file id of the bridge these entries were observed on>
 audited: <YYYY-MM-DD, or `never`>
@@ -46,7 +46,7 @@ audited: <YYYY-MM-DD, or `never`>
 that touches editor state, by grep, one area at a time. A name here would rot in days
 and take the instruction down with it.
 
-**Below the line — the protocol, with names in it.** Read only by `/unikit-mcp-audit`,
+**Below the line — the protocol, with names in it.** Read only by `/unikit-bridge-audit`,
 which needs the raw call to replay it. This is the **one** place in anything UniKit
 ships or writes where a tool name is legitimate.
 
@@ -59,7 +59,7 @@ as long as the instruction it is reading, on every task.
 a human opening this file can tell when they ran into this.
 
 It is written by whoever did the observing, never by whoever moved the row here: a row
-harvested out of a plan carries the date already in that plan's `## MCP Findings` table,
+harvested out of a plan carries the date already in that plan's `## Engine Bridge Findings` table,
 copied across verbatim, and a finding raised in the session being trapped carries today's.
 Stamping the transfer date on both would relabel the column — it would then say when the
 note was filed, which is a fact nobody needs and which is already implied by the ids.
@@ -174,7 +174,7 @@ cost of the two mistakes is not comparable, so the tie goes to `manual`.
 
 | # | case | what happens |
 |---|---|---|
-| 1 | **new finding** | the executor puts a candidate in its run report and in the plan's `## MCP Findings` — never in this file; a human runs `/unikit-mcp-trap` |
+| 1 | **new finding** | the executor puts a candidate in its run report and in the plan's `## Engine Bridge Findings` — never in this file; a human runs `/unikit-bridge-trap` |
 | 2 | **the bridge changed** | the header names a different bridge than the file it sits in: every row is suspect, **applied anyway**, one WARN |
 | 3 | **trap fixed** | the audit replays the evidence of a `replay: safe` row → offers to retire it |
 | 4 | **the call disappeared** | the replay fails → same outcome as "fixed"; no separate mechanism needed |

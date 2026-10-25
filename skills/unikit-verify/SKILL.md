@@ -193,7 +193,7 @@ Check if `--strict` is in `$ARGUMENTS`. If yes — enable strict mode (see Stric
 Every `WARN [research-drift]` line reaches the Step 4 report **and** the `unikit-gate-result` block — otherwise it is lost with the session. The gate level is `warn`, **never** `fail`: source drift does not make the implementation wrong, it makes it debatable, and the decision is the user's.
 
 **Parse `## Settings`** from the plan while it is open here — Step 1 needs it and runs long before the `Docs:` read in Step 3:
-- `Editor tasks: mcp | manual | direct` — the mode `/unikit-implement` used. Context for Step 1: under `manual`, editor targets are expected to be marked `⏸️ MANUAL` rather than implemented.
+- `Editor tasks: engine-bridge | manual | direct` (the 2.x spelling `mcp` is read as the same value) — the mode `/unikit-implement` used. Context for Step 1: under `manual`, editor targets are expected to be marked `⏸️ MANUAL` rather than implemented.
 - `Test checkpoints: task | phase | plan` — the run placement the planner recorded. Context for Step 2.2: under `phase` and `plan` there are no runs among the `### Verification` commands — they live in test-checkpoint tasks. **Line absent under `Testing: yes` → the plan is legacy:** placement was never declared, and runs may sit anywhere in the task text. Under `Testing: no` the line is omitted by design, and there are no runs to place.
 
 **`## Rule Candidates` holds at least one `open` row** → read `{{skills_dir}}/{{self_name}}/references/rule-candidates.md` now, once — Step 5 follows it. No `open` row → do not read it here.
@@ -221,7 +221,7 @@ Stack rules are loaded on-demand if Step 4.3 fixes reveal framework-specific iss
    WARN [bridges] notes header ≠ bridge (<header> ≠ <bridge>)
    ```
 
-   The entries are *suspect*, not void, and a suspect check still fails safe. Retiring them belongs to `/unikit-mcp-audit`.
+   The entries are *suspect*, not void, and a suspect check still fails safe. Retiring them belongs to `/unikit-bridge-audit`.
 7. For each such bridge, `.unikit/system/engine-bridges/<bridge>/verification.md` — **this skill and no other reads it.** It is the per-gate calibration for that bridge: for each gate, whether it is reachable and **what class of evidence closes it**. It grants nothing and lifts nothing (see the gate rule in Step 2); it tells you which observation counts.
 
 **Any of them absent → skip it, print one line, and continue with every right you had:**
@@ -312,7 +312,7 @@ Launch one Explore task per audited phase. For each phase, provide:
 - **The file exists but carries no `## Editor Target Checks` section** → a normal A9 degradation, not a dead end. Verify the target anyway: close it with an evidence class from `.unikit/system/dev-principles.md` (A2, and D3 when the first route is unavailable), reading the project's own rules in `.unikit/system/engine-bridges/` first. This is **never** `Engine MCP unavailable` and **never** `⏸️ MANUAL` — a missing section means the per-kind signals were not written down for this engine yet, never that the affordance is absent.
 - **Verify against the editor, never against the plan.** The acceptance criterion is closed by what the editor reports now, not by what the plan said would happen and not by what the implementation report claimed. Re-reading the plan's own words back is not verification: it makes a planning error invisible, because the two sides of the comparison have the same author.
 - **Per target, before the read-back:** steps 1–3 of `.unikit/system/dev-principles.md` → **D6** — candidates from the live catalog by intent, their schemas, the `## Check` tables grepped by area. No matching line changes nothing: an absent exception is not an absent capability (A9).
-- **A call that misled you is a finding** (`dev-principles.md` → **D7**): a candidate line in the verification report and a row in the plan's `## MCP Findings` table, written on the pass over the target that produced it, never in the verification summary — `observed` is the date you observed it (`Bash(date *)`). **Never write `.unikit/bridge-notes/<bridge>.md` from here.**
+- **A call that misled you is a finding** (`dev-principles.md` → **D7**): a candidate line in the verification report and a row in the plan's `## Engine Bridge Findings` table, written on the pass over the target that produced it, never in the verification summary — `observed` is the date you observed it (`Bash(date *)`), `bridge` the id of the bridge the call went through. A table in the 2.x form is converted first (`TASK-FORMAT.md` → `### Engine bridge findings section`). **Never write `.unikit/bridge-notes/<bridge>.md` from here.**
 - **MCP unavailable** → `⏭️ SKIPPED (editor target, MCP unavailable)`. Not a failure.
 - **Task marked `⏸️ MANUAL` in the plan** → `⏸️ MANUAL`. Not a blocker: the user took it on deliberately. Report the target so it stays visible.
 
@@ -661,7 +661,7 @@ For each fix iteration (Fix now / Fix critical only). Fixes are written by this 
 - For each incomplete/partial task — implement the missing parts
 - For TODO/debug artifacts — clean up
 - For anti-patterns — fix
-- Update the plan manifest after fixes — checkbox lines and the `## MCP Findings` table only. `## Technical Context` is never rewritten from here; it belongs to `/unikit-plan` and `/unikit-improve`
+- Update the plan manifest after fixes — checkbox lines and the `## Engine Bridge Findings` table only. `## Technical Context` is never rewritten from here; it belongs to `/unikit-plan` and `/unikit-improve`
 - After fixes — re-run checks on affected items, Step 2.2 included: a fix changes the tree, so the recorded run becomes stale, and the report says so instead of keeping the earlier ✅. A Step 2.2 finding is never fixed here by starting a run in normal mode — "Fix now" leaves it in the report; under `--strict` the Step 2.2 question is asked once more when a fix made the run it approved stale
 
 ### 4.4 Machine-Readable Gate Result

@@ -70,3 +70,25 @@ export function bridgeNotesArchiveDir(projectDir: string): string {
 /** The 2.x findings log and the prefix of its parked copies: literals of the layout the notes migration reads. */
 export const LEGACY_NOTES_FILE = 'MCP-RECHECK-NOTES.md';
 export const LEGACY_NOTES_ARCHIVE_PREFIX = 'MCP-RECHECK-NOTES.archive.';
+
+/** The user's overrides of a skill live in `.unikit/skill-context/<skill>/`; a renamed skill does not read the old name's. */
+export const SKILL_CONTEXT_DIR_NAME = 'skill-context';
+
+// --- The plan forms the 3.0.0 plan migration rewrites ---
+
+/** Subfolder of the code workspace that holds archived plans: `.unikit/code/archive/plans/<folder>/`. */
+export const PLAN_ARCHIVE_DIR_NAME = 'archive';
+
+/** The bridge column of a findings row nobody could name a bridge for. */
+export const BRIDGE_COLUMN_UNKNOWN = '—';
+export const BRIDGE_COLUMN_HEADER = 'bridge';
+
+/** The heading of the findings section: the 2.x spelling and the 3.0.0 one. */
+export const LEGACY_FINDINGS_HEADING = '## MCP Findings';
+export const FINDINGS_HEADING = '## Engine Bridge Findings';
+
+export const SETTINGS_HEADING = '## Settings';
+
+/** The setting line that names how editor tasks are carried out: the 2.x value (matched) and the 3.0.0 line (written). */
+export const LEGACY_EDITOR_TASKS_LINE = /^- Editor tasks:\s*mcp\s*$/;
+export const EDITOR_TASKS_BRIDGE_VALUE = '- Editor tasks: engine-bridge';

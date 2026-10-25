@@ -580,6 +580,124 @@ await group('BR-7b', async () => {
     report('BR-7b', 'notes migration checks ran', passed - before, []);
 });
 
+// ── BR-9: the table of renamed skills ────────────────────────────────────────
+
+await group('BR-9', async () => {
+    const renames = await dist('core/skill-renames.js');
+    const before = passed;
+
+    assertEq('BR-9', 'the two skills of 3.0.0 are in the table',
+        [renames.renamedTo('unikit-mcp-trap'), renames.renamedTo('unikit-mcp-audit'), renames.renamedTo('unikit-plan')],
+        ['unikit-bridge-trap', 'unikit-bridge-audit', undefined]);
+    assertEq('BR-9', 'names are renamed in place, in order, without duplicates',
+        renames.renameSkillNames(['unikit', 'unikit-mcp-audit', 'unikit-bridge-audit', 'unikit-mcp-trap']),
+        ['unikit', 'unikit-bridge-audit', 'unikit-bridge-trap']);
+    assertEq('BR-9', 'a record keyed by skill name follows the table',
+        renames.renameRecordKeys({ 'unikit-mcp-trap': 'skills/trap', 'unikit-commit': 'skills/c' }),
+        { 'unikit-bridge-trap': 'skills/trap', 'unikit-commit': 'skills/c' });
+
+    const manifest = {
+        replaces: { 'skills/trap': 'unikit-mcp-trap', 'skills/c': 'unikit-commit' },
+        injections: [
+            { target: 'unikit-mcp-audit', targetType: 'skill', file: 'a.md' },
+            { target: 'unikit-mcp-audit', targetType: 'subagent', file: 'b.md' },
+        ],
+    };
+    const { result, lines } = captureWarnings(() => renames.renameManifestSkillNames(manifest, 'br9-label'));
+    assertEq('BR-9', 'a manifest names the renamed skills under their new names, subagent targets untouched',
+        [result.replaces, result.injections.map(injection => injection.target)],
+        [{ 'skills/trap': 'unikit-bridge-trap', 'skills/c': 'unikit-commit' }, ['unikit-bridge-audit', 'unikit-mcp-audit']]);
+    assertEq('BR-9', 'each renamed name is announced, once', lines.length, 2);
+    assertEq('BR-9', 'reading the same manifest again does not announce it again',
+        captureWarnings(() => renames.renameManifestSkillNames(manifest, 'br9-label')).lines.length, 0);
+
+    report('BR-9', 'skill rename checks ran', passed - before, []);
+});
+
+// ── BR-7c: the plan rewrite, without a disk ──────────────────────────────────
+
+await group('BR-7c', async () => {
+    const { rewritePlanText } = await dist('core/bridge-migrations/plans.js');
+    const before = passed;
+
+    const plan = [
+        '# Plan', '', '## Settings', '- Testing: yes', '- Editor tasks: mcp', '',
+        '## MCP Findings', '',
+        '| id | area | confirm that | observed | evidence | from |',
+        '|---|---|---|---|---|---|',
+        '| F1 | rollback | the snapshot has files | 2026-08-18 | `x(a|b)` → `files=0` | task 2.3 |',
+        '', '## Tasks', '- [ ] one', '',
+    ].join('\n');
+    const expected = [
+        '# Plan', '', '## Settings', '- Testing: yes', '- Editor tasks: engine-bridge', '',
+        '## Engine Bridge Findings', '',
+        '| id | area | confirm that | observed | evidence | from | bridge |',
+        '|---|---|---|---|---|---|---|',
+        '| F1 | rollback | the snapshot has files | 2026-08-18 | `x(a|b)` → `files=0` | task 2.3 | unity-biome-mcp |',
+        '', '## Tasks', '- [ ] one', '',
+    ].join('\n');
+    const rewritten = rewritePlanText(plan, 'unity-biome-mcp');
+    assertEq('BR-7c', 'heading, setting and table are rewritten, a pipe inside backticks is not a cell', rewritten, expected);
+    assertEq('BR-7c', 'a second pass writes nothing', rewritten === null ? null : rewritePlanText(rewritten, 'unity-biome-mcp'), null);
+
+    const fenced = ['## Settings', '```', '- Editor tasks: mcp', '## MCP Findings', '```', ''].join('\n');
+    assertEq('BR-7c', 'a fenced example is never rewritten', rewritePlanText(fenced, '—'), null);
+    assertEq('BR-7c', 'other values of the setting and a plan with no findings are left alone',
+        rewritePlanText('## Settings\n- Editor tasks: manual\n\n## Tasks\n- [ ] a\n', '—'), null);
+
+    const crlf = plan.split('\n').join('\r\n');
+    const crlfOut = rewritePlanText(crlf, '—');
+    assertEq('BR-7c', 'CRLF is kept on every line', crlfOut !== null && crlfOut.split('\n').every(line => line === '' || line.endsWith('\r')), true);
+
+    const spaced = ['## MCP Findings', '| id | from |', '| --- | --- |', '| F1 | t |', ''].join('\n');
+    assertEq('BR-7c', 'a spaced separator is widened in its own style',
+        rewritePlanText(spaced, '—'), ['## Engine Bridge Findings', '| id | from | bridge |', '| --- | --- | --- |', '| F1 | t | — |', ''].join('\n'));
+
+    const already = ['## Engine Bridge Findings', '| id | bridge |', '|---|---|', '| F1 | x |', ''].join('\n');
+    assertEq('BR-7c', 'a table that already has the column is not widened again', rewritePlanText(already, '—'), null);
+
+    report('BR-7c', 'plan rewrite checks ran', passed - before, []);
+});
+
+// ── BR-10a / BR-12a: the new forms in the texts that own them ────────────────
+
+await group('BR-10a', async () => {
+    const read = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
+    const violations = [];
+    let scanned = 0;
+
+    const taskFormat = read('skills/unikit-plan/references/TASK-FORMAT.md');
+    scanned++;
+    if (!taskFormat.includes('| id | area | confirm that | observed | evidence | from | bridge |')) violations.push('TASK-FORMAT.md: the template has no seven-column header');
+    if (!taskFormat.includes('**The 2.x form.**')) violations.push('TASK-FORMAT.md: the 2.x form is not described');
+
+    for (const writer of [
+        'skills/unikit-implement/SKILL.md', 'skills/unikit-fix/SKILL.md', 'skills/unikit-verify/SKILL.md',
+        'subagents/unikit-implement-worker.md', 'subagents/unikit-implement-coordinator.md',
+    ]) {
+        scanned++;
+        const text = read(writer);
+        if (!text.includes('Engine Bridge Findings')) violations.push(`${writer}: does not name the section`);
+        if (!/`bridge`/.test(text) && !text.includes('(`bridge` is')) violations.push(`${writer}: does not mention the bridge column`);
+    }
+    report('BR-10a', 'the format owner and the five writers carry the bridge column', scanned, violations);
+});
+
+await group('BR-12a', async () => {
+    const violations = [];
+    let scanned = 0;
+    for (const skill of ['unikit-bridge-trap', 'unikit-bridge-audit']) {
+        scanned++;
+        const text = fs.readFileSync(path.join(ROOT, 'skills', skill, 'SKILL.md'), 'utf8');
+        const description = /description:\s*>-\n([\s\S]*?)\n[a-z-]+:/.exec(text)?.[1].replace(/\n\s*/g, ' ') ?? '';
+        if (description.length === 0 || description.length > 1024) violations.push(`${skill}: description is ${description.length} characters`);
+        if (/\b(Unity|Godot|Unreal)\b/.test(text)) violations.push(`${skill}: names an engine`);
+        if (text.includes('.unikit/MCP-RECHECK-NOTES')) violations.push(`${skill}: still names the 2.x notes file`);
+        if (/^server:|`server:`/m.test(text)) violations.push(`${skill}: still writes the 2.x header key`);
+    }
+    report('BR-12a', 'the two renamed skills carry no 2.x layout and stay engine-neutral', scanned, violations);
+});
+
 // (groups of later tasks are appended above this line, each under its own banner)
 
 console.log(`\nEngine bridge guards: ${passed} passed, ${failed} failed`);

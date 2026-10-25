@@ -20,7 +20,7 @@ Main configuration file, created by `unikit-ai init`:
       "installedSkills": [
         "unikit", "unikit-architecture", "unikit-archive", "unikit-commit", "unikit-devcontext",
         "unikit-docs", "unikit-evolve", "unikit-explore", "unikit-fix", "unikit-help",
-        "unikit-implement", "unikit-improve", "unikit-mcp-audit", "unikit-mcp-trap",
+        "unikit-implement", "unikit-improve", "unikit-bridge-audit", "unikit-bridge-trap",
         "unikit-memory", "unikit-plan", "unikit-pr", "unikit-review", "unikit-roadmap",
         "unikit-rules", "unikit-rules-registry", "unikit-skills-context",
         "unikit-todo", "unikit-verify"
@@ -430,7 +430,7 @@ When you select an engine MCP, UniKit AI copies that server's **rules tree** int
 |------|---------|
 | `INDEX.md`, base section (everything except the `## Check` table) | `/unikit-plan`, `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-devcontext`, `unikit-implement-worker` — once, at Bootstrap |
 | `INDEX.md`, the `## Check` table | `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `unikit-implement-worker` — grepped per editor task, by the task's own area plus the cross-cutting ones |
-| `INDEX.md`, the delivery stamp and the access section | `/unikit-mcp-audit`, `/unikit-mcp-trap` — the stamp (`server:`) is the configured server; the access section says how a project-relative asset path is written for this engine |
+| `INDEX.md`, the delivery stamp and the access section | `/unikit-bridge-audit`, `/unikit-bridge-trap` — the stamp (`server:`) is the configured server; the access section says how a project-relative asset path is written for this engine |
 | `verification.md` | `/unikit-verify` and no other skill — per-gate calibration: which observation closes which gate |
 
 Three invariants hold over everything in the tree, and they are what makes it safe to ship at all:
@@ -456,8 +456,8 @@ The rules tree is what UniKit AI shipped. This file is what *your* project found
 - It sits at the root of `.unikit/`, deliberately **outside** `.unikit/system/` — so the installer's flat-rewrite and orphan sweep cannot reach it by construction.
 - **The installer never writes its content.** The only operation it performs is a rename: switching engine MCP servers parks the active file as `MCP-RECHECK-NOTES.archive.<previous-server>.md`, and switching back restores it. A finding is a statement about *one* server, so carrying it across a switch would be worse than losing it — it would look like evidence.
 - Invariant: **one file per server — active or archived, never both.** An interrupted run can leave a second archive behind; it is kept rather than overwritten and announced with a `WARN`, because merging two sessions' findings is a curation call and not the installer's to make.
-- `/unikit-mcp-trap` writes it, `/unikit-mcp-audit` curates it (re-stamp, replay, retire, upstream). Pipeline skills **read** it and never write it: one observation is a bad sample, and a bad line lives for months, so the durable surface passes through a human.
-- It obeys the same three invariants as the rules tree, with **one carve-out**: the `evidence:` field of an entry is the single place in the whole system where a tool name may be written down. That is what makes an entry evidence rather than an opinion — and it is why `/unikit-mcp-audit` treats every entry as suspect once the server moves.
+- `/unikit-bridge-trap` writes it, `/unikit-bridge-audit` curates it (re-stamp, replay, retire, upstream). Pipeline skills **read** it and never write it: one observation is a bad sample, and a bad line lives for months, so the durable surface passes through a human.
+- It obeys the same three invariants as the rules tree, with **one carve-out**: the `evidence:` field of an entry is the single place in the whole system where a tool name may be written down. That is what makes an entry evidence rather than an opinion — and it is why `/unikit-bridge-audit` treats every entry as suspect once the server moves.
 
 ### MCP JSON schema fields
 
@@ -512,8 +512,8 @@ An MCP JSON may name the skills and subagents that receive its tools; the names 
   | Coplay Unity MCP | `find_gameobjects` |
   | ChiR24 Unreal MCP | `manage_tools` |
   | All three Godot servers | *(no `unikit-plan` key)* |
-- `/unikit-mcp-audit` gets a wildcard because replaying a finding means re-issuing the exact call recorded in its `evidence:` field. Its restraint lives in a six-step envelope gated on one informed confirmation from you, not in the size of its grant.
-- **`/unikit-mcp-trap` receives no grants at all** — it makes zero MCP calls by construction. This cannot be recorded in the JSON itself: the format has no comments, and an empty array would say something different — that the skill is a recipient whose grant list happens to be empty, which is a state nothing distinguishes from an editing mistake. So it is written down here.
+- `/unikit-bridge-audit` gets a wildcard because replaying a finding means re-issuing the exact call recorded in its `evidence:` field. Its restraint lives in a six-step envelope gated on one informed confirmation from you, not in the size of its grant.
+- **`/unikit-bridge-trap` receives no grants at all** — it makes zero MCP calls by construction. This cannot be recorded in the JSON itself: the format has no comments, and an empty array would say something different — that the skill is a recipient whose grant list happens to be empty, which is a state nothing distinguishes from an editing mistake. So it is written down here.
 - The wildcard on the read-only review sidecar is a **deliberate deferral** — narrowing read-only consumers is a separate question — not an oversight to be tidied away.
 
 #### Per-platform configs
@@ -687,8 +687,8 @@ your-unity-project/
 │   │   │   └── references/
 │   │   ├── unikit-implement/
 │   │   ├── unikit-improve/
-│   │   ├── unikit-mcp-audit/
-│   │   ├── unikit-mcp-trap/
+│   │   ├── unikit-bridge-audit/
+│   │   ├── unikit-bridge-trap/
 │   │   │   └── references/
 │   │   ├── unikit-memory/
 │   │   ├── unikit-plan/
@@ -735,7 +735,7 @@ your-unity-project/
 │   │   │   ├── design-read.md      # The code-reads-design contract
 │   │   │   └── genres/             # Only the profiles in .unikit.json genres.installed
 │   │   └── engine-mcp/            # Rules tree of the selected engine MCP (INDEX.md, verification.md)
-│   ├── MCP-RECHECK-NOTES.md      # Your findings about that server - /unikit-mcp-trap writes, the installer only renames
+│   ├── MCP-RECHECK-NOTES.md      # Your findings about that server - /unikit-bridge-trap writes, the installer only renames
 │   ├── memory/                   # Dynamic memory, partitioned per knowledge module
 │   │   ├── RULES_INDEX.md        # Auto-generated rule index
 │   │   ├── code/

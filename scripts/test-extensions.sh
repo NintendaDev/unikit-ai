@@ -391,6 +391,75 @@ assert_not_contains "$REPLACE_PROJECT/.claude/skills/unikit-commit/SKILL.md" \
 echo "  ✓ replaces: base skill restored after extension removal"
 
 # ─────────────────────────────────────────────────────
+# Test 10b: a manifest that names a RENAMED base skill is read under the new name
+# ─────────────────────────────────────────────────────
+# unikit-mcp-trap / unikit-mcp-audit became unikit-bridge-trap / unikit-bridge-audit in 3.0.0. An extension
+# written for the old names (a replacement of the trap skill, an injection into the audit skill) keeps
+# working: its manifest is translated at every read, one warning per name asks the author to update it,
+# and the record the project keeps names the base skill under its new name.
+
+RENAMED_EXT_DIR="$TMPDIR/ext-names-renamed-skills"
+mkdir -p "$RENAMED_EXT_DIR/skills/trap"
+cat > "$RENAMED_EXT_DIR/extension.json" << 'EOF'
+{
+  "name": "ext-old-names",
+  "version": "1.0.0",
+  "replaces": { "skills/trap": "unikit-mcp-trap" },
+  "injections": [
+    { "target": "unikit-mcp-audit", "targetType": "skill", "point": "bootstrap", "id": "note", "file": "inject.md" }
+  ]
+}
+EOF
+printf -- '---\nname: unikit-mcp-trap\ndescription: Trap replaced by an extension\n---\n\n# Custom Trap (from extension)\n' > "$RENAMED_EXT_DIR/skills/trap/SKILL.md"
+printf 'EXT_NOTE_FOR_THE_AUDIT_SKILL\n' > "$RENAMED_EXT_DIR/inject.md"
+
+RENAMED_EXT_PROJECT="$TMPDIR/test-ext-old-names-project"
+mkdir -p "$RENAMED_EXT_PROJECT"
+cat > "$RENAMED_EXT_PROJECT/.unikit.json" << 'EOF'
+{
+  "version": "3.0.0",
+  "language": "en",
+  "engine": "unity",
+  "engineBridges": {"selected": {}},
+  "mcp": { "servers": {} },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit", "unikit-bridge-trap", "unikit-bridge-audit"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": { "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } } }
+}
+EOF
+inject_fake_registry "$RENAMED_EXT_PROJECT"
+(cd "$RENAMED_EXT_PROJECT" && node "$ROOT_DIR/dist/cli/index.js" update > /dev/null 2>&1)
+
+RENAMED_EXT_OUT="$TMPDIR/ext-old-names-add.log"
+(cd "$RENAMED_EXT_PROJECT" && node "$ROOT_DIR/dist/cli/index.js" extension add "$RENAMED_EXT_DIR" > "$RENAMED_EXT_OUT" 2>&1)
+
+assert_contains "$RENAMED_EXT_OUT" 'names the renamed skill "unikit-mcp-trap"' "renamed names: the replaced skill is announced once so the author updates the manifest"
+assert_contains "$RENAMED_EXT_OUT" 'names the renamed skill "unikit-mcp-audit"' "renamed names: the injection target is announced too"
+assert_contains "$RENAMED_EXT_PROJECT/.claude/skills/unikit-bridge-trap/SKILL.md" 'Custom Trap \(from extension\)' \
+  "renamed names: the replacement landed under the NEW base name"
+assert_not_exists "$RENAMED_EXT_PROJECT/.claude/skills/unikit-mcp-trap" "renamed names: nothing was installed under the old name"
+assert_contains "$RENAMED_EXT_PROJECT/.claude/skills/unikit-bridge-audit/SKILL.md" 'EXT_NOTE_FOR_THE_AUDIT_SKILL' \
+  "renamed names: the injection found its anchor in the renamed skill"
+RENAMED_EXT_RECORD=$(node -e "
+  const c = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
+  const ext = (c.extensions || []).find(e => e.name === 'ext-old-names');
+  console.log(ext && ext.replacedSkills ? Object.keys(ext.replacedSkills).join(',') : 'none');
+" "$RENAMED_EXT_PROJECT/.unikit.json")
+if [[ "$RENAMED_EXT_RECORD" == "unikit-bridge-trap" ]]; then
+  echo "  ✓ renamed names: replacements and injections of an old manifest follow the renamed base skills"
+else
+  echo "Assertion failed: the record should name the base skill under its new name, got: $RENAMED_EXT_RECORD"
+  exit 1
+fi
+
+# ─────────────────────────────────────────────────────
 # Test 11: MCP servers from extension
 # ─────────────────────────────────────────────────────
 

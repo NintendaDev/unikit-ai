@@ -50,14 +50,14 @@ tasks merged into it: their non-run steps are performed there (`/unikit-implemen
 
 ## What is mutable
 
-- Checkboxes, `## MCP Findings`, `## Rule Candidates`, `## Test Runs`, `## Measurements`,
+- Checkboxes, `## Engine Bridge Findings`, `## Rule Candidates`, `## Test Runs`, `## Measurements`,
   `## Commit Plan` and `## Settings` are edited **only in the manifest**.
 - **Phase files are read-only during execution.** A skill executing a plan writes into
   `phase-*.md` under no circumstance.
 - **`Write` over the manifest is forbidden** — use `Edit`. A regenerating write drops
   `## Phase Index` and `## Technical Context` wholesale.
 - The consequence worth naming, because it is what the single write surface buys: `F<n>`
-  numbering in `## MCP Findings` never branches across phases, so the `/unikit-mcp-trap`
+  numbering in `## Engine Bridge Findings` never branches across phases, so the `/unikit-bridge-trap`
   window stays single-file.
 - The merge marker of a test-checkpoint task (`⏭️ MERGED → task N.M`) is **the text of the
   task in the manifest's checklist**, on the model of `⏸️ MANUAL`. A merge changes no phase

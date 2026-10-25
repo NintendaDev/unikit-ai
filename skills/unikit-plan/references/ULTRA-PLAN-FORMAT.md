@@ -71,11 +71,11 @@ Rules:
   `## Phase Index`, a checkbox in `## Checklist`, and a `## Task N.M:` section in exactly
   one phase file.
 - **Everything mutable during execution lives in the manifest**: checkboxes,
-  `## MCP Findings`, `## Rule Candidates`, `## Test Runs`, `## Measurements`, `## Commit Plan`,
+  `## Engine Bridge Findings`, `## Rule Candidates`, `## Test Runs`, `## Measurements`, `## Commit Plan`,
   `## Settings`. Phase files are **read-only during
   execution**. The consequence has to be stated, because it is what the split buys: the
   executor has one write surface, `F<n>` numbering in the findings table never branches
-  across phases, and the `/unikit-mcp-trap` window stays single-file (`plans/*/PLAN.md`).
+  across phases, and the `/unikit-bridge-trap` window stays single-file (`plans/*/PLAN.md`).
 
 ## Manifest Template
 
@@ -151,7 +151,7 @@ Planned at: <short sha>
   Test checkpoint: plan
 
 ## Commit Plan
-## MCP Findings
+## Engine Bridge Findings
 ## Rule Candidates
 ## Test Runs
 ## Measurements   (only with a `Measure:` task)
@@ -201,8 +201,8 @@ Rules:
   `INTERFACES`, `KEY PATTERNS`, `FILES`, `EDITOR TARGETS`, `DI BINDINGS` — are distributed
   into the phase files. There is one rule, and it decides every case:
   **cross-phase goes in the manifest, task-scoped goes in the phase.**
-- **`## MCP Findings` stays at `##` level and above `## Technical Context`**, for the same
-  reason as in the base format: `/unikit-mcp-trap` reads the heading down to the next `##`,
+- **`## Engine Bridge Findings` stays at `##` level and above `## Technical Context`**, for the same
+  reason as in the base format: `/unikit-bridge-trap` reads the heading down to the next `##`,
   and a technical context that drifted above the findings would silently widen that window
   onto prose.
 - **`## Open Questions` is where a blocking question goes.** If a choice genuinely cannot

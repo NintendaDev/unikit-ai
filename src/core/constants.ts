@@ -211,7 +211,7 @@ export const KIMI_BASE_PROMPT_PLACEHOLDER = '${base_prompt}';
  * Project-local log of MCP findings — `.unikit/MCP-RECHECK-NOTES.md`. It sits at
  * the root of `.unikit/` rather than under `system/` **by construction**: every
  * system asset is flat-rewritten on init/update, and this file is user-owned
- * (written by `/unikit-mcp-trap`, curated by `/unikit-mcp-audit`). The installer
+ * (written by `/unikit-bridge-trap`, curated by `/unikit-bridge-audit`). The installer
  * only ever renames it — see {@link MCP_RECHECK_NOTES_ARCHIVE_PREFIX}.
  */
 export const MCP_RECHECK_NOTES_FILE = 'MCP-RECHECK-NOTES.md';

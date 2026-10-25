@@ -188,7 +188,7 @@ Stack rules are loaded on-demand later — when investigation reveals which fram
    WARN [bridges] notes header ≠ bridge (<header> ≠ <bridge>)
    ```
 
-   The entries are *suspect*, not void, and a suspect check still fails safe. Retiring them belongs to `/unikit-mcp-audit`, never to this skill.
+   The entries are *suspect*, not void, and a suspect check still fails safe. Retiring them belongs to `/unikit-bridge-audit`, never to this skill.
 
 **A file absent → skip it, print one line, and continue with every right you had** (no `BRIDGES.md` reads as "no bridge selected"):
 
@@ -445,7 +445,7 @@ When implementing inline, apply:
 
 **When the fix touches the editor's serialized state** — a scene, a prefab, a component, an asset, UI, VFX, animation, project settings — rather than source text, carry it out through the engine MCP by `.unikit/system/dev-principles.md` → **D6** (its part below the lazy-read boundary is read now if this session has not read it yet). **No rules file, or no check line for this area → nothing changes:** it is never a reason to declare the fix impossible or to mark it `⏸️ MANUAL` (A9).
 
-**A call that misled you is a finding** (**D7**): a candidate line in the fix report and, when this fix runs against a plan, a row in that plan's `## MCP Findings` table, written on finishing the step that produced it — `observed` is the date you observed it (`Bash(date *)`). **Never write `.unikit/bridge-notes/<bridge>.md` from here.** The library reference has two triggers (**D8**).
+**A call that misled you is a finding** (**D7**): a candidate line in the fix report and, when this fix runs against a plan, a row in that plan's `## Engine Bridge Findings` table, written on finishing the step that produced it — `observed` is the date you observed it (`Bash(date *)`), `bridge` the id of the bridge the call went through. A table in the 2.x form is converted first (`TASK-FORMAT.md` → `### Engine bridge findings section`). **Never write `.unikit/bridge-notes/<bridge>.md` from here.** The library reference has two triggers (**D8**).
 
 After the fix is implemented, you MUST continue through ALL remaining steps (4 → 5 → 6 → 7).
 

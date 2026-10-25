@@ -224,7 +224,7 @@ Creates conventional commits with engine-aware checks:
 Moves a completed folder plan from `.unikit/code/plans/<folder>/` to `.unikit/code/archive/plans/<folder>/`:
 - Says in a sentence what it is about to do before reading anything, starts every step with one short line about what it is doing right now, then shows every plan with its verdict, its **created** date (the manifest's `Created:` line, the folder's date prefix, or the commit that added it) and its **last change** (the last commit touching the folder, or the file date when there are uncommitted changes) - oldest change first
 - A completed plan - every checklist task `[x]` - is the default choice. An unfinished plan moves only when you pick it - by its number or by a date rule such as "created on or before 2026-09-14" - and confirm after seeing its open tasks; its manifest then says `Archived: <date> — unfinished (<done>/<total>)`, so `/unikit-plan` and `/unikit-explore` never take it for finished work. `--all` takes completed plans only, and a plan with no tasks is never archived
-- Nothing else blocks a finished plan. MCP findings never transferred to `.unikit/MCP-RECHECK-NOTES.md` and rule candidates still `open` are shown, and the skill asks whether to handle them first (`/unikit-mcp-trap`, `/unikit-verify`) or archive anyway
+- Nothing else blocks a finished plan. MCP findings never transferred to `.unikit/MCP-RECHECK-NOTES.md` and rule candidates still `open` are shown, and the skill asks whether to handle them first (`/unikit-bridge-trap`, `/unikit-verify`) or archive anyway
 - Uses `git mv` when the folder is tracked by git and plain `mv` otherwise; the folder name never changes, and the manifest gains one `Archived:` line
 - Never deletes, overwrites or commits - commit the move with `/unikit-commit`
 - The fast plan `.unikit/code/PLAN.md`, `.unikit/code/FIX_PLAN.md`, researches and patches are never archived
@@ -593,27 +593,27 @@ unikit-ai genres install <id|alias…>  # selectively install profile(s)
 - Add tasks (deduplicates, refines verbose descriptions), mark complete, view status
 - Also triggered by "remind me to...", "don't forget to...", "we need to..."
 
-### `/unikit-mcp-trap [finding | plan path]` - record an MCP finding
+### `/unikit-bridge-trap [finding | plan path]` - record an MCP finding
 
 ```
-/unikit-mcp-trap                                 # Harvest findings from the current session
-/unikit-mcp-trap the snapshot reported ready with zero files
-/unikit-mcp-trap .unikit/code/plans/rarity-ui/PLAN.md       # Take this plan's table, nothing else
+/unikit-bridge-trap                                 # Harvest findings from the current session
+/unikit-bridge-trap the snapshot reported ready with zero files
+/unikit-bridge-trap .unikit/code/plans/rarity-ui/PLAN.md       # Take this plan's table, nothing else
 ```
 - Writes `.unikit/MCP-RECHECK-NOTES.md` - the project's log of what has to be re-checked about the **engine MCP server it actually talks to**
 - Zero MCP calls, no editor required: a finding was already observed, and re-observing it could record the wrong thing
-- Three input forms. **A finding in one line** is recorded directly. **A path to a plan file** harvests that plan's `## MCP Findings` table and nothing else — the session is not consulted at all, which matters because the caller is usually the run that just produced those rows. **No argument** takes findings from the session first, then offers to scan the tables of plans touched since the last audit
+- Three input forms. **A finding in one line** is recorded directly. **A path to a plan file** harvests that plan's `## Engine Bridge Findings` table and nothing else — the session is not consulted at all, which matters because the caller is usually the run that just produced those rows. **No argument** takes findings from the session first, then offers to scan the tables of plans touched since the last audit
 - Reads **the table only**, never the plan body: a window from the heading to the next `##`, with a 30-line cap that applies only to the multi-plan scan — and a table outgrowing it is announced, not truncated in silence
 - `/unikit-implement` offers the transfer at the end of a run (Step 5.5), passing the plan path, so findings recorded per task reach the durable log while the context is still there
 - Every note is written in one genre - **a check to perform**. A lifted gate or a "use Y instead of X" is refused: a stale check costs one call and fails safe, a lifted obligation never comes back
 - The executor that hit the trap does not write here - one observation is a bad sample, and a bad line lives for months, so the durable surface passes through a human
 
-### `/unikit-mcp-audit [R2 | stamp | replay | retire | upstream]` - curate the MCP notes
+### `/unikit-bridge-audit [R2 | stamp | replay | retire | upstream]` - curate the MCP notes
 
 ```
-/unikit-mcp-audit                                # Full pass: stamp, replay, retire, upstream
-/unikit-mcp-audit R2                             # One note
-/unikit-mcp-audit upstream                       # Only print the diff for the packaged rules tree
+/unikit-bridge-audit                                # Full pass: stamp, replay, retire, upstream
+/unikit-bridge-audit R2                             # One note
+/unikit-bridge-audit upstream                       # Only print the diff for the packaged rules tree
 ```
 - Four jobs: **re-stamp** (the server moved → every entry is suspect, and offered first), **replay** (`replay: safe` rows reproduced in a disposable sandbox), **retire** (offer to drop what was fixed or went upstream), **upstream** (print a ready diff for the packaged `INDEX.md`)
 - Replaying mutates a live editor, so it runs behind a six-step envelope whose only gate is **you**: it opens by telling you how to prepare the editor (save your scene, open an empty one, no compile and no Play Mode), names every object it will create, and asks once. It works only inside a `UNIKIT_AUDIT_<runid>` sandbox, deletes it in one action, and **never saves the scene** - so even a failed sweep leaves nothing on disk

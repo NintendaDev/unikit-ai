@@ -81,7 +81,7 @@ async function mtimeDate(file: string): Promise<string> {
  * Both names present is the merge's own refuse-to-overwrite branch; `PLAN.md`
  * wins there, exactly as every plan resolver reads it.
  */
-async function planFile(folder: string): Promise<string | null> {
+export async function planFile(folder: string): Promise<string | null> {
   const manifest = path.join(folder, PLAN_MANIFEST_FILE);
   if (await fileExists(manifest)) return manifest;
   const tasks = path.join(folder, LEGACY_PLAN_TASKS_FILE);

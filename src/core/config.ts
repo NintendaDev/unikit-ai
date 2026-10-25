@@ -6,6 +6,7 @@ import { CODE_MODULE_ID, CONFIG_FILE, RULE_CATEGORIES, type Tier } from './const
 import { getModule, listModules } from './modules.js';
 import { logInfo } from '../utils/log.js';
 import { normalizeSelection, type ExtensionSelection } from './extension-selection.js';
+import { renameRecordKeys } from './skill-renames.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../../package.json');
@@ -364,6 +365,8 @@ function normalizeExtensions(raw: unknown): ExtensionRecord[] {
       // Fields this version does not know (written by a newer CLI) are kept; only `selection`
       // is re-read, so a malformed value reads as "no selection" instead of misleading a caller.
       const next: ExtensionRecord = { ...ext };
+      // A base skill that was renamed: the record names it under the new name (the next save writes it).
+      if (ext.replacedSkills) next.replacedSkills = renameRecordKeys(ext.replacedSkills);
       const selection = normalizeSelection(ext.selection);
       if (selection === undefined) {
         if (ext.selection !== undefined) {

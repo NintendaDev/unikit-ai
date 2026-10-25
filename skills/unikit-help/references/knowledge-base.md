@@ -58,7 +58,7 @@ Relevant to the dev pipeline:
 
 - `dev-principles.md` — the canonical engine development principles + workflow. Read on Bootstrap
   by `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-improve`, `/unikit-devcontext`,
-  `/unikit-mcp-audit`, and the `unikit-implement-coordinator` and `unikit-implement-worker` agents.
+  `/unikit-bridge-audit`, and the `unikit-implement-coordinator` and `unikit-implement-worker` agents.
 - `engine-bridges/BRIDGES.md` and `engine-bridges/<bridge>/{INDEX,verification}.md` — `BRIDGES.md` lists the **engine bridges the project actually selected**
   (the package's default order and one block per bridge); next to it, **one rules tree per
   bridge**, delivered verbatim from the package with a provenance stamp. A tree records
@@ -75,7 +75,7 @@ Relevant to the dev pipeline:
 - `.unikit/bridge-notes/<bridge>.md` — **not** a system asset, and deliberately outside
   `system/`: the project's own findings about that bridge, in the same area-keyed form, read by
   the same greps. `init` / `update` never rewrite them (only rename a file into `archive/` when
-  its bridge leaves the selection, and back). Written by `/unikit-mcp-trap`, curated by `/unikit-mcp-audit`.
+  its bridge leaves the selection, and back). Written by `/unikit-bridge-trap`, curated by `/unikit-bridge-audit`.
 - `cli-contract.md`, `gate-result-contract.md`, `modules.yml`, `gamedesign/` — contracts read on
   demand by the skills that need them.
 - `ultra-plan-read.md` — the ultra plan bundle reader contract, read by `/unikit-implement`,

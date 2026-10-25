@@ -1,6 +1,6 @@
 # Engine Development Principles
 
-This file is the canonical source of {{engine_name}} development principles. Installed by `unikit-ai init` / `unikit-ai update` into `.unikit/system/dev-principles.md` with `{{engine_*}}` vars substituted. Loaded by `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-improve`, `/unikit-devcontext`, `/unikit-mcp-audit`, and by the `unikit-implement-coordinator` and `unikit-implement-worker` agents.
+This file is the canonical source of {{engine_name}} development principles. Installed by `unikit-ai init` / `unikit-ai update` into `.unikit/system/dev-principles.md` with `{{engine_*}}` vars substituted. Loaded by `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-improve`, `/unikit-devcontext`, `/unikit-bridge-audit`, and by the `unikit-implement-coordinator` and `unikit-implement-worker` agents.
 
 **How to read it.** Everything **above** the LAZY-READ BOUNDARY marker is read on **every** Bootstrap — a reader finds the marker's line and reads the file only up to it. Everything **below** it is read **once per session**: at plan load when the plan's checklist carries an `Editor:` line, and otherwise at the first task that touches editor state — unconditionally, never gated on which rules happen to be installed.
 
@@ -260,7 +260,7 @@ themselves: the handle is still well-formed, and the call that uses it still ret
 
 ### D6. Carrying out an editor change through the engine MCP
 
-The procedure every executor follows when a change to the editor's serialized state (A8) goes through the engine MCP — an `Editor:` task under `Editor tasks: mcp`, a fix that touches editor state, a target verified by reading the editor back. In this order, on **every** such change:
+The procedure every executor follows when a change to the editor's serialized state (A8) goes through the engine MCP — an `Editor:` task under `Editor tasks: engine-bridge`, a fix that touches editor state, a target verified by reading the editor back. In this order, on **every** such change:
 
 1. **Candidates from the live catalog, by intent.** Take the change's area — for an `Editor:` task, the one its `kind` names — and its action, and pick 3-5 candidate affordances out of the tool list you actually hold. That list is the only place a name may come from — not this file, not a rules file, not memory. A name recalled instead of read is a `catalog phantom` you invented.
 2. **Ask the server for the schema** of those 3-5 before calling any of them. A one-line or empty declaration does not mean "no parameters".
@@ -274,18 +274,19 @@ The procedure every executor follows when a change to the editor's serialized st
 A call whose answer misled you is a **finding**, and it goes in two places, neither of them the notes file:
 
 - your own report — the run, fix or verification report — as a candidate line: the `area`, what has to be confirmed, and the raw call with the raw answer it gave;
-- the plan's `## MCP Findings` table, when you work against a plan — the half that survives the session.
+- the plan's `## Engine Bridge Findings` table, when you work against a plan — the half that survives the session.
 
 **When: at the change that produced it, never at the end of the run** — in the same `Edit` that ticks the task's checkbox, or, where nothing is ticked, on finishing the step or the target that produced it. A table filled only at the end is lost to every `/clear`, every context overflow and every session that simply stops.
 
 The row:
 
 - **id** `F<n>`, one more than the highest already in the table — read the table before appending, so a re-run does not restart the numbering and collide with rows written earlier;
-- **`observed`** — the date you observed it, taken from the system clock, never recalled: the `unikit-mcp-trap` skill copies the column verbatim, so an empty or recalled date makes the notes record the transfer instead of the observation;
+- **`bridge`** — the id of the bridge the call went through, as `BRIDGES.md` lists it; `—` when you cannot tell. It decides which bridge's notes the row ends up in;
+- **`observed`** — the date you observed it, taken from the system clock, never recalled: the `unikit-bridge-trap` skill copies the column verbatim, so an empty or recalled date makes the notes record the transfer instead of the observation;
 - **dedup is semantic, not mechanical** — drop a candidate that says the same thing about the same `area` as a row already there, judged by meaning rather than by string match. Being loose is deliberate: a duplicate that slips through costs one line, a wrong merge destroys the `evidence` of an observation, and evidence cannot be reconstructed;
-- the columns and their contract: `unikit-plan/references/TASK-FORMAT.md` → `### MCP findings section`.
+- the columns and their contract: `unikit-plan/references/TASK-FORMAT.md` → `### Engine bridge findings section`.
 
-**Never write `.unikit/bridge-notes/<bridge>.md` yourself.** One observation is a bad sample and a bad line lives for months; the durable surface passes through a human running the `unikit-mcp-trap` skill.
+**Never write `.unikit/bridge-notes/<bridge>.md` yourself.** One observation is a bad sample and a bad line lives for months; the durable surface passes through a human running the `unikit-bridge-trap` skill.
 
 ### D8. The library reference
 

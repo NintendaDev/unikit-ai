@@ -1,19 +1,17 @@
 ---
-name: unikit-mcp-audit
+name: unikit-bridge-audit
 description: >-
-  Curate .unikit/bridge-notes/ — the project's log of findings about the
-  configured engine MCP server. Four jobs: re-stamp (the server moved, so every
-  entry is suspect), replay (reproduce a `replay: safe` finding inside a
-  disposable sandbox to see whether it still holds), retire (offer to drop what was
-  fixed or went upstream), and upstream (print a ready diff for the packaged
-  INDEX.md). Use for "audit the MCP notes", "are these findings still true",
-  "recheck the MCP traps", "clean up the bridge notes", "the server was updated —
-  revisit the notes". Replaying mutates a live editor, so it starts by telling you
-  how to prepare it — save your scene, open an empty one — and asks once before
-  touching anything. Everything it creates lives under a single UNIKIT_AUDIT_<runid>
-  prefix, is deleted in one action, and the scene is never saved. To record a NEW
-  finding use /unikit-mcp-trap instead.
-argument-hint: "[optional: a note id such as R2, or `stamp` | `replay` | `retire` | `upstream`]  (mutates a live editor — asks first)"
+  Curate .unikit/bridge-notes/<bridge>.md — the project's log of findings about one engine
+  bridge. Four jobs: re-stamp (the bridge moved, so every entry is suspect), replay (reproduce a
+  `replay: safe` finding through the same bridge inside a disposable sandbox to see whether it
+  still holds), retire (offer to drop what was fixed or went upstream), and upstream (print a
+  ready diff for the packaged INDEX.md). Use for "audit the bridge notes", "are these findings
+  still true", "recheck the bridge traps", "the server was updated — revisit the notes". Replaying
+  mutates a live editor, so it starts by telling you how to prepare it — save your scene, open an
+  empty one — and asks once before touching anything. Everything it creates lives under a single
+  UNIKIT_AUDIT_<runid> prefix, is deleted in one action, and the scene is never saved. To record
+  a NEW finding use /unikit-bridge-trap instead.
+argument-hint: "[optional: a bridge id, a note id such as R2, or `stamp` | `replay` | `retire` | `upstream`]  (mutates a live editor — asks first)"
 allowed-tools:
   - Read
   - Write
@@ -26,11 +24,11 @@ disable-model-invocation: false
 user-invocable: true
 metadata:
   author: unikit
-  version: "1.0"
+  version: "2.0"
   category: tools
 ---
 
-# MCP Audit — curate the recheck notes
+# Bridge Audit — curate the recheck notes
 
 `.unikit/bridge-notes/<bridge>.md` accumulates. Findings get fixed upstream, calls disappear,
 servers move. Left alone the file drifts from a protection into a superstition — every
@@ -41,7 +39,7 @@ tool: it curates what this project observed, and it never edits the packaged rul
 (`.unikit/system/engine-bridges/` is rewritten by every `init` / `update`, so an edit there
 is lost, and lost silently).
 
-**The format is not owned here.** `/unikit-mcp-trap` owns
+**The format is not owned here.** `/unikit-bridge-trap` owns
 `references/notes-format.md`; this skill reads it as the interface and curates against
 it.
 
@@ -60,14 +58,19 @@ language setting.
 
 Silently load — do not narrate:
 
-1. **`{{skills_dir}}/unikit-mcp-trap/references/notes-format.md`** — the format
+**Which notes.** `$ARGUMENTS` names a bridge id → that bridge. Otherwise: exactly one
+`.unikit/bridge-notes/*.md` file → that one; several → ask once with the question tool of your agent
+(`AskUserQuestion`): `Which bridge's notes?` — one option per file, in the bridge order of
+`BRIDGES.md`, the first one recommended; none → say so and stop. One run curates one bridge.
+
+1. **`{{skills_dir}}/unikit-bridge-trap/references/notes-format.md`** — the format
    specification: header fields, the two sections, ids, the genre rejections, and the
    `replay: safe` definition. Mandatory; without it, curate nothing.
 2. **`.unikit/system/dev-principles.md`** — the evidence contract (A1/A2), the failure
    classes (A3), the area vocabulary (A8), and `no rules ≠ no rights` (A9). Read it
    whole — the part below its `LAZY-READ BOUNDARY` marker too: this skill touches editor
    state, so it is a first Editor task by definition.
-3. **`.unikit/system/engine-bridges/<bridge>/INDEX.md`** of the bridge being curated (named in `BRIDGES.md`) — the delivery stamp (`bridge:`) and the
+3. **`.unikit/system/engine-bridges/BRIDGES.md`** and the **`.unikit/system/engine-bridges/<bridge>/INDEX.md`** of the bridge being curated — the delivery stamp (`bridge:`) and the
    base section, including **how a project-relative asset path is written for this
    engine** (see "The asset root is a contract" below). File absent →
    there are no known exceptions; that restricts nothing and switches nothing to
@@ -89,9 +92,10 @@ When a replay needs an asset, it goes under a **project-relative audit folder**:
 ```
 
 **The literal form of that root is engine-specific and must not appear in this file.**
-Take it from the `.unikit/system/engine-bridges/<bridge>/INDEX.md` of the bridge replayed → the access/base section, which states
-how project-relative paths are written for the configured engine. Not stated there → ask
-the user once, and record the answer for this run only.
+Take it from the base section of the `.unikit/system/engine-bridges/<bridge>/INDEX.md` of the bridge being
+replayed, which states how project-relative paths are written for the configured engine. That bridge has no
+rules tree → take it from the tree of another bridge listed in `BRIDGES.md`; none states it → ask the user
+once, and record the answer for this run only.
 
 This is not pedantry about portability. A hard-coded root passes every guard in the
 repository and then makes the sandbox contract **unsatisfiable on any other engine** —
@@ -102,12 +106,18 @@ matrix into `references/code-recon.md`.
 
 ## Job 1 — stamp
 
-Compare the notes header (`bridge:`) against the delivery stamp.
+Compare the notes header (`bridge:`) against the file name **and** against the bridges `BRIDGES.md` lists.
 
-Different → print one line and continue:
+Different from the file name → print one line and continue:
 
 ```
-WARN [mcp-audit] server in notes header ≠ configured (<notes> ≠ <configured>)
+WARN [bridge-audit] notes header ≠ file (<header> ≠ <file>)
+```
+
+The bridge named by the file is not in `BRIDGES.md` → print one line and offer to go to retire:
+
+```
+WARN [bridge-audit] the bridge of these notes is not selected in this project
 ```
 
 A mismatch makes every entry **suspect**, not void. Suspect entries stay in force: a
@@ -116,8 +126,8 @@ underneath them changed throws away the protection they were written for. What t
 mismatch changes is the **priority** of the replay pass — these are the rows most worth
 replaying, and they are offered first.
 
-The installer renames this file on every completed server switch, so a mismatch is not
-the ordinary case: it means a switch was interrupted, or the file arrived by hand. That
+The installer parks and restores these files on every change of the bridge set, so a mismatch is not
+the ordinary case: it means a change was interrupted, or the file arrived by hand. That
 is still information and not an error — and it is not a re-stamp instruction either, see
 "What this skill never does".
 
@@ -126,10 +136,14 @@ is still information and not an error — and it is not a re-stamp instruction e
 Only rows marked `replay: safe` are ever replayed. `replay: manual` rows are **shown,
 never executed** — see Step 2.
 
-Replaying executes an arbitrary call taken from a note's `evidence` field against a live
-editor. That is a mutating operation and this skill is granted accordingly; the
+Replaying executes an arbitrary call taken from a note's `evidence` field **through the bridge the notes
+belong to** against a live editor. That is a mutating operation and this skill is granted accordingly; the
 restraint lives in the **behaviour below**, not in the tool perimeter, and it is
 compensated by the structural rollback in SWEEP and CONFIRM.
+
+A call that the grants of this skill do not cover (a `cli` bridge grants only the verbs its catalog entry names) is
+shown, never run: `WARN [bridge-audit] replay skipped: <call head> is not granted`. Availability of the bridge is
+established by its own `available when` line in `BRIDGES.md`, not by the editor as a whole.
 
 ### The six-step safety envelope
 
@@ -292,12 +306,12 @@ from earlier reports.
 
 Then stamp the header: `audited: <today>`. This is the **only** field of the notes header
 this skill writes, and the only place `audited:` ever moves — it is the cursor
-`/unikit-mcp-trap` reads to decide which plans are new.
+`/unikit-bridge-trap` reads to decide which plans are new.
 
 ## Job 4 — upstream
 
 A local row that would help every project using this server belongs in the packaged tree
-instead. Print a **ready diff** for `mcp/<engine>/rules/<server>/INDEX.md` — the check
+instead. Print a **ready diff** for `engine-bridges/<engine>/rules/<bridge>/INDEX.md` — the check
 row in the packaged form (`id | area | confirm that`), with the observation kept beside
 it as PR context.
 
@@ -325,6 +339,6 @@ merges, the local row becomes a duplicate and the next audit retires it under Jo
 
 ## See also
 
-- `/unikit-mcp-trap` — record a new finding; owner of `references/notes-format.md`.
+- `/unikit-bridge-trap` — record a new finding; owner of `references/notes-format.md`.
 - `.unikit/system/dev-principles.md` — the evidence contract, the failure classes, and
   the degradation ladder this skill descends when a route is unavailable.

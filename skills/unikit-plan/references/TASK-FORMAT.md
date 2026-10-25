@@ -75,7 +75,7 @@ If no research — technical context is in the `## Technical Context` section be
 - Testing: yes/no
 - Test checkpoints: task | phase | plan
 - Docs: yes/no (full mode only)
-- Editor tasks: mcp | manual | direct
+- Editor tasks: engine-bridge | manual | direct
 - PR checkpoints: yes
 
 ## Roadmap Linkage (optional)
@@ -140,14 +140,14 @@ feat(<module>): <description>
 
 ...
 
-## MCP Findings
+## Engine Bridge Findings
 
 (Only when the plan carries at least one `Editor:` task. The planner emits the heading and
-the header row and stops there; the executor appends a row when an engine MCP call misled it.)
+the header row and stops there; the executor appends a row when a call through an engine bridge misled it.)
 
-| id | area | confirm that | observed | evidence | from |
-|---|---|---|---|---|---|
-| F1 | rollback | the snapshot captured more than zero files | 2026-08-18 | `<call>(paths="...")` → `state=ready files=0` | task 2.3 |
+| id | area | confirm that | observed | evidence | from | bridge |
+|---|---|---|---|---|---|---|
+| F1 | rollback | the snapshot captured more than zero files | 2026-08-18 | `<call>(paths="...")` → `state=ready files=0` | task 2.3 | <bridge id> |
 
 ## Rule Candidates
 
@@ -254,7 +254,7 @@ ComponentB
 ## Open Questions
 (Optional) Uncertainties the planning pass could not close. One line each.
 Placed last, **after** `## Technical Context`, so it never falls inside the
-`## MCP Findings` window (which runs from that heading to the next `##`).
+`## Engine Bridge Findings` window (which runs from that heading to the next `##`).
 ```
 
 > **`Test checkpoints:` is omitted entirely when `Testing: no`** — there are no runs, so there is nowhere to place them. When `Testing: yes` the line is mandatory: a plan without it is legacy, and its executor is left inferring run placement from the prose of the tasks.
@@ -279,7 +279,7 @@ Rules:
 - When `references/ENGINE_RULES.md` is absent for the active engine, the field is **not generated at all** — the plan degrades to code-only tasks and `## Settings` carries no `Editor tasks` line.
 - **A phase carrying an `Editor:` line is serialized alone in its execution layer.** The unit of parallelism downstream is the **phase** — the coordinator runs every phase of one layer concurrently and the tasks inside a phase in order — so the `**Dependencies:**` lines of an editor-bearing phase must leave it as the only member of its layer. This is not a rule about tasks: two `Editor:` tasks in one phase are already sequential, and splitting them into two phases to "separate" them is what creates the collision. The hazard includes plain code phases: a source write triggers a domain reload, and minutes of unavailability land in the middle of another phase's mutation.
 
-  **`## MCP Findings` is written under this invariant, and would need a different scheme without it.** Executors append their rows straight into the plan file, and `unikit-implement-worker` has no worktree isolation — every worker edits the same file. That is safe only because the phase that can produce an MCP finding is alone in its layer, so there is never more than one writer at a time. If the serialization rule is ever relaxed, the append scheme has to be revisited before it is: the fallback is a per-task mailbox (`plans/<plan>/findings/<task>.md`) collected at the end, which costs a directory and a second phase and is why it was not chosen now.
+  **`## Engine Bridge Findings` is written under this invariant, and would need a different scheme without it.** Executors append their rows straight into the plan file, and `unikit-implement-worker` has no worktree isolation — every worker edits the same file. That is safe only because the phase that can produce an MCP finding is alone in its layer, so there is never more than one writer at a time. If the serialization rule is ever relaxed, the append scheme has to be revisited before it is: the fallback is a per-task mailbox (`plans/<plan>/findings/<task>.md`) collected at the end, which costs a directory and a second phase and is why it was not chosen now.
 
 The targets are aggregated into the `### EDITOR TARGETS` table inside `## Technical Context`. It is omitted entirely when the plan carries no `Editor:` task.
 
@@ -471,30 +471,33 @@ The block above is shown indented by two spaces only so that this file carries n
 
 **Mutability.** The section is written once by the planner. `/unikit-implement`, `/unikit-verify`, `/unikit-improve` and `add` mode never rewrite it.
 
-### MCP findings section
+### Engine bridge findings section
 
-`## MCP Findings` lives in the manifest at `##` level, next to `## Commit Plan` and **above** `## Technical Context`. `/unikit-mcp-trap` reads the heading down to the next `##`; a findings table demoted to `###`, or placed inside `## Technical Context`, is invisible to it.
+`## Engine Bridge Findings` lives in the manifest at `##` level, next to `## Commit Plan` and **above** `## Technical Context`. `/unikit-bridge-trap` reads the heading down to the next `##`; a findings table demoted to `###`, or placed inside `## Technical Context`, is invisible to it.
 
-An executor that hits a misleading engine MCP response records it **here, in the plan, and nowhere else**. It does not edit the notes of a bridge (`.unikit/bridge-notes/<bridge>.md`) itself: one observation is a bad sample and a bad line lives for months, so the durable surface passes through a human running `/unikit-mcp-trap`.
+An executor that hits a misleading response from an engine bridge records it **here, in the plan, and nowhere else**. It does not edit the notes of a bridge (`.unikit/bridge-notes/<bridge>.md`) itself: one observation is a bad sample and a bad line lives for months, so the durable surface passes through a human running `/unikit-bridge-trap`.
 
 | column | what goes in it |
 |--------|-----------------|
-| `id` | `F<n>`, allocated in order within this plan and never reused. `/unikit-mcp-trap` records it as `from: <plan>#<id>`, which is how a repeat pass knows the row was already transferred |
+| `id` | `F<n>`, allocated in order within this plan and never reused. `/unikit-bridge-trap` records it as `from: <plan>#<id>`, which is how a repeat pass knows the row was already transferred |
 | `area` | one of the 12 words in `.unikit/system/dev-principles.md` -> A8. The key is an **area**, never a tool name — that is what keeps the row reachable after the server changes. Anything server-specific goes into the text of the check |
 | `confirm that` | the check, phrased as an instruction to verify. **Only a check** — never a lifted gate, never "use Y instead of X", never an assertion about what the server can or cannot do |
-| `observed` | the date the finding was **observed** (`YYYY-MM-DD`), written by whoever observed it. `/unikit-mcp-trap` copies this column into the notes verbatim rather than dating the transfer, so a row that arrives here undated makes the notes say when it was filed instead of when it happened — and the label then lies about its own contents |
+| `observed` | the date the finding was **observed** (`YYYY-MM-DD`), written by whoever observed it. `/unikit-bridge-trap` copies this column into the notes verbatim rather than dating the transfer, so a row that arrives here undated makes the notes say when it was filed instead of when it happened — and the label then lies about its own contents |
 | `evidence` | the raw call and the raw answer it gave. This is the one column where a tool name is legitimate, and the only reason it is here: without the raw call the finding cannot be replayed, retired, or upstreamed |
 | `from` | the task that observed it (`task 2.3`) |
+| `bridge` | the id of the bridge whose call misled (the id as `.unikit/system/engine-bridges/BRIDGES.md` lists it); `—` when the writer cannot tell. `/unikit-bridge-trap` writes the row to the notes of this bridge |
+
+**The 2.x form.** A plan written before 3.0.0 has the heading `## MCP Findings` and six columns (no `bridge`). `unikit-ai update` rewrites such plans (every plan, archived ones included: heading renamed, the column appended, `—` where the bridge is unknown). A writer that still meets the old form — a plan that arrived by a merge after the update — converts it before adding its own row: rename the heading, append `| bridge |` to the header row, `|---|` to the separator and `| — |` to every existing row. A reader treats a missing column as `—`.
 
 Three rows never belong here: a pre-declared `GATE LIFTED`, a list of what the server cannot do, and a named replacement for a call. All three lift an obligation permanently. A check that has gone stale merely costs one extra call and **fails safe** — the pipeline stops instead of driving past.
 
-`/unikit-mcp-trap` reads the section through a window — the heading down to the next `##` heading — and reads nothing else from the plan. Keep the heading at `##`: a findings table demoted to `###`, or nested inside another section, is invisible to it.
+`/unikit-bridge-trap` reads the section through a window — the heading down to the next `##` heading — and reads nothing else from the plan. Keep the heading at `##`: a findings table demoted to `###`, or nested inside another section, is invisible to it.
 
 The window carries a 30-line cap **only when trap is scanning many plans at once** (called with no arguments). Handed one plan by path — which is what `/unikit-implement` Step 5.5 does — it reads to the next `##` with no cap, because there is one named file and nothing to ration. When the cap does close a window, trap says so and names how many rows it did not read; the table growing past it is a warning, not a silent loss.
 
 ### Rule candidates section
 
-`## Rule Candidates` lives in the manifest at `##` level, directly under `## MCP Findings`. The planner emits the heading and the header row in **every** plan: a candidate can arise in any plan, and an executor left to invent a place for the section puts it somewhere new each time. One empty table per plan is the cheaper mistake.
+`## Rule Candidates` lives in the manifest at `##` level, directly under `## Engine Bridge Findings`. The planner emits the heading and the header row in **every** plan: a candidate can arise in any plan, and an executor left to invent a place for the section puts it somewhere new each time. One empty table per plan is the cheaper mistake.
 
 | column | what goes in it |
 |--------|-----------------|
@@ -508,7 +511,7 @@ The window carries a 30-line cap **only when trap is scanning many plans at once
 - `declined` is durable: a candidate the user turned down is **not offered again**, in this run or in a later one.
 - `added` is set once `/unikit-rules` has returned the outcome `added` for that rule.
 - Nothing in this table reaches `.unikit/RULES.md` by the hand of the skill that wrote the row. Rules are written by `/unikit-rules` alone, and only in the set the user selected.
-- **Four writers, and no others:** `/unikit-implement`, `unikit-implement-worker`, `unikit-implement-coordinator` and `/unikit-verify`. All four append the row to the manifest; none of them writes `.unikit/RULES.md`. The safety of a worker writing here rests on the same single-writer invariant that carries `## MCP Findings` — see `### Editor task grammar` above: the phase that can produce a candidate is alone in its execution layer.
+- **Four writers, and no others:** `/unikit-implement`, `unikit-implement-worker`, `unikit-implement-coordinator` and `/unikit-verify`. All four append the row to the manifest; none of them writes `.unikit/RULES.md`. The safety of a worker writing here rests on the same single-writer invariant that carries `## Engine Bridge Findings` — see `### Editor task grammar` above: the phase that can produce a candidate is alone in its execution layer.
 
 ### Test runs section
 

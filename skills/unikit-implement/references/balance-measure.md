@@ -15,7 +15,7 @@ Carrying out `Measure:` and `Hand-back:` tasks, the `⏳ AWAITING RESULT` label,
 5. Write a row into `## Measurements` (`id` is the id from `Item:`, `build` is `git rev-parse --short HEAD`, `from` is `task <N.M>`) **by the same `Edit` that ticks the checkbox** (Step 3.4). If the manifest has no such section (the plan was edited by hand or lost it), create it at `##` level with the table header of the grammar section, directly after `## Test Runs`; with no `## Test Runs` either, by the rule of `{{skills_dir}}/{{self_name}}/references/test-runs.md` (the end of item 7 of `## Step 3.2`): under `## Rule Candidates`, and when that is absent too, above `## Dependency Graph`.
 6. The result cannot be obtained now (a manual game session, another person's device) → do not tick: write the label `⏳ AWAITING RESULT: <the exact instruction> → <where to put the result>`. Independent tasks go on; dependent ones wait.
 7. A repeated measurement (a tuning loop) is a new row; earlier rows are never rewritten.
-8. A misleading MCP answer becomes a `## MCP Findings` row by the same rule as for other tasks (Step 3.4 of `SKILL.md`).
+8. A misleading MCP answer becomes a `## Engine Bridge Findings` row by the same rule as for other tasks (Step 3.4 of `SKILL.md`).
 
 ## Step 3.4 — ticking
 

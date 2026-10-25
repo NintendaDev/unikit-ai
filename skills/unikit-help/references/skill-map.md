@@ -211,7 +211,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   its verdict, created date and last change, oldest change first; pick by number or by date).
 - **Out:** the moved folder + one `Archived:` line in its manifest.
 - **Optional (after commit).** Untransferred MCP findings and `open` rule candidates never
-  block: it asks whether to handle them first (`/unikit-mcp-trap`, `/unikit-verify`) or
+  block: it asks whether to handle them first (`/unikit-bridge-trap`, `/unikit-verify`) or
   archive anyway. `/unikit-explore` reads archived plans as history.
 
 ### unikit-evolve
@@ -524,7 +524,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **Out:** `.unikit/TODO.md`.
 - **Optional.** Implement/fix auto-close matching items.
 
-### unikit-mcp-trap
+### unikit-bridge-trap
 - **Purpose:** Record a finding about the configured engine MCP server into
   `.unikit/bridge-notes/<bridge>.md` — the project's log of what has to be re-checked there.
   Zero MCP calls, no editor needed. Writes in one genre only: a check to perform, never a
@@ -532,12 +532,12 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **When:** right after a call reported success while changing nothing, ate an argument, or
   validated a broken state — "write this down", "record this MCP finding", "add a recheck note".
 - **In:** three forms — the finding in one line; a path to a plan file (harvests that plan's
-  `## MCP Findings` table only, the session is not touched); or nothing, which harvests the
+  `## Engine Bridge Findings` table only, the session is not touched); or nothing, which harvests the
   session first and then offers to scan the tables of plans touched since the last audit.
 - **Out:** `.unikit/bridge-notes/<bridge>.md`.
-- **Optional.** Pairs with `/unikit-mcp-audit`, which curates what this writes.
+- **Optional.** Pairs with `/unikit-bridge-audit`, which curates what this writes.
 
-### unikit-mcp-audit
+### unikit-bridge-audit
 - **Purpose:** Curate those notes — re-stamp on a change of server, replay `replay: safe`
   findings inside a disposable sandbox, offer to retire what was fixed or went upstream, and
   print a ready diff for the packaged rules tree.

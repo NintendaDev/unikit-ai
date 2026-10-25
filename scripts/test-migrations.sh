@@ -185,10 +185,10 @@ M1="$TMPDIR/matrix-1.0.0"; mkdir -p "$M1"
 write_legacy_config "$M1" '"version": "1.0.0",'
 seed_flat_memory "$M1"
 M1_APPLIED=$(plan_chain "$M1" "1.0.0")
-if [[ "$M1_APPLIED" == "memory-1-to-2-code-wrap,workspace-1-to-2-code-relocate,mcp-servers-map,mcp-fileid-rename,plan-1-to-2-manifest-merge,research-1-to-2-manifest-merge,plan-2-to-3-timestamps,engine-bridges-config-split,bridge-notes-relocate" ]]; then
+if [[ "$M1_APPLIED" == "memory-1-to-2-code-wrap,workspace-1-to-2-code-relocate,mcp-servers-map,mcp-fileid-rename,plan-1-to-2-manifest-merge,research-1-to-2-manifest-merge,plan-2-to-3-timestamps,engine-bridges-config-split,bridge-notes-relocate,plan-bridge-rename" ]]; then
     pass "matrix 1.0.0: every step group applied, ordered by since ($M1_APPLIED)"
 else
-    fail "matrix 1.0.0: expected all nine steps in since order, got '$M1_APPLIED'"
+    fail "matrix 1.0.0: expected all ten steps in since order, got '$M1_APPLIED'"
 fi
 
 # Row 2 — 1.1.0, modular memory + array. The 1.1.0 steps are quiet; every 2.0.0
@@ -198,7 +198,7 @@ M2="$TMPDIR/matrix-1.1.0"; mkdir -p "$M2"
 write_legacy_config "$M2" '"version": "1.1.0",'
 seed_modular_memory "$M2"
 M2_APPLIED=$(plan_chain "$M2" "1.1.0")
-if [[ "$M2_APPLIED" == "mcp-servers-map,mcp-fileid-rename,plan-1-to-2-manifest-merge,research-1-to-2-manifest-merge,plan-2-to-3-timestamps,engine-bridges-config-split,bridge-notes-relocate" ]]; then
+if [[ "$M2_APPLIED" == "mcp-servers-map,mcp-fileid-rename,plan-1-to-2-manifest-merge,research-1-to-2-manifest-merge,plan-2-to-3-timestamps,engine-bridges-config-split,bridge-notes-relocate,plan-bridge-rename" ]]; then
     pass "matrix 1.1.0: only the steps anchored above the stamp applied ($M2_APPLIED)"
 else
     fail "matrix 1.1.0: expected the MCP steps + both merges + the backfill + the bridge split, got '$M2_APPLIED'"
@@ -220,7 +220,7 @@ M3="$TMPDIR/matrix-2.0.0"; mkdir -p "$M3"
 write_legacy_config "$M3" '"version": "2.0.0",'
 seed_modular_memory "$M3"
 M3_APPLIED=$(plan_chain "$M3" "2.0.0")
-if [[ "$M3_APPLIED" == "mcp-servers-map,mcp-fileid-rename,engine-bridges-config-split,bridge-notes-relocate" ]]; then
+if [[ "$M3_APPLIED" == "mcp-servers-map,mcp-fileid-rename,engine-bridges-config-split,bridge-notes-relocate,plan-bridge-rename" ]]; then
     pass "matrix 2.0.0: detect carries the MCP steps when the version half is quiet, the 3.0.0 split rides the version ($M3_APPLIED)"
 else
     fail "matrix 2.0.0: expected the MCP steps via detect plus the bridge split, got '$M3_APPLIED'"
@@ -255,10 +255,10 @@ M6="$TMPDIR/matrix-2.5.0"; mkdir -p "$M6"
 write_map_config "$M6" "2.5.0" "unity-biome-mcp"
 seed_modular_memory "$M6"
 M6_APPLIED=$(plan_chain "$M6" "2.5.0")
-if [[ "$M6_APPLIED" == "engine-bridges-config-split,bridge-notes-relocate" ]]; then
-    pass "matrix 2.5.0: exactly the two 3.0.0 steps applied ($M6_APPLIED)"
+if [[ "$M6_APPLIED" == "engine-bridges-config-split,bridge-notes-relocate,plan-bridge-rename" ]]; then
+    pass "matrix 2.5.0: exactly the three 3.0.0 steps applied ($M6_APPLIED)"
 else
-    fail "matrix 2.5.0: expected only the two 3.0.0 steps, got '$M6_APPLIED'"
+    fail "matrix 2.5.0: expected only the three 3.0.0 steps, got '$M6_APPLIED'"
 fi
 
 # ─────────────────────────────────────────────────────
@@ -1999,6 +1999,172 @@ if [[ "$S11E_CR_COUNT" == "$S11E_LF_COUNT" && "$S11E_LF_COUNT" -gt 0 ]] \
     pass "notes: a CRLF file keeps every line ending while its header key changes"
 else
     fail "notes: CRLF endings changed in the move (CR=$S11E_CR_COUNT, LF=$S11E_LF_COUNT)"
+fi
+
+# ─────────────────────────────────────────────────────
+# Section 12: plan bridge rename (3.0.0)
+# ─────────────────────────────────────────────────────
+# Every plan — unfinished, finished, archived — loses its 2.x forms in three places and nowhere else: the
+# findings heading, the Editor tasks value, and the findings table gaining a last column that names the
+# bridge. An unfinished plan gets the project's one bridge, everything else `—`. Fenced code is an example
+# and is never rewritten. The migration does not commit.
+
+echo -e "\n${BOLD}Section 12: plan bridge rename${NC}"
+
+# A 2.x plan manifest. $2 = open | done decides the checkbox; $3 = the Editor tasks value.
+write_legacy_plan() {
+    local file="$1" state="$2" editor="${3:-mcp}"
+    local box="[ ]"; [[ "$state" == "done" ]] && box="[x]"
+    mkdir -p "$(dirname "$file")"
+    cat > "$file" << EOF
+# Plan: demo
+
+Created: 2026-06-01
+Updated: 2026-06-01
+
+## Settings
+- Testing: yes
+- Editor tasks: $editor
+
+## MCP Findings
+
+| id | area | confirm that | observed | evidence | from |
+|---|---|---|---|---|---|
+| F1 | rollback | the snapshot has files | 2026-08-18 | \`x(a|b)\` → \`files=0\` | task 2.3 |
+| F2 | console | the console is read after the compile | 2026-08-19 | \`read()\` → \`0\` | task 3.1 |
+
+## Technical Context
+untouched body line
+
+## Tasks
+- $box Task 1: a task
+EOF
+}
+
+# 12a — an unfinished plan: three structural places change, every other line is byte-identical.
+S12A="$TMPDIR/plans-rename-open"; mkdir -p "$S12A"
+write_map_config "$S12A" "2.5.0" "unity-biome-mcp"
+seed_modular_memory "$S12A"
+S12A_PLAN="$S12A/.unikit/code/plans/2026-06-01_demo/PLAN.md"
+write_legacy_plan "$S12A_PLAN" open
+cp "$S12A_PLAN" "$TMPDIR/plans-rename-open.before"
+plan_chain "$S12A" "2.5.0" > /dev/null
+assert_contains "$S12A_PLAN" '^## Engine Bridge Findings$' "plans: the findings heading is renamed"
+assert_not_contains "$S12A_PLAN" '^## MCP Findings$' "plans: ...and the old heading is gone"
+assert_contains "$S12A_PLAN" '^- Editor tasks: engine-bridge$' "plans: the Editor tasks value is renamed"
+assert_contains "$S12A_PLAN" '^| id | area | confirm that | observed | evidence | from | bridge |$' "plans: the header row gains the bridge column"
+assert_contains "$S12A_PLAN" '^|---|---|---|---|---|---|---|$' "plans: the separator row is widened in its own style"
+assert_contains "$S12A_PLAN" 'files=0` | task 2.3 | unity-biome-mcp |$' "plans: an unfinished plan gets the project's one bridge (a pipe inside backticks is not a cell)"
+assert_contains "$S12A_PLAN" 'task 3.1 | unity-biome-mcp |$' "plans: every data row gets it"
+S12A_CHANGED=$(diff "$TMPDIR/plans-rename-open.before" "$S12A_PLAN" | grep -c '^<' || true)
+if [[ "$S12A_CHANGED" == "6" ]]; then
+    pass "plans: exactly six lines changed (heading, setting, header, separator, two rows) - the rest is byte-identical"
+else
+    fail "plans: expected six changed lines, got $S12A_CHANGED"
+fi
+
+# 12b — an archived plan always gets the unknown mark; 12c — so does a finished one
+S12B="$TMPDIR/plans-rename-archived"; mkdir -p "$S12B"
+write_map_config "$S12B" "2.5.0" "unity-biome-mcp"
+seed_modular_memory "$S12B"
+write_legacy_plan "$S12B/.unikit/code/archive/plans/2026-05-01_old/PLAN.md" open
+write_legacy_plan "$S12B/.unikit/code/plans/2026-05-02_done/PLAN.md" done
+plan_chain "$S12B" "2.5.0" > /dev/null
+assert_contains "$S12B/.unikit/code/archive/plans/2026-05-01_old/PLAN.md" 'task 2.3 | — |$' "plans: an archived plan gets — even though it has an open task"
+assert_contains "$S12B/.unikit/code/plans/2026-05-02_done/PLAN.md" 'task 2.3 | — |$' "plans: a finished plan gets —"
+assert_contains "$S12B/.unikit/code/archive/plans/2026-05-01_old/PLAN.md" '^- Editor tasks: engine-bridge$' "plans: the archive is rewritten too (the value)"
+
+# 12d — a fenced example is not a heading or a setting
+S12D="$TMPDIR/plans-rename-fenced"; mkdir -p "$S12D"
+write_map_config "$S12D" "2.5.0" "unity-biome-mcp"
+seed_modular_memory "$S12D"
+mkdir -p "$S12D/.unikit/code/plans/2026-06-03_fence"
+printf '# Plan\n\nCreated: 2026-06-03\nUpdated: 2026-06-03\n\n## Settings\n- Testing: yes\n\n## Notes\n\n```\n## Settings\n- Editor tasks: mcp\n## MCP Findings\n| id | from |\n```\n\n## Tasks\n- [ ] a\n' > "$S12D/.unikit/code/plans/2026-06-03_fence/PLAN.md"
+S12D_SHA=$(sha_of "$S12D/.unikit/code/plans/2026-06-03_fence/PLAN.md")
+plan_chain "$S12D" "2.5.0" > /dev/null
+assert_file_unchanged "$S12D/.unikit/code/plans/2026-06-03_fence/PLAN.md" "$S12D_SHA" "plans: fenced examples are never rewritten"
+
+# 12e — a plan with Editor tasks: manual and no findings section is not touched
+S12E="$TMPDIR/plans-rename-manual"; mkdir -p "$S12E"
+write_map_config "$S12E" "2.5.0" "unity-biome-mcp"
+seed_modular_memory "$S12E"
+mkdir -p "$S12E/.unikit/code/plans/2026-06-04_manual"
+printf '# Plan\n\nCreated: 2026-06-04\nUpdated: 2026-06-04\n\n## Settings\n- Editor tasks: manual\n\n## Tasks\n- [ ] a\n' > "$S12E/.unikit/code/plans/2026-06-04_manual/PLAN.md"
+S12E_SHA=$(sha_of "$S12E/.unikit/code/plans/2026-06-04_manual/PLAN.md")
+plan_chain "$S12E" "2.5.0" > /dev/null
+assert_file_unchanged "$S12E/.unikit/code/plans/2026-06-04_manual/PLAN.md" "$S12E_SHA" "plans: another value and no findings section - nothing is written, no heading appears"
+
+# 12f — the fast plan
+S12F="$TMPDIR/plans-rename-fast"; mkdir -p "$S12F"
+write_map_config "$S12F" "2.5.0" "unity-biome-mcp"
+seed_modular_memory "$S12F"
+write_legacy_plan "$S12F/.unikit/code/PLAN.md" open
+plan_chain "$S12F" "2.5.0" > /dev/null
+assert_contains "$S12F/.unikit/code/PLAN.md" 'task 3.1 | unity-biome-mcp |$' "plans: the fast plan is rewritten"
+
+# 12g — an ultra bundle: the manifest only, the phase files byte for byte
+S12G="$TMPDIR/plans-rename-ultra"; mkdir -p "$S12G"
+write_map_config "$S12G" "2.5.0" "unity-biome-mcp"
+seed_modular_memory "$S12G"
+write_legacy_plan "$S12G/.unikit/code/plans/2026-06-05_ultra/PLAN.md" open
+printf '# Phase 1\n\n## Settings\n- Editor tasks: mcp\n\n## MCP Findings\n\n| id | from |\n|---|---|\n' > "$S12G/.unikit/code/plans/2026-06-05_ultra/phase-01-a.md"
+S12G_PHASE_SHA=$(sha_of "$S12G/.unikit/code/plans/2026-06-05_ultra/phase-01-a.md")
+plan_chain "$S12G" "2.5.0" > /dev/null
+assert_contains "$S12G/.unikit/code/plans/2026-06-05_ultra/PLAN.md" '^## Engine Bridge Findings$' "plans: the ultra manifest is rewritten"
+assert_file_unchanged "$S12G/.unikit/code/plans/2026-06-05_ultra/phase-01-a.md" "$S12G_PHASE_SHA" "plans: a phase file is never touched"
+
+# 12h — idempotence and convergence
+S12H_SHA=$(sha_of "$S12A_PLAN")
+plan_chain "$S12A" "2.5.0" > /dev/null
+assert_file_unchanged "$S12A_PLAN" "$S12H_SHA" "plans: a second pass writes nothing"
+S12H2="$TMPDIR/plans-rename-sync"; mkdir -p "$S12H2"
+write_map_config "$S12H2" "2.5.0" "unity-biome-mcp"
+write_legacy_plan "$S12H2/.unikit/code/plans/2026-06-06_sync/PLAN.md" open
+inject_fake_registry "$S12H2"
+run_update "$S12H2" "$TMPDIR/plans-rename-sync-1.log"
+S12H2_SHA=$(sha_of "$S12H2/.unikit/code/plans/2026-06-06_sync/PLAN.md")
+run_update "$S12H2" "$TMPDIR/plans-rename-sync-2.log"
+assert_file_unchanged "$S12H2/.unikit/code/plans/2026-06-06_sync/PLAN.md" "$S12H2_SHA" "plans: a second update changes nothing in the plan"
+assert_cmd_exit 0 "plans: rules sync exits 0 after the upgrade (not 8)" \
+  "$TMPDIR/plans-rename-sync.log" -- env -C "$S12H2" node "$CLI" rules sync
+
+# 12i — CRLF files keep every line ending
+S12I="$TMPDIR/plans-rename-crlf"; mkdir -p "$S12I"
+write_map_config "$S12I" "2.5.0" "unity-biome-mcp"
+seed_modular_memory "$S12I"
+write_legacy_plan "$S12I/.unikit/code/plans/2026-06-07_crlf/PLAN.md" open
+sed -i 's/$/\r/' "$S12I/.unikit/code/plans/2026-06-07_crlf/PLAN.md"
+plan_chain "$S12I" "2.5.0" > /dev/null
+S12I_CR=$(tr -cd '\r' < "$S12I/.unikit/code/plans/2026-06-07_crlf/PLAN.md" | wc -c | tr -d ' ')
+S12I_LF=$(tr -cd '\n' < "$S12I/.unikit/code/plans/2026-06-07_crlf/PLAN.md" | wc -c | tr -d ' ')
+if [[ "$S12I_CR" == "$S12I_LF" && "$S12I_LF" -gt 0 ]]; then
+    pass "plans: a CRLF plan keeps every line ending"
+else
+    fail "plans: CRLF endings changed (CR=$S12I_CR, LF=$S12I_LF)"
+fi
+
+# 12j — two bridges selected: nobody can say which one an old row came through
+S12J="$TMPDIR/plans-rename-two"; mkdir -p "$S12J"
+write_map_config "$S12J" "2.5.0" "unity-biome-mcp" ', "coplay-unity-mcp": "UnityMCP"'
+seed_modular_memory "$S12J"
+write_legacy_plan "$S12J/.unikit/code/plans/2026-06-08_two/PLAN.md" open
+plan_chain "$S12J" "2.5.0" > /dev/null
+assert_contains "$S12J/.unikit/code/plans/2026-06-08_two/PLAN.md" 'task 2.3 | — |$' "plans: with two bridges an unfinished plan gets — too"
+
+# 12k — nothing to do on a project without plans
+S12K="$TMPDIR/plans-rename-none"; mkdir -p "$S12K"
+write_map_config "$S12K" "2.5.0" "unity-biome-mcp"
+seed_modular_memory "$S12K"
+plan_chain "$S12K" "2.5.0" > /dev/null
+S12K_DETECT=$(cd "$ROOT_DIR" && PROJECT="$S12K" node --input-type=module -e "
+  const { PROJECT_MEMORY_MIGRATIONS } = await import('./dist/core/memory-migrations/index.js');
+  const step = PROJECT_MEMORY_MIGRATIONS.find(s => s.id === 'plan-bridge-rename');
+  process.stdout.write(String(await step.detect({ projectDir: process.env.PROJECT })));
+")
+if [[ "$S12K_DETECT" == "false" && ! -e "$S12K/.unikit/code/plans" ]]; then
+    pass "plans: a project with no plans has nothing pending and the step creates no folder"
+else
+    fail "plans: detect=$S12K_DETECT, plans dir exists=$([[ -e "$S12K/.unikit/code/plans" ]] && echo yes || echo no)"
 fi
 
 print_summary_and_exit "Migration + MCP reconciliation Smoke Tests"

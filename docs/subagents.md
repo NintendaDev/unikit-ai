@@ -93,10 +93,10 @@ Dependency-aware plan execution.
 - Settles the model and the effort of every worker and sidecar it launches by the role of that agent (the table in `.unikit/system/subagent-roles.md`) and passes them as the `model` and `effort` call parameters; with no config key it passes nothing and the `model:` of the agent's own file applies. On Kimi Code it passes neither - see [Subagent arguments](#subagent-arguments)
 - Annotates the manifest with layer markers and `[~]` / `[x]` / `[!]` status in real time
 - Under `Testing: yes`, carries the `Full run:` anchor over every commit it makes (the same rule as `/unikit-implement`), and reports a final run closed by reuse apart from a performed one (`Test runs: <n> performed · <m> merged · <r> reused`)
-- **Is itself a writer of `## MCP Findings`** in the single-phase branch, where no worker exists to do it - same rules as everywhere else (`F<n>` = highest present + 1, `observed` = the date, semantic dedup), and never touches `.unikit/MCP-RECHECK-NOTES.md`
-- Ends by **printing** a `/unikit-mcp-trap <plan path>` recommendation when the table has rows. Printed rather than invoked because this agent closes the session on exit, and the trap is interactive - it would be cut off mid-question
+- **Is itself a writer of `## Engine Bridge Findings`** in the single-phase branch, where no worker exists to do it - same rules as everywhere else (`F<n>` = highest present + 1, `observed` = the date, semantic dedup), and never touches `.unikit/MCP-RECHECK-NOTES.md`
+- Ends by **printing** a `/unikit-bridge-trap <plan path>` recommendation when the table has rows. Printed rather than invoked because this agent closes the session on exit, and the trap is interactive - it would be cut off mid-question
 
-Frontmatter highlights: `permissionMode: acceptEdits`, `model: inherit`, `maxTurns: 40`. Can spawn: `unikit-implement-worker`, four sidecars. Lists `unikit-implement`, `unikit-verify`, `unikit-commit`, `unikit-review`, `unikit-docs` and `unikit-mcp-trap` under `skills:` - see [Skills listed in an agent file](#skills-listed-in-an-agent-file).
+Frontmatter highlights: `permissionMode: acceptEdits`, `model: inherit`, `maxTurns: 40`. Can spawn: `unikit-implement-worker`, four sidecars. Lists `unikit-implement`, `unikit-verify`, `unikit-commit`, `unikit-review`, `unikit-docs` and `unikit-bridge-trap` under `skills:` - see [Skills listed in an agent file](#skills-listed-in-an-agent-file).
 
 ### `unikit-plan-coordinator`
 
@@ -121,7 +121,7 @@ Executes exactly ONE task from the active plan, then returns control.
 - Implements the task, verifies it, runs local quality checks via skill knowledge (no Agent delegation - workers cannot spawn children)
 - Does not create commits; the coordinator owns git state
 - Never executes a `Measure:` or a `Hand-back:` task of a balance plan: one that reaches it is returned unexecuted (`returned: <task id> — Measure/Hand-back belongs to the coordinator`) and no row is written
-- **Writes its own row into the plan's `## MCP Findings` table** when an engine MCP call misled it, rather than returning a candidate to the coordinator. Workers have no worktree isolation, so they all edit the same plan file - which is safe only because a phase carrying an `Editor:` line is alone in its execution layer, leaving one writer at a time. Handing the row back instead would defer the write to the end of the layer and lose it if the coordinator failed
+- **Writes its own row into the plan's `## Engine Bridge Findings` table** when an engine MCP call misled it, rather than returning a candidate to the coordinator. Workers have no worktree isolation, so they all edit the same plan file - which is safe only because a phase carrying an `Editor:` line is alone in its execution layer, leaving one writer at a time. Handing the row back instead would defer the write to the end of the layer and lose it if the coordinator failed
 - Lists `unikit-devcontext` and `unikit-verify` under `skills:` so it has full access to the pipeline knowledge base without spawning anything - Claude Code preloads them, on Kimi Code the installed file starts with a read list (see [Skills listed in an agent file](#skills-listed-in-an-agent-file))
 
 Frontmatter highlights: `permissionMode: acceptEdits`, `maxTurns: 16`.

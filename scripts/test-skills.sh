@@ -4460,13 +4460,13 @@ else
     fail "PL-3 nothing scanned — PL-1 and PL-2 would pass vacuously"
 fi
 
-# (PL-4) The manifest section order is a contract, not layout. /unikit-mcp-trap reads
-# its section as "the `## MCP Findings` heading down to the next `##`", so where that
+# (PL-4) The manifest section order is a contract, not layout. /unikit-bridge-trap reads
+# its section as "the `## Engine Bridge Findings` heading down to the next `##`", so where that
 # heading sits decides what the trap transfers into the project's notes. Three
 # assertions over the template block in TASK-FORMAT.md, by LINE ORDER inside the
 # fence rather than by grep -c — a heading named in prose elsewhere in the file must
 # not be able to satisfy this:
-#   1. `## MCP Findings` stands ABOVE `## Technical Context`. Below it, the nine
+#   1. `## Engine Bridge Findings` stands ABOVE `## Technical Context`. Below it, the nine
 #      `###` subsections of the technical brief fall inside the findings window.
 #   2. The findings window is CLOSED by a following `##` — it never runs to the end
 #      of the template. The canonical tail (A4) is `## Dependency Graph` →
@@ -4492,7 +4492,7 @@ else
     END {
         mcp = 0; tech = 0
         for (i = 1; i <= n; i++) {
-            if (head[i] == "## MCP Findings")      mcp  = i
+            if (head[i] == "## Engine Bridge Findings")      mcp  = i
             if (head[i] == "## Technical Context") tech = i
         }
         if (mcp  == 0) printf " no-MCP-Findings-heading-in-template"
@@ -4505,7 +4505,7 @@ else
     }
 ' "$PL_TASKFMT" || true)"
     if [[ -z "$PL4_WHY" ]]; then
-        pass "PL-4 manifest section order — MCP Findings above Technical Context, findings window closed, only Open Questions may follow"
+        pass "PL-4 manifest section order — Engine Bridge Findings above Technical Context, findings window closed, only Open Questions may follow"
     else
         fail "PL-4 manifest section order broken in $PL_TASKFMT:$PL4_WHY"
     fi
@@ -5399,10 +5399,11 @@ MF_WORKER="$ROOT_DIR/subagents/unikit-implement-worker.md"
 # the column contract a writer reads. A column present in one and not the other is how a
 # six-column table starts receiving five-column rows.
 MF1_WHY=""
-grep -qF '| id | area | confirm that | observed | evidence | from |' "$CK_TASKFMT" || MF1_WHY+=" template"
+grep -qF '| id | area | confirm that | observed | evidence | from | bridge |' "$CK_TASKFMT" || MF1_WHY+=" template"
 grep -qF '| `observed` |' "$CK_TASKFMT"                                            || MF1_WHY+=" contract-row"
+grep -qF '| `bridge` |' "$CK_TASKFMT"                                              || MF1_WHY+=" bridge-contract-row"
 if [[ -z "$MF1_WHY" ]]; then
-    pass "MF-1 observed column in both the MCP Findings template and its column contract"
+    pass "MF-1 observed and bridge columns in both the Engine Bridge Findings template and its column contract"
 else
     fail "MF-1 observed column missing in TASK-FORMAT.md:$MF1_WHY"
 fi
@@ -5411,17 +5412,17 @@ fi
 # checkbox. Anchored on the heading plus the table name rather than on prose, because this
 # is a structural claim: the section that marks a task also records the finding.
 if awk '/^\*\*3\.4: Mark task as completed\*\*/{f=1} f&&/^\*\*3\.5/{exit} f' "$MF_IMPLEMENT" \
-     | grep -qF '## MCP Findings'; then
+     | grep -qF '## Engine Bridge Findings'; then
     pass "MF-2 unikit-implement Step 3.4 records the finding with the checkbox"
 else
-    fail "MF-2 unikit-implement Step 3.4 has no ## MCP Findings anchor — the write drifted back to the end of the run"
+    fail "MF-2 unikit-implement Step 3.4 has no ## Engine Bridge Findings anchor — the write drifted back to the end of the run"
 fi
 
 # (MF-3) The worker writes the row itself (variant B). BOTH halves are asserted, and the
 # negative one is load-bearing: the cancelled behaviour was "hand it back to the
 # coordinator", and a half-applied edit leaves both instructions standing at once.
 MF3_WHY=""
-grep -qF '## MCP Findings' "$MF_WORKER"                             || MF3_WHY+=" append-missing"
+grep -qF '## Engine Bridge Findings' "$MF_WORKER"                             || MF3_WHY+=" append-missing"
 grep -qF 'return it to the coordinator as a candidate line' "$MF_WORKER" && MF3_WHY+=" handback-survived"
 if [[ -z "$MF3_WHY" ]]; then
     pass "MF-3 implement-worker appends the row itself; the coordinator hand-back is gone"
@@ -5432,7 +5433,7 @@ fi
 # (MF-4) The append scheme borrows an invariant it does not own — one editor phase per
 # execution layer, hence one writer at a time. Written down where the invariant lives, so
 # relaxing the invariant cannot silently break the writers.
-if grep -qF '`## MCP Findings` is written under this invariant' "$CK_TASKFMT"; then
+if grep -qF '`## Engine Bridge Findings` is written under this invariant' "$CK_TASKFMT"; then
     pass "MF-4 TASK-FORMAT.md ties the findings append to the serialization invariant"
 else
     fail "MF-4 TASK-FORMAT.md does not say the findings append depends on one-editor-phase-per-layer"
@@ -5478,16 +5479,16 @@ fi
 # Recording findings per task (MF above) only pays off if somebody offers to move them; a
 # table nobody reads is the same loss one step later. These guards pin the offer, the
 # input form that makes it work, and the two reference surfaces that describe it.
-MH_TRAP="$ROOT_DIR/skills/unikit-mcp-trap/SKILL.md"
+MH_TRAP="$ROOT_DIR/skills/unikit-bridge-trap/SKILL.md"
 MH_COORD="$ROOT_DIR/subagents/unikit-implement-coordinator.md"
 MH_SKILL_MAP="$ROOT_DIR/skills/unikit-help/references/skill-map.md"
 MH_DOCS_SKILLS="$ROOT_DIR/docs/skills.md"
 
 # (MH-1) The handoff step exists in unikit-implement.
-if grep -qF 'MCP Findings handoff' "$MF_IMPLEMENT"; then
-    pass "MH-1 unikit-implement carries the MCP Findings handoff step"
+if grep -qF 'Engine Bridge Findings handoff' "$MF_IMPLEMENT"; then
+    pass "MH-1 unikit-implement carries the Engine Bridge Findings handoff step"
 else
-    fail "MH-1 unikit-implement has no MCP Findings handoff step"
+    fail "MH-1 unikit-implement has no Engine Bridge Findings handoff step"
 fi
 
 # (MH-2) The renumbering was carried through. Inserting a step in the middle of Step 5 means
@@ -5502,9 +5503,9 @@ fi
 # (MH-3) The trap grew an input contract. Before this it had none at all: the body opened
 # straight into the session scan, so the argument shape lived only in the frontmatter hint.
 if grep -qF '## Input' "$MH_TRAP"; then
-    pass "MH-3 unikit-mcp-trap has an ## Input section"
+    pass "MH-3 unikit-bridge-trap has an ## Input section"
 else
-    fail "MH-3 unikit-mcp-trap ## Input missing — the three call forms are undocumented in the body"
+    fail "MH-3 unikit-bridge-trap ## Input missing — the three call forms are undocumented in the body"
 fi
 
 # (MH-4) The load-bearing half of the explicit-path form: the Step 1 shortcut is OFF. The
@@ -5513,7 +5514,7 @@ fi
 if grep -qF 'the Step 1 shortcut is off' "$MH_TRAP"; then
     pass "MH-4 explicit path disables the session shortcut"
 else
-    fail "MH-4 unikit-mcp-trap does not disable the Step 1 shortcut on an explicit path"
+    fail "MH-4 unikit-bridge-trap does not disable the Step 1 shortcut on an explicit path"
 fi
 
 # (MH-5) The stale step reference is gone. Documentation is Step 5.3 and always was; the
@@ -5545,18 +5546,18 @@ fi
 # unikit-implement never runs — so both holes lived here at once: in its single-phase branch
 # it executes tasks itself with no writer, and it ends a run with no offer. One counter
 # catches the return of either.
-if grep -qF '## MCP Findings' "$MH_COORD"; then
-    pass "MH-7 implement-coordinator knows the ## MCP Findings table"
+if grep -qF '## Engine Bridge Findings' "$MH_COORD"; then
+    pass "MH-7 implement-coordinator knows the ## Engine Bridge Findings table"
 else
-    fail "MH-7 implement-coordinator has no ## MCP Findings mention — writer and handoff holes are back"
+    fail "MH-7 implement-coordinator has no ## Engine Bridge Findings mention — writer and handoff holes are back"
 fi
 
 # (MH-8) …and can act on the offer it prints. A recommendation naming a skill the agent may
 # not invoke is a dead end for the user, who has nothing to replace it with.
-if awk '/^skills:/{f=1;next} f&&/^[a-zA-Z]/{f=0} f' "$MH_COORD" | grep -qF 'unikit-mcp-trap'; then
-    pass "MH-8 implement-coordinator lists unikit-mcp-trap in skills:"
+if awk '/^skills:/{f=1;next} f&&/^[a-zA-Z]/{f=0} f' "$MH_COORD" | grep -qF 'unikit-bridge-trap'; then
+    pass "MH-8 implement-coordinator lists unikit-bridge-trap in skills:"
 else
-    fail "MH-8 implement-coordinator recommends /unikit-mcp-trap without listing it in skills:"
+    fail "MH-8 implement-coordinator recommends /unikit-bridge-trap without listing it in skills:"
 fi
 
 # ─────────────────────────────────────────────
@@ -5602,7 +5603,7 @@ fi
 # place to replay — is dirty by default, so it rejected the correct state structurally and
 # passed a configured production scene. The measurement is gone; these guards keep the
 # retired mechanism from surviving in any of the four places it was described.
-MG_AUDIT="$ROOT_DIR/skills/unikit-mcp-audit/SKILL.md"
+MG_AUDIT="$ROOT_DIR/skills/unikit-bridge-audit/SKILL.md"
 MG_SKILL_MAP="$MH_SKILL_MAP"
 MG_DOCS_SKILLS="$MH_DOCS_SKILLS"
 MG_DOCS_CONFIG="$ROOT_DIR/docs/configuration.md"
@@ -5623,9 +5624,9 @@ fi
 # (MG-2) The REFUSE step itself. Named as a step, it is the inverted gate; its absence is
 # the mechanical trace that the envelope was actually rebuilt and not merely renumbered.
 if grep -qF 'REFUSE' "$MG_AUDIT"; then
-    fail "MG-2 the REFUSE step is back in unikit-mcp-audit — the inverted dirty gate returned"
+    fail "MG-2 the REFUSE step is back in unikit-bridge-audit — the inverted dirty gate returned"
 else
-    pass "MG-2 no REFUSE step in unikit-mcp-audit"
+    pass "MG-2 no REFUSE step in unikit-bridge-audit"
 fi
 
 # (MG-3) The promise, in the three places that carried it. NOTE the asymmetry with MG-1,
@@ -5640,12 +5641,12 @@ fi
 # /unikit-commit stages and commits it, /unikit-review already says "Analyzes staged
 # changes (git status + git diff --cached)", /unikit-fix requires a commit before a direct
 # edit. A file-wide negative on three such ordinary words goes red the first time somebody
-# writes a correct sentence about one of THOSE skills, pointing at unikit-mcp-audit, which
+# writes a correct sentence about one of THOSE skills, pointing at unikit-bridge-audit, which
 # their change never touched. The cheapest way to green is then to delete this assert — and
 # it is the only mechanical protection the claim has. A false red that converts into a
 # removed guard is worse than no guard, so the window is what makes the short literal safe.
 # Same technique as MF-2 (awk window over Step 3.4) and MH-8 (over the skills: block).
-MG3_AUDIT_SECTION="$(awk '/^### .*unikit-mcp-audit/{f=1;next} f&&(/^## /||/^### /){exit} f' \
+MG3_AUDIT_SECTION="$(awk '/^### .*unikit-bridge-audit/{f=1;next} f&&(/^## /||/^### /){exit} f' \
     "$MG_DOCS_SKILLS" 2>/dev/null || true)"
 MG3_WHY=""
 grep -qF 'refuses on a dirty scene' "$MG_AUDIT"     && MG3_WHY+=" skill"
@@ -5666,7 +5667,7 @@ fi
 # (MG-4) The grant follows the behaviour. git was read only inside the deleted MEASURE
 # step; a grant outliving its only caller is how a capability quietly stays available.
 if awk '/^allowed-tools:/{f=1;next} f&&/^[a-zA-Z]/{f=0} f' "$MG_AUDIT" | grep -qF 'Bash(git'; then
-    fail "MG-4 unikit-mcp-audit still grants Bash(git *) with no step that uses it"
+    fail "MG-4 unikit-bridge-audit still grants Bash(git *) with no step that uses it"
 else
     pass "MG-4 Bash(git *) grant removed together with the MEASURE step"
 fi
@@ -5677,7 +5678,7 @@ fi
 if grep -qF 'shown, not checked' "$MG_AUDIT"; then
     pass "MG-5 the open-scene line is contracted as shown-not-checked"
 else
-    fail "MG-5 unikit-mcp-audit lost the shown-not-checked contract for the scene line"
+    fail "MG-5 unikit-bridge-audit lost the shown-not-checked contract for the scene line"
 fi
 
 # (MG-6) The no-silent-demotion rule. The REPLAY step says "could not be reproduced in the
@@ -5686,7 +5687,7 @@ fi
 if grep -qF 'A failed replay is not automatically a demotion' "$MG_AUDIT"; then
     pass "MG-6 a replay failure under instability is offered, not written"
 else
-    fail "MG-6 unikit-mcp-audit lost the no-silent-demotion rule"
+    fail "MG-6 unikit-bridge-audit lost the no-silent-demotion rule"
 fi
 
 # (MG-7) Step 1 carves out the one read that precedes the confirmation. Both halves, and
@@ -6649,7 +6650,7 @@ LB_READERS=(
     "worker:$ROOT_DIR/subagents/unikit-implement-worker.md"
     "coordinator:$ROOT_DIR/subagents/unikit-implement-coordinator.md"
 )
-LB_MCP_AUDIT="$ROOT_DIR/skills/unikit-mcp-audit/SKILL.md"
+LB_MCP_AUDIT="$ROOT_DIR/skills/unikit-bridge-audit/SKILL.md"
 LB_PATTERN="^<!-- === LAZY-READ BOUNDARY === -->"
 LB_WHY=""
 for lb_pair in "${LB_READERS[@]}"; do
@@ -7976,7 +7977,7 @@ fi
 # had. That failure is indistinguishable from a well-behaved server, which is exactly why
 # the shape needs a guard and the content does not.
 # All -qF and file-scoped (MSYS grep aborts on -iF).
-RT_NOTES_SPEC="$ROOT_DIR/skills/unikit-mcp-trap/references/notes-format.md"
+RT_NOTES_SPEC="$ROOT_DIR/skills/unikit-bridge-trap/references/notes-format.md"
 RT_HEADINGS=('## Access' '## Live failure classes' '## Shape and cost' '## Check'
              '## Irreversible' '## Lane' '## When this file is silent')
 
@@ -9173,7 +9174,7 @@ if [[ -z "$AR_WHY" ]]; then
     grep -qF '2. Archive anyway' "$AR_SKILL" || AR_WHY+=" AR-3:no-archive-anyway"
     grep -qF 'a declined row leaves no back-reference' "$AR_SKILL" || AR_WHY+=" AR-3:override-unexplained"
     # A transferred finding can lose its back-reference legitimately: the installer parks the notes
-    # of a bridge that leaves the selection, and /unikit-mcp-audit removes a retired note with its from: (review finding).
+    # of a bridge that leaves the selection, and /unikit-bridge-audit removes a retired note with its from: (review finding).
     grep -qF '.unikit/bridge-notes/archive/*.md' "$AR_SKILL" || AR_WHY+=" AR-3:parked-notes-unread"
     grep -qF 'removes a note it retires together with its back-reference' "$AR_SKILL" || AR_WHY+=" AR-3:retire-unexplained"
     # (AR-4) an open rule candidate is a follow-up like a finding — it asks, never stops — and
@@ -9485,7 +9486,8 @@ if [[ -z "$BX_WHY" ]]; then
     # 65000 -> 65400: unikit-verify gained the 397-byte user-questions pointer and lost its inline text tier
     # 65400 -> 65800: the branch match gained the 380-byte rule that finds an experiment plan by its own record (EXP-K1)
     # 65800 -> 66100: the 3.0.0 layout (a block per bridge in the Bootstrap); lowered again when the routing prose moves to a reference
-    bx_max "BC-1:skill-size" 66100 "$UNIKIT_VERIFY_SKILL"
+    # 66100 -> 66300: the findings table of the 3.0.0 layout (a bridge column in the writers); lowered again in Task 21
+    bx_max "BC-1:skill-size" 66300 "$UNIKIT_VERIFY_SKILL"
 
     # (BC-2) verify's branch: headings, the two level sentences, and the one place of suggested_next
     BX_CHK=$((BX_CHK + 1))
@@ -9569,7 +9571,8 @@ if [[ -z "$BX_WHY" ]]; then
     # 53100 -> 53200: it gained the 397-byte user-questions pointer and lost its inline text tier
     # 53200 -> 53600: the branch match gained the 380-byte rule that finds an experiment plan by its own record (EXP-K1)
     # 53600 -> 53900: the 3.0.0 layout (a block per bridge in the Bootstrap); lowered again when the routing prose moves to a reference
-    bx_max "BM-6:implement-skill-size" 53900 "$UNIKIT_IMPLEMENT_SKILL"
+    # 53900 -> 54200: the findings table of the 3.0.0 layout (a bridge column in the writers); lowered again in Task 20
+    bx_max "BM-6:implement-skill-size" 54200 "$UNIKIT_IMPLEMENT_SKILL"
     # (BC-4) a measurement the user skipped is a skipped row, not a blocker
     bx_has "BC-4:skipped-measure-is-a-blocker" '⏭️ SKIPPED' "$BC_REF"
     # (BC-5) a name stated in ## Not measured is accounted for — a measurement the user skipped is not a blocker
@@ -12466,6 +12469,28 @@ else
     fail "BR-8a the 2.x engine-mcp path survives in:$BR8A_WHY"
 fi
 
+# (ED-17) The value of the Editor tasks setting is `engine-bridge | manual | direct`. The owner of the
+# format, both planner modes and the executor that parses it spell the new value; and no text in skills/,
+# subagents/ or data/ writes the 2.x spelling `Editor tasks: mcp` as a value to produce. (The readers
+# accept the old spelling in one parenthesis, which does not contain the colon form.)
+ED17_WHY=""
+for ed17_file in "$ROOT_DIR/skills/unikit-plan/references/TASK-FORMAT.md" "$ROOT_DIR/skills/unikit-plan/references/mode-fast.md" "$ROOT_DIR/skills/unikit-plan/references/mode-full.md" "$ROOT_DIR/skills/unikit-implement/SKILL.md"; do
+    grep -qF 'engine-bridge' "$ed17_file" || ED17_WHY+=" missing-in:$(basename "$ed17_file")"
+done
+ED17_SEEN=0
+while IFS= read -r ed17_file; do
+    [[ -n "$ed17_file" ]] || continue
+    ED17_SEEN=$((ED17_SEEN + 1))
+    grep -qF 'Editor tasks: mcp' "$ed17_file" && ED17_WHY+=" old-value-in:${ed17_file#"$ROOT_DIR/"}"
+done < <(find "$ROOT_DIR/skills" "$ROOT_DIR/subagents" "$ROOT_DIR/data" -type f -name '*.md' 2>/dev/null)
+if [[ $ED17_SEEN -eq 0 ]]; then
+    fail "ED-17 no markdown found under skills/, subagents/ and data/ — the guard has no object left"
+elif [[ -z "$ED17_WHY" ]]; then
+    pass "ED-17 Editor tasks is engine-bridge | manual | direct in the format, both planner modes and the executor ($ED17_SEEN files scanned)"
+else
+    fail "ED-17 Editor tasks value drift:$ED17_WHY"
+fi
+
 # ─────────────────────────────────────────────
 # Part 7f: agent-filter unit tests
 # ─────────────────────────────────────────────
@@ -13299,8 +13324,8 @@ uq_has "UQ-9:unikit-missing-tool-is-no-block" 'its absence is not a block, the q
 uq_lacks "UQ-9:unikit-tool-named-in-the-rule" 'requires an AskUserQuestion step' "$ROOT_DIR/skills/unikit/SKILL.md"
 uq_has "UQ-9:spec-menu-has-a-recommended-first" '1. Edit GAME.md content — change a pillar / fantasy / loop / stance (Recommended)' "$ROOT_DIR/skills/unikit-gd-spec/SKILL.md"
 uq_lacks "UQ-9:spec-menu-has-five-options" '5. Import a different GDD' "$ROOT_DIR/skills/unikit-gd-spec/SKILL.md"
-uq_has "UQ-9:audit-consent-through-the-tool" '`Editor ready?`, with the options' "$ROOT_DIR/skills/unikit-mcp-audit/SKILL.md"
-uq_has "UQ-9:trap-review-through-the-tool" 'ask once with the question tool of your agent (`AskUserQuestion`): `Review them?`' "$ROOT_DIR/skills/unikit-mcp-trap/SKILL.md"
+uq_has "UQ-9:audit-consent-through-the-tool" '`Editor ready?`, with the options' "$ROOT_DIR/skills/unikit-bridge-audit/SKILL.md"
+uq_has "UQ-9:trap-review-through-the-tool" 'ask once with the question tool of your agent (`AskUserQuestion`): `Review them?`' "$ROOT_DIR/skills/unikit-bridge-trap/SKILL.md"
 uq_has "UQ-9:rules-mode-b-asks-the-open-question" 'What rule or convention would you like to add?' "$ROOT_DIR/skills/unikit-rules/SKILL.md"
 uq_lacks "UQ-9:rules-mode-b-invents-rules" 'Never use var — always declare explicit types' "$ROOT_DIR/skills/unikit-rules/SKILL.md"
 uq_has "UQ-9:roadmap-asks-after-the-report" 'Then the question, with the question tool of your agent (`AskUserQuestion`): `Mark them as completed`' "$ROOT_DIR/skills/unikit-roadmap/SKILL.md"

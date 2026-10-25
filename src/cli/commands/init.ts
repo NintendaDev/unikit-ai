@@ -3,6 +3,7 @@ import path from 'path';
 import { runWizard } from '../wizard/prompts.js';
 import { buildManagedSkillsState, installSkills, removeSkillsByName } from '../../core/installer/skills.js';
 import { resolveSkillPrune } from '../../core/skill-groups.js';
+import { renameSkillNames } from '../../core/skill-renames.js';
 import { buildManagedSubagentsState, installSubagents } from '../../core/installer/subagents.js';
 import { injectMcpRules } from '../../core/installer/mcp-injection.js';
 import { installEngineTemplates, installCliContract, installGateResultContract, installUltraPlanReadContract, installResearchLinkContract, installPlanBoundariesContract, installMergeAnalysisContract, installBalanceHandbackContract, installPrototypeProfileContract, installDevPrinciples, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
@@ -81,8 +82,10 @@ export async function initCommand(): Promise<void> {
     // where the wizard mirrors the previously installed set. The union is built
     // ONLY from a successfully loaded config, so a fresh project stays null and
     // we never conflate "deselected everything on re-init" with "fresh".
+    // Renamed skills are shown under their new names, so the wizard checks them and the prune below does not
+    // keep the old directory.
     const existingInstalledSkills = existingConfig
-      ? [...new Set(existingConfig.agents.flatMap(a => a.installedSkills))]
+      ? renameSkillNames([...new Set(existingConfig.agents.flatMap(a => a.installedSkills))])
       : null;
     const answers = await runWizard(
       existingAgentIds,

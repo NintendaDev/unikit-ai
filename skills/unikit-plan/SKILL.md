@@ -527,7 +527,7 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
    - `Testing: yes/no` — whether tests are written at all: tests for logic and system values (`dev-principles.md` item 5)
    - `Test checkpoints: task | phase | plan` — where the test-checkpoint tasks stand; resolved in the mode file, omitted when `Testing: no`, `task` only in ultra.
    - `Docs: yes/no` — whether to show documentation checkpoint (invokes `/unikit-docs`)
-   - `Editor tasks: mcp | manual | direct` — read by `/unikit-implement`: how tasks carrying an `Editor:` line are carried out. Resolved in `mode-full.md` / `mode-fast.md`. **Omit this line entirely when `engine_rules_loaded = false`**.
+   - `Editor tasks: engine-bridge | manual | direct` — read by `/unikit-implement`: how tasks carrying an `Editor:` line are carried out. Resolved in `mode-full.md` / `mode-fast.md`. **Omit this line entirely when `engine_rules_loaded = false`**.
    - `PR checkpoints: yes` — only when this plan carries at least one PR checkpoint task (`pr_checkpoints = true` in the mode file and two or more modules); otherwise the line is absent.
 
 4. **`## Roadmap Linkage`** (optional, only if `.unikit/ROADMAP.md` exists):
@@ -550,7 +550,7 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
 
 6. **`## Commit Plan`** — when 5+ tasks, checkpoints every 3-5 tasks, each mirrored by a decorative `<!-- Commit checkpoint: tasks X-Y -->` marker in `## Checklist`; `/unikit-implement` does not parse it (`TASK-FORMAT.md`). A range never crosses a module boundary.
 
-7. **`## MCP Findings`** — emitted **empty** (heading and header row) whenever the plan carries at least one `Editor:` task, omitted otherwise; filled by the executor. Contract: `TASK-FORMAT.md` → `### MCP findings section`.
+7. **`## Engine Bridge Findings`** — emitted **empty** (heading and header row) whenever the plan carries at least one `Editor:` task, omitted otherwise; filled by the executor. Contract: `TASK-FORMAT.md` → `### MCP findings section`.
 
 8. **`## Rule Candidates`** — emitted **always, and empty** (heading and header row). Contract: `TASK-FORMAT.md` → `### Rule candidates section`.
 

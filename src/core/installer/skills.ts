@@ -18,6 +18,8 @@ import type { AgentTransformer } from '../transformer.js';
 import { buildTemplateVars, buildEngineVars, processTemplate, processSkillTemplates } from '../template.js';
 import type { TemplateVars } from '../template.js';
 import { SKILL_FILE, REFERENCES_DIR_NAME, DEFAULT_ENGINE_ID } from '../constants.js';
+import { renamedTo } from '../skill-renames.js';
+import { logInfo } from '../../utils/log.js';
 import { loadSourceForAgent, warnActionFailed, isMarkdownFile } from './shared.js';
 import { resolveSkillPaths, hashInstalledSkill, computeSourceHashWithTemplate } from './hashing.js';
 
@@ -300,12 +302,24 @@ export async function updateSkills(
     }
   }
 
+  // A renamed skill: the new name takes the old one's place for THIS agent, no prompt. `installNewSkills`
+  // is one set for every agent and would seed the new skill into agents that never had the old one.
+  const renamedFrom = new Map<string, string>();
+  for (const old of removedSkills) {
+    const next = renamedTo(old);
+    if (next !== undefined && availableSet.has(next) && !previousSet.has(next)) {
+      renamedFrom.set(next, old);
+      logInfo('skills', `renamed ${old} -> ${next} for agent ${agent.id}`);
+    }
+  }
+
   // Detect new skills (available in the package but not installed for this
-  // agent). Skills the caller opted into (installNewSkills) are installed now
-  // and reported as 'changed'/'new-skill-installed'; the rest stay 'skipped'/
-  // 'new-skill-not-installed' — the CI-safe back-compat default.
+  // agent). Skills the caller opted into (installNewSkills) or that replace a renamed
+  // one are installed now and reported as 'changed'/'new-skill-installed' (or
+  // 'renamed-from:<old>'); the rest stay 'skipped'/'new-skill-not-installed' — the
+  // CI-safe back-compat default.
   const newlyAvailable = availableSkills.filter(s => !previousSet.has(s));
-  const newToInstall = newlyAvailable.filter(s => installNewSkills?.has(s));
+  const newToInstall = newlyAvailable.filter(s => installNewSkills?.has(s) || renamedFrom.has(s));
   const installedNew = newToInstall.length > 0
     ? await installSkills({
       projectDir,
@@ -318,10 +332,11 @@ export async function updateSkills(
     : [];
   const installedNewSet = new Set(installedNew);
   for (const skill of newlyAvailable) {
-    if (!installNewSkills?.has(skill)) {
+    const from = renamedFrom.get(skill);
+    if (!installNewSkills?.has(skill) && from === undefined) {
       entries.push({ skill, status: 'skipped', reason: 'new-skill-not-installed' });
     } else if (installedNewSet.has(skill)) {
-      entries.push({ skill, status: 'changed', reason: 'new-skill-installed' });
+      entries.push({ skill, status: 'changed', reason: from === undefined ? 'new-skill-installed' : `renamed-from:${from}` });
     } else {
       entries.push({ skill, status: 'skipped', reason: 'install-failed' });
     }

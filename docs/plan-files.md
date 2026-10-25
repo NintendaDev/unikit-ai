@@ -87,7 +87,7 @@ feat(items): add rarity enum and data model
 ### Commit 2: after tasks 2.1-2.2
 feat(items): implement rarity visual effects
 
-## MCP Findings
+## Engine Bridge Findings
 
 | id | area | confirm that | observed | evidence | from |
 |---|---|---|---|---|---|
@@ -141,12 +141,12 @@ What is explicitly not part of this plan.
 
 The manifest is edited in place. `Write` over it is forbidden — the file carries `## Technical Context` alongside the checklist, and a regenerating write silently drops whatever the current pass did not reconstruct.
 
-#### `## MCP Findings` — the executor's handoff surface
+#### `## Engine Bridge Findings` — the executor's handoff surface
 
-A plan that carries at least one `Editor:` task also carries a `## MCP Findings` section. `/unikit-plan` emits the heading and the header row and stops there; the executors fill it in.
+A plan that carries at least one `Editor:` task also carries a `## Engine Bridge Findings` section. `/unikit-plan` emits the heading and the header row and stops there; the executors fill it in.
 
 ```markdown
-## MCP Findings
+## Engine Bridge Findings
 
 | id | area | confirm that | observed | evidence | from |
 |---|---|---|---|---|---|
@@ -168,9 +168,9 @@ Three rules make this work:
 
 - **The row is written at the task, not at the end of the run** — by the same edit that ticks the checkbox. A table filled only in the closing report is lost to every `/clear`, which is exactly the moment a long run is most likely to end.
 - **Five writers, one table.** `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, plus `unikit-implement-worker` and `unikit-implement-coordinator` when the plan runs in parallel. None of them writes `.unikit/MCP-RECHECK-NOTES.md` directly: one observation is a bad sample, and a bad line lives for months, so the durable surface passes through a human.
-- **The table is read through a window.** `/unikit-mcp-trap` reads from the heading to the next `##` and opens no other part of the plan — so keep the heading at `##`, keep it above `## Technical Context`, and never nest the table inside another section.
+- **The table is read through a window.** `/unikit-bridge-trap` reads from the heading to the next `##` and opens no other part of the plan — so keep the heading at `##`, keep it above `## Technical Context`, and never nest the table inside another section.
 
-At the end of a run `/unikit-implement` offers to hand the plan to `/unikit-mcp-trap`, which turns accepted rows into entries in `.unikit/MCP-RECHECK-NOTES.md`. See [Engine-MCP rules tree](configuration.md#engine-mcp-rules-tree).
+At the end of a run `/unikit-implement` offers to hand the plan to `/unikit-bridge-trap`, which turns accepted rows into entries in `.unikit/MCP-RECHECK-NOTES.md`. See [Engine-MCP rules tree](configuration.md#engine-mcp-rules-tree).
 
 #### `## Rule Candidates` — a rule proposed, never written behind your back
 
@@ -237,7 +237,7 @@ At that task `/unikit-implement` commits the module and asks one question — ch
 
 While the checklist carries a `PR checkpoint:` line, a run never pushes — every automatic commit passes `no-push`, and the branch reaches the remote through `/unikit-pr` or you. A plan with PR checkpoint tasks but no `PR checkpoints: yes` line (written under a project's own rule) is legacy: its tasks run by their own steps, a `→ skipped` label reads as `⏭️ MERGED`, and a `→ PR` label without a SHA is a boundary found through the commit that added it.
 
-**Section order in the manifest** is a contract, not layout: `## Commit Plan` → `## MCP Findings` → `## Rule Candidates` → `## Test Runs` → `## Measurements` → `## Dependency Graph` → `## Total Estimated Effort` → `---` → `## Technical Context` → `## Open Questions`. `## Measurements` is present only in a plan that has a `Measure:` task ([Balance checkpoint plans](#balance-checkpoint-plans)).
+**Section order in the manifest** is a contract, not layout: `## Commit Plan` → `## Engine Bridge Findings` → `## Rule Candidates` → `## Test Runs` → `## Measurements` → `## Dependency Graph` → `## Total Estimated Effort` → `---` → `## Technical Context` → `## Open Questions`. `## Measurements` is present only in a plan that has a `Measure:` task ([Balance checkpoint plans](#balance-checkpoint-plans)).
 
 ### Ultra bundle — a manifest plus one file per phase
 
@@ -272,14 +272,14 @@ not even under `language.artifacts: ru`:
 ```
 
 **What lives where.** Everything mutable during execution stays in the manifest: the
-checklist checkboxes, `## MCP Findings`, `## Commit Plan`, `## Settings`, and the
+checklist checkboxes, `## Engine Bridge Findings`, `## Commit Plan`, `## Settings`, and the
 cross-phase part of `## Technical Context` (`CONTEXT`, `CONSTRAINTS`, `DEPENDENCY GRAPH`,
 `OUT OF SCOPE`). The manifest also carries an optional `## Architecture and Decisions` for
 decisions that bind **two or more** phases — a module boundary, a shared contract, a chosen
 trade-off. A decision internal to one phase belongs in that task's section instead, and the
 whole section is omitted when there are no cross-phase decisions. The task-scoped detail moves into the phase files, and **phase files are
 read-only during execution** — a skill executing a plan never writes into `phase-*.md`.
-That single write surface is what keeps `F<n>` numbering in `## MCP Findings` from
+That single write surface is what keeps `F<n>` numbering in `## Engine Bridge Findings` from
 branching across phases.
 
 **Three projections.** Every task exists exactly three times: a range line in
@@ -538,7 +538,7 @@ To avoid ownership conflicts, artifact writers are command-scoped:
 | `.unikit/skill-context/*` | `/unikit-evolve` | Project-specific skill overrides |
 | `.unikit/evolutions/*` | `/unikit-evolve` | Evolution logs + patch cursor |
 
-Quality commands (`/unikit-commit`, `/unikit-review`, `/unikit-verify`) treat these files as read-only context by default; the one exception is the bookkeeping `/unikit-verify` writes into the plan manifest (`## Test Runs`, `## Rule Candidates`, `## MCP Findings`).
+Quality commands (`/unikit-commit`, `/unikit-review`, `/unikit-verify`) treat these files as read-only context by default; the one exception is the bookkeeping `/unikit-verify` writes into the plan manifest (`## Test Runs`, `## Rule Candidates`, `## Engine Bridge Findings`).
 
 ## Self-Improvement Patches
 

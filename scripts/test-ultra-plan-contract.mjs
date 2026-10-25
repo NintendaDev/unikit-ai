@@ -34,7 +34,7 @@ const HEADING_INTEGRITY = '## Integrity Checks';
 
 const SECTION_PHASE_INDEX = '## Phase Index';
 const SECTION_CHECKLIST = '## Checklist';
-const SECTION_MCP_FINDINGS = '## MCP Findings';
+const SECTION_MCP_FINDINGS = '## Engine Bridge Findings';
 const SECTION_TECHNICAL_CONTEXT = '## Technical Context';
 const SECTION_OPEN_QUESTIONS = '## Open Questions';
 const SECTION_FILES_IN_PHASE = '## Files in This Phase';
@@ -308,7 +308,7 @@ if (manifest) {
     const idxTechCtx = mLines.findIndex((l) => l.startsWith(SECTION_TECHNICAL_CONTEXT));
     assertTrue('T4 mcp-findings-above-technical-context',
         idxFindings !== -1 && idxTechCtx !== -1 && idxFindings < idxTechCtx,
-        `MCP Findings at ${idxFindings}, Technical Context at ${idxTechCtx}`);
+        `Engine Bridge Findings at ${idxFindings}, Technical Context at ${idxTechCtx}`);
 
     const topHeadings = mLines
         .filter((l) => l.startsWith('## '))

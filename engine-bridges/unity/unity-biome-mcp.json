@@ -53,7 +53,7 @@
       "unikit-verify": [
         "*"
       ],
-      "unikit-mcp-audit": [
+      "unikit-bridge-audit": [
         "*"
       ]
     }

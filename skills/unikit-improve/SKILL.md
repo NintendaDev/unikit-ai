@@ -687,7 +687,7 @@ Based on user's choice, apply changes sequentially.
 
 Use `Edit` for every change. **`Write` over a plan manifest is forbidden** — the file carries `## Technical Context` (and, in an ultra bundle, `## Phase Index`), and a regenerating write silently drops whatever the current pass did not reconstruct. When a change is too large for a single `Edit`, split it into several `Edit` calls; do not fall back to `Write`.
 
-**Executor data is preserved whole.** `## MCP Findings`, `## Rule Candidates`, `## Test Runs` and `## Measurements` are carried over with all their content — rows, candidate statuses and the run log alike. They are not a draft of the plan: they are what execution recorded, and this skill has no authority to edit or drop them. That is one more reason the `Write` ban above is absolute rather than a preference.
+**Executor data is preserved whole.** `## Engine Bridge Findings`, `## Rule Candidates`, `## Test Runs` and `## Measurements` are carried over with all their content — rows, candidate statuses and the run log alike. They are not a draft of the plan: they are what execution recorded, and this skill has no authority to edit or drop them. That is one more reason the `Write` ban above is absolute rather than a preference.
 
 **Editing an ultra bundle.** The manifest and every affected phase file are edited **together** — never regenerate the manifest alone when phase detail changed, and never write a checkbox into a phase file. After the write, re-run the bundle integrity checks named in `.unikit/system/ultra-plan-read.md`; a bundle left inconsistent by an improvement blocks the next consumer that opens it.
 
