@@ -64,6 +64,12 @@ function renderBridgeRulesStamp(fileId: string): string {
   ].join('\n');
 }
 
+/** The engine bridges of the catalog that are not in the selection. */
+function unselectedBridgeIds(discovered: DiscoveredServers, selectedIds: string[]): string[] {
+  const selected = new Set(selectedIds);
+  return [...discovered].filter(([fileId, entry]) => entry.isEngine && !selected.has(fileId)).map(([fileId]) => fileId);
+}
+
 /** Engine-level documentation pointers; an engine the registry does not know has none. */
 function engineLevelDocs(engineId: string): { sources: DocsSource[]; context7: string[] } {
   try {
@@ -159,6 +165,7 @@ export async function installEngineBridges(
       bridges: bridges.map(bridge => ({ ...bridge, hasRulesTree: withTree.has(bridge.fileId) })),
       engineDocSources: docs.sources,
       engineContext7: docs.context7,
+      unselected: orderBridges(discovered, unselectedBridgeIds(discovered, bridgeIds)),
     }));
     wanted.add(BRIDGES_MANIFEST_FILE);
   }

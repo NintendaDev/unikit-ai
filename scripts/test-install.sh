@@ -2661,6 +2661,71 @@ assert_not_contains "$GH_GRANTS_DIR/.claude/skills/unikit-commit/SKILL.md" 'mcp_
 echo "  ✓ GitHub MCP: eight clients get their own env reference syntax, unchecked by default, only unikit-pr granted"
 
 # ─────────────────────────────────────────────────────
+# Test 14e: the Unity CLI is checked on a fresh install only when it is found AND the project is new enough
+# ─────────────────────────────────────────────────────
+# The wizard asks `detectBridge` for every bridge of the engine and checks the ones it finds, in
+# addition to the first MCP bridge. Driven here through the real catalog and the real functions of the
+# build, on a fake PATH that holds an empty file called like the binary: nothing is executed, which is
+# exactly what the installer promises (REQ-5).
+
+E14_BIN="$TMPDIR/test-detect-bin"
+mkdir -p "$E14_BIN" "$TMPDIR/test-detect-empty"
+: > "$E14_BIN/unity"
+: > "$E14_BIN/unity.exe"
+
+e14_selected_by_default() {
+  # $1 = project dir, $2 = folder on PATH, $3 = engine version line ("" = no version file)
+  local project="$1" on_path="$2" version_line="$3"
+  mkdir -p "$project"
+  if [[ -n "$version_line" ]]; then
+    mkdir -p "$project/ProjectSettings"
+    printf '%s\nm_EditorVersionWithRevision: 0 (0)\n' "$version_line" > "$project/ProjectSettings/ProjectVersion.txt"
+  fi
+  (cd "$ROOT_DIR" && node --input-type=module -e "
+    const { discoverMcpServers } = await import('./dist/core/mcp.js');
+    const { detectBridge } = await import('./dist/core/bridges/detect.js');
+    const { defaultBridgeIds } = await import('./dist/cli/wizard/prompts.js');
+    const [project, onPath] = process.argv.slice(1);
+    const servers = await discoverMcpServers('unity');
+    const ctx = { projectDir: project, env: { PATH: onPath, Path: onPath, PATHEXT: '.EXE' }, platform: process.platform };
+    const detected = new Set();
+    const choices = [];
+    for (const [fileId, entry] of servers) {
+      if (!entry.isEngine) continue;
+      choices.push({ fileId, displayName: entry.displayName, isEngine: true, kind: entry.kind, order: entry.order });
+      if (await detectBridge(entry, ctx)) detected.add(fileId);
+    }
+    process.stdout.write([...defaultBridgeIds(choices, detected)].sort().join(','));
+  " "$project" "$on_path" 2>/dev/null)
+}
+
+E14_FOUND=$(e14_selected_by_default "$TMPDIR/test-detect-old" "$E14_BIN" "m_EditorVersion: 2022.3.45f1")
+[[ "$E14_FOUND" == "unity-biome-mcp" ]] || { echo "Assertion failed: found binary + Unity 2022.3 must NOT pre-select the CLI, got: $E14_FOUND"; exit 1; }
+E14_NEW=$(e14_selected_by_default "$TMPDIR/test-detect-new" "$E14_BIN" "m_EditorVersion: 6000.3.22f1")
+[[ "$E14_NEW" == "unity-biome-mcp,unity-cli" ]] || { echo "Assertion failed: found binary + Unity 6000.3.22f1 must pre-select the CLI beside Biome, got: $E14_NEW"; exit 1; }
+E14_FLOOR=$(e14_selected_by_default "$TMPDIR/test-detect-floor" "$E14_BIN" "m_EditorVersion: 6000.0.77f1")
+[[ "$E14_FLOOR" == "unity-biome-mcp,unity-cli" ]] || { echo "Assertion failed: found binary + Unity 6000.0.77f1 (the floor) must pre-select the CLI, got: $E14_FLOOR"; exit 1; }
+E14_NOBIN=$(e14_selected_by_default "$TMPDIR/test-detect-nobin" "$TMPDIR/test-detect-empty" "m_EditorVersion: 6000.3.22f1")
+[[ "$E14_NOBIN" == "unity-biome-mcp" ]] || { echo "Assertion failed: no binary on PATH must not pre-select the CLI, got: $E14_NOBIN"; exit 1; }
+E14_NOFILE=$(e14_selected_by_default "$TMPDIR/test-detect-nofile" "$E14_BIN" "")
+[[ "$E14_NOFILE" == "unity-biome-mcp" ]] || { echo "Assertion failed: a project without a version file must not pre-select the CLI, got: $E14_NOFILE"; exit 1; }
+echo "  ✓ wizard detection: CLI pre-selected only with the binary on PATH and a project at or above the floor"
+
+# The summary of `init` prints the preparation lines of a selected bridge and the order line for two.
+E14_SUMMARY=$(cd "$ROOT_DIR" && node --input-type=module -e "
+  const { discoverMcpServers } = await import('./dist/core/mcp.js');
+  const { getBridgeSetupLines } = await import('./dist/core/bridges/summary.js');
+  const servers = await discoverMcpServers('unity');
+  process.stdout.write(getBridgeSetupLines(servers, ['unity-biome-mcp', 'unity-cli'], process.argv[1]).join('\n'));
+" "$TMPDIR/test-detect-new" 2>/dev/null)
+E14_SUMMARY_FILE="$TMPDIR/test-detect-summary.txt"
+printf '%s\n' "$E14_SUMMARY" > "$E14_SUMMARY_FILE"
+assert_contains "$E14_SUMMARY_FILE" 'requires: CLI >= 1\.0\.0-beta\.14; package >= 0\.9\.1-exp\.1; engine >= 6000\.0' "init summary: the floors of the CLI"
+assert_contains "$E14_SUMMARY_FILE" '\[asks first\] unity pipeline install --project-path "' "init summary: installing the package is asked for first, not done"
+assert_contains "$E14_SUMMARY_FILE" '^Order: unity-cli > unity-biome-mcp \(package default\)' "init summary: one line with the package order for two bridges"
+echo "  ✓ init summary: floors, who performs each step, and the order line"
+
+# ─────────────────────────────────────────────────────
 # Test 15: two bridges at once, then one — BRIDGES.md, per-bridge trees, the sweep
 # ─────────────────────────────────────────────────────
 # The selection is a SET now. Two bridges deliver two trees under their own ids and one
@@ -2727,6 +2792,102 @@ assert_not_contains "$TWO_BRIDGES_BASE/BRIDGES.md" 'unity-biome-mcp' "one bridge
 assert_not_contains "$TWO_BRIDGES_DIR/.claude/skills/unikit-implement/SKILL.md" 'mcp__unity-biome-mcp__' "one bridge dropped: its grants are removed (the hash took the set)"
 assert_system_tree "$TWO_BRIDGES_DIR" yes "system tree matches the variable registry (one bridge left)"
 echo "  ✓ engine-bridges: two bridges deliver two trees and one BRIDGES.md; dropping one sweeps exactly its own"
+
+# ─────────────────────────────────────────────────────
+# Test 15b: a command-line bridge beside an MCP bridge — its block in BRIDGES.md, nothing in the settings
+# file, the section of what was not selected, and the order that is not part of any installed byte
+# ─────────────────────────────────────────────────────
+# The Unity CLI registers nothing in .mcp.json and ships no rules tree; what the skills need from it
+# (how to call it, how to list its catalog, how to probe its version and the package, the floors) is
+# printed into its block of BRIDGES.md from the card.
+
+CLI_BRIDGE_DIR="$TMPDIR/test-cli-bridge"
+mkdir -p "$CLI_BRIDGE_DIR"
+cat > "$CLI_BRIDGE_DIR/.unikit.json" << 'EOF'
+{
+  "version": "3.0.0",
+  "engine": "unity",
+  "mcp": { "servers": {} },
+  "engineBridges": { "selected": { "unity-cli": "unity", "unity-biome-mcp": "unity-biome-mcp" } },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit-implement", "unikit-verify"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": {
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
+  }
+}
+EOF
+inject_fake_registry "$CLI_BRIDGE_DIR"
+seed_rule "$CLI_BRIDGE_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
+run_update "$CLI_BRIDGE_DIR"
+
+CLI_BRIDGE_BASE="$CLI_BRIDGE_DIR/.unikit/system/engine-bridges"
+CLI_BRIDGE_MANIFEST="$CLI_BRIDGE_BASE/BRIDGES.md"
+assert_exists "$CLI_BRIDGE_MANIFEST" "cli bridge: BRIDGES.md is delivered"
+CLI_BLOCK_AT=$(grep -n '^## unity-cli$' "$CLI_BRIDGE_MANIFEST" | head -1 | cut -d: -f1)
+BIOME_BLOCK_AT=$(grep -n '^## unity-biome-mcp$' "$CLI_BRIDGE_MANIFEST" | head -1 | cut -d: -f1)
+if [[ -z "$CLI_BLOCK_AT" || -z "$BIOME_BLOCK_AT" || "$CLI_BLOCK_AT" -ge "$BIOME_BLOCK_AT" ]]; then
+  echo "Assertion failed: the block of unity-cli must come before the block of unity-biome-mcp (got $CLI_BLOCK_AT / $BIOME_BLOCK_AT)"
+  exit 1
+fi
+assert_contains "$CLI_BRIDGE_MANIFEST" '^default order: unity-cli > unity-biome-mcp$' "cli bridge: the default order puts the CLI first"
+assert_contains "$CLI_BRIDGE_MANIFEST" '^- call: `unity command --project-path ' "cli bridge: the call form carries the project path"
+assert_contains "$CLI_BRIDGE_MANIFEST" '^- probe version: `unity --version`$' "cli bridge: the version probe"
+assert_contains "$CLI_BRIDGE_MANIFEST" '^- probe package: read `Packages/packages-lock.json`' "cli bridge: the package is probed by reading a file, not by a command"
+assert_contains "$CLI_BRIDGE_MANIFEST" '^- ready: `unity status --project-path ' "cli bridge: the ready form carries the project path"
+assert_contains "$CLI_BRIDGE_MANIFEST" '^- catalog list: `unity list --project-path ' "cli bridge: the whole-catalog form carries the project path"
+assert_contains "$CLI_BRIDGE_MANIFEST" '^- floor: CLI >= 1\.0\.0-beta\.14; package >= 0\.9\.1-exp\.1; engine >= 6000\.0$' "cli bridge: the floors of the card"
+assert_not_contains "$CLI_BRIDGE_MANIFEST" '^## Not selected$' "cli bridge: nothing is left unselected, so no such section"
+
+# The CLI registers nothing: the settings file names Biome and not the CLI.
+CLI_BRIDGE_KEYS=$(node -e "
+  const fs = require('fs'); const f = process.argv[1];
+  const j = fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')) : { mcpServers: {} };
+  process.stdout.write(Object.keys(j.mcpServers || {}).sort().join(','));
+" "$CLI_BRIDGE_DIR/.mcp.json")
+if [[ "$CLI_BRIDGE_KEYS" != *"unity-biome-mcp"* || ",$CLI_BRIDGE_KEYS," == *",unity,"* ]]; then
+  echo "Assertion failed: .mcp.json should hold the Biome entry and none for the CLI, got: $CLI_BRIDGE_KEYS"
+  exit 1
+fi
+assert_exists "$CLI_BRIDGE_BASE/unity-biome-mcp/INDEX.md" "cli bridge: the tree of the MCP bridge is delivered"
+assert_not_exists "$CLI_BRIDGE_BASE/unity-cli" "cli bridge: the CLI ships no rules tree"
+assert_system_tree "$CLI_BRIDGE_DIR" yes "system tree matches the variable registry (CLI and Biome)"
+
+# Order lives in .unikit/config.yaml and in no installed byte: writing it reinstalls nothing and leaves
+# BRIDGES.md byte-identical. A change of the SET is the opposite: it reinstalls.
+CLI_BRIDGE_SKILL="$CLI_BRIDGE_DIR/.claude/skills/unikit-implement/SKILL.md"
+CLI_BRIDGE_SKILL_SHA=$(sha_of "$CLI_BRIDGE_SKILL")
+CLI_BRIDGE_MANIFEST_SHA=$(sha_of "$CLI_BRIDGE_MANIFEST")
+mkdir -p "$CLI_BRIDGE_DIR/.unikit"
+printf 'engine_bridges:\n  order: [unity-biome-mcp, unity-cli]\n' > "$CLI_BRIDGE_DIR/.unikit/config.yaml"
+run_update "$CLI_BRIDGE_DIR"
+assert_same_sha "$CLI_BRIDGE_SKILL" "$CLI_BRIDGE_SKILL_SHA" "cli bridge: a user order reinstalls no skill"
+assert_same_sha "$CLI_BRIDGE_MANIFEST" "$CLI_BRIDGE_MANIFEST_SHA" "cli bridge: ...and does not touch BRIDGES.md"
+
+# Only Biome selected: the CLI moves to the section of what was not selected, with its probe, and
+# the skill (whose source hash took the set) loses the CLI's grants.
+CONFIG="$CLI_BRIDGE_DIR/.unikit.json" node -e "
+    const fs=require('fs'); const f=process.env.CONFIG;
+    const c=JSON.parse(fs.readFileSync(f,'utf8'));
+    c.engineBridges = { selected: { 'unity-biome-mcp': 'unity-biome-mcp' } };
+    fs.writeFileSync(f, JSON.stringify(c,null,2));
+"
+run_update "$CLI_BRIDGE_DIR"
+assert_contains "$CLI_BRIDGE_MANIFEST" '^## Not selected$' "cli bridge: a bridge that can be probed but was not selected gets its section"
+assert_contains "$CLI_BRIDGE_MANIFEST" '^- unity-cli - .* - probe: `unity --version`$' "cli bridge: ...with the probe that tells whether it is installed here"
+assert_not_contains "$CLI_BRIDGE_MANIFEST" '^## unity-cli$' "cli bridge: ...and no block of its own"
+assert_contains "$CLI_BRIDGE_MANIFEST" '^default order: unity-biome-mcp$' "cli bridge: the default order follows the selection"
+if [[ "$(sha_of "$CLI_BRIDGE_SKILL")" == "$CLI_BRIDGE_SKILL_SHA" ]]; then
+  echo "Assertion failed: changing the set of bridges should reinstall the executor skill (its grants changed)"
+  exit 1
+fi
+echo "  ✓ engine-bridges: a CLI bridge is described in BRIDGES.md and registers nothing; order is no installed byte; the unselected CLI is offered with its probe"
 
 # ─────────────────────────────────────────────────────
 # Final sweep: agent-filter markers must not leak into any install

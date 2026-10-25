@@ -3024,6 +3024,19 @@ if [[ "$CLIGRANT_COUNT" != "1" ]]; then
     exit 1
 fi
 
+# --force reinstalls every skill from the package and injects the grants into a fresh copy: the entries are
+# all there once more, and none is written twice.
+(cd "$CLIGRANT_DIR" && node "$ROOT_DIR/dist/cli/index.js" update --force > "$TMPDIR/update-cli-grants-force.log" 2>&1)
+for verb in command status recompile test --version; do
+    CLIGRANT_COUNT=$(grep -cF "Bash(unity $verb *)" "$CLIGRANT_IMPL" || true)
+    if [[ "$CLIGRANT_COUNT" != "1" ]]; then
+        echo "Assertion failed: after update --force Bash(unity $verb *) appears $CLIGRANT_COUNT times, expected 1"
+        exit 1
+    fi
+done
+assert_has_text "$CLIGRANT_IMPL" 'PowerShell(unity command *)' "cli grants: --force keeps the PowerShell form too"
+assert_has_text "$CLIGRANT_IMPL" 'mcp__unity-biome-mcp__' "cli grants: ...and the MCP grants"
+
 # The SAME selection, but the catalog narrows: the card loses the "recompile" verb. The selection hash
 # does not move (it hashes the input of the injection), so nothing reinstalls; only the removal branch can
 # take the entry away, and it can do that only because it owns the prefix of the cli kind.

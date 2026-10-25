@@ -13,7 +13,8 @@ import type { McpServerEntry } from '../mcp.js';
 import { MCP_RULES_INDEX_FILE, SYSTEM_DIR_NAME, UNIKIT_DIR } from '../constants.js';
 import {
   BRIDGE_NOTES_DIR_NAME, BRIDGE_NOTES_EXTENSION, BRIDGE_REFERENCES_DIR, BRIDGE_VERIFICATION_FILE,
-  BRIDGES_MANIFEST_HEADER, ENGINE_BRIDGES_DIR_NAME, ENGINE_DOCS_HEADING, ENGINE_REFERENCES_DIR_NAME,
+  BRIDGE_ORDER_SEPARATOR, BRIDGES_MANIFEST_HEADER, ENGINE_BRIDGES_DIR_NAME, ENGINE_DOCS_HEADING, ENGINE_REFERENCES_DIR_NAME,
+  NOT_SELECTED_HEADING,
 } from '../constants-bridges.js';
 import { getBridgeAdapter } from './adapter.js';
 import type { DocsSource } from './types.js';
@@ -31,10 +32,11 @@ export interface ManifestInput {
   bridges: ManifestBridge[];
   engineDocSources: DocsSource[];
   engineContext7: string[];
+  /** Bridges of the catalog that the project did not select, in package order. */
+  unselected: Array<{ fileId: string; entry: McpServerEntry }>;
 }
 
 const NO_RULES = 'none';
-const ORDER_SEPARATOR = ' > ';
 const DOCS_SOURCES_LABEL = '- docs sources:';
 
 /** Project-relative path with forward slashes: BRIDGES.md is text for agents on every platform. */
@@ -86,6 +88,19 @@ function engineBlock(input: ManifestInput): string[] {
   return lines;
 }
 
+/**
+ * The bridges the project did not select that can be told apart on this machine by a probe. `/unikit`
+ * runs the probe and, when the bridge answers, asks the user to re-run `init` and tick it (Q12).
+ * Empty when no unselected bridge has a probe: a section with nothing in it would only be noise.
+ */
+function notSelectedBlock(input: ManifestInput): string[] {
+  const lines = input.unselected.flatMap(({ fileId, entry }) => {
+    const probe = getBridgeAdapter(entry.kind).probeLine(entry);
+    return probe === null ? [] : [`- ${fileId} - ${entry.displayName} - ${probe}`];
+  });
+  return lines.length > 0 ? [`## ${NOT_SELECTED_HEADING}`, ...lines] : [];
+}
+
 export function renderBridgesManifest(input: ManifestInput): string {
   const sections: string[][] = [
     [
@@ -93,11 +108,13 @@ export function renderBridgesManifest(input: ManifestInput): string {
       '# Engine bridges',
       '',
       `engine: ${input.engineId}`,
-      `default order: ${input.bridges.map(bridge => bridge.fileId).join(ORDER_SEPARATOR)}`,
+      `default order: ${input.bridges.map(bridge => bridge.fileId).join(BRIDGE_ORDER_SEPARATOR)}`,
       'user order: the list under engine_bridges.order in .unikit/config.yaml (ids from the blocks below); a missing or empty list means the default order',
     ],
     ...input.bridges.map(bridgeBlock),
   ];
+  const notSelected = notSelectedBlock(input);
+  if (notSelected.length > 0) sections.push(notSelected);
   const engine = engineBlock(input);
   if (engine.length > 0) sections.push(engine);
 

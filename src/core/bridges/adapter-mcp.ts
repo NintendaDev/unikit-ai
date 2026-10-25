@@ -18,4 +18,5 @@ export const mcpAdapter: BridgeAdapter = {
     "- catalog: the client's tool list",
     "- available when: the client lists the server's tools",
   ],
+  probeLine: () => null,
 };

@@ -407,6 +407,7 @@ await group('BR-3', async () => {
         })),
         engineDocSources: [{ kind: 'git', id: 'eng', repo: 'https://example.test/e', into: 'eng' }],
         engineContext7: ['/x/engine'],
+        unselected: [],
     });
 
     const text = renderBridgesManifest(input(['mcp-a', 'mcp-b']));
@@ -1000,9 +1001,8 @@ await group('GV-4', async () => {
 // of the adapter and nothing else. A source file that mentions the kind as a literal is either one
 // of those points or a leak.
 
-// The files that may name the kind `cli`: the schema, the adapter, the detection and the wizard.
+// The files that name the kind `cli` as a literal: the schema parsers and the adapter. Exactly these (second half below).
 const CLI_KIND_POINTS = [
-    'src/core/bridges/types.ts',
     'src/core/bridges/schema-fields.ts',
     'src/core/bridges/adapter-cli.ts',
     'src/core/mcp.ts',
@@ -1222,6 +1222,236 @@ await group('BR-5d', async () => {
         }
     }
     report('BR-5d', 'no source skill or subagent carries a hand-written command-line grant', scanned, violations);
+});
+
+// ── BR-D: detection of a bridge, the pre-selection it drives, and the preparation lines ──
+//
+// Detection reads PATH and a file of the project and runs nothing. The platform is a parameter of the
+// context, so the Windows lookup (PATHEXT, `Path`) is checked on any host; the POSIX lookup needs a PATH
+// delimiter that a Windows path does not contain, so it runs only on a host that is not Windows.
+
+await group('BR-D', async () => {
+    const detect = await dist('core/bridges/detect.js');
+    const summary = await dist('core/bridges/summary.js');
+    const wizard = await dist('cli/wizard/prompts.js');
+    const { discoverMcpServers } = await dist('core/mcp.js');
+    const before = passed;
+    const dirs = [];
+    const tmp = (prefix) => { const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix)); dirs.push(dir); return dir; };
+    try {
+        const bin = tmp('br-d-bin-');
+        const marker = path.join(bin, 'was-executed.txt');
+        fs.writeFileSync(path.join(bin, 'unity.exe'), `echo run > "${marker}"\n`);
+        const winCtx = (envPath, extra = {}) => ({ projectDir: bin, env: { Path: envPath, PATHEXT: '.COM;.EXE;.BAT', ...extra }, platform: 'win32' });
+
+        // PATHEXT is upper case and the file system is not case-sensitive on Windows: compare the path as the lookup spells it.
+        assertEq('BR-D1', 'on Windows the binary is found through PATHEXT, in a variable spelled Path',
+            (await detect.findBinaryOnPath('unity', winCtx(`${path.join(bin, 'nowhere')};${bin}`)))?.toLowerCase(), path.join(bin, 'unity.exe').toLowerCase());
+        assertEq('BR-D1', 'a PATH without the binary finds nothing', await detect.findBinaryOnPath('unity', winCtx(path.join(bin, 'nowhere'))), null);
+        assertEq('BR-D1', 'a folder named like the binary is not the binary',
+            (fs.mkdirSync(path.join(bin, 'other.exe')), await detect.findBinaryOnPath('other', winCtx(bin))), null);
+        assertEq('BR-D1', 'finding the binary does not execute it', fs.existsSync(marker), false);
+        if (process.platform !== 'win32') {
+            fs.writeFileSync(path.join(bin, 'unity'), '#!/bin/sh\n');
+            assertEq('BR-D1', 'on POSIX the bare name is found in a colon-separated PATH',
+                await detect.findBinaryOnPath('unity', { projectDir: bin, env: { PATH: `/nonexistent:${bin}` }, platform: 'linux' }), path.join(bin, 'unity'));
+        }
+
+        for (const [found, floor, expected] of [
+            ['6000.0.23', '6000.3', false], ['6000.3.0', '6000.3', true], ['6000.3.1f1', '6000.3', true],
+            ['6000.10', '6000.3', true], ['2021.3.45', '6000.3', false], ['6000', '6000.0', true], ['6000.0.77', '6000.0', true],
+        ]) {
+            assertEq('BR-D2', `${found} against the floor ${floor}`, detect.versionAtLeast(found, floor), expected);
+        }
+
+        const discovered = await discoverMcpServers('unity');
+        const card = discovered.get('unity-cli');
+        const projectWith = (versionLine) => {
+            const dir = tmp('br-d-project-');
+            if (versionLine !== null) {
+                fs.mkdirSync(path.join(dir, 'ProjectSettings'));
+                fs.writeFileSync(path.join(dir, 'ProjectSettings', 'ProjectVersion.txt'), `${versionLine}\nm_EditorVersionWithRevision: 6000.3.2f1 (abcdef)\n`);
+            }
+            return dir;
+        };
+        const versionOf = (dir) => detect.readProjectEngineVersion(card, { projectDir: dir, env: {}, platform: 'win32' });
+        assertEq('BR-D3', 'the version is the first capture group of the card pattern, without the build suffix', await versionOf(projectWith('m_EditorVersion: 6000.3.2f1')), '6000.3.2');
+        assertEq('BR-D3', 'a project without the version file has no version', await versionOf(projectWith(null)), null);
+        assertEq('BR-D3', 'an entry without a pattern has no version', await detect.readProjectEngineVersion({ ...card, detect: { binary: 'unity' } }, { projectDir: bin, env: {}, platform: 'win32' }), null);
+
+        const onPath = path.join(bin);
+        const ctxFor = (dir, hasBinary) => ({ projectDir: dir, env: { Path: hasBinary ? onPath : path.join(bin, 'nowhere'), PATHEXT: '.EXE' }, platform: 'win32' });
+        const high = projectWith('m_EditorVersion: 6000.3.22f1');
+        const floorEdge = projectWith('m_EditorVersion: 6000.0.77f1');
+        const low = projectWith('m_EditorVersion: 2022.3.45f1');
+        assertEq('BR-D4', 'the binary found and the version at the floor: detected',
+            [await detect.detectBridge(card, ctxFor(high, true)), await detect.detectBridge(card, ctxFor(floorEdge, true))], [true, true]);
+        assertEq('BR-D4', 'the binary found but the version below the floor: not detected', await detect.detectBridge(card, ctxFor(low, true)), false);
+        assertEq('BR-D4', 'the version fine but no binary: not detected', await detect.detectBridge(card, ctxFor(high, false)), false);
+        assertEq('BR-D4', 'neither: not detected', await detect.detectBridge(card, ctxFor(low, false)), false);
+        assertEq('BR-D4', 'no version file at all: not detected, nothing thrown', await detect.detectBridge(card, ctxFor(projectWith(null), true)), false);
+        assertEq('BR-D4', 'an MCP bridge, which declares no detection, is never detected', await detect.detectBridge(discovered.get('unity-biome-mcp'), ctxFor(high, true)), false);
+
+        const choices = [...discovered].filter(([, entry]) => entry.isEngine)
+            .map(([fileId, entry]) => ({ fileId, displayName: entry.displayName, isEngine: true, kind: entry.kind, order: entry.order }));
+        assertEq('BR-D5', 'a detected CLI is checked in addition to the first MCP bridge',
+            [...wizard.defaultBridgeIds(choices, new Set(['unity-cli']))].sort(), ['unity-biome-mcp', 'unity-cli']);
+        assertEq('BR-D5', 'nothing detected: only the first MCP bridge', [...wizard.defaultBridgeIds(choices, new Set())], ['unity-biome-mcp']);
+
+        const both = summary.getBridgeSetupLines(discovered, ['unity-biome-mcp', 'unity-cli'], high);
+        assertEq('BR-D6', 'the CLI block opens with its floors', both[0].startsWith('Unity CLI') && both[0].includes('requires: CLI >= 1.0.0-beta.14; package >= 0.9.1-exp.1; engine >= 6000.0'), true);
+        assertEq('BR-D6', 'the three setup lines follow, with who performs each',
+            both.slice(1, 4).map(line => /^\s*(\[[a-z ]+\])/.exec(line)?.[1]), ['[you]', '[asks first]', '[you]']);
+        assertEq('BR-D6', 'the project slot is filled with the root only when it is an engine project',
+            [both[2].includes('<project-root>'), both[2].includes(high)], [false, true]);
+        assertEq('BR-D6', 'a folder that is not an engine project gets the placeholder for the user to fill',
+            summary.getBridgeSetupLines(discovered, ['unity-cli'], bin)[2].includes('<your engine project root>'), true);
+        assertEq('BR-D6', 'two bridges end with the package order and where to set one\'s own',
+            both.at(-1), 'Order: unity-cli > unity-biome-mcp (package default). Set your own with /unikit or in .unikit/config.yaml (engine_bridges.order).');
+        assertEq('BR-D6', 'one bridge prints no order line', summary.getBridgeSetupLines(discovered, ['unity-cli'], high).some(line => line.startsWith('Order:')), false);
+        assertEq('BR-D6', 'nothing selected prints nothing', summary.getBridgeSetupLines(discovered, [], high), []);
+    } finally {
+        for (const dir of dirs) fs.rmSync(dir, { recursive: true, force: true });
+    }
+    report('BR-D', 'detection, pre-selection and preparation-line checks ran', passed - before, []);
+});
+
+// ── BR-3c / BR-3d: the block of a command-line bridge, and the section of the bridges not selected ──
+
+await group('BR-3c', async () => {
+    const { renderBridgesManifest } = await dist('core/bridges/manifest.js');
+    const { discoverMcpServers } = await dist('core/mcp.js');
+    const discovered = await discoverMcpServers('unity');
+    const render = (ids, unselectedIds = []) => renderBridgesManifest({
+        engineId: 'unity',
+        bridges: ids.map(fileId => ({ fileId, entry: discovered.get(fileId), hasRulesTree: false })),
+        engineDocSources: [],
+        engineContext7: [],
+        unselected: unselectedIds.map(fileId => ({ fileId, entry: discovered.get(fileId) })),
+    });
+    const text = render(['unity-cli', 'unity-biome-mcp']);
+    const lines = text.split('\n');
+    const card = discovered.get('unity-cli');
+    const start = lines.indexOf('## unity-cli');
+    const block = lines.slice(start, lines.indexOf('## unity-biome-mcp'));
+    const keys = block.filter(line => line.startsWith('- ')).map(line => line.slice(2, line.indexOf(':')));
+
+    assertEq('BR-3c', 'the CLI block comes before the Biome block and the default order says so',
+        [start >= 0 && start < lines.indexOf('## unity-biome-mcp'), text.includes('\ndefault order: unity-cli > unity-biome-mcp\n')], [true, true]);
+    assertEq('BR-3c', 'the keys of the block, in the order the readers rely on',
+        keys.filter(key => !['setup (human)', 'setup (agent, confirm first)', 'note', 'docs sources'].includes(key)),
+        ['kind', 'call', 'catalog groups', 'catalog group', 'catalog search', 'catalog list', 'schema of one command', 'compile', 'status', 'ready',
+            'probe version', 'probe package', 'floor', 'available when', 'rules', 'verification', 'notes', 'docs', 'context7']);
+    assertEq('BR-3c', 'the call form is printed as the card has it', block.includes(`- call: \`${card.cli.forms.call}\``), true);
+    assertEq('BR-3c', 'every form that addresses a project carries --project-path',
+        block.filter(line => /^- (call|catalog [a-z]+|schema of one command|compile|status|ready):/.test(line)).every(line => line.includes('--project-path')), true);
+    assertEq('BR-3c', 'the floor names the CLI, the package and the engine',
+        block.includes('- floor: CLI >= 1.0.0-beta.14; package >= 0.9.1-exp.1; engine >= 6000.0'), true);
+    const packageProbe = block.find(line => line.startsWith('- probe package: ')) ?? '';
+    assertEq('BR-3c', 'the package probe reads Packages/packages-lock.json and falls back to Packages/manifest.json',
+        [packageProbe.includes('read `Packages/packages-lock.json`'), packageProbe.includes('read `Packages/manifest.json`'), /\bunity\s/.test(packageProbe)], [true, true, false]);
+    assertEq('BR-3c', 'availability names the floor when the version can be probed',
+        block.includes('- available when: the status form answers without an error and the version probe is at or above the floor'), true);
+    assertEq('BR-3c', 'every note of the card is printed', block.filter(line => line.startsWith('- note: ')).length, card.cli.notes.length);
+    assertEq('BR-3c', 'the same input renders the same text', render(['unity-cli', 'unity-biome-mcp']), text);
+    assertEq('BR-3c', 'an MCP block has no probe, no floor and no catalog forms',
+        lines.slice(lines.indexOf('## unity-biome-mcp'), lines.indexOf('## unity-biome-mcp') + 12).some(line => /^- (probe|floor|catalog list)/.test(line)), false);
+});
+
+await group('BR-3d', async () => {
+    const { renderBridgesManifest } = await dist('core/bridges/manifest.js');
+    const { installEngineBridges, readPreviousBridgeSet } = await dist('core/installer/engine-bridges.js');
+    const { discoverMcpServers } = await dist('core/mcp.js');
+    const discovered = await discoverMcpServers('unity');
+    const project = tempProject('br-3d-');
+    const manifestOf = () => fs.readFileSync(path.join(project, '.unikit', 'system', 'engine-bridges', 'BRIDGES.md'), 'utf8');
+    try {
+        await installEngineBridges(project, 'unity', discovered, ['unity-biome-mcp']);
+        const text = manifestOf();
+        assertEq('BR-3d', 'with only Biome selected the CLI is listed as not selected, with its probe',
+            text.includes('## Not selected\n- unity-cli - Unity CLI (Unity 6000.0+, needs the com.unity.pipeline package) - probe: `unity --version`\n'), true);
+        assertEq('BR-3d', 'a bridge without a probe (Coplay) is not listed', text.includes('- coplay-unity-mcp -'), false);
+        assertEq('BR-3d', 'the section is not read as a bridge', await readPreviousBridgeSet(project), ['unity-biome-mcp']);
+
+        await installEngineBridges(project, 'unity', discovered, ['unity-biome-mcp', 'coplay-unity-mcp', 'unity-cli']);
+        assertEq('BR-3d', 'with every bridge selected there is no such section', manifestOf().includes('## Not selected'), false);
+        assertEq('BR-3d', 'the previous set holds all three, in file order', await readPreviousBridgeSet(project), ['unity-cli', 'unity-biome-mcp', 'coplay-unity-mcp']);
+
+        await installEngineBridges(project, 'unity', discovered, ['unity-cli']);
+        assertEq('BR-3d', 'the two MCP bridges, which cannot be probed, make no section when the CLI is selected', manifestOf().includes('## Not selected'), false);
+    } finally {
+        fs.rmSync(project, { recursive: true, force: true });
+    }
+    assertEq('BR-3d', 'an unselected bridge list without probes renders no section',
+        renderBridgesManifest({ engineId: 'unity', bridges: [], engineDocSources: [], engineContext7: [], unselected: [{ fileId: 'unity-biome-mcp', entry: discovered.get('unity-biome-mcp') }] }).includes('## Not selected'), false);
+});
+
+// ── BR-2b, second half: nothing is missing from the list either ──────────────
+//
+// The first half (above) says no other file mentions the kind. This half says every file that the
+// readiness criterion names really does, so the list cannot rot into a superset nobody checks.
+
+await group('BR-2b', async () => {
+    const mentioning = new Set(sourceFiles('src').filter((file) => fs.readFileSync(path.join(ROOT, file), 'utf8').includes("'cli'")));
+    const violations = CLI_KIND_POINTS.filter((file) => !mentioning.has(file)).map((file) => `${file} is listed as an adapter point but no longer names the kind`);
+    report('BR-2b', 'every listed adapter point still names the cli kind', CLI_KIND_POINTS.length, violations);
+});
+
+// ── BR-2b, third half: the installer and the commands do not branch on the kind of a bridge ──
+//
+// The adapter exists so that nothing around it has to ask. A comparison with a kind, or a read of the
+// `cli` block, in the installer or in a command is the abstraction leaking. Exceptions are listed here
+// by file, with the reason; there are none.
+
+const KIND_BRANCH_EXCEPTIONS = new Map([]);
+const KIND_BRANCH_PATTERNS = [/\bkind\s*[!=]==?\s*['"](?:mcp|cli)['"]/, /\.cli\b/];
+
+await group('BR-2b', async () => {
+    const violations = [];
+    const files = [...sourceFiles('src/core/installer'), ...sourceFiles('src/cli/commands')];
+    for (const file of files) {
+        if (KIND_BRANCH_EXCEPTIONS.has(file)) continue;
+        fs.readFileSync(path.join(ROOT, file), 'utf8').split('\n').forEach((line, index) => {
+            for (const pattern of KIND_BRANCH_PATTERNS) {
+                if (pattern.test(line)) violations.push(`${file}:${index + 1}: branches on the kind of a bridge outside the adapter points: ${line.trim()}`);
+            }
+        });
+    }
+    report('BR-2b', 'the installer and the commands never branch on the kind of a bridge', files.length, violations);
+});
+
+// ── BR-2e: no text a skill, a subagent, a data file or a rules tree carries calls a command-line bridge by its binary ──
+//
+// The routes of a command-line bridge live on its card and in BRIDGES.md, written at install time.
+// A skill that spells the binary has a route table in disguise: it goes stale with the next beta and
+// names a tool the project may not have chosen. The binary may appear in a text only as part of
+// another word, a path or a hyphenated name.
+
+await group('BR-2e', async () => {
+    const violations = [];
+    const bridgesRoot = path.join(ROOT, PACKAGE_BRIDGES_DIR_NAME);
+    const binaries = new Set();
+    for (const file of filesBelow(bridgesRoot).filter((rel) => rel.endsWith('.json') && !rel.includes('/rules/'))) {
+        const card = JSON.parse(fs.readFileSync(path.join(ROOT, file), 'utf8'));
+        if (card.kind === 'cli' && typeof card.cli?.binary === 'string') binaries.add(card.cli.binary);
+    }
+
+    const roots = ['skills', 'subagents', 'data'];
+    const texts = [
+        ...roots.flatMap((root) => filesBelow(path.join(ROOT, root))),
+        ...rulesTreeFiles(),
+    ].filter((file) => file.endsWith('.md'));
+    for (const binary of binaries) {
+        const escaped = binary.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const bare = new RegExp(`(^|[^A-Za-z0-9_./#-])${escaped}([^A-Za-z0-9_./-]|$)`);
+        for (const file of texts) {
+            fs.readFileSync(path.join(ROOT, file), 'utf8').split('\n').forEach((line, index) => {
+                if (bare.test(line)) violations.push(`${file}:${index + 1}: names the binary "${binary}" of a command-line bridge: ${line.trim().slice(0, 100)}`);
+            });
+        }
+    }
+    if (binaries.size < 1) violations.push('no bridge of kind cli found in the catalog: the guard has no object');
+    report('BR-2e', 'no skill, subagent, data file or rules tree names the binary of a command-line bridge', texts.length, violations);
 });
 
 // (groups of later tasks are appended above this line, each under its own banner)

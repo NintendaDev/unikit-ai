@@ -33,6 +33,12 @@ export interface BridgeAdapter {
   managedGrantPrefixes(entry: McpServerEntry): string[];
   /** 3-5. call form, catalog source, availability signal: the first lines of the bridge's block in BRIDGES.md. */
   describe(input: BridgeBlockInput): string[];
+  /**
+   * 5. availability, before the bridge is selected: the one line a `Not selected` entry of BRIDGES.md carries so
+   * that `/unikit` can tell whether a bridge the project did not select is installed on this machine.
+   * `null` for a kind with no such probe (an MCP server is "installed" when the client lists it).
+   */
+  probeLine(entry: McpServerEntry): string | null;
 }
 
 const ADAPTERS: Partial<Record<BridgeKind, BridgeAdapter>> = {

@@ -88,6 +88,15 @@ export async function fileExists(filePath: string): Promise<boolean> {
   }
 }
 
+/** True for an existing regular file; a directory of the same name is not one. */
+export async function isFile(filePath: string): Promise<boolean> {
+  try {
+    return (await fs.stat(filePath)).isFile();
+  } catch {
+    return false;
+  }
+}
+
 export async function readJsonFile<T>(filePath: string): Promise<T | null> {
   try {
     const content = await fs.readFile(filePath, 'utf-8');

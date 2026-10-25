@@ -7,6 +7,7 @@ import { renameSkillNames } from '../../core/skill-renames.js';
 import { buildManagedSubagentsState, installSubagents } from '../../core/installer/subagents.js';
 import { injectMcpRules } from '../../core/installer/mcp-injection.js';
 import { collectManagedGrantPrefixes } from '../../core/bridges/grants.js';
+import { getBridgeSetupLines } from '../../core/bridges/summary.js';
 import { installEngineTemplates, installCliContract, installGateResultContract, installUltraPlanReadContract, installResearchLinkContract, installPlanBoundariesContract, installMergeAnalysisContract, installBalanceHandbackContract, installPrototypeProfileContract, installDevPrinciples, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
 import { installSubagentArgumentsContract, installSubagentRolesContract, installUserQuestionsContract } from '../../core/installer/system-contracts.js';
 import { memoryDir } from '../../core/constants.js';
@@ -347,6 +348,14 @@ export async function initCommand(): Promise<void> {
       }
       for (const line of getMcpDocsLines(discoveredServers, enabledIds)) {
         console.log(chalk.dim(`    ${line}`));
+      }
+      // What to prepare for the bridges (install the tool, add the package) and where the order is set.
+      const setupLines = getBridgeSetupLines(discoveredServers, answers.engineBridges, projectDir);
+      if (setupLines.length > 0) {
+        console.log(chalk.bold('  Engine bridges:'));
+        for (const line of setupLines) {
+          console.log(chalk.dim(`    ${line}`));
+        }
       }
       // Yellow, not dim: these are things the user has to do, not reference.
       for (const line of getMcpEnvLines(discoveredServers, enabledIds, answers.agents.map(a => a.id))) {

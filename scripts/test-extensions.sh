@@ -2535,5 +2535,32 @@ fi
 
 echo "  ✓ engine bridge code: the new name carries the vendor code of the first selected mcp bridge (EngineMCP when none), the retired name stays as written"
 
+# 42g — a bridge of kind cli has no MCP code. Selected alone, it leaves the new name at its default; selected
+# beside an MCP bridge, the name still carries the MCP bridge's vendor code (the CLI comes first in the package
+# order, and is skipped because it is not an MCP server).
+P42G_CLI="$TMPDIR/bridge-code-cli"
+make_points_project "$P42G_CLI" claude .claude/skills .claude/agents
+node -e "const fs = require('fs'); const f = process.argv[1]; const c = JSON.parse(fs.readFileSync(f, 'utf8')); c.engineBridges.selected = { 'unity-cli': 'unity' }; fs.writeFileSync(f, JSON.stringify(c, null, 2));" "$P42G_CLI/.unikit.json"
+(cd "$P42G_CLI" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/p42g-cli-update.log" 2>&1)
+ext_add "$P42G_CLI" "$EXT42F" "$TMPDIR/p42g-cli.log"
+BLOCK42G_CLI=$(block_of "$P42G_CLI/.claude/skills/unikit/SKILL.md" unikit-ext-bridge-code code-line)
+if [[ "$BLOCK42G_CLI" != *"New: EngineMCP; old: {{engine_mcp_tool}}."* ]]; then
+  echo "Assertion failed: 42g: with only the CLI bridge selected the new name stays EngineMCP"
+  echo "Block: $BLOCK42G_CLI"; cat "$TMPDIR/p42g-cli-update.log"; exit 1
+fi
+
+P42G_BOTH="$TMPDIR/bridge-code-cli-biome"
+make_points_project "$P42G_BOTH" claude .claude/skills .claude/agents
+node -e "const fs = require('fs'); const f = process.argv[1]; const c = JSON.parse(fs.readFileSync(f, 'utf8')); c.engineBridges.selected = { 'unity-cli': 'unity', 'unity-biome-mcp': 'unity-biome-mcp' }; fs.writeFileSync(f, JSON.stringify(c, null, 2));" "$P42G_BOTH/.unikit.json"
+(cd "$P42G_BOTH" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/p42g-both-update.log" 2>&1)
+ext_add "$P42G_BOTH" "$EXT42F" "$TMPDIR/p42g-both.log"
+BLOCK42G_BOTH=$(block_of "$P42G_BOTH/.claude/skills/unikit/SKILL.md" unikit-ext-bridge-code code-line)
+if [[ "$BLOCK42G_BOTH" != *"New: unity-biome-mcp; old: {{engine_mcp_tool}}."* ]]; then
+  echo "Assertion failed: 42g: with the CLI and Biome selected the new name is the vendor code of Biome, the MCP bridge"
+  echo "Block: $BLOCK42G_BOTH"; cat "$TMPDIR/p42g-both-update.log"; exit 1
+fi
+
+echo "  ✓ engine bridge code: a cli bridge has no MCP code; beside an MCP bridge the name still carries the MCP bridge's code"
+
 echo ""
 echo "extension smoke tests passed"
