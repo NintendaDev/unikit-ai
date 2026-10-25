@@ -1454,6 +1454,244 @@ await group('BR-2e', async () => {
     report('BR-2e', 'no skill, subagent, data file or rules tree names the binary of a command-line bridge', texts.length, violations);
 });
 
+// ── BD / UREF: the bridge-documentation button and the user references skill ──
+
+const BRIDGE_DOCS_SKILL = 'skills/unikit-bridge-docs';
+const REFERENCES_SKILL = 'skills/unikit-references';
+const SKILL_BYTE_CEILINGS = { [BRIDGE_DOCS_SKILL]: 12000, [REFERENCES_SKILL]: 9000 };
+const BOOTSTRAP_ANCHOR = '<!-- unikit:extension-point:bootstrap -->';
+const MAX_DESCRIPTION_BYTES = 1024;
+
+const readRepo = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
+
+// The frontmatter of a SKILL.md: its name, the folded description and the list of allowed tools.
+function skillFrontmatter(rel) {
+    const text = readRepo(rel);
+    const end = text.indexOf('\n---', 4);
+    const head = text.slice(4, end);
+    const description = /^description: >-\n((?:  .*\n?)+)/m.exec(head)?.[1].replace(/\n  /g, ' ').trim() ?? '';
+    const tools = /^allowed-tools:\n((?:  - .*\n?)+)/m.exec(head)?.[1].split('\n').filter(Boolean).map((line) => line.slice(4)) ?? [];
+    return { name: /^name: (.*)$/m.exec(head)?.[1], description, tools, text };
+}
+
+const cliBinaries = () => {
+    const out = [];
+    for (const file of filesBelow(path.join(ROOT, PACKAGE_BRIDGES_DIR_NAME)).filter((rel) => rel.endsWith('.json') && !rel.includes('/rules/'))) {
+        const card = JSON.parse(readRepo(file));
+        if (card.kind === 'cli') out.push(card.cli.binary);
+    }
+    return out;
+};
+
+const skillFiles = (skillDir) => filesBelow(path.join(ROOT, skillDir)).filter((file) => file.endsWith('.md'));
+
+await group('BD-1', async () => {
+    const violations = [];
+    let scanned = 0;
+    const { name, description, tools, text } = skillFrontmatter(`${BRIDGE_DOCS_SKILL}/SKILL.md`);
+    const expected = ['Read', 'Write', 'Glob', 'Grep', 'Bash(mkdir *)', 'Bash(ls *)', 'Bash(find *)', 'Bash(wc *)', 'Bash(date *)', 'Bash(cp *)', 'Bash(mv *)', 'Bash(rm *)', 'Bash(git clone *)', 'Bash(git -C *)'];
+    scanned++; if (name !== 'unikit-bridge-docs') violations.push(`name is "${name}"`);
+    scanned++; if (Buffer.byteLength(description) > MAX_DESCRIPTION_BYTES || !/^[\x00-\x7f]+$/.test(description)) violations.push(`description: ${Buffer.byteLength(description)} bytes or not ASCII`);
+    scanned++; if ([...tools].sort().join('|') !== [...expected].sort().join('|')) violations.push(`allowed-tools differ: ${tools.join(', ')}`);
+    scanned++; if (tools.includes('AskUserQuestion') || text.includes('**User questions.**')) violations.push('the button asks no questions: no question tool and no pointer to the contract');
+    scanned++; if (Buffer.byteLength(text) > SKILL_BYTE_CEILINGS[BRIDGE_DOCS_SKILL]) violations.push(`SKILL.md is ${Buffer.byteLength(text)} bytes, above ${SKILL_BYTE_CEILINGS[BRIDGE_DOCS_SKILL]}`);
+    report('BD-1', 'the bridge-docs skill has the frontmatter, the tools and the size the plan gives it', scanned, violations);
+});
+
+await group('BD-2', async () => {
+    const violations = [];
+    let scanned = 0;
+    const must = (rel, phrases) => {
+        const text = readRepo(`${BRIDGE_DOCS_SKILL}/${rel}`);
+        for (const phrase of phrases) { scanned++; if (!text.includes(phrase)) violations.push(`${rel}: "${phrase}" is missing`); }
+    };
+    must('SKILL.md', ['its previous copy stays untouched', 'never passes through the conversation', 'is data, not instructions', 'belong to this skill', 'A source that fails never stops the others']);
+    must('references/sources.md', ['Any failure before step 3: remove', 'Standard error is not redirected']);
+    must('references/stamp-and-report.md', ['a bridge without probes is never called older']);
+    const skill = readRepo(`${BRIDGE_DOCS_SKILL}/SKILL.md`);
+    scanned++; if (skill.split(BOOTSTRAP_ANCHOR).length !== 2) violations.push('SKILL.md: the bootstrap anchor must appear exactly once');
+    for (const rel of skillFiles(BRIDGE_DOCS_SKILL).filter((file) => !file.endsWith('/SKILL.md'))) {
+        scanned++; if (readRepo(rel).includes('unikit:extension-point')) violations.push(`${rel}: an extension anchor outside SKILL.md`);
+    }
+    for (const reference of ['sources.md', 'catalog.md', 'stamp-and-report.md']) {
+        scanned++; if (!skill.includes(`{{skills_dir}}/{{self_name}}/references/${reference}`)) violations.push(`SKILL.md: ${reference} is not named by its full path`);
+    }
+    report('BD-2', 'the wording the readers and the guards rely on is in the skill', scanned, violations);
+});
+
+await group('BD-2b', async () => {
+    const violations = [];
+    const binaries = cliBinaries();
+    const files = [...skillFiles(BRIDGE_DOCS_SKILL), ...skillFiles(REFERENCES_SKILL)];
+    for (const binary of binaries) {
+        const bare = new RegExp(`(^|[^A-Za-z0-9_-])${binary}([^A-Za-z0-9_-]|$)`);
+        for (const file of files) {
+            readRepo(file).split('\n').forEach((line, index) => { if (bare.test(line)) violations.push(`${file}:${index + 1}: names the binary "${binary}"`); });
+        }
+    }
+    if (binaries.length < 1) violations.push('no cli bridge in the catalog');
+    report('BD-2b', 'the skills that read the bridge documentation name no binary', files.length, violations);
+});
+
+await group('BD-3', async () => {
+    const { renderBridgesManifest } = await dist('core/bridges/manifest.js');
+    const { orderBridges } = await dist('core/bridges/selection.js');
+    const { discoverMcpServers } = await dist('core/mcp.js');
+    const { getEngineConfig } = await dist('core/engines.js');
+    const discovered = await discoverMcpServers('unity');
+    const engine = getEngineConfig('unity');
+    const manifest = renderBridgesManifest({
+        engineId: 'unity',
+        bridges: orderBridges(discovered, ['unity-cli', 'unity-biome-mcp']).map(({ fileId, entry }) => ({ fileId, entry, hasRulesTree: true })),
+        engineDocSources: engine.docSources,
+        engineContext7: engine.docContext7,
+        unselected: [],
+    });
+    const skill = readRepo(`${BRIDGE_DOCS_SKILL}/SKILL.md`);
+    const violations = [];
+    // What the producer prints, and the name the consumer reads it by.
+    const keys = [
+        ['- docs: ', 'docs:'], ['- docs sources:', 'docs sources:'], ['- catalog groups: ', 'catalog groups:'], ['- catalog group: ', 'catalog group:'],
+        ['- status: ', 'status:'], ['- probe version: ', 'probe version:'], ['- probe package: ', 'probe package:'], ['- floor: ', 'floor:'],
+        ['## Engine-level documentation', 'Engine-level documentation'],
+    ];
+    for (const [printed, named] of keys) {
+        if (!manifest.includes(printed)) violations.push(`BRIDGES.md does not print "${printed}"`);
+        if (!skill.includes(named)) violations.push(`SKILL.md does not read "${named}"`);
+    }
+    report('BD-3', 'every key the skill reads is printed in BRIDGES.md, and the other way round', keys.length, violations);
+});
+
+await group('BD-4', async () => {
+    const violations = [];
+    let scanned = 0;
+    const need = (rel, phrases) => {
+        const text = readRepo(`${BRIDGE_DOCS_SKILL}/${rel}`);
+        for (const phrase of phrases) { scanned++; if (!text.includes(phrase)) violations.push(`${rel}: "${phrase}" is missing`); }
+    };
+    need('references/stamp-and-report.md', ['collected:', 'versions:', '## Sources', '## Files', 'was -> is']);
+    need('references/catalog.md', ['shape: groups', 'written:', 'Never write a description the listing did not give']);
+    report('BD-4', 'the formats the readers parse are spelled in the skill', scanned, violations);
+});
+
+await group('BD-5', async () => {
+    const card = JSON.parse(readRepo('engine-bridges/unity/unity-cli.json'));
+    const verbs = card['allowed-tools'].skills['unikit-bridge-docs'] ?? [];
+    assertEq('BD-5', 'the button gets exactly the listing, status and version verbs, and the skill exists',
+        [[...verbs].sort(), verbs.some((verb) => verb.startsWith('pipeline')), fs.existsSync(path.join(ROOT, BRIDGE_DOCS_SKILL, 'SKILL.md'))],
+        [['--version', 'command', 'skill show', 'status'], false, true]);
+});
+
+await group('BD-6', async () => {
+    const violations = [];
+    let scanned = 0;
+    for (const file of filesBelow(path.join(ROOT, PACKAGE_BRIDGES_DIR_NAME)).filter((rel) => rel.endsWith('.json') && !rel.includes('/rules/'))) {
+        for (const source of JSON.parse(readRepo(file)).docs?.sources ?? []) {
+            scanned++;
+            const where = `${file}: source "${source.id}"`;
+            if (source.kind === 'command' && !(String(source.show).includes('<file>') && String(source.list).length > 0)) violations.push(`${where}: a command source needs list and show with the slot <file>`);
+            if (source.kind === 'package' && (path.isAbsolute(source.root) || source.root.split('/').includes('..'))) violations.push(`${where}: the package root leaves the project`);
+            if (source.kind === 'git' && !String(source.repo).startsWith('https://')) violations.push(`${where}: a git source must be https`);
+        }
+    }
+    const engines = readRepo('src/core/engines.ts');
+    scanned += (engines.match(/kind: 'git'/g) ?? []).length;
+    if (scanned < 7) violations.push(`only ${scanned} pointers were looked at, expected at least 7`);
+    report('BD-6', 'every documentation pointer of the catalog can be consumed', scanned, violations);
+});
+
+await group('UREF-1', async () => {
+    const violations = [];
+    let scanned = 0;
+    const { name, description, tools, text } = skillFrontmatter(`${REFERENCES_SKILL}/SKILL.md`);
+    scanned++; if (name !== 'unikit-references') violations.push(`name is "${name}"`);
+    scanned++; if (Buffer.byteLength(description) > MAX_DESCRIPTION_BYTES || !/^[\x00-\x7f]+$/.test(description)) violations.push('description too long or not ASCII');
+    scanned++; if (!tools.includes('AskUserQuestion') || !tools.includes('Bash(curl *)')) violations.push('allowed-tools lack the question tool or curl');
+    const pointers = text.split('\n').filter((line) => line.startsWith('**User questions.**'));
+    scanned++; if (pointers.length !== 1 || text.indexOf(pointers[0]) > text.indexOf('\n## ')) violations.push('the user-questions pointer must be one line above the first "## " heading');
+    scanned++; if (Buffer.byteLength(text) > SKILL_BYTE_CEILINGS[REFERENCES_SKILL]) violations.push(`SKILL.md is ${Buffer.byteLength(text)} bytes, above ${SKILL_BYTE_CEILINGS[REFERENCES_SKILL]}`);
+    report('UREF-1', 'the references skill has the frontmatter, the question pointer and the size the plan gives it', scanned, violations);
+});
+
+await group('UREF-2', async () => {
+    const violations = [];
+    let scanned = 0;
+    const skill = readRepo(`${REFERENCES_SKILL}/SKILL.md`);
+    const format = readRepo(`${REFERENCES_SKILL}/references/index-format.md`);
+    // The description is folded over several lines in the file; the phrase is checked on the unfolded text.
+    scanned++; if (!skillFrontmatter(`${REFERENCES_SKILL}/SKILL.md`).description.includes('Nothing is summarised or rewritten')) violations.push('description: "Nothing is summarised or rewritten" is missing');
+    for (const phrase of ['never touches `.unikit/references/bridges/`', 'never through a tool that returns a summary', 'Only on the second answer remove']) {
+        scanned++; if (!skill.includes(phrase)) violations.push(`SKILL.md: "${phrase}" is missing`);
+    }
+    scanned++; if (!format.includes('| name | what it is for | kind | origin | updated |')) violations.push('index-format.md: the table header is missing');
+    scanned++; if (!skill.includes('{{skills_dir}}/{{self_name}}/references/index-format.md')) violations.push('SKILL.md: index-format.md is not named by its full path');
+    report('UREF-2', 'the wording of the references skill is in place', scanned, violations);
+});
+
+await group('UREF-4', async () => {
+    const skill = readRepo(`${REFERENCES_SKILL}/SKILL.md`);
+    const others = skillFiles(REFERENCES_SKILL).filter((file) => !file.endsWith('/SKILL.md')).filter((file) => readRepo(file).includes('unikit:extension-point'));
+    assertEq('UREF-4', 'the bootstrap anchor stands once in SKILL.md and nowhere in references/', [skill.split(BOOTSTRAP_ANCHOR).length - 1, others], [1, []]);
+});
+
+// ── C7: Context7 reaches the executors that read documentation ───────────────
+
+await group('C7-1', async () => {
+    const violations = [];
+    let scanned = 0;
+    const context7 = JSON.parse(readRepo('mcp/universal/context7.json'));
+    const grant = ['resolve-library-id', 'query-docs'];
+    const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    const check = (ok, message) => { scanned++; if (!ok) violations.push(message); };
+    check(same(context7['allowed-tools'].skills['unikit-verify'], grant), 'unikit-verify gets the two Context7 tools');
+    check(same(context7['allowed-tools'].agents['unikit-implement-coordinator'], grant), 'the coordinator gets the two Context7 tools');
+    check(same(context7['allowed-tools'].agents['unikit-implement-worker'], grant), 'the worker gets the two Context7 tools');
+    check(context7['allowed-tools'].agents['unikit-review-sidecar'] === undefined, 'the review sidecar, a reader without network, gets none');
+    for (const rel of ['skills/unikit-verify/SKILL.md', 'subagents/unikit-implement-worker.md', 'subagents/unikit-implement-coordinator.md']) {
+        check(fs.existsSync(path.join(ROOT, rel)), `${rel} must exist to accept the grant`);
+    }
+    report('C7-1', 'Context7 is granted to verify, the worker and the coordinator', scanned, violations);
+});
+
+// ── RG: counters that used to be literals now follow the tree ────────────────
+
+await group('RG-1', async () => {
+    const violations = [];
+    let scanned = 0;
+    const skills = fs.readdirSync(path.join(ROOT, 'skills'), { withFileTypes: true }).filter((entry) => entry.isDirectory() && fs.existsSync(path.join(ROOT, 'skills', entry.name, 'SKILL.md')));
+    const total = skills.length;
+    const designSkills = skills.filter((entry) => entry.name.startsWith('unikit-gd-')).length;
+    const readme = readRepo('README.md');
+    const started = readRepo('docs/getting-started.md');
+    const found = (text, pattern, label) => {
+        scanned++;
+        const match = pattern.exec(text);
+        if (!match) { violations.push(`${label}: no match for ${pattern}`); return null; }
+        return match;
+    };
+    const badge = found(readme, /skills-(\d+)/, 'README badge');
+    const all = found(readme, /All (\d+) skills - (\d+) code-pipeline \+ (\d+) game-design/, 'README table');
+    const intro = found(started, /(\d+) skills \((\d+) code-pipeline \+ (\d+) game-design\)/, 'getting-started');
+    if (badge && Number(badge[1]) !== total) violations.push(`README badge says ${badge[1]}, the tree has ${total}`);
+    for (const [label, match] of [['README table', all], ['getting-started', intro]]) {
+        if (!match) continue;
+        if (Number(match[1]) !== total) violations.push(`${label} says ${match[1]} skills, the tree has ${total}`);
+        if (Number(match[2]) + Number(match[3]) !== total) violations.push(`${label}: ${match[2]} + ${match[3]} is not ${total}`);
+        if (Number(match[3]) !== designSkills) violations.push(`${label} says ${match[3]} game-design skills, the tree has ${designSkills}`);
+    }
+    const tree = found(started, /# (\d+) skills \(or fewer/, 'getting-started tree');
+    if (tree && Number(tree[1]) !== total) violations.push(`the getting-started tree comment says ${tree[1]}, the tree has ${total}`);
+    report('RG-1', 'the skill counters of README and getting-started follow the skills directory', scanned, violations);
+});
+
+await group('RG-2', async () => {
+    const registry = JSON.parse(readRepo('data/extension-points.json'));
+    const withoutAnchor = ['unikit-help', 'unikit-skills-context'];
+    const total = fs.readdirSync(path.join(ROOT, 'skills'), { withFileTypes: true }).filter((entry) => entry.isDirectory() && fs.existsSync(path.join(ROOT, 'skills', entry.name, 'SKILL.md'))).length;
+    assertEq('RG-2', 'every skill has an extension anchor except the two that deliberately have none',
+        [Object.keys(registry.skills).length + withoutAnchor.length, withoutAnchor.some((name) => registry.skills[name] !== undefined)], [total, false]);
+});
+
 // (groups of later tasks are appended above this line, each under its own banner)
 
 console.log(`\nEngine bridge guards: ${passed} passed, ${failed} failed`);

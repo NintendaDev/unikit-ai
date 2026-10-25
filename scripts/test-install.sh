@@ -2890,6 +2890,138 @@ fi
 echo "  ✓ engine-bridges: a CLI bridge is described in BRIDGES.md and registers nothing; order is no installed byte; the unselected CLI is offered with its probe"
 
 # ─────────────────────────────────────────────────────
+# Test 16: the bridge-docs and references skills are delivered with their grants, and Context7 reaches
+# the executors that read documentation
+# ─────────────────────────────────────────────────────
+# (a) /unikit-bridge-docs: its references folder, the grants of the CLI card and its own git grant;
+#     with the CLI deselected the CLI grants go and its own stay.
+# (b) /unikit-references: the question tool and curl; a Codex project gets the slash calls rewritten
+#     in the reference files too.
+# (c) Context7 in worker, coordinator and verify, and removed again with the server.
+
+DOCS_SKILLS_DIR="$TMPDIR/test-docs-skills"
+mkdir -p "$DOCS_SKILLS_DIR"
+cat > "$DOCS_SKILLS_DIR/.unikit.json" << 'EOF'
+{
+  "version": "3.0.0",
+  "engine": "unity",
+  "mcp": { "servers": {} },
+  "engineBridges": { "selected": { "unity-cli": "unity", "unity-biome-mcp": "unity-biome-mcp" } },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit-bridge-docs", "unikit-references", "unikit-implement"],
+      "installedSubagents": []
+    },
+    {
+      "id": "codex",
+      "skillsDir": ".codex/skills",
+      "subagentsDir": ".codex/agents",
+      "installedSkills": ["unikit-bridge-docs", "unikit-references"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": {
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
+  }
+}
+EOF
+inject_fake_registry "$DOCS_SKILLS_DIR"
+run_update "$DOCS_SKILLS_DIR"
+
+DOCS_SKILL="$DOCS_SKILLS_DIR/.claude/skills/unikit-bridge-docs"
+for doc_file in SKILL.md references/sources.md references/catalog.md references/stamp-and-report.md; do
+  assert_exists "$DOCS_SKILL/$doc_file" "bridge docs: $doc_file is delivered"
+done
+grep -qF 'Bash(git clone *)' "$DOCS_SKILL/SKILL.md" || { echo "Assertion failed: the button's own git grant is missing"; exit 1; }
+for grant in 'Bash(unity skill show *)' 'Bash(unity command *)' 'Bash(unity status *)' 'Bash(unity --version *)'; do
+  grep -qF "$grant" "$DOCS_SKILL/SKILL.md" || { echo "Assertion failed: the card's grant '$grant' did not reach the button"; exit 1; }
+done
+if grep -qF 'pipeline' "$DOCS_SKILL/SKILL.md"; then
+  echo "Assertion failed: no pipeline verb may be granted to the button"; exit 1
+fi
+assert_not_contains "$DOCS_SKILL/SKILL.md" '\{\{(skills_dir|self_name)\}\}' "bridge docs: the path variables are substituted"
+assert_contains "$DOCS_SKILL/SKILL.md" '\.claude/skills/unikit-bridge-docs/references/sources\.md' "bridge docs: the reference is named by its installed path"
+
+REFS_SKILL="$DOCS_SKILLS_DIR/.claude/skills/unikit-references"
+assert_exists "$REFS_SKILL/SKILL.md" "references: the skill is delivered"
+assert_exists "$REFS_SKILL/references/index-format.md" "references: the index format is delivered"
+assert_contains "$REFS_SKILL/SKILL.md" 'AskUserQuestion' "references: the question tool is granted"
+grep -qF 'Bash(curl *)' "$REFS_SKILL/SKILL.md" || { echo "Assertion failed: references: curl is not granted"; exit 1; }
+assert_not_contains "$REFS_SKILL/SKILL.md" 'unity' "references: the user-references skill names no engine tool"
+
+# A Codex project: the slash calls in the reference files are rewritten like the skill text is.
+CODEX_REFS="$DOCS_SKILLS_DIR/.codex/skills/unikit-references/references/index-format.md"
+assert_exists "$CODEX_REFS" "references (codex): the index format is delivered"
+assert_contains "$CODEX_REFS" '\$unikit-bridge-docs' "references (codex): /unikit-bridge-docs is written as \$unikit-bridge-docs in the reference file"
+assert_not_contains "$CODEX_REFS" '/unikit-bridge-docs' "references (codex): no slash call is left in the reference file"
+grep -qF 'Bash(unity command *)' "$DOCS_SKILLS_DIR/.codex/skills/unikit-bridge-docs/SKILL.md" || { echo "Assertion failed: codex: the CLI grants did not reach the button"; exit 1; }
+
+# The CLI deselected: its grants leave the button, its own stay.
+CONFIG="$DOCS_SKILLS_DIR/.unikit.json" node -e "
+    const fs=require('fs'); const f=process.env.CONFIG;
+    const c=JSON.parse(fs.readFileSync(f,'utf8'));
+    c.engineBridges = { selected: { 'unity-biome-mcp': 'unity-biome-mcp' } };
+    fs.writeFileSync(f, JSON.stringify(c,null,2));
+"
+run_update "$DOCS_SKILLS_DIR"
+if grep -qF 'Bash(unity' "$DOCS_SKILL/SKILL.md"; then
+  echo "Assertion failed: bridge docs: the CLI is deselected and its grants are still in the button"; exit 1
+fi
+grep -qF 'Bash(git clone *)' "$DOCS_SKILL/SKILL.md" || { echo "Assertion failed: the button lost its own git grant with the CLI"; exit 1; }
+echo "  ✓ bridge docs and references: delivered with their reference files, the card's grants come and go with the CLI, Codex gets the slash calls rewritten"
+
+# (c) Context7 for the executors
+C7_DIR="$TMPDIR/test-context7-executors"
+mkdir -p "$C7_DIR"
+cat > "$C7_DIR/.unikit.json" << 'EOF'
+{
+  "version": "3.0.0",
+  "engine": "unity",
+  "mcp": { "servers": { "context7": "context7" } },
+  "engineBridges": { "selected": {} },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit-verify", "unikit-implement"],
+      "installedSubagents": ["unikit-implement-worker", "unikit-implement-coordinator", "unikit-review-sidecar"]
+    }
+  ],
+  "rules": {
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
+  }
+}
+EOF
+inject_fake_registry "$C7_DIR"
+run_update "$C7_DIR"
+C7_FILES=("$C7_DIR/.claude/agents/unikit-implement-worker.md" "$C7_DIR/.claude/agents/unikit-implement-coordinator.md" "$C7_DIR/.claude/skills/unikit-verify/SKILL.md")
+for c7_file in "${C7_FILES[@]}"; do
+  assert_exists "$c7_file" "context7: ${c7_file#$TMPDIR/} is installed"
+  assert_contains "$c7_file" 'mcp__context7__resolve-library-id' "context7: ${c7_file##*/} may resolve a library"
+  assert_contains "$c7_file" 'mcp__context7__query-docs' "context7: ${c7_file##*/} may query its documentation"
+done
+grep -qF 'Agent(unikit-implement-worker' "$C7_DIR/.claude/agents/unikit-implement-coordinator.md" || { echo "Assertion failed: the coordinator lost its Agent(...) entry"; exit 1; }
+assert_contains "$C7_DIR/.claude/agents/unikit-implement-coordinator.md" 'AskUserQuestion' "context7: the coordinator keeps its question tool"
+assert_exists "$C7_DIR/.claude/agents/unikit-review-sidecar.md" "context7: the review sidecar is installed (so its absence of grants means something)"
+assert_not_contains "$C7_DIR/.claude/agents/unikit-review-sidecar.md" 'mcp__context7__' "context7: the review sidecar is not granted"
+
+CONFIG="$C7_DIR/.unikit.json" node -e "
+    const fs=require('fs'); const f=process.env.CONFIG;
+    const c=JSON.parse(fs.readFileSync(f,'utf8'));
+    c.mcp = { servers: {} };
+    fs.writeFileSync(f, JSON.stringify(c,null,2));
+"
+run_update "$C7_DIR"
+for c7_file in "${C7_FILES[@]}"; do
+  assert_not_contains "$c7_file" 'mcp__context7__' "context7 deselected: ${c7_file##*/} loses the grants"
+done
+echo "  ✓ context7: granted to verify, the worker and the coordinator, and taken back with the server"
+
+# ─────────────────────────────────────────────────────
 # Final sweep: agent-filter markers must not leak into any install
 # ─────────────────────────────────────────────────────
 # Every installed SKILL.md and subagent .md across every test scenario in

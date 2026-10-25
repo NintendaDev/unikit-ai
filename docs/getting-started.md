@@ -7,7 +7,7 @@
 UniKit AI is an **AI-powered game code development toolkit**. It bootstraps an AI coding agent for your game project by:
 
 1. **Detecting the engine** - Unity, Godot 4, Godot 4 .NET, or Unreal Engine 5
-2. **Installing skills and subagents** - 37 skills (24 code-pipeline + 13 game-design) tailored to the selected engine, grouped by category so you only install what you need, plus 8 background agents (sidecars, coordinators, workers) for Claude Code and Kimi Code - other agents run those workflows inline, see [Agents](agents.md)
+2. **Installing skills and subagents** - 39 skills (26 code-pipeline + 13 game-design) tailored to the selected engine, grouped by category so you only install what you need, plus 8 background agents (sidecars, coordinators, workers) for Claude Code and Kimi Code - other agents run those workflows inline, see [Agents](agents.md)
 3. **Wiring the knowledge base** - a remote rules registry feeds dynamic memory, module-aware (`code` and, if you install the game-design skills, `gamedesign`), with core rules always loaded and stack/library rules loaded by task context
 4. **Configuring MCP servers** - engine MCP (real-time console / tests) + Context7 (up-to-date library docs), plus an optional GitHub MCP for `/unikit-pr`, for agents that support MCP
 5. **Providing a spec-driven workflow** - explore → plan → improve → implement → review → verify → commit, with self-learning patches feeding back into the rules. A parallel `gamedesign` pipeline (brainstorm → spec → system/flow/content → review/verify) authors the GDD that code plans read from
@@ -141,7 +141,7 @@ All skills use the `unikit-` prefix and are installed to the agent's skills dire
 | **Memory and rules** | `unikit-memory`, `unikit-rules`, `unikit-rules-registry`, `unikit-skills-context` |
 | **Code** | `unikit-architecture`, `unikit-archive`, `unikit-commit`, `unikit-devcontext`, `unikit-evolve`, `unikit-explore`, `unikit-fix`, `unikit-implement`, `unikit-improve`, `unikit-plan`, `unikit-pr`, `unikit-review`, `unikit-roadmap`, `unikit-verify` |
 | **Game Design** | 13 `unikit-gd-*` skills - GDD authoring (brainstorm, spec, system, flow, content), research (explore, recon), balance (balance), experiments (experiment), quality (review, verify), dispatch (apply), and export (docs). See [Game-Design Module](gamedesign.md) |
-| **Tools** | `unikit-docs`, `unikit-bridge-audit`, `unikit-bridge-trap`, `unikit-todo` |
+| **Tools** | `unikit-bridge-audit`, `unikit-bridge-docs`, `unikit-bridge-trap`, `unikit-docs`, `unikit-references`, `unikit-todo` |
 
 24 skills form the code pipeline (Core + Memory and rules + Code + Tools); the 13 Game Design skills are a separate, optional module - see [Skills Reference](skills.md) for the full per-skill breakdown.
 
@@ -196,7 +196,7 @@ Example for a Unity project with Claude Code (full schema in [Configuration](con
 ```
 your-game-project/
 ├── .claude/                      # Agent config dir (varies by agent)
-│   ├── skills/                   # 37 skills (or fewer, per your Step 3 selection)
+│   ├── skills/                   # 39 skills (or fewer, per your Step 3 selection)
 │   └── agents/                   # 8 subagents (sidecars, coordinators, workers)
 ├── .unikit/                      # UniKit AI working directory
 │   ├── config.yaml               # User-editable config (language, workflow, git) - written by /unikit

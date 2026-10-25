@@ -12,6 +12,9 @@
     "unikit-bridge-audit": [
       "bootstrap"
     ],
+    "unikit-bridge-docs": [
+      "bootstrap"
+    ],
     "unikit-bridge-trap": [
       "bootstrap"
     ],
@@ -85,6 +88,9 @@
       "bootstrap"
     ],
     "unikit-pr": [
+      "bootstrap"
+    ],
+    "unikit-references": [
       "bootstrap"
     ],
     "unikit-review": [

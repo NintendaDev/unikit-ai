@@ -669,7 +669,7 @@ After initialization (example for Claude Code):
 ```
 your-unity-project/
 ├── .claude/                      # Agent config dir
-│   ├── skills/                   # 24 code-pipeline skills (+ 13 unikit-gd-* if the Game Design group was selected)
+│   ├── skills/                   # 26 code-pipeline skills (+ 13 unikit-gd-* if the Game Design group was selected)
 │   │   ├── unikit/
 │   │   │   └── references/
 │   │   ├── unikit-architecture/

@@ -3070,5 +3070,56 @@ assert_contains "$CLIGRANT_IMPL" 'mcp__unity-biome-mcp__\*' "cli grants: the MCP
 assert_has_text "$CLIGRANT_IMPL" 'Bash(git *)' "cli grants: the hand-written entry survives the removal"
 echo "  ✓ cli grants: per shell, narrow, absent for the trap skill, idempotent, narrowed and removed through the managed prefix"
 
+
+# ─────────────────────────────────────────────
+# Test 37: bridge-docs and references are hash-tracked skills — a tampered file and a missing reference
+# file are both restored by update, and a settled project changes nothing
+# ─────────────────────────────────────────────
+# Both skills ship a references folder, which the non-flat copy delivers whole. A hand edit of the
+# SKILL.md and a deleted reference file are the two ways an installed copy drifts; neither may survive.
+
+DOCSTAMP_DIR="$TMPDIR/update-docs-skills-tamper"
+mkdir -p "$DOCSTAMP_DIR"
+cat > "$DOCSTAMP_DIR/.unikit.json" << 'EOF'
+{
+  "version": "3.0.0",
+  "engine": "unity",
+  "mcp": { "servers": {} },
+  "engineBridges": { "selected": {} },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit-bridge-docs", "unikit-references"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": { "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } } }
+}
+EOF
+inject_fake_registry "$DOCSTAMP_DIR"
+(cd "$DOCSTAMP_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/update-docs-skills-1.log" 2>&1)
+
+DOCSTAMP_SKILL="$DOCSTAMP_DIR/.claude/skills/unikit-bridge-docs/SKILL.md"
+DOCSTAMP_FORMAT="$DOCSTAMP_DIR/.claude/skills/unikit-references/references/index-format.md"
+assert_exists "$DOCSTAMP_SKILL" "docs skills: the button is installed on the first update"
+assert_exists "$DOCSTAMP_FORMAT" "docs skills: the index format is installed on the first update"
+
+echo "<!-- tampered -->" >> "$DOCSTAMP_SKILL"
+rm -f "$DOCSTAMP_FORMAT"
+(cd "$DOCSTAMP_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/update-docs-skills-2.log" 2>&1)
+assert_not_contains "$DOCSTAMP_SKILL" 'tampered' "docs skills: a tampered SKILL.md is reinstalled"
+assert_exists "$DOCSTAMP_FORMAT" "docs skills: a deleted reference file is back"
+
+DOCSTAMP_SKILL_SHA=$(sha_of "$DOCSTAMP_SKILL")
+DOCSTAMP_FORMAT_SHA=$(sha_of "$DOCSTAMP_FORMAT")
+DOCSTAMP_CFG_SHA=$(sha_of "$DOCSTAMP_DIR/.unikit.json")
+(cd "$DOCSTAMP_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/update-docs-skills-3.log" 2>&1)
+assert_same_sha "$DOCSTAMP_SKILL" "$DOCSTAMP_SKILL_SHA" "docs skills: a settled project leaves the button byte-identical"
+assert_same_sha "$DOCSTAMP_FORMAT" "$DOCSTAMP_FORMAT_SHA" "docs skills: ...and the reference file"
+assert_same_sha "$DOCSTAMP_DIR/.unikit.json" "$DOCSTAMP_CFG_SHA" "docs skills: ...and the config"
+echo "  ✓ docs skills: tamper and a missing reference file are recovered, a settled project is untouched"
+
 echo ""
 echo "update smoke tests passed"
