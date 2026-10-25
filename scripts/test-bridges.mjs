@@ -1324,7 +1324,7 @@ await group('BR-3c', async () => {
     const discovered = await discoverMcpServers('unity');
     const render = (ids, unselectedIds = []) => renderBridgesManifest({
         engineId: 'unity',
-        bridges: ids.map(fileId => ({ fileId, entry: discovered.get(fileId), hasRulesTree: false })),
+        bridges: ids.map(fileId => ({ fileId, entry: discovered.get(fileId), hasRulesTree: true })),
         engineDocSources: [],
         engineContext7: [],
         unselected: unselectedIds.map(fileId => ({ fileId, entry: discovered.get(fileId) })),
@@ -1342,6 +1342,8 @@ await group('BR-3c', async () => {
         keys.filter(key => !['setup (human)', 'setup (agent, confirm first)', 'note', 'docs sources'].includes(key)),
         ['kind', 'call', 'catalog groups', 'catalog group', 'catalog search', 'catalog list', 'schema of one command', 'compile', 'status', 'ready',
             'probe version', 'probe package', 'floor', 'available when', 'rules', 'verification', 'notes', 'docs', 'context7']);
+    assertEq('BR-3c', 'the block points to the rules tree and the gate calibration of the bridge',
+        [block.includes('- rules: .unikit/system/engine-bridges/unity-cli/INDEX.md'), block.includes('- verification: .unikit/system/engine-bridges/unity-cli/verification.md')], [true, true]);
     assertEq('BR-3c', 'the call form is printed as the card has it', block.includes(`- call: \`${card.cli.forms.call}\``), true);
     assertEq('BR-3c', 'every form that addresses a project carries --project-path',
         block.filter(line => /^- (call|catalog [a-z]+|schema of one command|compile|status|ready):/.test(line)).every(line => line.includes('--project-path')), true);

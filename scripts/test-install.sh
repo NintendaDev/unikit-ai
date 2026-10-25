@@ -2797,7 +2797,7 @@ echo "  ✓ engine-bridges: two bridges deliver two trees and one BRIDGES.md; dr
 # Test 15b: a command-line bridge beside an MCP bridge — its block in BRIDGES.md, nothing in the settings
 # file, the section of what was not selected, and the order that is not part of any installed byte
 # ─────────────────────────────────────────────────────
-# The Unity CLI registers nothing in .mcp.json and ships no rules tree; what the skills need from it
+# The Unity CLI registers nothing in .mcp.json; it ships a small rules tree of measured exceptions. What the skills need from it
 # (how to call it, how to list its catalog, how to probe its version and the package, the floors) is
 # printed into its block of BRIDGES.md from the card.
 
@@ -2856,7 +2856,12 @@ if [[ "$CLI_BRIDGE_KEYS" != *"unity-biome-mcp"* || ",$CLI_BRIDGE_KEYS," == *",un
   exit 1
 fi
 assert_exists "$CLI_BRIDGE_BASE/unity-biome-mcp/INDEX.md" "cli bridge: the tree of the MCP bridge is delivered"
-assert_not_exists "$CLI_BRIDGE_BASE/unity-cli" "cli bridge: the CLI ships no rules tree"
+assert_exists "$CLI_BRIDGE_BASE/unity-cli/INDEX.md" "cli bridge: the rules tree of the CLI is delivered"
+assert_exists "$CLI_BRIDGE_BASE/unity-cli/verification.md" "cli bridge: ...with its gate calibration"
+assert_contains "$CLI_BRIDGE_BASE/unity-cli/INDEX.md" '^bridge: unity-cli$' "cli bridge: the tree carries the stamp of its bridge (INDEX)"
+assert_contains "$CLI_BRIDGE_BASE/unity-cli/verification.md" '^bridge: unity-cli$' "cli bridge: ...and the calibration"
+assert_contains "$CLI_BRIDGE_MANIFEST" '^- rules: \.unikit/system/engine-bridges/unity-cli/INDEX\.md$' "cli bridge: BRIDGES.md points to the tree"
+assert_contains "$CLI_BRIDGE_MANIFEST" '^- verification: \.unikit/system/engine-bridges/unity-cli/verification\.md$' "cli bridge: ...and to the calibration"
 assert_system_tree "$CLI_BRIDGE_DIR" yes "system tree matches the variable registry (CLI and Biome)"
 
 # Order lives in .unikit/config.yaml and in no installed byte: writing it reinstalls nothing and leaves

@@ -13,6 +13,7 @@
       { "kind": "package", "id": "pipeline-docs", "root": "Library/PackageCache/com.unity.pipeline@*", "path": ".", "include": ["Documentation~/**/*.md", "CHANGELOG.md"], "into": "pipeline-docs" }
     ]
   },
+  "rules": "rules/unity-cli/",
   "requires": { "engineVersion": "6000.0", "cli": "1.0.0-beta.14", "package": "0.9.1-exp.1" },
   "detect": {
     "binary": "unity",
