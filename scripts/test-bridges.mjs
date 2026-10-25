@@ -861,6 +861,139 @@ await group('BR-13', async () => {
     report('BR-13', 'every agent with a settings file renders it into extension text', scanned, violations);
 });
 
+// ── GV: one gate vocabulary across every engine rules tree ───────────────────
+//
+// The vocabulary is GATE_NAMES above (the one constant of the tests). `/unikit-verify` walks "one gate
+// over the bridges", which only works when a gate of one bridge can be matched with the same gate of
+// another, so every `verification.md` of every tree names its gates from that list and in its order.
+
+const GATE_REACHABLE = ['yes', 'partly', 'no', 'unmeasured'];
+const GATE_TABLE_HEADING = '## Gate calibration';
+const GATE_TABLE_HEADER = ['gate', 'reachable', 'what proves it'];
+const GATE_UNDECLARED_PHRASE = 'is not pre-declared here';
+const GATE_NAMES_LINE_PREFIX = 'Every `verification.md` uses the same seven names:';
+const OLD_GATE_PHRASES = ['structural gate', 'runtime gate', 'playtest', 'compile gate'];
+const MIN_GATE_TREES = 6;
+const MIN_RULES_TREE_FILES = 12;
+
+// Every file below `dir`, as paths relative to ROOT with forward slashes.
+function filesBelow(dir) {
+    const out = [];
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) out.push(...filesBelow(full));
+        else out.push(path.relative(ROOT, full).split(path.sep).join('/'));
+    }
+    return out;
+}
+
+// The rules files of the catalog: engine-bridges/<engine>/rules/**.
+function rulesTreeFiles() {
+    const bridgesRoot = path.join(ROOT, PACKAGE_BRIDGES_DIR_NAME);
+    const files = [];
+    for (const engine of fs.readdirSync(bridgesRoot, { withFileTypes: true })) {
+        const rules = path.join(bridgesRoot, engine.name, 'rules');
+        if (engine.isDirectory() && fs.existsSync(rules)) files.push(...filesBelow(rules));
+    }
+    return files;
+}
+
+// Cells of one table row; null for a line that is not a row.
+function tableCells(line) {
+    if (!line.startsWith('|')) return null;
+    return line.replace(/^\||\|\s*$/g, '').split('|').map((cell) => cell.trim());
+}
+
+// The calibration table of one file: its rows with their line numbers, and the text after the table.
+function parseGateTable(text) {
+    const lines = text.split('\n');
+    const start = lines.findIndex((line) => line.trim() === GATE_TABLE_HEADING);
+    if (start < 0) return { rows: [], header: null, tail: '' };
+    const rows = [];
+    let header = null;
+    let end = start + 1;
+    for (let i = start + 1; i < lines.length; i++) {
+        const cells = tableCells(lines[i]);
+        if (cells === null) {
+            if (rows.length > 0 || header !== null) { end = i; break; }
+            continue;
+        }
+        end = i + 1;
+        if (header === null) header = cells;
+        else if (!/^-+$/.test(cells[0].replace(/:/g, ''))) rows.push({ line: i + 1, name: cells[0], reachable: cells[1] ?? '', proof: cells[2] ?? '' });
+    }
+    return { rows, header, tail: lines.slice(end).join('\n') };
+}
+
+const gateTrees = () => rulesTreeFiles().filter((file) => file.endsWith('/verification.md'));
+
+await group('GV-1', async () => {
+    const violations = [];
+    const trees = gateTrees();
+    for (const file of trees) {
+        const { rows, header, tail } = parseGateTable(fs.readFileSync(path.join(ROOT, file), 'utf8'));
+        if (header === null) { violations.push(`${file}: no "${GATE_TABLE_HEADING}" table`); continue; }
+        if (header.join('|') !== GATE_TABLE_HEADER.join('|')) violations.push(`${file}: the table header is "${header.join(' | ')}", expected "${GATE_TABLE_HEADER.join(' | ')}"`);
+        if (rows.length === 0) violations.push(`${file}: the calibration table has no rows`);
+        const seen = new Set();
+        for (const row of rows) {
+            if (!GATE_NAMES.includes(row.name)) violations.push(`${file}:${row.line}: gate "${row.name}" is not in the vocabulary (${GATE_NAMES.join(' · ')})`);
+            if (seen.has(row.name)) violations.push(`${file}:${row.line}: gate "${row.name}" appears twice`);
+            seen.add(row.name);
+            if (!GATE_REACHABLE.includes(row.reachable)) violations.push(`${file}:${row.line}: reachable "${row.reachable}" is not one of ${GATE_REACHABLE.join(' · ')}`);
+        }
+        if (!tail.includes(GATE_UNDECLARED_PHRASE)) violations.push(`${file}: the closing paragraph lost "${GATE_UNDECLARED_PHRASE}"`);
+    }
+    if (trees.length < MIN_GATE_TREES) violations.push(`only ${trees.length} verification.md files found, expected at least ${MIN_GATE_TREES}`);
+    report('GV-1', 'every verification.md names its gates from the shared vocabulary, once each, with a known reachability', trees.length, violations);
+});
+
+await group('GV-2', async () => {
+    const violations = [];
+    const trees = gateTrees();
+    for (const file of trees) {
+        const { rows } = parseGateTable(fs.readFileSync(path.join(ROOT, file), 'utf8'));
+        let previous = -1;
+        for (const row of rows) {
+            const at = GATE_NAMES.indexOf(row.name);
+            if (at < 0) continue;
+            if (at < previous) violations.push(`${file}:${row.line}: gate "${row.name}" comes after "${GATE_NAMES[previous]}", the vocabulary order is ${GATE_NAMES.join(' · ')}`);
+            previous = Math.max(previous, at);
+        }
+    }
+    report('GV-2', 'the rows of every verification.md follow the order of the vocabulary', trees.length, violations);
+});
+
+await group('GV-3', async () => {
+    const violations = [];
+    const files = rulesTreeFiles();
+    for (const file of files) {
+        const lines = fs.readFileSync(path.join(ROOT, file), 'utf8').split('\n');
+        lines.forEach((line, index) => {
+            const lower = line.toLowerCase();
+            for (const phrase of OLD_GATE_PHRASES) {
+                if (lower.includes(phrase)) violations.push(`${file}:${index + 1}: the retired gate wording "${phrase}" (use ${GATE_NAMES.join(' · ')})`);
+            }
+        });
+    }
+    if (files.length < MIN_RULES_TREE_FILES) violations.push(`only ${files.length} files under engine-bridges/*/rules found, expected at least ${MIN_RULES_TREE_FILES}`);
+    report('GV-3', 'no rules tree uses the retired gate names', files.length, violations);
+});
+
+await group('GV-4', async () => {
+    const file = 'skills/unikit-verify/references/bridge-gates.md';
+    const violations = [];
+    const text = fs.readFileSync(path.join(ROOT, file), 'utf8');
+    const line = text.split('\n').find((candidate) => candidate.startsWith(GATE_NAMES_LINE_PREFIX));
+    if (line === undefined) violations.push(`${file}: no line starting "${GATE_NAMES_LINE_PREFIX}"`);
+    else {
+        const listed = /`([^`]+)`/.exec(line.slice(GATE_NAMES_LINE_PREFIX.length));
+        const names = listed === null ? [] : listed[1].split('·').map((name) => name.trim());
+        if (names.join(' · ') !== GATE_NAMES.join(' · ')) violations.push(`${file}: lists "${names.join(' · ')}", the vocabulary is "${GATE_NAMES.join(' · ')}"`);
+    }
+    report('GV-4', 'bridge-gates.md lists the same seven gate names, in the same order, as the vocabulary', 1, violations);
+});
+
 // (groups of later tasks are appended above this line, each under its own banner)
 
 console.log(`\nEngine bridge guards: ${passed} passed, ${failed} failed`);

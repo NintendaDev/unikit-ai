@@ -31,7 +31,7 @@ this server, and does not apply to this integration.
 ## Shape and cost
 
 There is no reading of scene content through this server, in any form or any
-amount — not partial, not with a caveat. The structural gate is not expensive
+amount — not partial, not with a caveat. The structure gate is not expensive
 here: it does not exist through this server at all.
 
 ## Check

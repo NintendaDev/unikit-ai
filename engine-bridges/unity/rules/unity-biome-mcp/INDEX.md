@@ -44,7 +44,7 @@ prior probability, not a guarantee: a class may have been fixed.
 
 The load-bearing mechanisms — transaction, console marker, compilation,
 references, tests — are directly available; nothing has to be unlocked first.
-The structural gate is cheap in summary form and two-hundredfold more expensive
+The structure gate is cheap in summary form and two-hundredfold more expensive
 in full, and it runs after every mutation — find the summary mode before you
 read the tree. A delta gate exists: do not re-read what did not change.
 The batch is capacious — group compatible work freely.
