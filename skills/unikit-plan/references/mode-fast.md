@@ -72,7 +72,7 @@ Fast plans have no modules, so no PR checkpoints: `git.pull_requests.checkpoints
 
 When `engine_rules_loaded = true`:
 
-1. **Probe for a configured engine MCP** — check whether MCP server `{{engine_mcp_tool}}` is present in `{{settings_file}}` at the project root (the same probe `/unikit-implement` uses in Step 3.6). Refinement, when you need to name the server in the question: `.unikit/system/engine-bridges/BRIDGES.md` lists the selected bridges, and the heading of the block of an MCP bridge is the name to quote. A bridge's **missing rules tree does not** flip the probe — a server may ship no rules tree at all, and no rules means no known exceptions, never no capabilities.
+1. **Look for a configured engine bridge** — read `.unikit/system/engine-bridges/BRIDGES.md` (the same rule `/unikit-implement` uses in Step 1): at least one bridge listed means one is configured. When the question has to name them, quote the ids of its blocks. A bridge without a rules tree does **not** change the answer.
 2. **A bridge is configured → `Editor tasks: engine-bridge`, silently.** No question — asking on every plan is noise.
 3. **No bridge configured → ask:**
 

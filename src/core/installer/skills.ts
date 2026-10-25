@@ -41,7 +41,7 @@ export interface UpdateSkillsResult {
 export interface UpdateSkillsOptions {
   force?: boolean;
   engineId?: string;
-  /** Code of the MCP bridge that `{{engine_mcp_tool}}` is substituted with; derived, never persisted. */
+  /** Code of the MCP bridge that `{{engine_bridge_mcp_code}}` is substituted with; derived, never persisted. */
   mcpBridgeCode?: string | null;
   /**
    * The project's selection, both maps (`mcp.servers`, `engineBridges.selected`), as `key → code`.

@@ -15,7 +15,7 @@ export interface RecomputedSelection {
   discoveredServers: DiscoveredServers;
   /** The codes as PERSISTED, both maps merged — the orphan removal compares them with the new ones. */
   storedCodes: Record<string, string>;
-  /** Code `{{engine_mcp_tool}}` is substituted with: derived from the catalog and the SET of bridges. */
+  /** Code `{{engine_bridge_mcp_code}}` is substituted with: derived from the catalog and the SET of bridges. */
   mcpBridgeCode: string | null;
   /** The file ids of both maps: what the settings reconciliation and the grants are driven by. */
   enabledIds: string[];

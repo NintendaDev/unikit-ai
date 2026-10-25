@@ -61,7 +61,7 @@ export function buildSubagentTemplateVars(
     self_name: selfName,
     engine_name: '',
     engine_code_language: '',
-    engine_mcp_tool: '',
+    engine_bridge_mcp_code: '',
     // agent-neutral: subagent files and system assets carry no delegation profile
     agent_id: '',
     agent_reader_type: '',

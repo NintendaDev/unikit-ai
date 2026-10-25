@@ -64,7 +64,7 @@ Relevant to the dev pipeline:
   bridge**, delivered verbatim from the package with a provenance stamp. A tree records
   **exceptions, not capabilities**: no tool names, no inventory of what the server cannot do —
   only checks to perform. `INDEX.md` carries a base section (read in full, once, at Bootstrap by
-  everyone using the engine MCP) plus a check table keyed by **area**, which implement / fix /
+  everyone using an engine bridge) plus a check table keyed by **area**, which implement / fix /
   devcontext / verify read by grep — their own work kind's area, plus every cross-cutting area.
   `verification.md` is read by `/unikit-verify` **only**, and calibrates which gates are
   reachable; **GATE LIFTED** is a runtime verdict verify reaches by trying and producing the

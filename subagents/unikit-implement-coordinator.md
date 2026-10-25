@@ -402,14 +402,15 @@ PR checkpoints: <same form as /unikit-implement Step 4>
 Awaiting results: <n> task(s) — <task id and instruction, one per line>
 Hand-back: <report path> · 🧭 <command from the task's to: field>
 Rule candidates: <n> recorded — /unikit-implement will propose them at the end of the call
-MCP findings: <n> recorded — run /unikit-bridge-trap <plan path> to move them into
+Engine bridge findings: <n> recorded — run /unikit-bridge-trap <plan path> to move them into
   .unikit/bridge-notes/
+Bridges used: <union of the workers' bridges: fields and the ids of its own calls>
 
 ⏎ This agent session is complete. Please close it (Ctrl+C or /exit)
   and return to your main Claude Code session to continue working.
 ```
 
-The `MCP findings:` line appears **only when the plan's `## Engine Bridge Findings` table has rows**, and is omitted entirely otherwise — no "none this run" line. A run without findings is the ordinary case, and announcing it every time is how the line stops being read.
+The `Bridges used:` line appears only when at least one worker returned a `bridges:` field or this session made a bridge call of its own. The `Engine bridge findings:` line appears **only when the plan's `## Engine Bridge Findings` table has rows**, and is omitted entirely otherwise — no "none this run" line. A run without findings is the ordinary case, and announcing it every time is how the line stops being read.
 
 The `PR checkpoints:` line appears only when the session met a PR checkpoint.
 

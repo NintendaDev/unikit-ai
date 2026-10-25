@@ -59,9 +59,9 @@ Before writing code:
 7. For each bridge in `BRIDGES.md`, read `.unikit/bridge-notes/<bridge>.md` if it exists, **header only** (`bridge:` / `audited:`), and compare it against that bridge's stamp. A mismatch is one `WARN [bridges] notes header ≠ bridge (<header> ≠ <bridge>)` — the entries are suspect, not void, and they still apply.
 8. **Your prompt carries a note starting `Prototype plan:`** → read `.unikit/system/prototype-profile.md` and follow its `## Role: execution` (the worker part and `## Softened`). Missing or unreadable → `WARN [prototype] profile contract missing — task executed as for an ordinary plan; run unikit-ai update`.
 
-**A missing 6 or 7 changes nothing.** No rules means no known exceptions, never no capabilities: absence never disables the engine MCP and never turns a target into `⏸️ MANUAL` (`dev-principles.md` → A9). Say it once — `MCP rules: no INDEX.md — no known exceptions for this server, rights unchanged` — and carry on.
+**A missing 6 or 7 changes nothing.** No rules means no known exceptions, never no capabilities: absence never disables an engine bridge and never turns a target into `⏸️ MANUAL` (`dev-principles.md` → A9). Say it once — `Bridge rules: <bridge> has no INDEX.md — no known exceptions for it, rights unchanged` — and carry on.
 
-**No file in this project holds tool names.** Candidates come from the live catalog by intent, their schemas are requested from the server before the first call, and a name recalled instead of read is a `catalog phantom` you invented. If nothing in the catalog closes the claim, report that — never reach for a lookalike.
+**No file in this project holds tool names.** Candidates come from the live catalog by intent, their schemas are requested from the bridge before the first call, and a name recalled instead of read is a `catalog phantom` you invented. If nothing in the catalog closes the claim, report that — never reach for a lookalike.
 
 ## Workflow
 
@@ -82,7 +82,7 @@ Before writing code:
    **A `Measure:` or `Hand-back:` task is never yours** — return it with `returned: <task id> — Measure/Hand-back belongs to the coordinator`; change nothing and write no row.
 
    **If the task carries one or more `Editor:` lines** (`[kind] <container> → <target> : <action>`) it targets the editor's serialized state, not source files. Branch on the `Editor tasks` mode the coordinator passed:
-   - **`engine-bridge`** (the 2.x spelling `mcp` is read as the same value) — carry it out by `dev-principles.md` → **D6**. **No rules file, or no matching check line, changes nothing**: every right you had, you keep, and it is never a reason to mark the target `⏸️ MANUAL` (A9). `⏸️ MANUAL` is reached only by trying, finding no route at all, and having the evidence of that absence to show.
+   - **`engine-bridge`** (the 2.x spelling `mcp` is read as the same value) — carry it out by `dev-principles.md` → **D6** (route by **D3**). **No rules file, or no matching check line, changes nothing**: every right you had, you keep, and it is never a reason to mark the target `⏸️ MANUAL` (A9). `⏸️ MANUAL` is reached only by trying, finding no route at all, and having the evidence of that absence to show.
    - **`manual`** — do **not** implement it. Return the task with status `⏸️ MANUAL` and the exact instruction in the form `[kind] container → target : action`.
    - **`direct`** — edit the serialized format directly, staying inside the bounds `ENGINE_RULES.md` §6 allows for that format.
    - **A call that misled you is a finding** (`dev-principles.md` → **D7**): append the row to the plan **manifest**'s `## Engine Bridge Findings` table **yourself** — `.unikit/code/plans/<folder>/PLAN.md`, or the flat `.unikit/code/PLAN.md`, never a phase file — in the same pass that marks the task, and put the same candidate line in your run report. `F<n>` is one more than the highest id already in the table — read it before appending: D7 is read only when a task you were handed carries `Editor:`, while the table exists whenever the plan has one anywhere. So the two D7 rules a row cannot do without are repeated here: `observed` is today's date from `Bash(date *)`, never recalled, `bridge` is the id of the bridge the misleading call went through, and dedup is semantic — a candidate saying the same thing about the same `area` as a row already there is dropped, judged by meaning, not by string match. A table in the 2.x form is converted first (`TASK-FORMAT.md` → `### Engine bridge findings section`). Do **not** write `.unikit/bridge-notes/<bridge>.md` yourself.
@@ -91,7 +91,7 @@ Before writing code:
    - **A repeating convention you had to apply is a rule candidate**, and you write it yourself for the same reason and by the same rules as a finding: append the row to the plan **manifest**'s `## Rule Candidates` — `id` is `R<n>`, one more than the highest already there (read the table first); `from` is your task; `status` is `open`; dedup is semantic. **Never write `.unikit/RULES.md`** — you do not decide what becomes a project rule. `/unikit-implement` Step 5.2 puts the candidates to the user at the end of the call, and only the answer decides what is written.
    - **No mode passed → degrade to `manual`, never to `direct`.** `direct` is irreversible and requires a git commit taken *before* the edit, which you cannot make (see Rules: do not create commits). Returning the target unimplemented is always recoverable; a bad direct edit is not.
 4. Run one verification pass scoped to the changed files:
-   - Check for compilation by reading the MCP server `{{engine_mcp_tool}}` console (if available)
+   - Check for compilation by reading the console through the first available engine bridge that offers a console read (if any)
    - Verify the implementation matches the task description
    - Check changed files against loaded rules
 5. Run local quality checks on the changed scope:
@@ -115,6 +115,7 @@ Return a concise summary:
 - Quality check findings (material issues only)
 - List of files modified
 - `manual_targets:` — editor targets NOT carried out, each as `[kind] container → target : action`; omit the field when there are none. The coordinator must not mark a phase complete on the strength of a task whose editor targets are still listed here
+- `bridges:` — the ids of the engine bridges your calls and read-backs went through, in the order used; omit the field when you made no bridge call
 - `test_run_deferred:` — the coverage, or the run command, that you did not execute and are handing to the scope owner; omit the field when there is none. **Absent → the coordinator reads it as nothing deferred**, never as a run already done — the same explicit-degradation rule `editor_mode:` carries in the dispatch contract
 - `returned:` — tasks handed back unexecuted, one line each (`returned: <task id> — PR checkpoint belongs to the coordinator`, or `returned: <task id> — Measure/Hand-back belongs to the coordinator`); omitted when none
 - `docs_recommended: yes/no`

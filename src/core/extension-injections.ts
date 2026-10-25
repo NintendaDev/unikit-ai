@@ -35,7 +35,7 @@ const LOG_COMPONENT = 'extension-injections';
 export interface ExtensionInjectionInput {
   projectDir: string;
   engine: string;
-  /** Code of the MCP bridge `{{engine_mcp_tool}}` stands for; the commands derive it, nothing persists it. */
+  /** Code of the MCP bridge `{{engine_bridge_mcp_code}}` stands for; the commands derive it, nothing persists it. */
   mcpBridgeCode: string | null | undefined;
   agents: AgentInstallation[];
   extensions: ExtensionRecord[];

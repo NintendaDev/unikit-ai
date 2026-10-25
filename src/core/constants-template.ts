@@ -151,7 +151,7 @@ export const FIXED_TEMPLATE_VAR_NAMES = [
   'self_name',
   'engine_name',
   'engine_code_language',
-  'engine_mcp_tool',
+  'engine_bridge_mcp_code',
   'agent_id',
   'agent_reader_type',
   'agent_worker_type',

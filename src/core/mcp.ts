@@ -31,7 +31,7 @@ export interface McpServerEntry {
   /**
    * The VENDOR code — the name this server is registered under in the agent's
    * settings file (`mcpServers.<code>`), the prefix of every grant it confers
-   * (`mcp__<code>__*`), and the value `{{engine_mcp_tool}}` resolves to.
+   * (`mcp__<code>__*`), and the value `{{engine_bridge_mcp_code}}` resolves to for the first selected MCP-kind engine bridge in the package order.
    *
    * Split from {@link key} in 2.0.0 because the two were one field and the
    * conflation was writing a second, dead entry: UniKit registered the Unity

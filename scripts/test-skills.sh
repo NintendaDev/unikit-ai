@@ -7258,7 +7258,7 @@ fi
 TS2_WHY=""
 if [[ -s "$TS_DEVPRIN" ]]; then
     grep -qF 'for all functionality' "$TS_DEVPRIN" && TS2_WHY+=" TS-2:blanket-wording-returned"
-    grep -qF 'marks the tests gate **GATE LIFTED** for that bridge' "$TS_DEVPRIN" || TS2_WHY+=" TS-2:gate-lifted-sentence-lost"
+    grep -qF 'If the tests gate is **GATE LIFTED**' "$TS_DEVPRIN" || TS2_WHY+=" TS-2:gate-lifted-sentence-lost"
 else
     TS2_WHY+=" TS-2:dev-principles-missing"
 fi
@@ -7784,6 +7784,29 @@ if [[ -z "$MC_WHY" ]]; then
         || MC_WHY+=" MC-7:no-deliberate-empty-reading"
     grep -qF 'is left as it is and listed under skipped' "$MC_MODE_CONFIG" \
         || MC_WHY+=" MC-7:scalar-parent-not-named"
+
+    # The bridge order mode is the second mode declared in Step 0: it gets the same five checks (trigger in the
+    # description, dispatch inside Step 0 with its STOP, the contract surfaces, a capability-bounded body) and one more —
+    # the bridge settings exception of the actualization mode, which keeps an empty order list from being refilled.
+    MC_MODE_BRIDGE="$ROOT_DIR/skills/unikit/references/mode-bridge-order.md"
+    if [[ -s "$MC_MODE_BRIDGE" ]]; then
+        printf '%s' "$MC_DESC" | grep -qF 'change the bridge order' \
+            || MC_WHY+=" MC-1:no-bridge-order-trigger"
+        printf '%s' "$MC_STEP0" | grep -qF 'references/mode-bridge-order.md' \
+            || MC_WHY+=" MC-3:bridge-order-dispatch-outside-step-0"
+        grep -qF 'the same for the bridge order mode' "$TC_UNIKIT_SKILL" \
+            || MC_WHY+=" MC-4:item-4-not-narrowed-for-bridge-order"
+        grep -qF 'writes only `.unikit/config.yaml`' "$MC_MODE_BRIDGE" \
+            || MC_WHY+=" MC-5:bridge-order-no-capability-anchor"
+        grep -qF 'never `Write`' "$MC_MODE_BRIDGE" \
+            || MC_WHY+=" MC-5:bridge-order-no-write-prohibition"
+        MC6B_HITS="$({ grep -nE '(Agent|Skill|Bash)\(' "$MC_MODE_BRIDGE" 2>/dev/null || true; })"
+        [[ -n "$MC6B_HITS" ]] && MC_WHY+=" MC-6:call-form-in-bridge-order-body"
+        grep -qF '**Exception — `engine_bridges.order`.**' "$MC_MODE_CONFIG" \
+            || MC_WHY+=" MC-7:bridge-order-exception-not-named"
+    else
+        MC_WHY+=" MC-2:bridge-order-body-missing"
+    fi
 fi
 if [[ -z "$MC_WHY" ]]; then
     pass "MC-1…MC-7 /unikit config actualization mode — triggered in the description, dispatched inside Step 0, three contract carve-outs, capability-bounded body"
@@ -8136,7 +8159,7 @@ fi
 # linkage, because absence is also what an empty file has, and this rule has to be stated
 # where the decision gets taken. One shared anchor across all five, so drift in any single
 # executor fails rather than quietly leaving four correct files to vouch for a fifth.
-RT6_ANCHOR='never disables the engine MCP and never turns a target into `⏸️ MANUAL`'
+RT6_ANCHOR='never disables an engine bridge and never turns a target into `⏸️ MANUAL`'
 RT6_WHY=""
 grep -qF "$RT6_ANCHOR" "$ED_IMPLEMENT_WORKER" || RT6_WHY+=" implement-worker"
 grep -qF "$RT6_ANCHOR" "$EM_IMPLEMENT_SKILL"  || RT6_WHY+=" implement"
@@ -9444,7 +9467,7 @@ if [[ -z "$BX_WHY" ]]; then
 
     # (BM-3) regression of anchors this plan must not move
     for f in "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL" "$TC_WORKER"; do
-        bx_has "BM-3:rt6-anchor(${f##*/})" 'never disables the engine MCP and never turns a target into' "$f"
+        bx_has "BM-3:rt6-anchor(${f##*/})" 'never disables an engine bridge and never turns a target into' "$f"
     done
     for l in '**3.4: Mark task as completed**' '**3.5'; do
         BX_CHK=$((BX_CHK + 1))
@@ -9486,8 +9509,8 @@ if [[ -z "$BX_WHY" ]]; then
     # 65000 -> 65400: unikit-verify gained the 397-byte user-questions pointer and lost its inline text tier
     # 65400 -> 65800: the branch match gained the 380-byte rule that finds an experiment plan by its own record (EXP-K1)
     # 65800 -> 66100: the 3.0.0 layout (a block per bridge in the Bootstrap); lowered again when the routing prose moves to a reference
-    # 66100 -> 66300: the findings table of the 3.0.0 layout (a bridge column in the writers); lowered again in Task 21
-    bx_max "BC-1:skill-size" 66300 "$UNIKIT_VERIFY_SKILL"
+    # 66100 -> 66300 for the 3.0.0 findings table, then 66300 -> 65830: the gate procedure moved into references/bridge-gates.md
+    bx_max "BC-1:skill-size" 65830 "$UNIKIT_VERIFY_SKILL"
 
     # (BC-2) verify's branch: headings, the two level sentences, and the one place of suggested_next
     BX_CHK=$((BX_CHK + 1))
@@ -9571,8 +9594,8 @@ if [[ -z "$BX_WHY" ]]; then
     # 53100 -> 53200: it gained the 397-byte user-questions pointer and lost its inline text tier
     # 53200 -> 53600: the branch match gained the 380-byte rule that finds an experiment plan by its own record (EXP-K1)
     # 53600 -> 53900: the 3.0.0 layout (a block per bridge in the Bootstrap); lowered again when the routing prose moves to a reference
-    # 53900 -> 54200: the findings table of the 3.0.0 layout (a bridge column in the writers); lowered again in Task 20
-    bx_max "BM-6:implement-skill-size" 54200 "$UNIKIT_IMPLEMENT_SKILL"
+    # 53900 -> 54200 for the 3.0.0 findings table, then 54200 -> 53650: the console check moved into references/console-check.md
+    bx_max "BM-6:implement-skill-size" 53650 "$UNIKIT_IMPLEMENT_SKILL"
     # (BC-4) a measurement the user skipped is a skipped row, not a blocker
     bx_has "BC-4:skipped-measure-is-a-blocker" '⏭️ SKIPPED' "$BC_REF"
     # (BC-5) a name stated in ## Not measured is accounted for — a measurement the user skipped is not a blocker
@@ -12252,54 +12275,29 @@ for engine in "${!ENGINE_MCP_DIRS[@]}"; do
 done
 
 # ─────────────────────────────────────────────
-# Part 7e2: MT-1 / MT-2 — the `{{engine_mcp_tool}}` substitution form
+# Part 7e2: MT-3 — no base text carries the variable of the single-server era, nor its successor
 # ─────────────────────────────────────────────
-# The value substituted here is a VENDOR CODE, and the prose around it is read by
-# an agent that has to find that code as a literal key in the settings file. Two
-# counters pin the form:
+# `engine_mcp_tool` was a vendor code printed into skill prose, so that an agent could probe the settings file
+# of its client for it (MT-1/MT-2 pinned the form of that sentence). Since 3.0.0 no reader probes a settings file:
+# the engine bridges are read from BRIDGES.md. The variable survives as `engine_bridge_mcp_code`, a name for
+# EXTENSIONS (public API, pinned by the registry and docs/extensions.md); a base skill, subagent or data text
+# that wrote either name would put a value into prose that nobody should read as a fact about the project.
+# SV-8 forbids only the registry names, and the two fixed names are pinned here instead.
 #
-#   MT-1  every occurrence is wrapped in backticks
-#   MT-2  every wrapped occurrence carries the `MCP server ` label
-#
-# Written as EQUALITIES between counts, not as a search for a negation. The pair
-# mechanically forbids the third form the corpus used to carry — the variable
-# sitting inside a code span or a fenced block together with other words, where
-# backticks cannot be added at all — without needing an allowlist: such an
-# occurrence is unwrapped by construction, so MT-1 catches it.
-#
-# The class-B probe is why this matters beyond tidiness. A skill greps the
-# settings file for the code; a code printed with a neighbouring word inside one
-# span is not found, the skill concludes the engine MCP is not configured, and the
-# whole pipeline degrades to `manual` with the compile and test gates skipped —
-# silently, and looking exactly like a project that has no MCP.
-#
-# Scope: skills/**/*.md, subagents/*.md, data/dev-principles.md.
-# `data/engine-templates/**` is excluded — the Part 9 engine-template sweep bans
-# `{{` across that whole directory outright (ED-8 only ever saw one file of it).
-echo -e "\n${BOLD}Part 7e2: {{engine_mcp_tool}} substitution form (MT-1/MT-2)${NC}"
+# Scope: skills/**/*.md, subagents/*.md, data/**/*.md (the engine templates included: they are written verbatim).
+echo -e "\n${BOLD}Part 7e2: no base text writes the engine bridge code variable (MT-3)${NC}"
 
-MT_SCOPE=("$ROOT_DIR/skills" "$ROOT_DIR/subagents" "$ROOT_DIR/data/dev-principles.md")
+MT_SCOPE=("$ROOT_DIR/skills" "$ROOT_DIR/subagents" "$ROOT_DIR/data")
+MT_FILES=$(grep -rlE --include='*.md' '.' "${MT_SCOPE[@]}" 2>/dev/null | wc -l | tr -d ' ')
+MT_HITS=$({ grep -rlF --include='*.md' -e '{{engine_mcp_tool}}' -e '{{engine_bridge_mcp_code}}' "${MT_SCOPE[@]}" 2>/dev/null || true; })
 
-MT_TOTAL=$(grep -rhoF '{{engine_mcp_tool}}' "${MT_SCOPE[@]}" --include='*.md' 2>/dev/null | wc -l | tr -d ' ')
-MT_WRAPPED=$(grep -rhoF '`{{engine_mcp_tool}}`' "${MT_SCOPE[@]}" --include='*.md' 2>/dev/null | wc -l | tr -d ' ')
-MT_LABELLED=$(grep -rhoF 'MCP server `{{engine_mcp_tool}}`' "${MT_SCOPE[@]}" --include='*.md' 2>/dev/null | wc -l | tr -d ' ')
-
-if [[ "$MT_TOTAL" -eq 0 ]]; then
-    fail "MT-1: no {{engine_mcp_tool}} occurrences found at all — the scope is wrong, not the corpus"
-elif [[ "$MT_TOTAL" -eq "$MT_WRAPPED" ]]; then
-    pass "MT-1: all $MT_TOTAL {{engine_mcp_tool}} occurrences are backtick-wrapped"
+if [[ "$MT_FILES" -eq 0 ]]; then
+    fail "MT-3: no markdown found under skills/, subagents/ and data/ — the guard has no object left"
+elif [[ -z "$MT_HITS" ]]; then
+    pass "MT-3: no base text writes {{engine_mcp_tool}} or {{engine_bridge_mcp_code}} ($MT_FILES files scanned)"
 else
-    fail "MT-1: $MT_TOTAL occurrences of {{engine_mcp_tool}}, only $MT_WRAPPED wrapped in backticks"
-    grep -rn '{{engine_mcp_tool}}' "${MT_SCOPE[@]}" --include='*.md' 2>/dev/null \
-      | grep -vF '`{{engine_mcp_tool}}`' | sed 's/^/      /' | head -10
-fi
-
-if [[ "$MT_WRAPPED" -eq "$MT_LABELLED" ]]; then
-    pass "MT-2: all $MT_WRAPPED wrapped occurrences carry the \`MCP server\` label"
-else
-    fail "MT-2: $MT_WRAPPED wrapped occurrences, only $MT_LABELLED preceded by 'MCP server '"
-    grep -rn '`{{engine_mcp_tool}}`' "${MT_SCOPE[@]}" --include='*.md' 2>/dev/null \
-      | grep -vF 'MCP server `{{engine_mcp_tool}}`' | sed 's/^/      /' | head -10
+    fail "MT-3: a base text writes the engine bridge code variable:"
+    echo "$MT_HITS" | sed 's/^/      /' | head -10
 fi
 
 # ─────────────────────────────────────────────
@@ -12451,22 +12449,44 @@ fi
 # (BR-8a) The 2.x layout is gone from every text the package ships. Step 1: no literal path of the
 # single-server rules folder under .unikit/system/ in skills/, subagents/ or data/. SV-5 forbids an
 # unknown path under .unikit/system/ already; this names the reason and counts what it looked at.
-# Step 2 (the findings log at the root of .unikit/) is added when the last reader moves.
+# Step 2 does the same for the findings log the 2.x layout kept at the root of .unikit/.
 BR8A_WHY=""
 BR8A_SEEN=0
 while IFS= read -r br8a_file; do
     [[ -n "$br8a_file" ]] || continue
     BR8A_SEEN=$((BR8A_SEEN + 1))
-    if grep -qF '.unikit/system/engine-mcp' "$br8a_file"; then
+    if grep -qF -e '.unikit/system/engine-mcp' -e '.unikit/MCP-RECHECK-NOTES' "$br8a_file"; then
         BR8A_WHY+=" ${br8a_file#"$ROOT_DIR/"}"
     fi
 done < <(find "$ROOT_DIR/skills" "$ROOT_DIR/subagents" "$ROOT_DIR/data" -type f -name '*.md' 2>/dev/null)
 if [[ $BR8A_SEEN -eq 0 ]]; then
     fail "BR-8a no markdown found under skills/, subagents/ and data/ — the guard has no object left"
 elif [[ -z "$BR8A_WHY" ]]; then
-    pass "BR-8a no shipped text names the 2.x .unikit/system/engine-mcp path ($BR8A_SEEN files scanned)"
+    pass "BR-8a no shipped text names the 2.x .unikit/system/engine-mcp path or the 2.x notes file ($BR8A_SEEN files scanned)"
 else
-    fail "BR-8a the 2.x engine-mcp path survives in:$BR8A_WHY"
+    fail "BR-8a the 2.x engine-mcp path or notes file survives in:$BR8A_WHY"
+fi
+
+# (BR-8b) The wording of the single-server era is gone from every text the package ships: the prose says
+# "engine bridge", and the variable the prose used to carry is not written in any base text (it is a name
+# for extensions, pinned in test-system-vars.mjs and in MT-3). No exceptions are listed.
+BR8B_WHY=""
+BR8B_SEEN=0
+while IFS= read -r br8b_file; do
+    [[ -n "$br8b_file" ]] || continue
+    BR8B_SEEN=$((BR8B_SEEN + 1))
+    for br8b_old in 'engine MCP' 'Engine MCP' 'engine-MCP' 'engine_mcp_tool'; do
+        if grep -qF "$br8b_old" "$br8b_file"; then
+            BR8B_WHY+=" ${br8b_file#"$ROOT_DIR/"}(${br8b_old// /-})"
+        fi
+    done
+done < <(find "$ROOT_DIR/skills" "$ROOT_DIR/subagents" "$ROOT_DIR/data" -type f \( -name '*.md' -o -name '*.json' -o -name '*.yaml' \) 2>/dev/null)
+if [[ $BR8B_SEEN -eq 0 ]]; then
+    fail "BR-8b no text found under skills/, subagents/ and data/ — the guard has no object left"
+elif [[ -z "$BR8B_WHY" ]]; then
+    pass "BR-8b no shipped text says 'engine MCP' or writes the retired variable ($BR8B_SEEN files scanned)"
+else
+    fail "BR-8b single-server wording survives in:$BR8B_WHY"
 fi
 
 # (ED-17) The value of the Editor tasks setting is `engine-bridge | manual | direct`. The owner of the

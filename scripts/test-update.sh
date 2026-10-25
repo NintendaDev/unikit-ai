@@ -2518,11 +2518,11 @@ if cmp -s "$AK_AG_SKILL" "$AK_KIMI_SKILL"; then
     echo "Assertion failed: the Kimi and Antigravity copies of unikit-implement must differ"
     exit 1
 fi
-assert_contains "$AK_KIMI_SKILL" '\.kimi-code/mcp\.json' "kimi copy: {{settings_file}} is .kimi-code/mcp.json"
+# (the substitution of {{settings_file}} is asserted by BR-13 in test-bridges.mjs: no base skill writes the variable any more)
 assert_contains "$AK_KIMI_SKILL" 'subagent_type: "coder"' "kimi copy: the coder subagent type"
 assert_contains "$AK_KIMI_SKILL" 'Read \.kimi-code/skills/unikit-devcontext/SKILL\.md in full' \
     "kimi copy: develop-agent reads its skill file from .kimi-code/skills"
-assert_contains "$AK_AG_SKILL" '\.agents/mcp_config\.json' "antigravity copy: {{settings_file}} is .agents/mcp_config.json"
+# (the substitution of {{settings_file}} is asserted by BR-13 in test-bridges.mjs: no base skill writes the variable any more)
 assert_contains "$AK_AG_SKILL" 'subagent_type: "self"' "antigravity copy: its own worker type"
 assert_not_contains "$AK_AG_SKILL" 'subagent_type: "coder"' "antigravity copy: no Kimi rewrite"
 assert_contains "$AK_AG_SKILL" 'Read \.agents/skills/unikit-devcontext/SKILL\.md in full' \

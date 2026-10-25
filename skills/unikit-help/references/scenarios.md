@@ -48,6 +48,7 @@ Keep it to one question + one follow-up. Never fan out into a questionnaire.
 |--------------------------|--------------------|-------|--------------------|
 | "where do I start", "I'm new" | onboard | `.unikit/config.yaml` present? no→`/unikit`; yes→ask idea/GDD | framework installed? |
 | "update the config", "add missing settings", "actualize configuration", "fix my config" | actualize config | `/unikit` — Step 0 dispatches to config actualization (Steps 1-11 do not run) | — |
+| "change the bridge order" / "make the CLI the main bridge" | set the order of the engine bridges | `/unikit` (bridge order mode), or edit the bridge order list in `.unikit/config.yaml` | do the bridges exist? (`BRIDGES.md`) |
 | "how do I start coding" | begin a feature | have a plan? yes→`/unikit-implement`; no→`/unikit-plan` | is there a plan / research? |
 | "how do I plan a feature" | plan | `/unikit-plan [fast\|full\|ultra] <feature>` | fast vs full vs ultra (throwaway / real / delegated to a smaller model) |
 | "the plan looks rough / wrong" | refine plan | `/unikit-improve` (run 1-3x) | — |
@@ -73,8 +74,8 @@ Keep it to one question + one follow-up. Never fan out into a questionnaire.
 | "add a rule" / "always do X" | capture convention | `/unikit-rules <rule>` | — |
 | "make rules from this book/article/docs/PDF" | distil sources | `/unikit-memory <source(s)>` (`--module gamedesign` for design) | code or design knowledge? |
 | "share my rules across projects" | registry | `/unikit-rules-registry create\|update\|sync` | local folder registry? |
-| "the MCP said ok but nothing changed" / "the server lied" | record an MCP finding | `/unikit-bridge-trap [finding]`; curate later with `/unikit-bridge-audit` | is the observation already in this session? |
-| "are these MCP findings still true" / "the server was updated" | curate MCP findings | `/unikit-bridge-audit [id\|stamp\|replay\|retire\|upstream]` | replay needs a live editor |
+| "the bridge said ok but nothing changed" / "the server lied" | record a bridge finding | `/unikit-bridge-trap [finding]`; curate later with `/unikit-bridge-audit` | is the observation already in this session? |
+| "are these bridge findings still true" / "the server was updated" | curate bridge findings | `/unikit-bridge-audit [id\|stamp\|replay\|retire\|upstream]` | replay needs a live editor |
 | "write the docs" / "update the README" | project documentation | `/unikit-docs` | code docs or GDD export (`/unikit-gd-docs`)? |
 | "keep a task list" / "what was I doing" | task checklist | `/unikit-todo` | — |
 | "customize how a skill behaves" | skill override | `/unikit-skills-context <skill> "<rule>"` | — |

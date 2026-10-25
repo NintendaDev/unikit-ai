@@ -68,7 +68,7 @@ If a rule tells the implementer what the code should look like, it belongs in th
 
 ## §6 Direct-edit feasibility
 
-Whether the `direct` value of `Editor tasks` (a plain text edit of the serialized file, no editor and no MCP) is defensible for a given format:
+Whether the `direct` value of `Editor tasks` (a plain text edit of the serialized file, no editor and no engine bridge) is defensible for a given format:
 
 | Format | Feasibility | Bounds |
 |--------|-------------|--------|
@@ -76,6 +76,6 @@ Whether the `direct` value of `Editor tasks` (a plain text edit of the serialize
 | the project descriptor, build and target scripts | 🟢 acceptable | text — but they are `Files:`, not editor targets |
 | `.umap`, `.uasset` — every kind of them: graph, effect, material, data, widget | 🔴 not acceptable | a binary format. **Never offer `direct` for these**, at any size of change |
 
-This engine is the reason the `direct` route needs a gate at all. With no engine MCP configured, the only mode available for a `scene` / `ui` / `vfx` / `anim` / `asset` target here is `manual`; `direct` remains available only for `settings` targets living in `.ini`. The `unikit-plan` skill offers `direct` only for 🟢 / 🟡 formats, and the `unikit-implement` skill requires a git commit **before** any direct edit so the change is trivially revertible.
+This engine is the reason the `direct` route needs a gate at all. With no engine bridge configured, the only mode available for a `scene` / `ui` / `vfx` / `anim` / `asset` target here is `manual`; `direct` remains available only for `settings` targets living in `.ini`. The `unikit-plan` skill offers `direct` only for 🟢 / 🟡 formats, and the `unikit-implement` skill requires a git commit **before** any direct edit so the change is trivially revertible.
 
 > **Verbatim install — two things this file must never contain.** Engine templates are written to the project as-is: they bypass double-brace variable substitution, and they bypass the per-agent rewrite that adapts slash-prefixed skill invocations for Codex. So (1) no double-brace variables — they would ship to the user as literal text; (2) no slash-prefixed skill invocations — name skills as `` `unikit-<name>` `` instead.

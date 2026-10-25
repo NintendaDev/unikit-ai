@@ -683,6 +683,35 @@ await group('BR-10a', async () => {
     report('BR-10a', 'the format owner and the five writers carry the bridge column', scanned, violations);
 });
 
+// Task 20: the probe by the agent's settings file is gone from the readers, the console check is a reference.
+await group('BR-10a', async () => {
+    const read = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
+    const violations = [];
+    let scanned = 0;
+
+    for (const rel of [
+        'skills/unikit-implement/SKILL.md', 'skills/unikit-plan/SKILL.md',
+        'skills/unikit-plan/references/mode-fast.md', 'skills/unikit-plan/references/mode-full.md',
+    ]) {
+        scanned++;
+        if (read(rel).includes('settings_file')) violations.push(`${rel}: still probes the settings file of the agent`);
+    }
+
+    scanned++;
+    const implement = read('skills/unikit-implement/SKILL.md');
+    if (!implement.includes('{{skills_dir}}/{{self_name}}/references/console-check.md')) violations.push('unikit-implement: Step 3.6 does not name references/console-check.md in the full form');
+    if (!implement.includes('`engine-bridge` if `.unikit/system/engine-bridges/BRIDGES.md` lists at least one bridge, otherwise `manual`')) violations.push('unikit-implement: the default of Editor tasks is not read from BRIDGES.md');
+    scanned++;
+    if (!fs.existsSync(path.join(ROOT, 'skills/unikit-implement/references/console-check.md'))) violations.push('references/console-check.md does not exist');
+
+    scanned++;
+    if (!read('subagents/unikit-implement-worker.md').includes('- `bridges:` — the ids of the engine bridges')) violations.push('the worker does not return the bridges field');
+    scanned++;
+    if (!read('subagents/unikit-implement-coordinator.md').includes('Bridges used:')) violations.push('the coordinator does not report the bridges used');
+
+    report('BR-10a', 'the executors read BRIDGES.md instead of probing a settings file and name their bridges', scanned, violations);
+});
+
 await group('BR-12a', async () => {
     const violations = [];
     let scanned = 0;
@@ -696,6 +725,140 @@ await group('BR-12a', async () => {
         if (/^server:|`server:`/m.test(text)) violations.push(`${skill}: still writes the 2.x header key`);
     }
     report('BR-12a', 'the two renamed skills carry no 2.x layout and stay engine-neutral', scanned, violations);
+});
+
+// ── BR-10b: the route ladder lives below the boundary of the layer A file, and only there ──
+
+const LAZY_BOUNDARY_MARKER = '<!-- === LAZY-READ BOUNDARY === -->';
+const LADDER_ANCHORS = [
+    'The route ladder',
+    'A dedicated route, bridge by bridge',
+    'Engine code, bridge by bridge',
+    'A marker and its delta come from one bridge',
+    'A domain reload closes every bridge',
+    'A bridge that does not answer stops itself, not the editor',
+    'A copy older than the installed versions is **still used**',
+];
+
+await group('BR-10b', async () => {
+    const text = fs.readFileSync(path.join(ROOT, 'data', 'dev-principles.md'), 'utf8');
+    const boundary = text.indexOf(LAZY_BOUNDARY_MARKER);
+    const violations = [];
+    if (boundary < 0) {
+        fail('BR-10b', 'the lazy-read boundary marker is gone');
+        return;
+    }
+    const above = text.slice(0, boundary);
+    const below = text.slice(boundary);
+    for (const anchor of LADDER_ANCHORS) {
+        if (!below.includes(anchor)) violations.push(`below the boundary: "${anchor}" is missing`);
+        if (above.includes(anchor)) violations.push(`above the boundary: "${anchor}" is read on every Bootstrap`);
+    }
+    for (const forbidden of ['engine MCP', 'Engine MCP', 'engine-MCP', 'engine_mcp_tool', 'engine-mcp']) {
+        if (text.includes(forbidden)) violations.push(`the 2.x wording "${forbidden}" is still there`);
+    }
+    report('BR-10b', 'the route ladder and the cross-bridge rules sit below the boundary, with no 2.x wording', LADDER_ANCHORS.length, violations);
+});
+
+// ── BR-10c: the gate contract over several bridges ───────────────────────────
+
+const GATE_NAMES = ['compilation', 'console', 'structure', 'references', 'tests', 'behaviour', 'visual'];
+const GATE_ANCHORS = [
+    'every bridge that was available',
+    'Do not substitute a cheaper **class of evidence**',
+    'Trying the same gate through the next bridge is not a substitution',
+];
+
+await group('BR-10c', async () => {
+    const read = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
+    const verify = read('skills/unikit-verify/SKILL.md');
+    const gates = read('skills/unikit-verify/references/bridge-gates.md');
+    const violations = [];
+    let scanned = 0;
+
+    scanned++;
+    if (!verify.includes('{{skills_dir}}/{{self_name}}/references/bridge-gates.md')) violations.push('SKILL.md: does not name references/bridge-gates.md in the full form');
+    if (!verify.includes('GATE LIFTED')) violations.push('SKILL.md: the verdict GATE LIFTED is gone');
+    if (!verify.includes('a verdict this skill produces')) violations.push('SKILL.md: does not say the verdict is produced by this skill');
+    if (verify.includes('Do not substitute another tool')) violations.push('SKILL.md: still forbids the next bridge as a substitution');
+
+    for (const anchor of GATE_ANCHORS) {
+        scanned++;
+        if (!gates.includes(anchor)) violations.push(`bridge-gates.md: "${anchor}" is missing`);
+    }
+    for (const name of GATE_NAMES) {
+        scanned++;
+        if (!gates.includes(name)) violations.push(`bridge-gates.md: the gate name "${name}" is missing`);
+    }
+    report('BR-10c', 'the gate contract runs over the bridges and keeps GATE LIFTED a verdict of verify', scanned, violations);
+});
+
+// ── BR-10d: the planner reads the union of the catalogs and never concludes from an incomplete one ──
+
+await group('BR-10d', async () => {
+    const read = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
+    const plan = read('skills/unikit-plan/SKILL.md');
+    const step = plan.slice(plan.indexOf('### Step 4.6'), plan.indexOf('### Step 5:'));
+    const violations = [];
+    let scanned = 0;
+
+    scanned++;
+    if (step.length === 0 || !plan.includes('### Step 4.6')) violations.push('SKILL.md: Step 4.6 is not found');
+    for (const anchor of ['A bridge that was not read makes the union incomplete', 'unknown is not no', '/unikit-bridge-docs', 'catalog list:']) {
+        scanned++;
+        if (!step.includes(anchor)) violations.push(`Step 4.6: "${anchor}" is missing`);
+    }
+    for (const forbidden of ['Bash(unity list', 'settings_file']) {
+        scanned++;
+        if (plan.includes(forbidden)) violations.push(`SKILL.md: still carries "${forbidden}"`);
+    }
+    for (const mode of ['mode-fast.md', 'mode-full.md']) {
+        scanned++;
+        const text = read(`skills/unikit-plan/references/${mode}`);
+        if (!text.includes('Look for a configured engine bridge')) violations.push(`${mode}: the Editor mode step does not read BRIDGES.md`);
+    }
+    report('BR-10d', 'the planner reads the union of the bridge catalogs and treats an unread bridge as unknown', scanned, violations);
+});
+
+// ── BR-11: the bridge order key in the config template, and the exception that keeps it ──
+
+const TEMPLATE_BANNER = `# ${'='.repeat(77)}`;
+
+await group('BR-11', async () => {
+    const read = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
+    const template = read('skills/unikit/references/config-template.yaml');
+    const modeConfig = read('skills/unikit/references/mode-config.md');
+    const violations = [];
+    let scanned = 0;
+
+    scanned++;
+    const at = template.indexOf('# Engine Bridge Settings');
+    if (at < 0) violations.push('config-template.yaml: no Engine Bridge Settings block');
+    else if (template.slice(at - TEMPLATE_BANNER.length - 1, at) !== `${TEMPLATE_BANNER}\n`) violations.push('config-template.yaml: the block has no banner in the style of the others');
+    scanned++;
+    if (!/^engine_bridges:\n {2}order: \[\]$/m.test(template)) violations.push('config-template.yaml: no `engine_bridges:` with an empty `order: []`');
+    scanned++;
+    if (template.includes('{{')  && /engine_bridges:[\s\S]{0,40}\{\{/.test(template)) violations.push('config-template.yaml: the order value is a placeholder, it must be a literal');
+    scanned++;
+    if (!modeConfig.includes('**Exception — `engine_bridges.order`.**')) violations.push('mode-config.md: the empty-order exception of bucket 3 is missing');
+
+    report('BR-11', 'the order key is a literal in the template and the actualization mode keeps its empty state', scanned, violations);
+});
+
+// ── BR-13: the settings file of an agent is still a template variable, although no base text asks for it ──
+
+await group('BR-13', async () => {
+    const { AGENT_REGISTRY } = await dist('core/agents.js');
+    const { buildTemplateVars, processTemplate } = await dist('core/template.js');
+    const violations = [];
+    let scanned = 0;
+    for (const agent of Object.values(AGENT_REGISTRY)) {
+        if (typeof agent.settingsFile !== 'string') continue;
+        scanned++;
+        const rendered = processTemplate('{{settings_file}}', buildTemplateVars(agent));
+        if (rendered !== agent.settingsFile) violations.push(`${agent.id}: {{settings_file}} renders to "${rendered}", expected "${agent.settingsFile}"`);
+    }
+    report('BR-13', 'every agent with a settings file renders it into extension text', scanned, violations);
 });
 
 // (groups of later tasks are appended above this line, each under its own banner)

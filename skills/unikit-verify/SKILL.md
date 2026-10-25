@@ -212,7 +212,7 @@ Bootstrap loads coding rules and principles ONCE upfront so Step 4.3 fixes can b
 
 Stack rules are loaded on-demand if Step 4.3 fixes reveal framework-specific issues.
 
-**Engine bridges (conditional, engine-neutral) — once per session, zero calls:**
+**Engine-bridge rules (conditional, engine-neutral) — once per session, zero calls:**
 
 5. `.unikit/system/engine-bridges/BRIDGES.md` — the whole file (one short block per bridge) — and, for **each** bridge whose block names a rules tree, that tree's `.unikit/system/engine-bridges/<bridge>/INDEX.md`, **base section only**: the delivery stamp (`bridge:`) plus every section **except** the `## Check` table — access, the live failure classes, shape and cost, what is irreversible, the lane, and what to do when the file is silent. Those are the exceptions that hold for every target here. **Do not read the `## Check` table now** — it is grepped per editor target, by area (Step 1).
 6. For each bridge listed in `BRIDGES.md`: `.unikit/bridge-notes/<bridge>.md`, **header only** (`bridge:` / `audited:`) — this project's own accumulated findings, and they apply to that bridge only. Compare the header against the bridge the file is named for. On a mismatch print exactly one line and **apply the entries anyway**:
@@ -222,7 +222,7 @@ Stack rules are loaded on-demand if Step 4.3 fixes reveal framework-specific iss
    ```
 
    The entries are *suspect*, not void, and a suspect check still fails safe. Retiring them belongs to `/unikit-bridge-audit`.
-7. For each such bridge, `.unikit/system/engine-bridges/<bridge>/verification.md` — **this skill and no other reads it.** It is the per-gate calibration for that bridge: for each gate, whether it is reachable and **what class of evidence closes it**. It grants nothing and lifts nothing (see the gate rule in Step 2); it tells you which observation counts.
+7. For each such bridge, `.unikit/system/engine-bridges/<bridge>/verification.md` — **this skill and no other reads it.** It is the per-gate calibration for that bridge: for each gate, whether it is reachable and **what class of evidence closes it**. It grants nothing and lifts nothing (see the gate rule in Step 2); it tells you which observation counts. When `BRIDGES.md` lists a bridge, also read `{{skills_dir}}/{{self_name}}/references/bridge-gates.md` now, once.
 
 **Any of them absent → skip it, print one line, and continue with every right you had:**
 
@@ -230,7 +230,7 @@ Stack rules are loaded on-demand if Step 4.3 fixes reveal framework-specific iss
 Bridge rules: <bridge> has no INDEX.md — no known exceptions for it, rights unchanged
 ```
 
-No rules means no known exceptions, never no capabilities. Absence never disables the engine MCP and never turns a target into `⏸️ MANUAL` (`.unikit/system/dev-principles.md` → **A9**), and it never lifts a gate — a missing calibration leaves every gate in force.
+No rules means no known exceptions, never no capabilities. Absence never disables an engine bridge and never turns a target into `⏸️ MANUAL` (`.unikit/system/dev-principles.md` → **A9**), and it never lifts a gate — a missing calibration leaves every gate in force.
 
 **Read `.unikit/skill-context/unikit-verify/SKILL.md`** — MANDATORY if the file exists.
 
@@ -306,14 +306,14 @@ Launch one Explore task per audited phase. For each phase, provide:
 - Instructions: find implementing code using Glob/Grep, read key files, confirm completeness (not a stub), report status per task with file paths
 - Instructions: **skip any task carrying an `Editor:` line or a `PR checkpoint:` line, or — in a plan with `## Balance Context` — a `Measure:` line or a `Hand-back:` line — do not mark it `NOT FOUND`.** It is verified in the main context (see below).
 
-**Editor targets are excluded from the Explore fan-out.** A task with an `Editor:` line changed the editor's serialized state; there is nothing in the sources to find, so an Explore agent would honestly return `❌ NOT FOUND` and block correctly completed work. The subagents also have no engine tools — the `allowed-tools` grants in `mcp/*.json` are issued to `unikit-verify`, not to its children. So:
+**Editor targets are excluded from the Explore fan-out.** A task with an `Editor:` line changed the editor's serialized state; there is nothing in the sources to find, so an Explore agent would honestly return `❌ NOT FOUND` and block correctly completed work. The subagents also have no engine tools — the grants of the engine bridge catalog are issued to `unikit-verify`, not to its children. So:
 
-- **Editor tasks stay in this skill's own context** and are verified by **reading the editor state back through the engine MCP**, never with Glob/Grep. The per-kind checks are engine knowledge — see `{{skills_dir}}/{{self_name}}/references/ENGINE_RULES.md` → `## Editor Target Checks`.
-- **The file exists but carries no `## Editor Target Checks` section** → a normal A9 degradation, not a dead end. Verify the target anyway: close it with an evidence class from `.unikit/system/dev-principles.md` (A2, and D3 when the first route is unavailable), reading the project's own rules in `.unikit/system/engine-bridges/` first. This is **never** `Engine MCP unavailable` and **never** `⏸️ MANUAL` — a missing section means the per-kind signals were not written down for this engine yet, never that the affordance is absent.
+- **Editor tasks stay in this skill's own context** and are verified by **reading the editor state back through an engine bridge** (`references/bridge-gates.md` → Editor targets), never with Glob/Grep. The per-kind checks are engine knowledge — see `{{skills_dir}}/{{self_name}}/references/ENGINE_RULES.md` → `## Editor Target Checks`.
+- **The file exists but carries no `## Editor Target Checks` section** → a normal A9 degradation, not a dead end. Verify the target anyway: close it with an evidence class from `.unikit/system/dev-principles.md` (A2, and D3 when the first route is unavailable), reading the project's own rules in `.unikit/system/engine-bridges/` first. This is **never** “no engine bridge available” and **never** `⏸️ MANUAL` — a missing section means the per-kind signals were not written down for this engine yet, never that the affordance is absent.
 - **Verify against the editor, never against the plan.** The acceptance criterion is closed by what the editor reports now, not by what the plan said would happen and not by what the implementation report claimed. Re-reading the plan's own words back is not verification: it makes a planning error invisible, because the two sides of the comparison have the same author.
 - **Per target, before the read-back:** steps 1–3 of `.unikit/system/dev-principles.md` → **D6** — candidates from the live catalog by intent, their schemas, the `## Check` tables grepped by area. No matching line changes nothing: an absent exception is not an absent capability (A9).
 - **A call that misled you is a finding** (`dev-principles.md` → **D7**): a candidate line in the verification report and a row in the plan's `## Engine Bridge Findings` table, written on the pass over the target that produced it, never in the verification summary — `observed` is the date you observed it (`Bash(date *)`), `bridge` the id of the bridge the call went through. A table in the 2.x form is converted first (`TASK-FORMAT.md` → `### Engine bridge findings section`). **Never write `.unikit/bridge-notes/<bridge>.md` from here.**
-- **MCP unavailable** → `⏭️ SKIPPED (editor target, MCP unavailable)`. Not a failure.
+- **No engine bridge available** → `⏭️ SKIPPED (editor target, no engine bridge available)`. Not a failure.
 - **Task marked `⏸️ MANUAL` in the plan** → `⏸️ MANUAL`. Not a blocker: the user took it on deliberately. Report the target so it stays visible.
 
 **A PR checkpoint task is excluded from the fan-out too** — it leaves nothing in the project. Its status comes from its checkbox (`{{skills_dir}}/unikit-plan/references/TASK-FORMAT.md` → `### PR checkpoint task grammar`): `[x] … → PR <sha>` → `✅ COMPLETED` (boundary `<sha>`); a `⏭️ MERGED` label → `⏭️ SKIPPED` (merged into task N.M, or — the last one — into the PR after verification); `[ ]` without a label → `⏭️ SKIPPED` (not reached). A PR checkpoint never produces a blocker in the `unikit-gate-result` block — it is a process step, not an implementation.
@@ -348,7 +348,7 @@ Statuses:
 - `✅ COMPLETED` — all requirements confirmed in code
 - `⚠️ PARTIAL` — partially implemented, something missing
 - `❌ NOT FOUND` — implementation not found
-- `⏭️ SKIPPED` — task was intentionally skipped by the user, or an editor target could not be read back (`⏭️ SKIPPED (editor target, MCP unavailable)`)
+- `⏭️ SKIPPED` — task was intentionally skipped by the user, or an editor target could not be read back (`⏭️ SKIPPED (editor target, no engine bridge available)`)
 - `⏸️ MANUAL` — an editor target the user took on themselves (`Editor tasks: manual`); reported, never a blocker
 - `⏳ AWAITING RESULT` — a measurement waiting for its result; pending, never a blocker in normal mode
 - `➖ NOT EXECUTED` — a `- [ ]` task of an unfinished plan; not audited, not a blocker
@@ -357,26 +357,16 @@ Statuses:
 
 ## Step 2: Code Quality Verification
 
-**Gate calibration — `.unikit/system/engine-bridges/<bridge>/verification.md`, one per bridge (read in Step 0).**
-
-Step 2.1 and the strict-mode run of Step 2.2 each have a bail-out branch for "engine MCP unavailable". That is not the only way a gate can fail to close: the tool may be reachable while the *capability* is not — a run that starts and never reports, a validator that answers clean by construction. Three outcomes, and only three:
-
-- **MCP unavailable** — MCP server `{{engine_mcp_tool}}` itself is not reachable → skip with the wording given in the step.
-- **Gate closed** — the gate produced the class of evidence `verification.md` names for it → report it passed, on that evidence and no other.
-- **`GATE LIFTED`** — **a verdict this skill produces, never a line it reads.** `verification.md` pre-declares nothing: it says which gates are reachable and what proves them. A gate is lifted only when you **tried it, found no affordance, and can present the evidence of that absence** — then skip it and note the reason as the observation that established it, not as `engine MCP unavailable`. Do not substitute another tool for a lifted gate, and never report it as passed.
-
-A gate marked **partly** reachable is not lifted in advance either: attempt it, and lift only the half that produced evidence of absence.
-
-If `verification.md` does not exist, **every gate applies in full.** A missing calibration is a missing hint, not a missing obligation (`dev-principles.md` → A9).
+**Gate calibration — the `verification.md` of each bridge (read in Step 0).** Follow `{{skills_dir}}/{{self_name}}/references/bridge-gates.md` for every gate of this step. A gate ends in one of three outcomes, and only these: **closed**, **`GATE LIFTED`** — a verdict this skill produces, never a line it reads, reached only after the gate was tried on every bridge that was available — and **no engine bridge available**. A gate marked **partly** reachable is not lifted in advance either: attempt it, and lift only the half that produced evidence of absence. A bridge with no `verification.md` leaves every gate in full for it (`dev-principles.md` → A9).
 
 ### 2.1 {{engine_name}} Compile Check
 
-Use MCP server `{{engine_mcp_tool}}` to check that the project compiles after implementation:
-- Refresh/recompile the project through MCP server `{{engine_mcp_tool}}`
+Check that the project compiles after implementation — gate **compilation** of `references/bridge-gates.md`, through each available bridge in the D3 order until one closes it:
+- Refresh/recompile the project through that bridge
 - Check the {{engine_name}} console for compilation errors
 - If errors found — display them with `file:line` references
-- If MCP server `{{engine_mcp_tool}}` is unavailable — skip and note: `Compilation check: engine MCP unavailable, skipped`
-- If the compile gate is attempted and no affordance answers it — **GATE LIFTED**, skip and note: `Compilation check: gate lifted — <the observation that established it>`
+- No bridge available — skip and note: `Compilation check: no engine bridge available, skipped`
+- The gate is attempted on every available bridge and no affordance answers it — **GATE LIFTED**, skip and note: `Compilation check: gate lifted — <the observation that established it>`
 
 ### 2.2 {{engine_name}} Test Evidence
 
@@ -416,9 +406,9 @@ Options:
 ```
 
 - A non-interactive run, or a reply that picks neither option → no answer, and no run.
-- **Run the full suite now** → run every test in the project, in one run, through MCP server `{{engine_mcp_tool}}`, and wait for the result. Green — a readable result with a test count above zero, the bar `verification.md` names for this gate — → by one `Edit`, append `<date> · plan · all tests, /unikit-verify --strict · passed N/N · tree-sha256 <hash>` to `## Test Runs` and rewrite its anchor line as `Full run: <date> · all tests · passed N/N · tree-sha256 <hash>`; `<date>` from `Bash(date *)`, `<hash>` by the command of item 3. This edit touches `## Test Runs` and nothing else in the manifest. Red → the failing tests go into the report, and strict verification fails.
+- **Run the full suite now** → run every test in the project, in one run, through the first available bridge that offers a test run (gate **tests**), and wait for the result. Green — a readable result with a test count above zero, the bar `verification.md` names for this gate — → by one `Edit`, append `<date> · plan · all tests, /unikit-verify --strict · passed N/N · tree-sha256 <hash>` to `## Test Runs` and rewrite its anchor line as `Full run: <date> · all tests · passed N/N · tree-sha256 <hash>`; `<date>` from `Bash(date *)`, `<hash>` by the command of item 3. This edit touches `## Test Runs` and nothing else in the manifest. Red → the failing tests go into the report, and strict verification fails.
 - **Leave it**, or no answer → strict verification fails on this finding.
-- MCP server `{{engine_mcp_tool}}` unavailable → skip and note: `Test run: engine MCP unavailable, skipped`. The run is attempted and no affordance answers it → **GATE LIFTED**, skip and note: `Test run: gate lifted — <the observation that established it>`; a run that reports success over zero tests has not closed the gate. In both cases the finding stays a warning, exactly as the compilation gate behaves when it cannot run.
+- No engine bridge available → skip and note: `Test run: no engine bridge available, skipped`. The run is attempted on every available bridge and no affordance answers it → **GATE LIFTED**, skip and note: `Test run: gate lifted — <the observation that established it>`; a run that reports success over zero tests has not closed the gate. In both cases the finding stays a warning, exactly as the compilation gate behaves when it cannot run.
 - Under a phase scope (Step 0.1) nothing is asked.
 
 ### 2.3 Engine-Specific Checks
@@ -607,7 +597,7 @@ The `implemented` state is **read-only everywhere else**: GAME.md's `## System M
 | 3.1 | Create CustomerView | ❌ Not found | File missing |
 
 ### Code Quality
-- Compilation: ✅ / ⏭️ engine MCP unavailable
+- Compilation: ✅ <bridge> / ⏭️ no engine bridge available / gate lifted
 - Tests: ✅ passed 3363/3363 — full run of 2026-09-12 by /unikit-implement, tree unchanged / ⚠️ stale — the tree changed since the full run of <date> / ⚠️ no full run recorded / — not part of this plan (Testing: no)
 - Engine checks: ✅ All passed (per ENGINE_RULES.md)
 - Anti-patterns: ⚠️ 2 warnings
@@ -686,7 +676,7 @@ After the human-readable report (Step 4.1) and overall status (Step 4.2) — and
 - `"affected_files"`: the `CHANGED_FILES` the gate actually evaluated or cited (not unrelated repo files); empty array when none apply.
 - **Research drift.** Every `WARN [research-drift]` line from Step 0.2 raises `status` to at least `warn` and is named in the human summary. It is **never** a blocker and never enters `blockers`: source drift makes the work debatable, not wrong, and the call is the user's.
 - **A reused run.** A test gate closed by someone else's full run (Step 2.2, the `reused` branch) is a `Gate closed`: it does **not** affect `status`, and it never enters `blockers`. The human summary must name it in one line — `Test run: reused — …` — because "the gate was closed by evidence obtained earlier" and "the gate was not checked" are different statements, and in JSON they look identical.
-- **Test evidence findings.** A Step 2.2 ⚠️ — no full run recorded, a stale or unhashed anchor, a zero count — raises `status` to at least `warn` and is named in the human summary. It enters `blockers` only in strict mode, as `verify-tests` with `file` set to the plan manifest, when the Step 2.2 question did not end in a green run — declined, unanswered, or red. A run that could not happen because the engine MCP is unavailable, or whose gate was lifted, stays a warning (Step 2.2), as the compilation gate does. Under a phase scope Step 2.2 produces none of these findings.
+- **Test evidence findings.** A Step 2.2 ⚠️ — no full run recorded, a stale or unhashed anchor, a zero count — raises `status` to at least `warn` and is named in the human summary. It enters `blockers` only in strict mode, as `verify-tests` with `file` set to the plan manifest, when the Step 2.2 question did not end in a green run — declined, unanswered, or red. A run that could not happen because no engine bridge is available, or whose gate was lifted, stays a warning (Step 2.2), as the compilation gate does. Under a phase scope Step 2.2 produces none of these findings.
 - **`WARN [testing]`** of any origin — git unavailable, an anchor line that would not parse, an inadmissible `checkpoints` value — raises `status` to at least `warn` and is named in the summary. It is never a blocker — except a Step 2.2 one in strict mode that the Step 2.2 question did not end in a green run, which is `verify-tests` like the ⚠️ above, with the same exception: not knowing the state of the tree makes the work debatable rather than wrong, which is the same logic research drift follows.
 - `"suggested_next.command"`: from the allowlist in `gate-result-contract.md` — `/unikit-fix` (task gaps, anti-patterns, failing checks), `/unikit-rules` (rules-gate violation needing a writer update), `/unikit-architecture` (architecture drift), `/unikit-roadmap` (roadmap drift), `/unikit-commit` (clean — natural next step), or `null`.
 
@@ -777,8 +767,8 @@ Normal mode already checks all items below but tolerates partial results and war
 | Check | Normal mode | Strict mode |
 |-------|-------------|-------------|
 | Task completion | `⚠️ PARTIAL` and `⏭️ SKIPPED` allowed | All tasks must be `✅ COMPLETED` — partial, skipped and `➖ NOT EXECUTED` are failures (`verify-task-<id>`, `not executed`). **Carve-out:** `⏭️ SKIPPED (editor target, …)` and `⏸️ MANUAL` are exempt in both modes — the first is an unreachable capability, the second is work the user deliberately took on; failing either would fail correctly completed work |
-| Compilation (MCP server `{{engine_mcp_tool}}`) | Reported if available | **Required** to pass if MCP server `{{engine_mcp_tool}}` is available |
-| Tests (the recorded run, Step 2.2) | The `## Test Runs` record is checked against the current tree; missing, stale or zero-count evidence is a warning, and no test run is started | Under `Testing: yes`, a green run of every test recorded for the current tree is **required**; when it is missing or stale, verify asks once whether to run the full suite now through MCP server `{{engine_mcp_tool}}` — declined, unanswered or red is a failure; an unavailable engine MCP or a lifted gate stays a warning |
+| Compilation (engine bridge) | Reported if available | **Required** to pass if an engine bridge is available |
+| Tests (the recorded run, Step 2.2) | The `## Test Runs` record is checked against the current tree; missing, stale or zero-count evidence is a warning, and no test run is started | Under `Testing: yes`, a green run of every test recorded for the current tree is **required**; when it is missing or stale, verify asks once whether to run the full suite now through an engine bridge — declined, unanswered or red is a failure; no engine bridge available or a lifted gate stays a warning |
 | TODO/FIXME/HACK | Warning | **Failure** — no leftover markers allowed in changed files |
 | Anti-patterns | Warning | **Failure** — async void, missing CancellationToken, etc. |
 | Design acceptance criteria | Unmet `AC` reported as a finding | **Failure** — every cited `AC` must be met (only when the plan has a `## Design` section) |

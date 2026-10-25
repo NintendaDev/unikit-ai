@@ -148,7 +148,7 @@ PRINCIPLES_PATH="$CLAUDE_DIR/.unikit/system/dev-principles.md"
 assert_exists "$PRINCIPLES_PATH" "dev-principles.md created in .unikit/system/"
 assert_not_contains "$PRINCIPLES_PATH" '\{\{engine_name\}\}' "no unsubstituted {{engine_name}}"
 assert_not_contains "$PRINCIPLES_PATH" '\{\{engine_code_language\}\}' "no unsubstituted {{engine_code_language}}"
-assert_not_contains "$PRINCIPLES_PATH" '\{\{engine_mcp_tool\}\}' "no unsubstituted {{engine_mcp_tool}}"
+assert_not_contains "$PRINCIPLES_PATH" '\{\{engine_bridge_mcp_code\}\}' "no unsubstituted {{engine_bridge_mcp_code}}"
 # Verify both engine vars are actually substituted by checking a phrase
 # that ONLY exists after substitution (Core Principle 1 reads
 # "well-documented C# code adhering to Unity best practices" post-substitution).
@@ -912,8 +912,7 @@ assert_not_contains "$KIMI_SKILLS/unikit-plan/references/TASK-FORMAT.md" '\$unik
   "kimi: no Codex/Qwen-style invocation rewrite"
 
 # Variable substitution (REQ-001): {{settings_file}} → .kimi-code/mcp.json, nothing raw left
-assert_contains "$KIMI_SKILLS/unikit-implement/SKILL.md" '\.kimi-code/mcp\.json' \
-  "kimi: {{settings_file}} renders to .kimi-code/mcp.json"
+# (the substitution of {{settings_file}} is asserted by BR-13 in test-bridges.mjs: no base skill writes the variable any more)
 assert_not_contains "$KIMI_SKILLS/unikit-implement/SKILL.md" '\.agents/mcp_config\.json' \
   "kimi: no Antigravity settings path in a Kimi skill"
 KIMI_TOKEN_RE="\{\{($TEMPLATE_NAMES_ERE)\}\}|\{\{agent_skill_call:"
@@ -1093,8 +1092,7 @@ assert_not_exists "$UNIVERSAL_DIR/.agents/mcp_config.json" \
   "universal: no Antigravity MCP file"
 
 # Variable substitution and the profile: settings file, Claude's types, no model, no Codex block
-assert_contains "$UNIVERSAL_SKILLS/unikit-implement/SKILL.md" '\.mcp\.json' \
-  "universal: {{settings_file}} renders to .mcp.json"
+# (the substitution of {{settings_file}} is asserted by BR-13 in test-bridges.mjs: no base skill writes the variable any more)
 assert_not_contains "$UNIVERSAL_SKILLS/unikit-implement/SKILL.md" '\.agents/mcp_config\.json' \
   "universal: no Antigravity settings path in a universal skill"
 assert_contains "$UNIVERSAL_SKILLS/unikit-implement/SKILL.md" 'subagent_type: "general-purpose"' \

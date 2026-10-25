@@ -283,7 +283,7 @@ UniKit AI writes MCP server configuration into the file selected per agent: `.mc
 Every server carries two names, and keeping them apart is what the rest of this section rests on:
 
 - **`key`** — the server's internal identity, always equal to the name of its JSON file under `mcp/`. It is what `.unikit.json` records your selection under, what the delivery stamp and the findings log are named after, and it is never written into an agent's settings file.
-- **`code`** — the **vendor code**: the key the server is actually registered under in your settings file (`mcpServers.<code>`), the middle segment of every `mcp__<code>__*` grant, and the value `{{engine_mcp_tool}}` expands to in skill prose.
+- **`code`** — the **vendor code**: the key the server is actually registered under in your settings file (`mcpServers.<code>`), the middle segment of every `mcp__<code>__*` grant, and the value `{{engine_bridge_mcp_code}}` expands to in extension text.
 
 Before 2.0.0 there was only `key`, and the engine alternatives of one engine were made to share it — which meant UniKit registered Unity Biome under the name `UnityMCP` while the server itself registers as `unity-biome-mcp`. The two entries coexisted in `.mcp.json`, and the grants followed the one nobody was talking to.
 

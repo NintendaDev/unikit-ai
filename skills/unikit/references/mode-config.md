@@ -70,6 +70,8 @@ Assign every paired key to exactly one bucket. Write nothing and ask nothing in 
    is appended whole. An agent that holds one scalar where the template has a map of roles — the form of
    earlier releases — is left as it is and listed under skipped: its role keys are not appended, because
    a key cannot be a value and a map at once.
+
+   **Exception — `engine_bridges.order`.** An empty list there is the default order, a deliberate state and not a missing value: keep it, never fill it from the template, and report it as kept. An absent key is appended with its block and comment. A non-empty list is left as it is; changing it is the job of the bridge-order mode, not of this one.
 4. **Present, value outside a declared domain** → ask. A domain is declared by exactly one
    thing: an inline `# a | b` comment standing beside the value on the same line. Nothing
    else declares one — an `Options:` or `Examples:` list inside a comment block is prose for

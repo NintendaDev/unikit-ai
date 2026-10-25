@@ -7,7 +7,7 @@ import type { SkillCallForm } from './constants-skill-call.js';
 import { SYSTEM_PATH_VARS, TEMPLATE_VAR_NAMES } from './constants-template.js';
 import type { SystemTemplateVars } from './constants-template.js';
 
-const DEFAULT_ENGINE_MCP_TOOL = 'EngineMCP';
+const DEFAULT_ENGINE_BRIDGE_MCP_CODE = 'EngineMCP';
 
 /**
  * The fields below are the ones that depend on an agent or an engine. The paths of the system files
@@ -22,7 +22,7 @@ export interface TemplateVars extends SystemTemplateVars {
   self_name: string;
   engine_name: string;
   engine_code_language: string;
-  engine_mcp_tool: string;
+  engine_bridge_mcp_code: string;
   agent_id: string;
   agent_reader_type: string;
   agent_worker_type: string;
@@ -34,13 +34,13 @@ export interface TemplateVars extends SystemTemplateVars {
   agent_skill_call_form: SkillCallForm | '';
 }
 
-export function buildEngineVars(engineId: string, mcpBridgeCode?: string | null): Pick<TemplateVars, 'engine_name' | 'engine_code_language' | 'engine_mcp_tool'> {
+export function buildEngineVars(engineId: string, mcpBridgeCode?: string | null): Pick<TemplateVars, 'engine_name' | 'engine_code_language' | 'engine_bridge_mcp_code'> {
   const config = getEngineConfig(engineId);
 
   return {
     engine_name: config.displayName,
     engine_code_language: config.codeLanguage,
-    engine_mcp_tool: mcpBridgeCode ?? DEFAULT_ENGINE_MCP_TOOL,
+    engine_bridge_mcp_code: mcpBridgeCode ?? DEFAULT_ENGINE_BRIDGE_MCP_CODE,
   };
 }
 
@@ -53,7 +53,7 @@ export function buildTemplateVars(agent: AgentConfig): TemplateVars {
     self_name: '',
     engine_name: '',
     engine_code_language: '',
-    engine_mcp_tool: '',
+    engine_bridge_mcp_code: '',
     agent_id: agent.id,
     agent_reader_type: agent.subagentProfile.readerType,
     agent_worker_type: agent.subagentProfile.workerType,

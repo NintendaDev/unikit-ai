@@ -2507,5 +2507,33 @@ assert_not_exists "$P42E_SKIP/.claude/skills/unknown-skill" "42e: the switched-o
 
 echo "  ✓ system variables: an unknown name stays as written; it is named in an INFO note (file and name) under --verbose only, never as a warning, and a known variable never is"
 
+# 42f — the code of the engine bridge. The retired name `{{engine_mcp_tool}}` is a token this build does not know:
+# it stays as written. The new name `{{engine_bridge_mcp_code}}` is the vendor code of the first selected bridge of
+# kind mcp in the package order, and `EngineMCP` when no such bridge is selected.
+EXT42F="$TMPDIR/ext-bridge-code"
+make_points_extension "$EXT42F" unikit-ext-bridge-code 1.0.0 code-line 'New: {{engine_bridge_mcp_code}}; old: {{engine_mcp_tool}}.' 'Reference: {{engine_bridge_mcp_code}}'
+
+P42F_NONE="$TMPDIR/bridge-code-none"
+make_points_project "$P42F_NONE" claude .claude/skills .claude/agents
+ext_add "$P42F_NONE" "$EXT42F" "$TMPDIR/p42f-none.log"
+BLOCK42F_NONE=$(block_of "$P42F_NONE/.claude/skills/unikit/SKILL.md" unikit-ext-bridge-code code-line)
+if [[ "$BLOCK42F_NONE" != *"New: EngineMCP; old: {{engine_mcp_tool}}."* ]]; then
+  echo "Assertion failed: 42f: with no bridge selected the new name is EngineMCP and the retired name stays as written"
+  echo "Block: $BLOCK42F_NONE"; exit 1
+fi
+
+P42F_BIOME="$TMPDIR/bridge-code-biome"
+make_points_project "$P42F_BIOME" claude .claude/skills .claude/agents
+node -e "const fs = require('fs'); const f = process.argv[1]; const c = JSON.parse(fs.readFileSync(f, 'utf8')); c.engineBridges.selected = { 'unity-biome-mcp': 'unity-biome-mcp' }; fs.writeFileSync(f, JSON.stringify(c, null, 2));" "$P42F_BIOME/.unikit.json"
+(cd "$P42F_BIOME" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/p42f-biome-update.log" 2>&1)
+ext_add "$P42F_BIOME" "$EXT42F" "$TMPDIR/p42f-biome.log"
+BLOCK42F_BIOME=$(block_of "$P42F_BIOME/.claude/skills/unikit/SKILL.md" unikit-ext-bridge-code code-line)
+if [[ "$BLOCK42F_BIOME" != *"New: unity-biome-mcp; old: {{engine_mcp_tool}}."* ]]; then
+  echo "Assertion failed: 42f: with the Biome bridge selected the new name is its vendor code"
+  echo "Block: $BLOCK42F_BIOME"; cat "$TMPDIR/p42f-biome-update.log"; exit 1
+fi
+
+echo "  ✓ engine bridge code: the new name carries the vendor code of the first selected mcp bridge (EngineMCP when none), the retired name stays as written"
+
 echo ""
 echo "extension smoke tests passed"

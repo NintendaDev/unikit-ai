@@ -55,7 +55,7 @@ export function orderBridges(discovered: DiscoveredServers, bridgeIds: string[])
 
 /**
  * Vendor code of the selected bridge of kind `mcp` that comes first in the package order, or `null`.
- * Feeds `{{engine_mcp_tool}}` (and the variable that replaces it later). Never the USER's order:
+ * Feeds `{{engine_bridge_mcp_code}}` — the first selected MCP-kind engine bridge in the package order. Never the USER's order:
  * a reorder must not change the substitution, or the skill hash would have to follow it.
  */
 export function resolveMcpBridgeCode(discovered: DiscoveredServers, bridgeIds: string[]): string | null {

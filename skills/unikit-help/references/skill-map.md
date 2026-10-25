@@ -33,6 +33,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   dispatched in Step 0: it appends template literals silently, asks about placeholders and
   out-of-domain values, never touches `language.rules` / `language.technical_terms`, and
   stops before the bootstrap steps, so nothing else about the project is re-run.
+  Also sets the order of the engine bridges and checks their environment.
 - **In:** optional project description (a sentence, or a path to a design doc). Needs the
   installer to have run first (engine chosen).
 - **Out:** the `.unikit/` context files + `AGENTS.md` + `.unikit/memory/code/{core,stack}/`.
@@ -525,12 +526,12 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **Optional.** Implement/fix auto-close matching items.
 
 ### unikit-bridge-trap
-- **Purpose:** Record a finding about the configured engine MCP server into
+- **Purpose:** Record a finding about an engine bridge of this project into
   `.unikit/bridge-notes/<bridge>.md` — the project's log of what has to be re-checked there.
-  Zero MCP calls, no editor needed. Writes in one genre only: a check to perform, never a
+  Zero bridge calls, no editor needed. Writes in one genre only: a check to perform, never a
   lifted gate and never a named workaround.
 - **When:** right after a call reported success while changing nothing, ate an argument, or
-  validated a broken state — "write this down", "record this MCP finding", "add a recheck note".
+  validated a broken state — "write this down", "record this bridge finding", "add a recheck note".
 - **In:** three forms — the finding in one line; a path to a plan file (harvests that plan's
   `## Engine Bridge Findings` table only, the session is not touched); or nothing, which harvests the
   session first and then offers to scan the tables of plans touched since the last audit.
@@ -541,7 +542,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **Purpose:** Curate those notes — re-stamp on a change of server, replay `replay: safe`
   findings inside a disposable sandbox, offer to retire what was fixed or went upstream, and
   print a ready diff for the packaged rules tree.
-- **When:** "audit the MCP notes", "are these findings still true", "the server was updated —
+- **When:** "audit the bridge notes", "are these findings still true", "the server was updated —
   revisit the notes".
 - **In:** nothing, a note id (`R2`), or one of `stamp` / `replay` / `retire` / `upstream`.
 - **Out:** an updated `.unikit/bridge-notes/<bridge>.md` (+ an upstream diff, printed).
