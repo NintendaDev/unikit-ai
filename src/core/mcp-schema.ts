@@ -18,7 +18,8 @@
 import path from 'path';
 import { MCP_PLATFORM_KEYS, type McpPlatformKey } from './constants.js';
 import type { BridgeKind, McpAllowedTools, McpServerEntry } from './mcp.js';
-import { parseDetect, parseDocsSources, parseRequires, parseSetup } from './bridges/schema-fields.js';
+import { parseCli, parseDetect, parseDocsSources, parseRequires, parseSetup } from './bridges/schema-fields.js';
+import type { BridgeCli } from './bridges/types.js';
 import { logInfo, logWarn } from '../utils/log.js';
 
 /**
@@ -170,8 +171,26 @@ export function parseMcpServerEntry(raw: unknown, dirPath: string, fileName: str
     return null;
   }
 
+  // What makes an entry usable depends on its kind: an MCP server needs a config to be registered with,
+  // a command line needs a valid `cli` block. The old rule ("config or configByPlatform") dropped every
+  // entry of kind `cli` without a word.
   const configByPlatform = parseConfigByPlatform(raw['configByPlatform']);
-  if (!raw.config && !configByPlatform) return null;
+  let cli: BridgeCli | undefined;
+  if (kind === 'cli') {
+    cli = parseCli(raw['cli'], fileName);
+    if (!cli) {
+      logWarn('parseMcpServerEntry', `dropped ${fileName}: kind "cli" needs a valid "cli" block`);
+      return null;
+    }
+    if (raw.config || raw['configByPlatform'] !== undefined) {
+      logWarn('parseMcpServerEntry', `${fileName}: "config" is ignored for kind "cli"`);
+    }
+  } else {
+    if (!raw.config && !configByPlatform) return null;
+    if (raw['cli'] !== undefined) {
+      logWarn('parseMcpServerEntry', `${fileName}: the "cli" block is ignored for kind "mcp"`);
+    }
+  }
 
   const entry: ParsedMcpServerEntry = {
     key: raw.key as string,
@@ -181,12 +200,16 @@ export function parseMcpServerEntry(raw: unknown, dirPath: string, fileName: str
     displayName: raw.displayName as string,
   };
 
-  if (raw.config) {
-    entry.config = raw.config as Record<string, unknown>;
-  }
+  if (cli) {
+    entry.cli = cli;
+  } else {
+    if (raw.config) {
+      entry.config = raw.config as Record<string, unknown>;
+    }
 
-  if (configByPlatform) {
-    entry.configByPlatform = configByPlatform;
+    if (configByPlatform) {
+      entry.configByPlatform = configByPlatform;
+    }
   }
 
   const allowedTools = raw['allowed-tools'] as McpAllowedTools | undefined;

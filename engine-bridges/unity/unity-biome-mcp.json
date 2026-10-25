@@ -2,7 +2,7 @@
   "key": "unity-biome-mcp",
   "code": "unity-biome-mcp",
   "is_engine": true,
-  "order": 1,
+  "order": 2,
   "displayName": "Unity Biome MCP (Unity 6000.0+)",
   "docs": {
     "context7": "/german-krasnikov/unity-biome-mcp",

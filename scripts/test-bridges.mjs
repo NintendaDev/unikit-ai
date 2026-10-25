@@ -994,6 +994,236 @@ await group('GV-4', async () => {
     report('GV-4', 'bridge-gates.md lists the same seven gate names, in the same order, as the vocabulary', 1, violations);
 });
 
+// ── BR-2b: the cli kind stays inside the points of the adapter ───────────────
+//
+// The readiness criterion of the cli adapter is mechanical (ADR-0004): it changes the five points
+// of the adapter and nothing else. A source file that mentions the kind as a literal is either one
+// of those points or a leak.
+
+// The files that may name the kind `cli`: the schema, the adapter, the detection and the wizard.
+const CLI_KIND_POINTS = [
+    'src/core/bridges/types.ts',
+    'src/core/bridges/schema-fields.ts',
+    'src/core/bridges/adapter-cli.ts',
+    'src/core/mcp.ts',
+    'src/core/mcp-schema.ts',
+];
+// `'cli'` with another meaning: the delivery column of the system-file registry ("written by the CLI").
+const CLI_LITERAL_OTHER_MEANING = ['src/core/constants-template.ts'];
+
+function sourceFiles(dir) {
+    return filesBelow(path.join(ROOT, dir)).filter((file) => file.endsWith('.ts'));
+}
+
+await group('BR-2b', async () => {
+    const violations = [];
+    const files = sourceFiles('src');
+    for (const file of files) {
+        if (!fs.readFileSync(path.join(ROOT, file), 'utf8').includes("'cli'")) continue;
+        if (CLI_KIND_POINTS.includes(file) || CLI_LITERAL_OTHER_MEANING.includes(file)) continue;
+        violations.push(`cli kind leaked outside the adapter points: ${file}`);
+    }
+    report('BR-2b', "the literal 'cli' appears only in the adapter points", files.length, violations);
+});
+
+// ── BR-2d: a malformed cli entry is dropped or trimmed with a warning, never silently ──
+
+await group('BR-2d', async () => {
+    const { parseMcpServerEntry } = await dist('core/mcp-schema.js');
+    const before = passed;
+    const cliBlock = (patch = {}) => ({
+        binary: 'tool',
+        projectFlag: '--project-path',
+        forms: { call: 'tool command --project-path "<project-root>" <command>' },
+        ...patch,
+    });
+    const base = { key: 'c', code: 'c', displayName: 'C', is_engine: true, kind: 'cli', cli: cliBlock() };
+    const parsed = (patch) => captureWarnings(() => parseMcpServerEntry({ ...base, ...patch }, '.', 'c.json'));
+
+    const good = parsed({});
+    assertEq('BR-2d', 'a cli entry without a config is accepted, with no warning and no config', [good.result?.kind, good.result?.config, good.lines.length], ['cli', undefined, 0]);
+    assertEq('BR-2d', 'the shells default to Bash', good.result?.cli.shells, ['Bash']);
+
+    const noBlock = parsed({ cli: undefined });
+    assertEq('BR-2d', 'kind cli without a cli block drops the entry and says so', [noBlock.result, noBlock.lines.length > 0], [null, true]);
+
+    const foreignForm = parsed({ cli: cliBlock({ forms: { call: 'tool command --project-path "<p>" <command>', groups: 'other groups --project-path "<p>"' } }) });
+    assertEq('BR-2d', 'a form that does not begin with the binary is dropped, the entry survives',
+        [foreignForm.result?.cli.forms.groups, foreignForm.result?.cli.forms.call !== undefined, foreignForm.lines.length], [undefined, true, 1]);
+    assertEq('BR-2d', 'a call form that does not begin with the binary drops the entry',
+        parsed({ cli: cliBlock({ forms: { call: 'other command --project-path "<p>"' } }) }).result, null);
+
+    const noFlag = parsed({ cli: cliBlock({ forms: { call: 'tool command --project-path "<p>"', status: 'tool status', version: 'tool --version' } }) });
+    assertEq('BR-2d', 'a form without the project flag is dropped, except the version probe',
+        [noFlag.result?.cli.forms.status, noFlag.result?.cli.forms.version], [undefined, 'tool --version']);
+
+    assertEq('BR-2d', 'a binary with a path separator drops the entry', parsed({ cli: cliBlock({ binary: 'bin/tool' }) }).result, null);
+    assertEq('BR-2d', 'a project flag that is not an option drops the entry', parsed({ cli: cliBlock({ projectFlag: 'project-path' }) }).result, null);
+
+    const shells = parsed({ cli: cliBlock({ shells: ['Bash', 'Zsh', 'PowerShell', 'Bash'] }) });
+    assertEq('BR-2d', 'shells keep the known names once, and announce the unknown one', [shells.result?.cli.shells, shells.lines.length], [['Bash', 'PowerShell'], 1]);
+
+    const probe = parsed({ cli: cliBlock({ probes: { package: { file: '../up.json', path: ['a'] } } }) });
+    assertEq('BR-2d', 'a package probe outside the project is dropped, the entry survives', [probe.result?.cli.probes, probe.lines.length], [undefined, 1]);
+    const goodProbe = parsed({ cli: cliBlock({ probes: { package: { file: 'Packages/lock.json', path: ['dependencies', 'p', 'version'], fallback: { file: 'Packages/manifest.json', path: ['dependencies', 'p'] } } } }) });
+    assertEq('BR-2d', 'a package probe with a fallback is kept whole', goodProbe.result?.cli.probes.package.fallback, { file: 'Packages/manifest.json', path: ['dependencies', 'p'] });
+
+    const withConfig = parsed({ config: { command: 'x' } });
+    assertEq('BR-2d', 'a config on a cli entry is ignored with a warning', [withConfig.result?.config, withConfig.lines.length], [undefined, 1]);
+
+    const mcpWithCli = captureWarnings(() => parseMcpServerEntry({ key: 'm', code: 'm', displayName: 'M', is_engine: true, config: { command: 'x' }, cli: cliBlock() }, '.', 'm.json'));
+    assertEq('BR-2d', 'a cli block on an mcp entry is ignored with a warning', [mcpWithCli.result?.cli, mcpWithCli.lines.length], [undefined, 1]);
+    assertEq('BR-2d', 'an unknown kind drops the entry and says so', [parsed({ kind: 'bogus' }).result, parsed({ kind: 'bogus' }).lines.length > 0], [null, true]);
+
+    const pattern = (versionPattern) => captureWarnings(() => parseMcpServerEntry({ ...base, detect: { binary: 'tool', versionPattern } }, '.', 'c.json'));
+    assertEq('BR-2d', 'a version pattern with one capture group is kept', pattern('^v(\\d+)').result?.detect.versionPattern, '^v(\\d+)');
+    assertEq('BR-2d', 'a version pattern with two groups, with none, or one that does not compile is dropped',
+        [pattern('^(a)(b)').result?.detect.versionPattern, pattern('^abc').result?.detect.versionPattern, pattern('^(abc').result?.detect.versionPattern], [undefined, undefined, undefined]);
+
+    report('BR-2d', 'negative cases of the cli entry ran', passed - before, []);
+});
+
+// ── BR-2c: the Unity CLI card keeps the forms that were measured, not the ones that were documented ──
+//
+// Three forms of the beta.14 documentation failed on a live editor (a tsv listing with --quiet answers
+// with nothing and exit 0, the package probe by `pipeline list` takes no project path, the skill of
+// the package left the package), and the card holds the measured replacements. These checks keep a
+// later edit from walking back to the documented shape.
+
+const UNITY_CLI_CARD = 'engine-bridges/unity/unity-cli.json';
+const MIN_CARD_CHECKS = 14;
+
+await group('BR-2c', async () => {
+    const { parseMcpServerEntry } = await dist('core/mcp-schema.js');
+    const semver = (await import('semver')).default;
+    const violations = [];
+    let scanned = 0;
+    const check = (ok, message) => { scanned++; if (!ok) violations.push(message); };
+
+    const raw = JSON.parse(fs.readFileSync(path.join(ROOT, UNITY_CLI_CARD), 'utf8'));
+    const { result: entry, lines } = captureWarnings(() => parseMcpServerEntry(raw, path.dirname(path.join(ROOT, UNITY_CLI_CARD)), 'unity-cli.json'));
+    check(entry !== null && lines.length === 0, `the card parses without a warning (${lines.join(' | ')})`);
+    if (entry === null || !entry.cli) {
+        report('BR-2c', 'the Unity CLI card keeps the measured forms', scanned, violations);
+        return;
+    }
+    const { cli, requires, detect } = entry;
+    const forms = Object.entries(cli.forms);
+
+    check(entry.kind === 'cli' && entry.isEngine === true && entry.order === 1, 'the card is the first engine bridge of kind cli');
+    check(forms.every(([, form]) => form.startsWith(`${cli.binary} `)), 'every form begins with the binary');
+    check(forms.filter(([key]) => key !== 'version').every(([, form]) => form.includes('--project-path')), 'every form but the version probe carries --project-path');
+    check(cli.shells.every(shell => shell === 'Bash' || shell === 'PowerShell'), 'the shells are Bash and PowerShell only');
+    check(semver.valid(requires?.cli) !== null && semver.valid(requires?.package) !== null, 'the floors of the CLI and the package are full versions');
+    check(String(requires?.package).includes('-exp.'), 'the package floor keeps its prerelease part');
+    check(detect?.binary === cli.binary, 'the detected binary is the called binary');
+
+    const verbs = Object.values(raw['allowed-tools']?.skills ?? {}).flat();
+    check(verbs.every(verb => !verb.includes('*')), 'the grants are verbs, not masks');
+    check(!verbs.some(verb => verb.startsWith('pipeline')), 'no grant for the pipeline verbs (install changes the project, list reads every open project of the machine)');
+    check(forms.every(([, form]) => !form.includes('memory/code') && form === form.trim()), 'no form points into the rules memory or carries trailing space');
+
+    check(forms.filter(([, form]) => form.includes('--format tsv')).every(([, form]) => !form.includes('--quiet')), 'no tsv form carries --quiet (the rows vanish, exit 0)');
+    check(cli.forms.groups?.includes('--detail groups') === true && cli.forms.group !== undefined && !cli.forms.group.includes('--detail'), 'groups lists with --detail groups, group lists without --detail');
+    check(cli.forms.compile?.includes('--timeout') === true && !cli.forms.compile.includes('--strict'), 'compile takes --timeout and not --strict');
+    check(cli.forms.ready?.includes('--until-ready') === true, 'ready waits with --until-ready');
+    check(cli.probes?.package !== undefined && !path.isAbsolute(cli.probes.package.file) && !cli.forms.status?.includes('pipeline list'), 'the package version is read from a project file, not asked of a command');
+    check(typeof cli.forms.list === 'string' && cli.forms.list.startsWith('unity list '), 'the planner has a whole-catalog listing form');
+    check(scanned >= MIN_CARD_CHECKS, `only ${scanned} checks ran, expected at least ${MIN_CARD_CHECKS}`);
+
+    report('BR-2c', 'the Unity CLI card keeps the measured forms', scanned, violations);
+});
+
+// ── BR-W3: the real Unity catalog sorts the CLI first, and a fresh install still checks an MCP bridge ──
+
+await group('BR-W3', async () => {
+    const wizard = await dist('cli/wizard/prompts.js');
+    const { discoverMcpServers } = await dist('core/mcp.js');
+    const discovered = await discoverMcpServers('unity');
+    const bridges = [...discovered].filter(([, entry]) => entry.isEngine)
+        .map(([fileId, entry]) => ({ fileId, displayName: entry.displayName, isEngine: true, kind: entry.kind, order: entry.order }));
+
+    assertEq('BR-W3', 'the catalog of unity lists the universal servers and the three bridges',
+        [...discovered.keys()].sort(), ['context7', 'coplay-unity-mcp', 'github', 'unity-biome-mcp', 'unity-cli']);
+    assertEq('BR-W3', 'the bridges sort in the package order: the CLI, then Biome, then Coplay',
+        wizard.sortMcpChoices(bridges).map(bridge => bridge.fileId), ['unity-cli', 'unity-biome-mcp', 'coplay-unity-mcp']);
+    assertEq('BR-W3', 'a fresh install without detection checks the first MCP bridge, not the CLI',
+        [...wizard.defaultBridgeIds(bridges)], ['unity-biome-mcp']);
+});
+
+// ── BR-5b / BR-5c / BR-5d: the grants of a command-line bridge, and the removal that owns them ──
+
+await group('BR-5b', async () => {
+    const { getBridgeAdapter } = await dist('core/bridges/adapter.js');
+    const { collectManagedGrantPrefixes } = await dist('core/bridges/grants.js');
+    const { discoverMcpServers, collectMcpRules } = await dist('core/mcp.js');
+    const adapter = getBridgeAdapter('cli');
+    const cliEntry = (shells) => ({ key: 't', code: 't', kind: 'cli', isEngine: true, displayName: 'T', cli: { binary: 'tool', projectFlag: '--project-path', shells, forms: { call: 'tool command --project-path x' } } });
+
+    assertEq('BR-5b', 'a command-line bridge is not registered in the settings file', adapter.registersInSettings, false);
+    assertEq('BR-5b', 'a verb becomes a narrow pattern per shell, with no mask on the verb itself',
+        adapter.grantEntries(cliEntry(['Bash']), ['command', 'self-update --check']), ['Bash(tool command *)', 'Bash(tool self-update --check *)']);
+    assertEq('BR-5b', 'two shells give two patterns per verb, one shell after the other',
+        adapter.grantEntries(cliEntry(['Bash', 'PowerShell']), ['command', 'self-update --check']),
+        ['Bash(tool command *)', 'PowerShell(tool command *)', 'Bash(tool self-update --check *)', 'PowerShell(tool self-update --check *)']);
+    assertEq('BR-5b', 'the managed prefixes are the heads of the patterns, one per shell',
+        adapter.managedGrantPrefixes(cliEntry(['Bash', 'PowerShell'])), ['Bash(tool ', 'PowerShell(tool ']);
+    const wildcard = captureWarnings(() => adapter.grantEntries(cliEntry(['Bash']), ['*', 'status']));
+    assertEq('BR-5b', 'a wildcard is not a verb: nothing is written for it, and it is announced', [wildcard.result, wildcard.lines.length], [['Bash(tool status *)'], 1]);
+
+    const discovered = await discoverMcpServers('unity');
+    const prefixes = collectManagedGrantPrefixes(discovered);
+    assertEq('BR-5b', 'the managed prefixes of the Unity catalog hold the MCP prefix and both shells of the CLI, and nothing hand-written',
+        [prefixes.includes('mcp__'), prefixes.includes('Bash(unity '), prefixes.includes('PowerShell(unity '), prefixes.includes('Bash(git ')], [true, true, true, false]);
+
+    const rules = collectMcpRules(discovered, ['unity-cli', 'unity-biome-mcp']);
+    assertEq('BR-5b', 'the CLI grants reach the executors and the planner, the MCP grants sit beside them',
+        [rules.skills['unikit-implement'].includes('Bash(unity command *)'), rules.skills['unikit-implement'].includes('PowerShell(unity recompile *)'),
+            rules.skills['unikit-implement'].some(entry => entry.startsWith('mcp__unity-biome-mcp__')), rules.skills['unikit-plan'].includes('Bash(unity list *)')],
+        [true, true, true, true]);
+});
+
+await group('BR-5c', async () => {
+    const { injectToolsIntoSkillFrontmatter } = await dist('core/mcp.js');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'br-5c-'));
+    try {
+        const file = path.join(dir, 'SKILL.md');
+        fs.writeFileSync(file, ['---', 'name: demo', 'allowed-tools:', '  - Read', '  - Bash(git *)', '  - Bash(unity command *)', '  - Bash(unity recompile *)', '  - mcp__old__*', '---', 'body', ''].join('\n'));
+        const managed = ['mcp__', 'Bash(unity '];
+
+        assertEq('BR-5c', 'the first sync reports a rewrite', await injectToolsIntoSkillFrontmatter(file, ['Bash(unity command *)'], managed), true);
+        const lines = fs.readFileSync(file, 'utf8').split('\n');
+        assertEq('BR-5c', 'a managed entry that is no longer granted is removed, hand-written ones and the order stay',
+            lines.slice(lines.indexOf('allowed-tools:') + 1, lines.indexOf('---', 1)), ['  - Read', '  - Bash(git *)', '  - Bash(unity command *)']);
+        const settled = fs.readFileSync(file, 'utf8');
+        assertEq('BR-5c', 'a second sync writes nothing', [await injectToolsIntoSkillFrontmatter(file, ['Bash(unity command *)'], managed), fs.readFileSync(file, 'utf8') === settled], [false, true]);
+
+        assertEq('BR-5c', 'without the CLI prefix named, an entry of the CLI is left alone',
+            [await injectToolsIntoSkillFrontmatter(file, [], ['mcp__']), fs.readFileSync(file, 'utf8').includes('Bash(unity command *)')], [false, true]);
+    } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+    }
+});
+
+await group('BR-5d', async () => {
+    // The removal treats every entry that starts with a managed prefix as the installer's own, so a
+    // hand-written one in a source skill or subagent would be removed at the next narrowing.
+    const violations = [];
+    let scanned = 0;
+    const sources = [
+        ...filesBelow(path.join(ROOT, 'skills')).filter((file) => file.endsWith('/SKILL.md')),
+        ...filesBelow(path.join(ROOT, 'subagents')).filter((file) => file.endsWith('.md')),
+    ];
+    for (const file of sources) {
+        scanned++;
+        const text = fs.readFileSync(path.join(ROOT, file), 'utf8');
+        for (const head of ['Bash(unity', 'PowerShell(unity']) {
+            if (text.includes(head)) violations.push(`${file}: a hand-written "${head}" entry would be treated as installer-owned`);
+        }
+    }
+    report('BR-5d', 'no source skill or subagent carries a hand-written command-line grant', scanned, violations);
+});
+
 // (groups of later tasks are appended above this line, each under its own banner)
 
 console.log(`\nEngine bridge guards: ${passed} passed, ${failed} failed`);

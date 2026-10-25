@@ -7,7 +7,7 @@ import { getBridgeAdapter } from './bridges/adapter.js';
 import { getEngineConfig } from './engines.js';
 import { isRecord, parseMcpServerEntry } from './mcp-schema.js';
 import { getMcpWriter } from './mcp-writers/index.js';
-import type { BridgeDetect, BridgeRequires, BridgeSetupLine, DocsSource } from './bridges/types.js';
+import type { BridgeCli, BridgeDetect, BridgeRequires, BridgeSetupLine, DocsSource } from './bridges/types.js';
 import { logInfo } from '../utils/log.js';
 
 /** What kind of bridge an entry is: an MCP server, or a command line. */
@@ -70,7 +70,7 @@ export interface McpServerEntry {
    * The platform-independent server config. Optional because a server may ship
    * `configByPlatform` instead (an absolute binary path that differs per OS);
    * exactly one of the two must be present — `scanMcpDirectory` drops entries
-   * carrying neither.
+   * carrying neither. A bridge of kind `cli` carries {@link cli} instead and no config.
    */
   config?: Record<string, unknown>;
   /**
@@ -119,6 +119,8 @@ export interface McpServerEntry {
   requires?: BridgeRequires;
   /** What the wizard may look at, without running anything, to pre-select the bridge. */
   detect?: BridgeDetect;
+  /** The command line of a bridge of kind `cli`: its binary, the project flag and the forms of calling it. Present iff `kind` is `cli`. */
+  cli?: BridgeCli;
 }
 
 export type DiscoveredServers = Map<string, McpServerEntry>;
@@ -282,19 +284,24 @@ const FRONTMATTER_ENTRY_INDENT = '  - ';
  * were dropped from the JSON keep sitting in the installed frontmatter — where
  * they read as permissions the project still confers.
  *
- * So this is a sync, not an append: entries carrying {@link MCP_TOOL_ENTRY_PREFIX}
- * that the current selection does not grant are removed. Hand-authored entries
- * (Read, Bash, Agent, …) have no such prefix and are never touched, and neither
- * is the order of the entries that stay.
+ * So this is a sync, not an append: entries that carry one of the managed
+ * prefixes (`mcp__` for an MCP bridge, `<Shell>(<binary> ` for a command-line
+ * bridge — each kind of bridge names its own) and are not granted by the current
+ * selection are removed. Hand-authored entries (Read, Bash(git *), Agent, …)
+ * start with none of them and are never touched, and neither is the order of
+ * the entries that stay.
  *
  * @param field the frontmatter key holding the list — `allowed-tools:` for
  *              skills, `tools:` for subagents.
+ * @param managedPrefixes the prefixes of the entries the installer owns, see
+ *              `collectManagedGrantPrefixes`.
  * @returns whether the file was rewritten.
  */
 async function syncToolEntriesInFrontmatter(
   filePath: string,
   field: string,
   tools: string[],
+  managedPrefixes: readonly string[],
 ): Promise<boolean> {
   const content = await readTextFile(filePath);
   if (!content) return false;
@@ -333,12 +340,9 @@ async function syncToolEntriesInFrontmatter(
   }
 
   const granted = new Set(tools);
-  const kept = existing.filter(
-    e => !e.value.startsWith(MCP_TOOL_ENTRY_PREFIX) || granted.has(e.value),
-  );
-  const stale = existing.filter(
-    e => e.value.startsWith(MCP_TOOL_ENTRY_PREFIX) && !granted.has(e.value),
-  );
+  const owned = (value: string) => managedPrefixes.some(prefix => value.startsWith(prefix));
+  const kept = existing.filter(e => !owned(e.value) || granted.has(e.value));
+  const stale = existing.filter(e => owned(e.value) && !granted.has(e.value));
 
   const present = new Set(kept.map(e => e.value));
   const added = tools.filter(t => !present.has(t));
@@ -369,12 +373,23 @@ const SKILL_TOOLS_FIELD = 'allowed-tools:';
 /** Frontmatter key holding a subagent's tool list. */
 const AGENT_TOOLS_FIELD = 'tools:';
 
-export async function injectToolsIntoSkillFrontmatter(filePath: string, tools: string[]): Promise<boolean> {
-  return syncToolEntriesInFrontmatter(filePath, SKILL_TOOLS_FIELD, tools);
+/** What the installer owns when the caller names nothing else: the grants of an MCP bridge. */
+const DEFAULT_MANAGED_PREFIXES: readonly string[] = [MCP_TOOL_ENTRY_PREFIX];
+
+export async function injectToolsIntoSkillFrontmatter(
+  filePath: string,
+  tools: string[],
+  managedPrefixes: readonly string[] = DEFAULT_MANAGED_PREFIXES,
+): Promise<boolean> {
+  return syncToolEntriesInFrontmatter(filePath, SKILL_TOOLS_FIELD, tools, managedPrefixes);
 }
 
-export async function injectToolsIntoAgentFrontmatter(filePath: string, tools: string[]): Promise<boolean> {
-  return syncToolEntriesInFrontmatter(filePath, AGENT_TOOLS_FIELD, tools);
+export async function injectToolsIntoAgentFrontmatter(
+  filePath: string,
+  tools: string[],
+  managedPrefixes: readonly string[] = DEFAULT_MANAGED_PREFIXES,
+): Promise<boolean> {
+  return syncToolEntriesInFrontmatter(filePath, AGENT_TOOLS_FIELD, tools, managedPrefixes);
 }
 
 // --- Extension MCP ---

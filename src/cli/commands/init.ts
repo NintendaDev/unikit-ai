@@ -6,6 +6,7 @@ import { resolveSkillPrune } from '../../core/skill-groups.js';
 import { renameSkillNames } from '../../core/skill-renames.js';
 import { buildManagedSubagentsState, installSubagents } from '../../core/installer/subagents.js';
 import { injectMcpRules } from '../../core/installer/mcp-injection.js';
+import { collectManagedGrantPrefixes } from '../../core/bridges/grants.js';
 import { installEngineTemplates, installCliContract, installGateResultContract, installUltraPlanReadContract, installResearchLinkContract, installPlanBoundariesContract, installMergeAnalysisContract, installBalanceHandbackContract, installPrototypeProfileContract, installDevPrinciples, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
 import { installSubagentArgumentsContract, installSubagentRolesContract, installUserQuestionsContract } from '../../core/installer/system-contracts.js';
 import { memoryDir } from '../../core/constants.js';
@@ -214,7 +215,7 @@ export async function initCommand(): Promise<void> {
     // Inject MCP tool permissions
     console.log(chalk.dim('Injecting MCP tool permissions...\n'));
     const mcpAllowedTools = collectMcpRules(discoveredServers, enabledIds);
-    await injectMcpRules(projectDir, installedAgents, mcpAllowedTools);
+    await injectMcpRules(projectDir, installedAgents, mcpAllowedTools, collectManagedGrantPrefixes(discoveredServers));
 
     // The same project-level pass `update` and `extension *` run, after the MCP grants like in `update`.
     if (preservedExtensions.length > 0) {

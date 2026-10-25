@@ -174,7 +174,8 @@ export async function hashInstalledSubagent(filePath: string): Promise<string | 
  * changed MCP selection reinstalls nothing and the grants of a server that was
  * switched off stay in the frontmatter until something else rewrites it. (The
  * injection has had a removal branch since `mcp.ts` learned to strip names no
- * longer granted; the reinstall is what makes it run.)
+ * longer granted; the reinstall is what makes it run. The removal branch owns
+ * the prefixes the adapters name: `mcp__`, and `Bash(<binary> ` for a cli bridge.)
  *
  * This hashes the **input** of the injection, not its output: materialising the
  * final text would mean running the whole pipeline just to decide whether to

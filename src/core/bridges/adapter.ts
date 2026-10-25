@@ -14,6 +14,7 @@
 // data of the catalog entry (`setup[]`), the same shape for every kind.
 
 import type { BridgeKind, McpServerEntry } from '../mcp.js';
+import { cliAdapter } from './adapter-cli.js';
 import { mcpAdapter } from './adapter-mcp.js';
 
 /** Everything the renderer knows about one bridge when it asks the adapter to describe it. */
@@ -36,6 +37,7 @@ export interface BridgeAdapter {
 
 const ADAPTERS: Partial<Record<BridgeKind, BridgeAdapter>> = {
   mcp: mcpAdapter,
+  cli: cliAdapter,
 };
 
 /** The adapter of a kind. An unregistered kind is a programmer error, not a data defect: it throws. */

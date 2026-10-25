@@ -2,7 +2,7 @@
   "key": "coplay-unity-mcp",
   "code": "UnityMCP",
   "is_engine": true,
-  "order": 2,
+  "order": 3,
   "displayName": "Coplay Unity MCP (Unity 2021.3 LTS+)",
   "docs": {
     "context7": "/coplaydev/unity-mcp",

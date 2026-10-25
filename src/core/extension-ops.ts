@@ -22,6 +22,7 @@ import {
   installExtensionSubagents, removeExtensionSubagents,
 } from './installer/extensions.js';
 import { injectMcpRules } from './installer/mcp-injection.js';
+import { collectManagedGrantPrefixes } from './bridges/grants.js';
 import { resolveMcpBridgeCodeForConfig } from './bridges/selection.js';
 import { stripAllInjections } from './injections.js';
 import { collectPointInjectionFiles } from './extension-injections-schema.js';
@@ -72,7 +73,7 @@ async function reinjectSelectionGrants(projectDir: string, config: UniKitConfig)
   if (selectedIds.length === 0) return;
 
   const discoveredServers = await discoverMcpServers(config.engine);
-  await injectMcpRules(projectDir, config.agents, collectMcpRules(discoveredServers, selectedIds));
+  await injectMcpRules(projectDir, config.agents, collectMcpRules(discoveredServers, selectedIds), collectManagedGrantPrefixes(discoveredServers));
 }
 
 /** The extension's own files for one agent: its skills, the replacements of base skills, its subagents. */

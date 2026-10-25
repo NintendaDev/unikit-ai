@@ -99,6 +99,14 @@ function removeDeselectedServers(
   for (const [fileId, storedCode] of Object.entries(storedCodes)) {
     if (enabled.has(fileId)) continue;
 
+    // A bridge that never had an entry in the settings file (a command line) left nothing to remove,
+    // and its code (`unity`) may be the name of an entry somebody else wrote there.
+    const known = discoveredServers.get(fileId);
+    if (known && !getBridgeAdapter(known.kind).registersInSettings) {
+      logInfo('mcp', `deselected ${fileId}: kind ${known.kind} is not registered in settings, nothing to remove`);
+      continue;
+    }
+
     if (liveCodes.has(storedCode)) {
       logInfo('mcp', `deselected ${fileId}: code ${storedCode} is still claimed by the selection, kept`);
       continue;

@@ -12,6 +12,7 @@ import {
 import { installEngineTemplates, installCliContract, installGateResultContract, installUltraPlanReadContract, installResearchLinkContract, installPlanBoundariesContract, installMergeAnalysisContract, installBalanceHandbackContract, installPrototypeProfileContract, installDevPrinciples, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
 import { installSubagentArgumentsContract, installSubagentRolesContract, installUserQuestionsContract } from '../../core/installer/system-contracts.js';
 import { injectMcpRules } from '../../core/installer/mcp-injection.js';
+import { collectManagedGrantPrefixes } from '../../core/bridges/grants.js';
 import { installExtensionSkills, installExtensionSubagents } from '../../core/installer/extensions.js';
 import { syncAllModules } from '../../core/installer/rules-sync.js';
 import { runProjectMemoryMigrations } from '../../core/memory-migrations/index.js';
@@ -240,7 +241,7 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     // Inject MCP tool permissions (after all skills — base + extension — are installed)
     console.log(chalk.dim('Injecting MCP tool permissions...\n'));
     const mcpAllowedTools = collectMcpRules(discoveredServers, enabledIds);
-    await injectMcpRules(projectDir, config.agents, mcpAllowedTools);
+    await injectMcpRules(projectDir, config.agents, mcpAllowedTools, collectManagedGrantPrefixes(discoveredServers));
 
     // Reconcile the agents' MCP settings files. Until 2.0.0 `update` never wrote
     // them at all — `configureMcp` was reachable only from `init` — so the `env`

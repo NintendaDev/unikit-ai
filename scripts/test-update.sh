@@ -2933,5 +2933,129 @@ RENAME_EXT_SHA=$(sha_of "$RENAME_EXT_DIR/.claude/skills/unikit-bridge-trap/SKILL
 assert_same_sha "$RENAME_EXT_DIR/.claude/skills/unikit-bridge-trap/SKILL.md" "$RENAME_EXT_SHA" "rename + extension: a second update keeps the replacement"
 echo "  ✓ skill renames: an extension's replacement of a renamed base skill is put back under the new name"
 
+
+# ─────────────────────────────────────────────
+# Test 36: the grants of a command-line bridge — written for every shell the card names, narrow,
+# never conferred on the roles that must not have them, and removed again when the bridge goes
+# ─────────────────────────────────────────────
+# Unity CLI is the first bridge of kind cli: no entry in the agent's settings file, only frontmatter
+# grants of the form "<Shell>(unity <verb> *)". Removal has to recognise them as the installer's own
+# (the prefix the adapter names), while a hand-written "Bash(git *)" beside them stays.
+
+# Fixed-string assertions: the grants are full of parentheses and asterisks, which assert_contains reads as a regex.
+assert_has_text() {
+    if ! grep -qF "$2" "$1"; then
+        echo "Assertion failed: $3"
+        echo "Text: $2"
+        echo "File: $1"
+        exit 1
+    fi
+}
+assert_lacks_text() {
+    if grep -qF "$2" "$1"; then
+        echo "Assertion failed: $3"
+        echo "Text: $2"
+        echo "File: $1"
+        echo "--- matching lines ---"
+        grep -F "$2" "$1" | head -5
+        echo "----------------------"
+        exit 1
+    fi
+}
+
+CLIGRANT_DIR="$TMPDIR/update-cli-grants"
+mkdir -p "$CLIGRANT_DIR"
+cat > "$CLIGRANT_DIR/.unikit.json" << 'EOF'
+{
+  "version": "3.0.0",
+  "engine": "unity",
+  "mcp": { "servers": {} },
+  "engineBridges": { "selected": { "unity-cli": "unity", "unity-biome-mcp": "unity-biome-mcp" } },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit", "unikit-implement", "unikit-plan", "unikit-bridge-trap"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": { "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } } }
+}
+EOF
+inject_fake_registry "$CLIGRANT_DIR"
+CLIGRANT_OUT1="$TMPDIR/update-cli-grants-1.log"
+(cd "$CLIGRANT_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$CLIGRANT_OUT1" 2>&1)
+
+CLIGRANT_IMPL="$CLIGRANT_DIR/.claude/skills/unikit-implement/SKILL.md"
+CLIGRANT_PLAN="$CLIGRANT_DIR/.claude/skills/unikit-plan/SKILL.md"
+CLIGRANT_TRAP="$CLIGRANT_DIR/.claude/skills/unikit-bridge-trap/SKILL.md"
+CLIGRANT_UNIKIT="$CLIGRANT_DIR/.claude/skills/unikit/SKILL.md"
+for skill_file in "$CLIGRANT_IMPL" "$CLIGRANT_PLAN" "$CLIGRANT_TRAP" "$CLIGRANT_UNIKIT"; do
+    assert_exists "$skill_file" "cli grants: $(basename "$(dirname "$skill_file")") must be installed for the grant test"
+done
+for verb in command status recompile test --version; do
+    assert_has_text "$CLIGRANT_IMPL" "Bash(unity $verb *)" "cli grants: unikit-implement may run 'unity $verb' through Bash"
+    assert_has_text "$CLIGRANT_IMPL" "PowerShell(unity $verb *)" "cli grants: ...and through PowerShell"
+done
+assert_contains "$CLIGRANT_IMPL" 'mcp__unity-biome-mcp__\*' "cli grants: the MCP bridge beside it is granted as before"
+assert_has_text "$CLIGRANT_IMPL" 'Bash(git *)' "cli grants: a hand-written entry stays"
+assert_lacks_text "$CLIGRANT_IMPL" 'pipeline' "cli grants: no pipeline verb is granted to anyone"
+assert_has_text "$CLIGRANT_PLAN" 'Bash(unity list *)' "cli grants: the planner reads the live catalog"
+assert_has_text "$CLIGRANT_PLAN" 'PowerShell(unity list *)' "cli grants: ...through either shell"
+assert_lacks_text "$CLIGRANT_PLAN" 'Bash(unity command' "cli grants: the planner calls no command"
+assert_lacks_text "$CLIGRANT_TRAP" 'Bash(unity' "cli grants: the trap skill has none (it makes no calls)"
+assert_has_text "$CLIGRANT_UNIKIT" 'Bash(unity --version *)' "cli grants: /unikit may ask the CLI for its version"
+assert_has_text "$CLIGRANT_UNIKIT" 'Bash(unity status *)' "cli grants: ...and for its status"
+if [[ -f "$CLIGRANT_DIR/.mcp.json" ]] && grep -qF '"unity"' "$CLIGRANT_DIR/.mcp.json"; then
+    echo "Assertion failed: a command-line bridge was registered in .mcp.json"
+    exit 1
+fi
+
+# Idempotence on the full selection: a second update changes nothing it wrote.
+CLIGRANT_IMPL_SHA=$(sha_of "$CLIGRANT_IMPL")
+CLIGRANT_CFG_SHA=$(sha_of "$CLIGRANT_DIR/.unikit.json")
+(cd "$CLIGRANT_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/update-cli-grants-2.log" 2>&1)
+assert_same_sha "$CLIGRANT_IMPL" "$CLIGRANT_IMPL_SHA" "cli grants: a second update leaves the executor skill byte-identical (no duplicated entries)"
+assert_same_sha "$CLIGRANT_DIR/.unikit.json" "$CLIGRANT_CFG_SHA" "cli grants: ...and the config"
+CLIGRANT_COUNT=$(grep -cF 'Bash(unity command *)' "$CLIGRANT_IMPL" || true)
+if [[ "$CLIGRANT_COUNT" != "1" ]]; then
+    echo "Assertion failed: Bash(unity command *) appears $CLIGRANT_COUNT times in $CLIGRANT_IMPL, expected 1"
+    exit 1
+fi
+
+# The SAME selection, but the catalog narrows: the card loses the "recompile" verb. The selection hash
+# does not move (it hashes the input of the injection), so nothing reinstalls; only the removal branch can
+# take the entry away, and it can do that only because it owns the prefix of the cli kind.
+CLIGRANT_BRIDGES="$TMPDIR/update-cli-grants-catalog"
+cp -r "$ROOT_DIR/engine-bridges" "$CLIGRANT_BRIDGES"
+CARD="$CLIGRANT_BRIDGES/unity/unity-cli.json" node -e "
+    const fs=require('fs'); const f=process.env.CARD;
+    const c=JSON.parse(fs.readFileSync(f,'utf8'));
+    for (const [name,verbs] of Object.entries(c['allowed-tools'].skills)) c['allowed-tools'].skills[name]=verbs.filter(v=>v!=='recompile');
+    fs.writeFileSync(f, JSON.stringify(c,null,2));
+"
+(cd "$CLIGRANT_DIR" && UNIKIT_BRIDGES_DIR="$CLIGRANT_BRIDGES" node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/update-cli-grants-3.log" 2>&1)
+assert_lacks_text "$CLIGRANT_IMPL" 'unity recompile' "cli grants: a verb the card dropped is removed from the installed skill (managed prefix)"
+assert_has_text "$CLIGRANT_IMPL" 'Bash(unity command *)' "cli grants: ...and the others stay"
+assert_has_text "$CLIGRANT_IMPL" 'Bash(git *)' "cli grants: ...and the hand-written entry"
+
+# The CLI is deselected, Biome stays: every entry of the CLI disappears everywhere, the MCP grants stay.
+CONFIG="$CLIGRANT_DIR/.unikit.json" node -e "
+    const fs=require('fs'); const f=process.env.CONFIG;
+    const c=JSON.parse(fs.readFileSync(f,'utf8'));
+    c.engineBridges = { selected: { 'unity-biome-mcp': 'unity-biome-mcp' } };
+    fs.writeFileSync(f, JSON.stringify(c,null,2));
+"
+(cd "$CLIGRANT_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/update-cli-grants-4.log" 2>&1)
+for skill_file in "$CLIGRANT_IMPL" "$CLIGRANT_PLAN" "$CLIGRANT_UNIKIT"; do
+    skill_label=$(basename "$(dirname "$skill_file")")
+    assert_lacks_text "$skill_file" 'Bash(unity' "cli grants: after deselecting the CLI no Bash(unity entry survives in $skill_label"
+    assert_lacks_text "$skill_file" 'PowerShell(unity' "cli grants: ...nor a PowerShell(unity entry in $skill_label"
+done
+assert_contains "$CLIGRANT_IMPL" 'mcp__unity-biome-mcp__\*' "cli grants: the MCP bridge that stays keeps its grants"
+assert_has_text "$CLIGRANT_IMPL" 'Bash(git *)' "cli grants: the hand-written entry survives the removal"
+echo "  ✓ cli grants: per shell, narrow, absent for the trap skill, idempotent, narrowed and removed through the managed prefix"
+
 echo ""
 echo "update smoke tests passed"

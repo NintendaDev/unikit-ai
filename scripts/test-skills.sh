@@ -553,7 +553,7 @@ for mcp_file in "$BRIDGES_DIR"/unity/*.json; do
     fname=$(basename "$mcp_file")
     if validate_json "$mcp_file"; then
         HAS_FIELDS=$(json_field "$mcp_file" \
-          "m.key && m.displayName && (m.config || m.configByPlatform) ? 'ok' : 'missing'" 2>/dev/null || echo "missing")
+          "m.key && m.displayName && (m.config || m.configByPlatform || (m.kind === 'cli' && m.cli && m.cli.binary)) ? 'ok' : 'missing'" 2>/dev/null || echo "missing")
         if [[ "$HAS_FIELDS" == "ok" ]]; then
             KEY_VAL=$(json_field "$mcp_file" "m.key" 2>/dev/null)
             pass "engine-bridges/unity/$fname (valid structure, key=$KEY_VAL)"
@@ -576,7 +576,7 @@ for mcp_file in "$BRIDGES_DIR"/godot/*.json; do
     fname=$(basename "$mcp_file")
     if validate_json "$mcp_file"; then
         HAS_FIELDS=$(json_field "$mcp_file" \
-          "m.key && m.displayName && (m.config || m.configByPlatform) ? 'ok' : 'missing'" 2>/dev/null || echo "missing")
+          "m.key && m.displayName && (m.config || m.configByPlatform || (m.kind === 'cli' && m.cli && m.cli.binary)) ? 'ok' : 'missing'" 2>/dev/null || echo "missing")
         if [[ "$HAS_FIELDS" == "ok" ]]; then
             KEY_VAL=$(json_field "$mcp_file" "m.key" 2>/dev/null)
             pass "engine-bridges/godot/$fname (valid structure, key=$KEY_VAL)"
@@ -595,7 +595,7 @@ fi
 if [[ -f "$BRIDGES_DIR/unreal-engine-5/chir24-unreal-mcp.json" ]]; then
     if validate_json "$BRIDGES_DIR/unreal-engine-5/chir24-unreal-mcp.json"; then
         HAS_FIELDS=$(json_field "$BRIDGES_DIR/unreal-engine-5/chir24-unreal-mcp.json" \
-          "m.key && m.displayName && (m.config || m.configByPlatform) ? 'ok' : 'missing'" 2>/dev/null || echo "missing")
+          "m.key && m.displayName && (m.config || m.configByPlatform || (m.kind === 'cli' && m.cli && m.cli.binary)) ? 'ok' : 'missing'" 2>/dev/null || echo "missing")
         if [[ "$HAS_FIELDS" == "ok" ]]; then
             KEY_VAL=$(json_field "$BRIDGES_DIR/unreal-engine-5/chir24-unreal-mcp.json" "m.key" 2>/dev/null)
             IS_ENGINE=$(json_field "$BRIDGES_DIR/unreal-engine-5/chir24-unreal-mcp.json" "m.is_engine === true ? 'true' : 'false'" 2>/dev/null)
@@ -730,6 +730,23 @@ MCP_SCHEMA_RESULT=$(node -e "
       }
       if (m.is_engine === true && !(m.docs && typeof m.docs.repo==='string' && m.docs.repo))
         why.push('engine-without-docs-repo:'+rel);
+
+      // A bridge of kind cli registers nothing and carries no config: it must name its binary, the flag
+      // that addresses a project, and a call form; and what it grants are verbs, never masks (the
+      // adapter writes the mask itself).
+      if (m.kind !== undefined && m.kind !== 'mcp' && m.kind !== 'cli') why.push('unknown-kind:'+m.kind+':'+rel);
+      if (m.kind === 'cli') {
+        const c=m.cli;
+        if (typeof c!=='object'||c===null||Array.isArray(c)) why.push('cli-block-missing:'+rel);
+        else {
+          for (const k of ['binary','projectFlag']) if (typeof c[k]!=='string'||!c[k]) why.push('cli-'+k+'-missing:'+rel);
+          if (typeof c.forms!=='object'||c.forms===null||typeof c.forms.call!=='string') why.push('cli-forms-call-missing:'+rel);
+        }
+        const grants=m['allowed-tools']||{};
+        for (const bucket of ['agents','skills'])
+          for (const [who,names] of Object.entries(grants[bucket]||{}))
+            for (const n of names) if (String(n).includes('*')) why.push('cli-wildcard-grant:'+who+':'+n+':'+rel);
+      }
 
       if (m.rules !== undefined) {
         if (typeof m.rules!=='string'||!m.rules) why.push('rules-not-string:'+rel);
