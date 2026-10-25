@@ -1694,6 +1694,27 @@ await group('RG-2', async () => {
         [Object.keys(registry.skills).length + withoutAnchor.length, withoutAnchor.some((name) => registry.skills[name] !== undefined)], [total, false]);
 });
 
+// ── BR-10e: the value of the `Editor tasks` setting is spelled the 3.0.0 way by everyone who writes or reads it ──
+//
+// The planner writes `engine-bridge`; the executors and verify read it (and read the 2.x `mcp` as the same
+// value, by saying so once). A reader that lists `mcp` as THE value would send a 3.0.0 plan down the
+// "unknown setting" path, and nothing else in the suite would notice.
+
+await group('BR-10e', async () => {
+    const owners = [
+        'skills/unikit-implement/SKILL.md', 'skills/unikit-verify/SKILL.md', 'skills/unikit-plan/SKILL.md',
+        'skills/unikit-plan/references/mode-fast.md', 'skills/unikit-plan/references/mode-full.md',
+        'skills/unikit-plan/references/ultra-stateful.md', 'skills/unikit-plan/references/TASK-FORMAT.md',
+    ];
+    const violations = [];
+    for (const rel of owners) {
+        const text = readRepo(rel);
+        if (!/Editor tasks:\s*`?<?engine-bridge/.test(text)) violations.push(`${rel}: does not spell the value engine-bridge`);
+        if (/Editor tasks:\s*`?<?mcp\b/.test(text)) violations.push(`${rel}: still lists mcp as the value of Editor tasks`);
+    }
+    report('BR-10e', 'every text that writes or reads the Editor tasks setting spells the 3.0.0 value', owners.length, violations);
+});
+
 // (groups of later tasks are appended above this line, each under its own banner)
 
 console.log(`\nEngine bridge guards: ${passed} passed, ${failed} failed`);
