@@ -45,7 +45,7 @@ Goal: make an item's value readable at a glance without opening its tooltip.
 - Testing: yes
 - Test checkpoints: phase
 - Docs: no
-- Editor tasks: mcp
+- Editor tasks: engine-bridge
 
 ## Checklist
 
@@ -148,12 +148,12 @@ A plan that carries at least one `Editor:` task also carries a `## Engine Bridge
 ```markdown
 ## Engine Bridge Findings
 
-| id | area | confirm that | observed | evidence | from |
-|---|---|---|---|---|---|
-| F1 | rollback | the snapshot captured more than zero files | 2026-08-18 | `<call>(paths="...")` → `state=ready files=0` | task 2.3 |
+| id | area | confirm that | observed | evidence | from | bridge |
+|---|---|---|---|---|---|---|
+| F1 | rollback | the snapshot captured more than zero files | 2026-08-18 | `<call>(paths="...")` → `state=ready files=0` | task 2.3 | unity-biome-mcp |
 ```
 
-A row is written when an engine MCP call **misled** you — it reported success while changing nothing, ate an argument, or validated a broken state.
+A row is written when a call through an engine bridge **misled** you — it reported success while changing nothing, ate an argument, or validated a broken state.
 
 | column | what goes in it |
 |--------|-----------------|
@@ -163,14 +163,17 @@ A row is written when an engine MCP call **misled** you — it reported success 
 | `observed` | the date it was observed, written by whoever observed it |
 | `evidence` | the raw call and the raw answer. The one column where a tool name is legitimate |
 | `from` | the task that observed it |
+| `bridge` | the id of the bridge whose call misled, as `BRIDGES.md` lists it, so the row can be filed in the notes of that bridge and no other; `—` when the writer cannot tell (`/unikit-bridge-trap` then takes the only MCP bridge, or asks which) |
+
+A plan from a 2.x project has the heading `## MCP Findings` and six columns; `unikit-ai update` rewrites it (archived plans too) with a `bridge` column - the server the plan had when that was the only one selected for an unfinished plan, `—` otherwise - and the rewrite stays in your working tree, uncommitted. A reader treats a missing column as `—`.
 
 Three rules make this work:
 
 - **The row is written at the task, not at the end of the run** — by the same edit that ticks the checkbox. A table filled only in the closing report is lost to every `/clear`, which is exactly the moment a long run is most likely to end.
-- **Five writers, one table.** `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, plus `unikit-implement-worker` and `unikit-implement-coordinator` when the plan runs in parallel. None of them writes `.unikit/MCP-RECHECK-NOTES.md` directly: one observation is a bad sample, and a bad line lives for months, so the durable surface passes through a human.
+- **Five writers, one table.** `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, plus `unikit-implement-worker` and `unikit-implement-coordinator` when the plan runs in parallel. None of them writes `.unikit/bridge-notes/<bridge>.md` directly: one observation is a bad sample, and a bad line lives for months, so the durable surface passes through a human.
 - **The table is read through a window.** `/unikit-bridge-trap` reads from the heading to the next `##` and opens no other part of the plan — so keep the heading at `##`, keep it above `## Technical Context`, and never nest the table inside another section.
 
-At the end of a run `/unikit-implement` offers to hand the plan to `/unikit-bridge-trap`, which turns accepted rows into entries in `.unikit/MCP-RECHECK-NOTES.md`. See [Engine-MCP rules tree](configuration.md#engine-mcp-rules-tree).
+At the end of a run `/unikit-implement` offers to hand the plan to `/unikit-bridge-trap`, which turns accepted rows into entries in the notes of the bridge each row names (`.unikit/bridge-notes/<bridge>.md`). See [Engine bridge rules trees](configuration.md#engine-bridge-rules-trees).
 
 #### `## Rule Candidates` — a rule proposed, never written behind your back
 
@@ -445,26 +448,26 @@ The naming of `<container>` and `<target>` is engine-specific and comes from the
 
 | Setting | Written by | Read by |
 |---------|-----------|---------|
-| `Editor tasks: mcp \| manual \| direct` | `/unikit-plan` | `/unikit-implement` |
+| `Editor tasks: engine-bridge \| manual \| direct` | `/unikit-plan` | `/unikit-implement` |
 
 `Editor tasks` decides how the editor work is actually carried out:
 
-- **`mcp`** — through the engine MCP server. Chosen **silently** when an engine MCP is configured; you are not asked.
+- **`engine-bridge`** — through the engine bridges, in the order the project sets (`engine_bridges.order` in `.unikit/config.yaml`). Chosen **silently** when `BRIDGES.md` lists at least one bridge; you are not asked. A plan that says `mcp` (2.x) is read as `engine-bridge`.
 - **`manual`** — nothing is touched. The task is marked `⏸️ MANUAL` and you get the exact instruction in `[kind] container → target : action` form. `/unikit-verify` reports these but never treats them as blockers.
 - **`direct`** — the serialized file is edited as text. Offered **only** where the engine's format tolerates it, and `/unikit-implement` always makes sure there is a commit to return to first. On Unreal Engine 5 the format tolerates it nowhere except `Config/Default*.ini` — every level and asset is binary — so `direct` is effectively an `.ini`-only route there.
 
-  `/unikit-implement` reads the feasibility ratings out of §6 of the **`/unikit-plan` skill's** installed `ENGINE_RULES.md`, since it has no engine template of its own. If that file is not there — you installed a subset of skills without `/unikit-plan`, or a future engine's slot has no template written for it yet — the gate **fails closed**: every format is treated as 🔴, `direct` is refused, and the task goes back to `manual` with the reason stated. This is the one place an absent file removes a right rather than leaving it untouched, and deliberately so: what is missing is permission for an irreversible text edit of a possibly-binary format, not a rule that would grant a capability. The `mcp` route is unaffected.
+  `/unikit-implement` reads the feasibility ratings out of §6 of the **`/unikit-plan` skill's** installed `ENGINE_RULES.md`, since it has no engine template of its own. If that file is not there — you installed a subset of skills without `/unikit-plan`, or a future engine's slot has no template written for it yet — the gate **fails closed**: every format is treated as 🔴, `direct` is refused, and the task goes back to `manual` with the reason stated. This is the one place an absent file removes a right rather than leaving it untouched, and deliberately so: what is missing is permission for an irreversible text edit of a possibly-binary format, not a rule that would grant a capability. The `engine-bridge` route is unaffected.
 
-When no engine MCP is configured, `/unikit-plan` asks which of `manual` / `direct` you want.
+When no engine bridge is configured, `/unikit-plan` asks which of `manual` / `direct` you want.
 
-### What `mcp` does not promise
+### What an engine bridge does not promise
 
-`Editor tasks: mcp` says the work goes **through** the engine MCP server. It does not promise that every target succeeds, and this file deliberately carries no table of which server can do what: such a table is a claim about six moving servers, and it was measured wrong in every row of its own predecessor within four weeks.
+`Editor tasks: engine-bridge` says the work goes **through** the engine bridges. It does not promise that every target succeeds, and this file deliberately carries no table of which bridge can do what: such a table is a claim about seven moving tools, and it was measured wrong in every row of its own predecessor within four weeks.
 
 What holds instead:
 
 - The candidate affordances come from the **live catalog**, asked per task — never from a stored list of names, and never from memory.
-- A rules tree, where the selected server has one, adds **checks** on top of that: what to confirm, by area. It never removes a right. Its absence means no known exceptions, not no capabilities — see [Engine-MCP rules tree](configuration.md#engine-mcp-rules-tree).
+- A rules tree, where a selected bridge has one, adds **checks** on top of that: what to confirm, by area. It never removes a right. Its absence means no known exceptions, not no capabilities — see [Engine bridge rules trees](configuration.md#engine-bridge-rules-trees).
 - `⏸️ MANUAL` is reached by **trying and finding no route**, with the evidence of that absence to show. Never by an absent rules file, never by an absent table row.
 
 ### `<ENGINE>_RULES.md` — the planning vocabulary
@@ -487,7 +490,7 @@ The boundary against the rules registry is exact: **the registry says HOW to wri
 | Godot 4 .NET | ✅ | §4 is a stub; §2 differs from Godot (C# sources, `.csproj`) |
 | Unreal Engine 5 | ✅ | §4 is a stub; §6 rates every level and asset 🔴, so `direct` is offered for `settings` targets in `.ini` only |
 
-This table is about **the vocabularies this project writes**, not about what an engine MCP server can do — that distinction is the whole reason [What `mcp` does not promise](#what-mcp-does-not-promise) above refuses to carry a per-server capability table, and it is what keeps this one from turning into that one.
+This table is about **the vocabularies this project writes**, not about what an engine bridge can do — that distinction is the whole reason [What an engine bridge does not promise](#what-an-engine-bridge-does-not-promise) above refuses to carry a per-bridge capability table, and it is what keeps this one from turning into that one.
 
 **If a future engine gets a slot before its vocabulary is written**, the degradation is normal, not an error: `/unikit-plan` generates no `Editor:` fields at all, omits the `Editor tasks` setting, and tells you so at confirmation — `Engine rules: ENGINE_RULES.md not found, Editor: fields skipped`.
 
@@ -669,7 +672,7 @@ The rule is about the **class** of artifact, not a list of exceptions: a list wo
 
 ### /unikit-plan → /unikit-implement
 
-Plan creates one manifest — `.unikit/code/PLAN.md` for a fast plan, `.unikit/code/plans/<folder>/PLAN.md` for a folder plan — carrying the checklist and `## Technical Context` in the same file. Implement discovers plans via the [Plan Discovery](#plan-discovery) priority order, reads the checklist for task ordering and the technical context alongside it, Bootstraps rules + engine principles once, then executes tasks sequentially inline (`Read/Edit/Write/Bash`). Parallel phases and deep-dive tasks are offloaded to the `develop-agent` alias. After each task, implement marks `- [x]` in the plan file. After phase completion: compilation check (engine MCP), optional tests, commit checkpoint.
+Plan creates one manifest — `.unikit/code/PLAN.md` for a fast plan, `.unikit/code/plans/<folder>/PLAN.md` for a folder plan — carrying the checklist and `## Technical Context` in the same file. Implement discovers plans via the [Plan Discovery](#plan-discovery) priority order, reads the checklist for task ordering and the technical context alongside it, Bootstraps rules + engine principles once, then executes tasks sequentially inline (`Read/Edit/Write/Bash`). Parallel phases and deep-dive tasks are offloaded to the `develop-agent` alias. After each task, implement marks `- [x]` in the plan file. After phase completion: compilation check (engine bridge), optional tests, commit checkpoint.
 
 In an [ultra bundle](#ultra-bundle--a-manifest-plus-one-file-per-phase) the depths differ per consumer: implement reads the manifest plus the phase file of the **active task**; verify reads the manifest plus the phase files of the phases with executed tasks (an unfinished plan is not read past what was done), and improve reads the manifest plus **every** phase file; commit reads the manifest plus the phase files of the current commit group; and `unikit-implement-coordinator` — the parallel execution path, a separate entry point that does its own detection — reads the manifest plus the phase files of the phases it dispatches in the current layer. The full table lives in `.unikit/system/ultra-plan-read.md`.
 

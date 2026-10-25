@@ -93,7 +93,7 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     // Re-read the config: from Phase 1 on the chain rewrites `.unikit.json`
     // itself (the MCP steps convert `mcp.servers` and rename its keys), so the
     // object loaded above is a snapshot of the PRE-migration file. Every
-    // consumer below — `resolveSelectedEngineServer`, the engine-MCP tree
+    // consumer below — `recomputeSelection`, the bridge layer
     // delivery, the settings reconciliation — must see the migrated form.
     //
     // This is the same class of ordering bug as the `swapMcpRecheckNotes` call

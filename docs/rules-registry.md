@@ -470,7 +470,7 @@ scripts/
 │   ├── gamedesign/                      # Game-design module fixtures (incl. the defective-gdd corpus)
 │   ├── cross-module-collision/          # One id present in two modules → ambiguous `rules show`
 │   ├── offline-official/                # Valid but module-less manifest - keeps the official level offline
-│   └── mcp/                             # Fake MCP catalogs for installer behaviour tests (UNIKIT_MCP_DIR)
+│   └── mcp/                             # Fake MCP catalogs for installer behaviour tests (UNIKIT_MCP_DIR, UNIKIT_BRIDGES_DIR)
 ├── test-rules-list.sh                   # `rules list` - all-modules blocks, flat-all/flat-single JSON, exit codes, --engine override
 ├── test-rules-show.sh                   # `rules show` - module-agnostic lookup, id normalization, --references expansion
 ├── test-rules-status.sh                 # `rules status` - populated state, registryKind, --check-updates guard

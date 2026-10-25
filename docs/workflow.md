@@ -357,11 +357,11 @@ Plan resolution priority: `@<path>` argument, feature name match, then (with no 
 
 Resolves the plan, reads its manifest and then the project's skill-context rules. Bootstraps rules and engine principles once (`.unikit/system/dev-principles.md` + core rules) and executes tasks inline with `Read/Edit/Write/Bash`, marking progress in real time. Spawns the `develop-agent` alias only for true parallel scopes or deep-dive single tasks. Falls back to FIX_PLAN.md only when no feature plan exists - then it redirects to `/unikit-fix`. Supports selective execution by phase, task numbers, or feature name.
 
-Tasks carrying an `Editor:` line target the editor's serialized state rather than source files, and `Editor tasks` decides how they run: `mcp` through the engine MCP server (chosen silently when one is configured), `manual` — nothing is touched, the task is marked `⏸️ MANUAL` and you get the exact instruction, or `direct` — the serialized file is edited as text once there is a git commit to return to. See [Editor tasks](plan-files.md#editor-tasks).
+Tasks carrying an `Editor:` line target the editor's serialized state rather than source files, and `Editor tasks` decides how they run: `engine-bridge` through the engine bridges (chosen silently when `BRIDGES.md` lists one; which bridge is used first is your setting, `engine_bridges.order`), `manual` — nothing is touched, the task is marked `⏸️ MANUAL` and you get the exact instruction, or `direct` — the serialized file is edited as text once there is a git commit to return to. See [Editor tasks](plan-files.md#editor-tasks).
 
 After phase completion:
 
-- Runs compilation check (through the engine MCP server)
+- Runs compilation check (through the engine bridges)
 - Writes tests for the logic if `Testing: yes` — inside the tasks that introduce them, and before the phase's test checkpoint, so its run covers them. What gets a test, and what never does, is described under [Tests follow acceptance](#tests-follow-acceptance) below
 - Runs tests only in **test-checkpoint tasks**, placed by the plan under its `Test checkpoints:` policy; when the call covers two or more of them, it asks once whether to run the tests once at the last point or at every point (words in the call answer it in advance). Under `Testing: yes` the plan's last task is a full run; a phase checkpoint runs every test unless `testing.run.use_affected_modules` narrows it, and the final run is closed by reuse when the code has not changed since the last run of every test. A run's scope is closed before its first launch, and a repeat after red is one launch of the whole scope
 - Creates commit checkpoint
@@ -372,7 +372,7 @@ Post-completion, in order:
 - Proposes candidate rules **as a question** and records only the ones you pick. No skill appends to `.unikit/RULES.md` on its own; candidates live in the plan's `## Rule Candidates` section and survive a `/clear`
 - Triggers documentation checkpoint if `Docs: yes`
 - Decides what to do with the plan file
-- **Offers to move MCP findings to the durable log** - if the plan's `## Engine Bridge Findings` table has rows, hands the plan path to `/unikit-bridge-trap`; if it has none, says nothing at all. This comes *before* review and commit on purpose: findings are the only part of a run with no other keeper, and placed after a code-quality discussion they end up "later"
+- **Offers to move engine bridge findings to the durable log** - if the plan's `## Engine Bridge Findings` table has rows, hands the plan path to `/unikit-bridge-trap`; if it has none, says nothing at all. This comes *before* review and commit on purpose: findings are the only part of a run with no other keeper, and placed after a code-quality discussion they end up "later"
 - Offers `/unikit-review` then `/unikit-commit` - **invoked as skills, in your session**, not delegated to a subagent. That distinction is real: a subagent carries findings into a context you cannot see, `file:line` references stop being clickable, and you cannot ask a follow-up question about a finding. Of the post-completion steps only the documentation checkpoint is delegated (to `docs-agent`), because its output is a file rather than a conversation
 
 #### Tests follow acceptance
@@ -452,9 +452,9 @@ Reports include concrete code fixes for Critical/Warning items. Commits mode als
 
 Goes through every task in the plan and verifies the code actually implements it. Runs per-phase Explore agents for completion audit. Checks:
 
-- Engine compilation (through the engine MCP server)
+- Engine compilation (through the engine bridges; a gate is lifted only after it was tried on every available bridge)
 - Tests — the run recorded in the plan's `## Test Runs`, checked against the current code; verify starts no test run itself
-- Editor targets — read back through the engine MCP, not Glob/Grep (a task with an `Editor:` line has no implementing source to find)
+- Editor targets — read back through the engine bridges, not Glob/Grep (a task with an `Editor:` line has no implementing source to find)
 - Engine-specific checks from the skill's `ENGINE_RULES.md` (on Unity: `.meta` file pairing, asmdef boundaries)
 - Leftover TODOs/FIXMEs
 - Plan-vs-code drift
@@ -489,7 +489,7 @@ While a merge is in progress it never splits the commit — not even a split the
 /unikit-archive inventory-system
 ```
 
-A folder plan is never deleted, so `.unikit/code/plans/` keeps growing and every finished plan stays in the "latest plan" choice. `/unikit-archive` moves a plan whose checklist is fully `[x]` (or, if you explicitly choose it, an unfinished one, marked as such in its manifest) to `.unikit/code/archive/plans/<folder>/` - with `git mv` when the folder is tracked, plain `mv` otherwise - and adds an `Archived:` line to its manifest. MCP findings nobody transferred and rule candidates nobody proposed do not block it: it shows them and asks whether to handle them first or archive anyway. It never commits. `/unikit-implement` names it once the whole plan is done.
+A folder plan is never deleted, so `.unikit/code/plans/` keeps growing and every finished plan stays in the "latest plan" choice. `/unikit-archive` moves a plan whose checklist is fully `[x]` (or, if you explicitly choose it, an unfinished one, marked as such in its manifest) to `.unikit/code/archive/plans/<folder>/` - with `git mv` when the folder is tracked, plain `mv` otherwise - and adds an `Archived:` line to its manifest. Engine bridge findings nobody transferred and rule candidates nobody proposed do not block it: it shows them and asks whether to handle them first or archive anyway. It never commits. `/unikit-implement` names it once the whole plan is done.
 
 ---
 

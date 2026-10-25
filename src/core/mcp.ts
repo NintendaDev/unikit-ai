@@ -171,7 +171,7 @@ export async function discoverMcpServers(engineId: string): Promise<DiscoveredSe
     merged.set(fileId, entry);
   }
 
-  // Validate: at least one engine MCP
+  // Validate: at least one engine bridge
   const engineMcps = getEngineMcpServers(merged);
   if (engineMcps.length === 0) {
     throw new Error(`MCP: engine "${engineId}" has no entry with is_engine=true under engine-bridges/${bridgesDir}`);
