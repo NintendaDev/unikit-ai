@@ -170,7 +170,7 @@ cat > "$EXT_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -314,7 +314,7 @@ cat > "$REPLACE_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -391,6 +391,75 @@ assert_not_contains "$REPLACE_PROJECT/.claude/skills/unikit-commit/SKILL.md" \
 echo "  ✓ replaces: base skill restored after extension removal"
 
 # ─────────────────────────────────────────────────────
+# Test 10b: a manifest that names a RENAMED base skill is read under the new name
+# ─────────────────────────────────────────────────────
+# unikit-mcp-trap / unikit-mcp-audit became unikit-bridge-trap / unikit-bridge-audit in 3.0.0. An extension
+# written for the old names (a replacement of the trap skill, an injection into the audit skill) keeps
+# working: its manifest is translated at every read, one warning per name asks the author to update it,
+# and the record the project keeps names the base skill under its new name.
+
+RENAMED_EXT_DIR="$TMPDIR/ext-names-renamed-skills"
+mkdir -p "$RENAMED_EXT_DIR/skills/trap"
+cat > "$RENAMED_EXT_DIR/extension.json" << 'EOF'
+{
+  "name": "ext-old-names",
+  "version": "1.0.0",
+  "replaces": { "skills/trap": "unikit-mcp-trap" },
+  "injections": [
+    { "target": "unikit-mcp-audit", "targetType": "skill", "point": "bootstrap", "id": "note", "file": "inject.md" }
+  ]
+}
+EOF
+printf -- '---\nname: unikit-mcp-trap\ndescription: Trap replaced by an extension\n---\n\n# Custom Trap (from extension)\n' > "$RENAMED_EXT_DIR/skills/trap/SKILL.md"
+printf 'EXT_NOTE_FOR_THE_AUDIT_SKILL\n' > "$RENAMED_EXT_DIR/inject.md"
+
+RENAMED_EXT_PROJECT="$TMPDIR/test-ext-old-names-project"
+mkdir -p "$RENAMED_EXT_PROJECT"
+cat > "$RENAMED_EXT_PROJECT/.unikit.json" << 'EOF'
+{
+  "version": "3.0.0",
+  "language": "en",
+  "engine": "unity",
+  "engineBridges": {"selected": {}},
+  "mcp": { "servers": {} },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit", "unikit-bridge-trap", "unikit-bridge-audit"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": { "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } } }
+}
+EOF
+inject_fake_registry "$RENAMED_EXT_PROJECT"
+(cd "$RENAMED_EXT_PROJECT" && node "$ROOT_DIR/dist/cli/index.js" update > /dev/null 2>&1)
+
+RENAMED_EXT_OUT="$TMPDIR/ext-old-names-add.log"
+(cd "$RENAMED_EXT_PROJECT" && node "$ROOT_DIR/dist/cli/index.js" extension add "$RENAMED_EXT_DIR" > "$RENAMED_EXT_OUT" 2>&1)
+
+assert_contains "$RENAMED_EXT_OUT" 'names the renamed skill "unikit-mcp-trap"' "renamed names: the replaced skill is announced once so the author updates the manifest"
+assert_contains "$RENAMED_EXT_OUT" 'names the renamed skill "unikit-mcp-audit"' "renamed names: the injection target is announced too"
+assert_contains "$RENAMED_EXT_PROJECT/.claude/skills/unikit-bridge-trap/SKILL.md" 'Custom Trap \(from extension\)' \
+  "renamed names: the replacement landed under the NEW base name"
+assert_not_exists "$RENAMED_EXT_PROJECT/.claude/skills/unikit-mcp-trap" "renamed names: nothing was installed under the old name"
+assert_contains "$RENAMED_EXT_PROJECT/.claude/skills/unikit-bridge-audit/SKILL.md" 'EXT_NOTE_FOR_THE_AUDIT_SKILL' \
+  "renamed names: the injection found its anchor in the renamed skill"
+RENAMED_EXT_RECORD=$(node -e "
+  const c = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
+  const ext = (c.extensions || []).find(e => e.name === 'ext-old-names');
+  console.log(ext && ext.replacedSkills ? Object.keys(ext.replacedSkills).join(',') : 'none');
+" "$RENAMED_EXT_PROJECT/.unikit.json")
+if [[ "$RENAMED_EXT_RECORD" == "unikit-bridge-trap" ]]; then
+  echo "  ✓ renamed names: replacements and injections of an old manifest follow the renamed base skills"
+else
+  echo "Assertion failed: the record should name the base skill under its new name, got: $RENAMED_EXT_RECORD"
+  exit 1
+fi
+
+# ─────────────────────────────────────────────────────
 # Test 11: MCP servers from extension
 # ─────────────────────────────────────────────────────
 
@@ -402,7 +471,7 @@ cat > "$MCP_EXT_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -451,7 +520,7 @@ cat > "$MCP_EXT_CODEX_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -508,7 +577,7 @@ cat > "$IDEMP_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -611,8 +680,8 @@ COMPAT_EXT_RESULT=$(node --input-type=module -e "
 
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ext-compat-'));
   fs.writeFileSync(path.join(tmpDir, '.unikit.json'), JSON.stringify({
-    version: '1.0.0', language: 'en', engine: 'unity', engineMcpKey: null,
-    mcp: { servers: {} },
+    version: '1.0.0', language: 'en', engine: 'unity',
+    mcp: { servers: {} }, engineBridges: { selected: {} },
     agents: [{ id: 'claude', skillsDir: '.claude/skills', subagentsDir: '.claude/agents',
                installedSkills: [], installedSubagents: [] }],
     rules: { installed: { version: '1.0.0', core: [], stack: [] }, declined: [] }
@@ -646,7 +715,7 @@ cat > "$REMOVE_NX_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -700,7 +769,7 @@ cat > "$MINIMAL_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -761,7 +830,7 @@ cat > "$LIST_EMPTY_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -818,7 +887,7 @@ cat > "$INJ_NF_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -886,7 +955,7 @@ cat > "$MULTI_EXT_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -952,7 +1021,7 @@ cat > "$CORRUPT_EXT_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1028,7 +1097,7 @@ cat > "$UPDATE_EMPTY_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1067,7 +1136,7 @@ cat > "$UPDATE_UTD_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1124,7 +1193,7 @@ cat > "$UPDATE_VER_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1195,7 +1264,7 @@ cat > "$UPDATE_FAIL_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1269,7 +1338,7 @@ cat > "$LIST_REPL_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1312,7 +1381,7 @@ cat > "$NOSUB_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1375,7 +1444,7 @@ cat > "$PREPEND_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1529,7 +1598,7 @@ cat > "$CMD_MISSING_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1579,7 +1648,7 @@ cat > "$CMD_INSTALL_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1651,7 +1720,7 @@ cat > "$DEDUP_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1750,8 +1819,8 @@ cat > "$MCP_INJECT_PROJECT/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": "UnityMCP",
-  "mcp": { "servers": { "coplay-unity-mcp": "UnityMCP" } },
+  "mcp": { "servers": {} },
+  "engineBridges": { "selected": { "coplay-unity-mcp": "UnityMCP" } },
   "agents": [
     {
       "id": "claude",
@@ -1845,7 +1914,7 @@ cat > "$KEXT_KIMI/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1871,7 +1940,7 @@ cat > "$KEXT_CLAUDE/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1934,7 +2003,7 @@ make_points_project() {   # <dir> <agent id> <skills dir> <subagents dir>
   mkdir -p "$dir"
   cat > "$dir/.unikit.json" << EOF
 {
-  "version": "1.0.0", "language": "en", "engine": "unity", "engineMcpKey": null,
+  "version": "1.0.0", "language": "en", "engine": "unity", "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [ { "id": "$agent", "skillsDir": "$skills", "subagentsDir": "$agents",
                 "installedSkills": ["unikit"], "installedSubagents": [] } ],
@@ -2437,6 +2506,61 @@ assert_not_contains "$TMPDIR/p42e-skip-add.log" 'subagents/unknown-agent' "42e: 
 assert_not_exists "$P42E_SKIP/.claude/skills/unknown-skill" "42e: the switched-off skill is not installed either"
 
 echo "  ✓ system variables: an unknown name stays as written; it is named in an INFO note (file and name) under --verbose only, never as a warning, and a known variable never is"
+
+# 42f — the code of the engine bridge. The retired name `{{engine_mcp_tool}}` is a token this build does not know:
+# it stays as written. The new name `{{engine_bridge_mcp_code}}` is the vendor code of the first selected bridge of
+# kind mcp in the package order, and `EngineMCP` when no such bridge is selected.
+EXT42F="$TMPDIR/ext-bridge-code"
+make_points_extension "$EXT42F" unikit-ext-bridge-code 1.0.0 code-line 'New: {{engine_bridge_mcp_code}}; old: {{engine_mcp_tool}}.' 'Reference: {{engine_bridge_mcp_code}}'
+
+P42F_NONE="$TMPDIR/bridge-code-none"
+make_points_project "$P42F_NONE" claude .claude/skills .claude/agents
+ext_add "$P42F_NONE" "$EXT42F" "$TMPDIR/p42f-none.log"
+BLOCK42F_NONE=$(block_of "$P42F_NONE/.claude/skills/unikit/SKILL.md" unikit-ext-bridge-code code-line)
+if [[ "$BLOCK42F_NONE" != *"New: EngineMCP; old: {{engine_mcp_tool}}."* ]]; then
+  echo "Assertion failed: 42f: with no bridge selected the new name is EngineMCP and the retired name stays as written"
+  echo "Block: $BLOCK42F_NONE"; exit 1
+fi
+
+P42F_BIOME="$TMPDIR/bridge-code-biome"
+make_points_project "$P42F_BIOME" claude .claude/skills .claude/agents
+node -e "const fs = require('fs'); const f = process.argv[1]; const c = JSON.parse(fs.readFileSync(f, 'utf8')); c.engineBridges.selected = { 'unity-biome-mcp': 'unity-biome-mcp' }; fs.writeFileSync(f, JSON.stringify(c, null, 2));" "$P42F_BIOME/.unikit.json"
+(cd "$P42F_BIOME" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/p42f-biome-update.log" 2>&1)
+ext_add "$P42F_BIOME" "$EXT42F" "$TMPDIR/p42f-biome.log"
+BLOCK42F_BIOME=$(block_of "$P42F_BIOME/.claude/skills/unikit/SKILL.md" unikit-ext-bridge-code code-line)
+if [[ "$BLOCK42F_BIOME" != *"New: unity-biome-mcp; old: {{engine_mcp_tool}}."* ]]; then
+  echo "Assertion failed: 42f: with the Biome bridge selected the new name is its vendor code"
+  echo "Block: $BLOCK42F_BIOME"; cat "$TMPDIR/p42f-biome-update.log"; exit 1
+fi
+
+echo "  ✓ engine bridge code: the new name carries the vendor code of the first selected mcp bridge (EngineMCP when none), the retired name stays as written"
+
+# 42g — a bridge of kind cli has no MCP code. Selected alone, it leaves the new name at its default; selected
+# beside an MCP bridge, the name still carries the MCP bridge's vendor code (the CLI comes first in the package
+# order, and is skipped because it is not an MCP server).
+P42G_CLI="$TMPDIR/bridge-code-cli"
+make_points_project "$P42G_CLI" claude .claude/skills .claude/agents
+node -e "const fs = require('fs'); const f = process.argv[1]; const c = JSON.parse(fs.readFileSync(f, 'utf8')); c.engineBridges.selected = { 'unity-cli': 'unity' }; fs.writeFileSync(f, JSON.stringify(c, null, 2));" "$P42G_CLI/.unikit.json"
+(cd "$P42G_CLI" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/p42g-cli-update.log" 2>&1)
+ext_add "$P42G_CLI" "$EXT42F" "$TMPDIR/p42g-cli.log"
+BLOCK42G_CLI=$(block_of "$P42G_CLI/.claude/skills/unikit/SKILL.md" unikit-ext-bridge-code code-line)
+if [[ "$BLOCK42G_CLI" != *"New: EngineMCP; old: {{engine_mcp_tool}}."* ]]; then
+  echo "Assertion failed: 42g: with only the CLI bridge selected the new name stays EngineMCP"
+  echo "Block: $BLOCK42G_CLI"; cat "$TMPDIR/p42g-cli-update.log"; exit 1
+fi
+
+P42G_BOTH="$TMPDIR/bridge-code-cli-biome"
+make_points_project "$P42G_BOTH" claude .claude/skills .claude/agents
+node -e "const fs = require('fs'); const f = process.argv[1]; const c = JSON.parse(fs.readFileSync(f, 'utf8')); c.engineBridges.selected = { 'unity-cli': 'unity', 'unity-biome-mcp': 'unity-biome-mcp' }; fs.writeFileSync(f, JSON.stringify(c, null, 2));" "$P42G_BOTH/.unikit.json"
+(cd "$P42G_BOTH" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/p42g-both-update.log" 2>&1)
+ext_add "$P42G_BOTH" "$EXT42F" "$TMPDIR/p42g-both.log"
+BLOCK42G_BOTH=$(block_of "$P42G_BOTH/.claude/skills/unikit/SKILL.md" unikit-ext-bridge-code code-line)
+if [[ "$BLOCK42G_BOTH" != *"New: unity-biome-mcp; old: {{engine_mcp_tool}}."* ]]; then
+  echo "Assertion failed: 42g: with the CLI and Biome selected the new name is the vendor code of Biome, the MCP bridge"
+  echo "Block: $BLOCK42G_BOTH"; cat "$TMPDIR/p42g-both-update.log"; exit 1
+fi
+
+echo "  ✓ engine bridge code: a cli bridge has no MCP code; beside an MCP bridge the name still carries the MCP bridge's code"
 
 echo ""
 echo "extension smoke tests passed"

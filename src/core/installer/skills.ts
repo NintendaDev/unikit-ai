@@ -11,12 +11,15 @@ import {
   writeTextFile, removeDirectory, fileExists, readTextFile, listFilesRecursive,
 } from '../../utils/fs.js';
 import type { AgentInstallation, ManagedSkillState } from '../config.js';
+import type { ServerSelection } from '../bridges/selection.js';
 import { getAgentConfig } from '../agents.js';
 import { getTransformer, extractFrontmatterName, replaceFrontmatterName } from '../transformer.js';
 import type { AgentTransformer } from '../transformer.js';
 import { buildTemplateVars, buildEngineVars, processTemplate, processSkillTemplates } from '../template.js';
 import type { TemplateVars } from '../template.js';
 import { SKILL_FILE, REFERENCES_DIR_NAME, DEFAULT_ENGINE_ID } from '../constants.js';
+import { renamedTo } from '../skill-renames.js';
+import { logInfo } from '../../utils/log.js';
 import { loadSourceForAgent, warnActionFailed, isMarkdownFile } from './shared.js';
 import { resolveSkillPaths, hashInstalledSkill, computeSourceHashWithTemplate } from './hashing.js';
 
@@ -38,14 +41,14 @@ export interface UpdateSkillsResult {
 export interface UpdateSkillsOptions {
   force?: boolean;
   engineId?: string;
-  engineMcpKey?: string | null;
+  /** Code of the MCP bridge that `{{engine_bridge_mcp_code}}` is substituted with; derived, never persisted. */
+  mcpBridgeCode?: string | null;
   /**
-   * The project's MCP selection as `key → code` (`config.mcp.servers`). Folded
-   * into every source hash so a changed selection — or a changed vendor code
-   * under an unchanged selection — reinstalls the skills; MCP tool injection is
-   * additive and would otherwise accumulate dead ids.
+   * The project's selection, both maps (`mcp.servers`, `engineBridges.selected`), as `key → code`.
+   * Folded into every source hash so a changed selection — or a changed vendor code under an
+   * unchanged selection — reinstalls the skills.
    */
-  mcpServers?: Record<string, string>;
+  selection?: ServerSelection;
   replacedSkills?: Set<string>;
   /**
    * Skills newly added to the package that the caller opted to install this
@@ -62,7 +65,7 @@ export interface InstallSkillsOptions {
   skills: string[];
   agentId: string;
   engineId?: string;
-  engineMcpKey?: string | null;
+  mcpBridgeCode?: string | null;
 }
 
 // --- Managed skill state ---
@@ -72,11 +75,10 @@ async function getManagedSkillState(
   agent: AgentInstallation,
   skillName: string,
   engineId: string,
-  engineMcpKey: string | null | undefined,
-  mcpServers: Record<string, string>,
+  selection: ServerSelection,
 ): Promise<ManagedSkillState | null> {
   const sourceSkillDir = path.join(getSkillsDir(), skillName);
-  const sourceHash = await computeSourceHashWithTemplate(sourceSkillDir, engineId, skillName, agent.id, engineMcpKey, mcpServers);
+  const sourceHash = await computeSourceHashWithTemplate(sourceSkillDir, engineId, skillName, agent.id, selection);
   if (!sourceHash) {
     return null;
   }
@@ -93,7 +95,7 @@ async function getManagedSkillState(
 /**
  * Snapshot the managed state written into `.unikit.json`.
  *
- * `engineMcpKey` / `mcpServers` MUST be threaded through here, not only into
+ * `selection` MUST be threaded through here, not only into
  * {@link updateSkills}: the snapshot and the comparison have to be computed by
  * the *same* formula. If they diverge, `previousState.sourceHash !== sourceHash`
  * is true on every single run and every skill is reinstalled forever — a
@@ -105,13 +107,12 @@ export async function buildManagedSkillsState(
   agent: AgentInstallation,
   baseSkills: string[],
   engineId: string,
-  engineMcpKey: string | null | undefined,
-  mcpServers: Record<string, string>,
+  selection: ServerSelection,
 ): Promise<Record<string, ManagedSkillState>> {
   const state: Record<string, ManagedSkillState> = {};
 
   for (const skillName of baseSkills) {
-    const managed = await getManagedSkillState(projectDir, agent, skillName, engineId, engineMcpKey, mcpServers);
+    const managed = await getManagedSkillState(projectDir, agent, skillName, engineId, selection);
     if (managed) {
       state[skillName] = managed;
     }
@@ -161,7 +162,7 @@ export async function installSkillWithTransformer(
   agentId: string,
   agentConfig: ReturnType<typeof getAgentConfig>,
   engineId?: string,
-  engineMcpKey?: string | null,
+  mcpBridgeCode?: string | null,
 ): Promise<void> {
   const transformer = getTransformer(agentId);
   const skillMdPath = path.join(sourceSkillDir, SKILL_FILE);
@@ -175,7 +176,7 @@ export async function installSkillWithTransformer(
 
   const result = transformer.transform(skillName, adjustedContent);
   const vars: TemplateVars = engineId
-    ? { ...buildTemplateVars(agentConfig), ...buildEngineVars(engineId, engineMcpKey) }
+    ? { ...buildTemplateVars(agentConfig), ...buildEngineVars(engineId, mcpBridgeCode) }
     : buildTemplateVars(agentConfig);
   vars.self_name = skillName;
 
@@ -191,7 +192,7 @@ export async function installSkillWithTransformer(
       // {{}} substitution (latent gap) and invocation rewriting. No agent is
       // flat today, so this is forward insurance.
       await rewriteReferenceInvocations(transformer, targetRefsDir);
-      await processSkillTemplates(targetRefsDir, agentConfig, engineId, engineMcpKey, skillName);
+      await processSkillTemplates(targetRefsDir, agentConfig, engineId, mcpBridgeCode, skillName);
     }
   } else {
     const targetSkillDir = path.join(projectDir, skillsDir, result.targetDir);
@@ -207,12 +208,12 @@ export async function installSkillWithTransformer(
     // type). The root SKILL.md is excluded (already rewritten above). No-op for
     // default agents.
     await rewriteReferenceInvocations(transformer, targetSkillDir);
-    await processSkillTemplates(targetSkillDir, agentConfig, engineId, engineMcpKey, skillName);
+    await processSkillTemplates(targetSkillDir, agentConfig, engineId, mcpBridgeCode, skillName);
   }
 }
 
 export async function installSkills(options: InstallSkillsOptions): Promise<string[]> {
-  const { projectDir, skillsDir, skills, agentId, engineId, engineMcpKey } = options;
+  const { projectDir, skillsDir, skills, agentId, engineId, mcpBridgeCode } = options;
   const installedSkills: string[] = [];
   const agentConfig = getAgentConfig(agentId);
 
@@ -225,7 +226,7 @@ export async function installSkills(options: InstallSkillsOptions): Promise<stri
     const sourceSkillDir = path.join(packageSkillsDir, skill);
 
     try {
-      await installSkillWithTransformer(sourceSkillDir, skill, projectDir, skillsDir, agentId, agentConfig, engineId, engineMcpKey);
+      await installSkillWithTransformer(sourceSkillDir, skill, projectDir, skillsDir, agentId, agentConfig, engineId, mcpBridgeCode);
       installedSkills.push(skill);
     } catch (error) {
       warnActionFailed('install skill', skill, error);
@@ -283,7 +284,7 @@ export async function updateSkills(
   projectDir: string,
   options: UpdateSkillsOptions = {},
 ): Promise<UpdateSkillsResult> {
-  const { force = false, engineId = DEFAULT_ENGINE_ID, engineMcpKey, mcpServers = {}, replacedSkills, installNewSkills } = options;
+  const { force = false, engineId = DEFAULT_ENGINE_ID, mcpBridgeCode, selection = { mcp: {}, bridges: {} }, replacedSkills, installNewSkills } = options;
   const availableSkills = await getAvailableSkills();
   const availableSet = new Set(availableSkills);
 
@@ -301,12 +302,24 @@ export async function updateSkills(
     }
   }
 
+  // A renamed skill: the new name takes the old one's place for THIS agent, no prompt. `installNewSkills`
+  // is one set for every agent and would seed the new skill into agents that never had the old one.
+  const renamedFrom = new Map<string, string>();
+  for (const old of removedSkills) {
+    const next = renamedTo(old);
+    if (next !== undefined && availableSet.has(next) && !previousSet.has(next)) {
+      renamedFrom.set(next, old);
+      logInfo('skills', `renamed ${old} -> ${next} for agent ${agent.id}`);
+    }
+  }
+
   // Detect new skills (available in the package but not installed for this
-  // agent). Skills the caller opted into (installNewSkills) are installed now
-  // and reported as 'changed'/'new-skill-installed'; the rest stay 'skipped'/
-  // 'new-skill-not-installed' — the CI-safe back-compat default.
+  // agent). Skills the caller opted into (installNewSkills) or that replace a renamed
+  // one are installed now and reported as 'changed'/'new-skill-installed' (or
+  // 'renamed-from:<old>'); the rest stay 'skipped'/'new-skill-not-installed' — the
+  // CI-safe back-compat default.
   const newlyAvailable = availableSkills.filter(s => !previousSet.has(s));
-  const newToInstall = newlyAvailable.filter(s => installNewSkills?.has(s));
+  const newToInstall = newlyAvailable.filter(s => installNewSkills?.has(s) || renamedFrom.has(s));
   const installedNew = newToInstall.length > 0
     ? await installSkills({
       projectDir,
@@ -314,15 +327,16 @@ export async function updateSkills(
       skills: newToInstall,
       agentId: agent.id,
       engineId,
-      engineMcpKey,
+      mcpBridgeCode,
     })
     : [];
   const installedNewSet = new Set(installedNew);
   for (const skill of newlyAvailable) {
-    if (!installNewSkills?.has(skill)) {
+    const from = renamedFrom.get(skill);
+    if (!installNewSkills?.has(skill) && from === undefined) {
       entries.push({ skill, status: 'skipped', reason: 'new-skill-not-installed' });
     } else if (installedNewSet.has(skill)) {
-      entries.push({ skill, status: 'changed', reason: 'new-skill-installed' });
+      entries.push({ skill, status: 'changed', reason: from === undefined ? 'new-skill-installed' : `renamed-from:${from}` });
     } else {
       entries.push({ skill, status: 'skipped', reason: 'install-failed' });
     }
@@ -343,7 +357,7 @@ export async function updateSkills(
 
   for (const skillName of updatableSkills) {
     const sourceSkillDir = path.join(getSkillsDir(), skillName);
-    const sourceHash = await computeSourceHashWithTemplate(sourceSkillDir, engineId, skillName, agent.id, engineMcpKey, mcpServers);
+    const sourceHash = await computeSourceHashWithTemplate(sourceSkillDir, engineId, skillName, agent.id, selection);
     const paths = resolveSkillPaths(projectDir, agent.skillsDir, agent.id, skillName, sourceSkillDir);
     const installedHash = await hashInstalledSkill(paths);
     const previousState = previousManaged[skillName];
@@ -403,7 +417,7 @@ export async function updateSkills(
       skills: skillsToInstall,
       agentId: agent.id,
       engineId,
-      engineMcpKey,
+      mcpBridgeCode,
     })
     : [];
 

@@ -1,0 +1,75 @@
+{
+  "key": "unity-cli",
+  "code": "unity",
+  "kind": "cli",
+  "is_engine": true,
+  "order": 1,
+  "displayName": "Unity CLI (Unity 6000.0+, needs the com.unity.pipeline package)",
+  "docs": {
+    "context7": "/websites/unity_en-us_unity-cli_unity-cli-reference",
+    "repo": "https://docs.unity.com/en-us/unity-cli",
+    "sources": [
+      { "kind": "command", "id": "cli-skill", "list": "unity skill show --list", "show": "unity skill show --path <file>", "into": "cli-skill" },
+      { "kind": "package", "id": "pipeline-docs", "root": "Library/PackageCache/com.unity.pipeline@*", "path": ".", "include": ["Documentation~/**/*.md", "CHANGELOG.md"], "into": "pipeline-docs" }
+    ]
+  },
+  "rules": "rules/unity-cli/",
+  "requires": { "engineVersion": "6000.0", "cli": "1.0.0-beta.14", "package": "0.9.1-exp.1" },
+  "detect": {
+    "binary": "unity",
+    "projectVersionFile": "ProjectSettings/ProjectVersion.txt",
+    "versionPattern": "^m_EditorVersion:\\s*(\\d+(?:\\.\\d+){0,2})"
+  },
+  "setup": [
+    { "by": "human", "run": "Install the Unity CLI (winget install Unity.CLI, brew install --cask unity-cli, or the installer script of the Unity CLI documentation) and check that `unity --version` answers in a new shell" },
+    { "by": "agent-confirmed", "run": "unity pipeline install --project-path \"<project-root>\"" },
+    { "by": "human", "run": "An older package is upgraded with `unity pipeline upgrade --project-path \"<project-root>\"`. An editor that is already open loads a package only after it refreshes the project: bring its window forward and, when Auto Refresh is switched off (Hot Reload and similar plugins do that), run Assets > Refresh; until then the status form answers STATUS_PIPELINE_LOAD_PENDING" }
+  ],
+  "cli": {
+    "binary": "unity",
+    "projectFlag": "--project-path",
+    "shells": ["Bash", "PowerShell"],
+    "forms": {
+      "call": "unity command --project-path \"<project-root>\" --format ndjson --non-interactive --no-color --quiet <command> [-- <params>]",
+      "groups": "unity command --project-path \"<project-root>\" --format tsv --detail groups --non-interactive --no-color",
+      "group": "unity command --project-path \"<project-root>\" --format tsv --non-interactive --no-color <group>",
+      "search": "unity command --project-path \"<project-root>\" --format tsv --detail compact --non-interactive --no-color --query <word>",
+      "list": "unity list --project-path \"<project-root>\" --format tsv --non-interactive --no-color",
+      "schema": "unity command --project-path \"<project-root>\" --format json --detail full --non-interactive --no-color --quiet --query <command>",
+      "compile": "unity recompile --project-path \"<project-root>\" --timeout 300 --format json --non-interactive --no-color --quiet",
+      "status": "unity status --project-path \"<project-root>\" --format json --non-interactive --no-color --quiet",
+      "ready": "unity status --project-path \"<project-root>\" --until-ready --timeout 180 --format json --non-interactive --no-color --quiet",
+      "version": "unity --version"
+    },
+    "probes": {
+      "package": {
+        "file": "Packages/packages-lock.json",
+        "path": ["dependencies", "com.unity.pipeline", "version"],
+        "fallback": { "file": "Packages/manifest.json", "path": ["dependencies", "com.unity.pipeline"] }
+      }
+    },
+    "notes": [
+      "<project-root> is the folder of the Unity project: the nearest folder at or above the working directory that holds ProjectSettings/ProjectVersion.txt, and the folder of .unikit.json when none is found",
+      "<command> is two words, <group> <name>, for a package with groups and one word for an older package; the listings show which. Parameters of the command go after --, because a parameter named like a CLI option (a timeout, for one) is otherwise taken by the CLI",
+      "Pass the project path in every call. Never put --quiet on a tsv call: the rows vanish and the answer is empty with exit 0. A json or ndjson call takes --quiet, which changes nothing in the answer and hides a hint line on stderr",
+      "The answer of a call is an envelope and the command's own value is in data.result. The envelope's success means the command ran, not that the operation worked: read data.result whole, because a failure can also arrive as a success field of false, as an error with a code and no success field, as a status of unavailable or rejected, as capitalised Success and Error fields, as a reverted batch, or as failed tests in a test summary; only a thrown exception answers with exit 6. An ndjson answer may start with progress lines: read the last line. Line numbers in the diagnostics of a code run start at 0, those of a compile at 1",
+      "On Windows in Git Bash a scene-object path that starts with one slash is rewritten into a file path before the CLI sees it (/Name becomes C:/Program Files/Git/Name) and the editor answers that no such object exists: write the path without the leading slash (Parent/Child) or with two slashes, or address the object by its instance id",
+      "compile exits 0 on success, 6 when the code has errors or the time ran out, 7 when no editor answered - also for a few seconds after a compile or a Play Mode change, while the domain reloads: run the ready form and try once more before reporting the editor unavailable. A cold compile of a big project can take minutes: keep --timeout above it and give the shell call that long",
+      "The status form names Safe Mode (documented by Unity: STATUS_SAFE_MODE with the compile errors under data.instances[].safeMode.compileErrors; not reproduced by the measurement) and STATUS_PIPELINE_LOAD_PENDING (the package is in the manifest but the open editor has not loaded it yet). Status contacts every editor that is open on the machine: use it for diagnosis, not as a polling loop",
+      "Measured on CLI 1.0.0-beta.14 and package 0.9.1-exp.1 on 2026-10-25; the forms change between betas, so re-measure when the floors move"
+    ]
+  },
+  "allowed-tools": {
+    "agents": {},
+    "skills": {
+      "unikit-devcontext": ["command", "status", "recompile", "test", "--version"],
+      "unikit-implement": ["command", "status", "recompile", "test", "--version"],
+      "unikit-fix": ["command", "status", "recompile", "test", "--version"],
+      "unikit-verify": ["command", "status", "recompile", "test", "--version"],
+      "unikit-plan": ["list"],
+      "unikit-bridge-audit": ["command", "status", "--version"],
+      "unikit-bridge-docs": ["skill show", "command", "status", "--version"],
+      "unikit": ["--version", "status", "self-update --check"]
+    }
+  }
+}

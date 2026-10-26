@@ -68,7 +68,7 @@ If a rule tells the implementer what the code should look like, it belongs in th
 
 ## §6 Direct-edit feasibility
 
-Whether the `direct` value of `Editor tasks` (a plain text edit of the serialized file, no editor and no MCP) is defensible for a given format:
+Whether the `direct` value of `Editor tasks` (a plain text edit of the serialized file, no editor and no engine bridge) is defensible for a given format:
 
 | Format | Feasibility | Bounds |
 |--------|-------------|--------|

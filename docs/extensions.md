@@ -543,6 +543,9 @@ Every skill below offers one point, `bootstrap`, at the end of its context-loadi
 | `unikit` | `bootstrap` | Step 0 (Load Existing Config), before the config-actualization mode | - |
 | `unikit-architecture` | `bootstrap` | Step 1 (Load Existing Context) | - |
 | `unikit-archive` | `bootstrap` | Step 0 (Context) | - |
+| `unikit-bridge-audit` | `bootstrap` | Bootstrap | There is no notes file for the bridge in `.unikit/bridge-notes/` |
+| `unikit-bridge-docs` | `bootstrap` | Bootstrap | - |
+| `unikit-bridge-trap` | `bootstrap` | Bootstrap | - |
 | `unikit-commit` | `bootstrap` | Item 3 of the main list (Context Check), indented as part of the item | - |
 | `unikit-devcontext` | `bootstrap` | Rules Loading, the last lines of the file | - |
 | `unikit-docs` | `bootstrap` | Step 0 (Load Project Context) | - |
@@ -551,11 +554,10 @@ Every skill below offers one point, `bootstrap`, at the end of its context-loadi
 | `unikit-fix` | `bootstrap` | Step 0.2 (Load Fix Context) | - |
 | `unikit-implement` | `bootstrap` | Step 1.5 (Bootstrap Rules & Principles) | `--list`, `status` |
 | `unikit-improve` | `bootstrap` | Step 0.5 (Bootstrap Context) | - |
-| `unikit-mcp-audit` | `bootstrap` | Bootstrap | There is no `.unikit/MCP-RECHECK-NOTES.md` |
-| `unikit-mcp-trap` | `bootstrap` | Bootstrap | - |
 | `unikit-memory` | `bootstrap` | Step 0.5 (Resolve the Active Module) | - |
 | `unikit-plan` | `bootstrap` | Step 0.5 (Bootstrap Context) | `--list`, resuming an ultra plan, a merge plan |
 | `unikit-pr` | `bootstrap` | Step 0 (Context) | - |
+| `unikit-references` | `bootstrap` | Bootstrap | - |
 | `unikit-review` | `bootstrap` | Step 1 (Load rules) | - |
 | `unikit-roadmap` | `bootstrap` | Step 0 (Load Project Context) | - |
 | `unikit-rules` | `bootstrap` | Step 0 (Load Skill Context) | - |
@@ -773,7 +775,7 @@ Extension skills and subagents can use template variables that are substituted a
 | `{{self_name}}` | `unikit-plan` | Name of the skill the file belongs to: in a skill's own `references/` files it is that skill; in an injection it is the target skill |
 | `{{engine_name}}` | `Unity` | Game engine name |
 | `{{engine_code_language}}` | `C#` | Engine's programming language |
-| `{{engine_mcp_tool}}` | `unity-biome-mcp` | Vendor code of the engine MCP server — the key it is registered under in the settings file, and the middle segment of its `mcp__<code>__*` grants. Not the server's file id. |
+| `{{engine_bridge_mcp_code}}` | `unity-biome-mcp` | Vendor code of the first engine bridge of kind mcp in the package order among the selected ones — the key it is registered under in the settings file, and the middle segment of its `mcp__<code>__*` grants. The default `EngineMCP` stands when none is selected. Not the bridge's file id. |
 | `{{agent_id}}` | `claude` | Agent id |
 | `{{agent_reader_type}}` | `Explore` | Read-only subagent type of the agent; empty when the agent has none (Codex) |
 | `{{agent_worker_type}}` | `general-purpose` | Subagent type that can write files; empty when the agent has none (Codex) |
@@ -783,7 +785,7 @@ Extension skills and subagents can use template variables that are substituted a
 | `{{agent_call_worker_quoted}}` | `subagent_type: "general-purpose",` | The same, with the type in quotes (the spelling of multi-line call blocks) |
 | `{{agent_skill_call:<skill>}}` | `Call the Skill tool with skill "<skill>" and …` | At the start of a `prompt: "…"` line: makes the subagent load the skill; the text after it up to the closing quote is the skill's arguments. Claude Code: a Skill-tool call; every other agent: a read of `<skills dir>/<skill>/SKILL.md` |
 
-The `{{agent_*}}` variables are substituted in skills only (`SKILL.md` and `references/`); in subagent files and system assets they are empty, and `{{agent_skill_call:…}}` stays as written (a guard keeps it out of those files). They come from the agent profile - see [Subagents](subagents.md#subagent-profile-per-agent). The system-file variables further down are the opposite: they depend on neither the agent nor the engine, so they are substituted everywhere the template runs - in skills and their `references/`, in the text of extensions (injection blocks, reference files, and the skills and subagents an extension adds), in subagent files and in `dev-principles.md`. The other system files (the flat contracts, the `gamedesign/` files and the `engine-mcp/` tree) are copied without any substitution.
+The `{{agent_*}}` variables are substituted in skills only (`SKILL.md` and `references/`); in subagent files and system assets they are empty, and `{{agent_skill_call:…}}` stays as written (a guard keeps it out of those files). They come from the agent profile - see [Subagents](subagents.md#subagent-profile-per-agent). The system-file variables further down are the opposite: they depend on neither the agent nor the engine, so they are substituted everywhere the template runs - in skills and their `references/`, in the text of extensions (injection blocks, reference files, and the skills and subagents an extension adds), in subagent files and in `dev-principles.md`. The other system files (the flat contracts, the `gamedesign/` files and the `engine-bridges/` tree) are copied without any substitution.
 
 The same variables are available in the text of an injection and in the `.md` reference files of an extension point; `{{self_name}}` is the name of the target skill, and `{{agent_skill_call:<skill>}}` in the text of an injection expands as it does in a skill.
 
@@ -794,7 +796,7 @@ The same variables are available in the text of an injection and in the `.md` re
 | `{{system_dir}}` | `.unikit/system` | always |
 | `{{system_gamedesign_dir}}` | `.unikit/system/gamedesign` | always |
 | `{{system_genres_dir}}` | `.unikit/system/gamedesign/genres` | selective: appears with `unikit-ai genres install` and holds only the genre profiles the project installed |
-| `{{system_engine_mcp_dir}}` | `.unikit/system/engine-mcp` | when the selected engine MCP server ships a rules tree |
+| `{{system_engine_bridges_dir}}` | `.unikit/system/engine-bridges` | when at least one engine bridge is selected |
 | `{{cli_contract}}` | `.unikit/system/cli-contract.md` | always |
 | `{{dev_principles}}` | `.unikit/system/dev-principles.md` | always |
 | `{{modules_yml}}` | `.unikit/system/modules.yml` | always |
@@ -816,13 +818,12 @@ The same variables are available in the text of an injection and in the `.md` re
 | `{{gd_provenance}}` | `.unikit/system/gamedesign/gd-provenance.md` | always |
 | `{{gd_critique}}` | `.unikit/system/gamedesign/gd-critique.md` | always |
 | `{{design_read_contract}}` | `.unikit/system/gamedesign/design-read.md` | always |
-| `{{engine_mcp_rules_index}}` | `.unikit/system/engine-mcp/INDEX.md` | when the selected engine MCP server ships a rules tree |
-| `{{engine_mcp_rules_verification}}` | `.unikit/system/engine-mcp/verification.md` | when the selected engine MCP server ships a rules tree |
+| `{{engine_bridges_manifest}}` | `.unikit/system/engine-bridges/BRIDGES.md` | when at least one engine bridge is selected |
 | `{{language_rules}}` | `.unikit/system/LANGUAGE_RULES.md` | after the `/unikit` skill has written it |
 
-The names of these variables are public API of extensions, on a par with the extension-point anchors in the base skills: when the framework moves a file the value follows it and the name stays. A name is renamed or removed only after a release that warns about it.
+The names of these variables are public API of extensions, on a par with the extension-point anchors in the base skills: when the framework moves a file the value follows it and the name stays. A name is renamed or removed only after a release that warns about it. The one exception is 3.0.0, which replaced the names of the single-engine-server era at once: `system_engine_mcp_dir` is now `system_engine_bridges_dir`; `engine_mcp_rules_index` is now `engine_bridges_manifest` (the entry file — the rules files of one bridge are `{{system_engine_bridges_dir}}/<bridge id>/INDEX.md` and `…/verification.md`); `engine_mcp_rules_verification` has no successor; `engine_mcp_tool` is replaced by `engine_bridge_mcp_code` in the same release (see the table above). The old names are not substituted any more: a token that still carries one stays in the text as written. See [Migrating to 3.0.0](migration-3.0.0.md#for-extension-authors-breaking).
 
-A variable whose file is not always there (`{{system_genres_dir}}`, `{{system_engine_mcp_dir}}`, `{{engine_mcp_rules_index}}`, `{{engine_mcp_rules_verification}}`, `{{language_rules}}`) still resolves to its path, but the file may be missing; write the extension text so that it also works when the file is not there. A `{{…}}` token that the installed build of unikit-ai does not know stays in the text exactly as written and does not stop the install.
+A variable whose file is not always there (`{{system_genres_dir}}`, `{{system_engine_bridges_dir}}`, `{{engine_bridges_manifest}}`, `{{language_rules}}`) still resolves to its path, but the file may be missing; write the extension text so that it also works when the file is not there. A `{{…}}` token that the installed build of unikit-ai does not know stays in the text exactly as written and does not stop the install.
 
 Such a token is not reported by default. A slot of your own that is meant for the runtime - a lower-case `{{…}}` in a template that your skill fills in - has exactly the form of a variable that a newer build might add, so the installer cannot tell the two apart, and an extension full of templates would repeat the same lines on every `update`. To see which tokens a build leaves as written, run `unikit-ai --verbose init`, `unikit-ai --verbose update` or `unikit-ai --verbose extension add|update|remove|select` (the extension commands re-apply the text; `update` only when it updated something): every file of the extension that holds such a token is listed at INFO level with the names, nothing of the content. Name the unikit-ai version your extension needs in its README.
 

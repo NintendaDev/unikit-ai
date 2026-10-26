@@ -20,7 +20,7 @@ skills:
   - unikit-commit
   - unikit-review
   - unikit-docs
-  - unikit-mcp-trap
+  - unikit-bridge-trap
 ---
 
 You are the implementation coordinator for a {{engine_name}} project.
@@ -213,7 +213,7 @@ For each task in the phase, sequentially:
 4. If material issues found, fix and re-verify (max 2 rounds)
 5. Mark `[x]` or `[!]` in the manifest. **Third branch — an editor target handed to the user:** mark `[x]` and append `⏸️ MANUAL` to the task text. It does not block "phase complete" (the user took it on deliberately) and it is never picked up again by a later run, but it is not counted as implemented either — carry it into the summary from the worker's `manual_targets:`
 
-   **Fourth branch — the task produced an MCP finding.** In this branch you are the executor: no worker was spawned, so nobody else can write the row. Append it to the plan's `## MCP Findings` table in the same pass that marks the task, by `dev-principles.md` → **D7**. **Never write `.unikit/MCP-RECHECK-NOTES.md` yourself** — the durable surface passes through a human running `/unikit-mcp-trap`.
+   **Fourth branch — the task produced an MCP finding.** In this branch you are the executor: no worker was spawned, so nobody else can write the row. Append it to the plan's `## Engine Bridge Findings` table in the same pass that marks the task, by `dev-principles.md` → **D7** (`bridge` is the id of the bridge the misleading call went through). A table in the 2.x form is converted first (`TASK-FORMAT.md` → `### Engine bridge findings section`). **Never write `.unikit/bridge-notes/<bridge>.md` yourself** — the durable surface passes through a human running `/unikit-bridge-trap`.
 
    **Fifth branch — a test-checkpoint task.** In this branch you are the executor, so there is nobody to withhold it from: execute it in the ordinary order, by `## Step 3.2` of that test-run reference, and write the result into the manifest's `## Test Runs` in the same pass that marks the task.
 
@@ -252,12 +252,12 @@ When multiple independent phases are ready, dispatch one `unikit-implement-worke
 Agent(unikit-implement-worker): "Execute Phase 1 from plan at .unikit/code/plans/2026-03-10_core-loop.
   Tasks: 1.1 (description), 1.2 (description), ...
     Task 1.2 Editor: [ui] <container> → <target> : <action>
-  editor_mode: mcp
+  editor_mode: engine-bridge
   commit_policy: skip. Return list of modified files and manual_targets."
 
 Agent(unikit-implement-worker): "Execute Phase 4 from plan at .unikit/code/plans/2026-03-10_core-loop.
   Tasks: 4.1 (description), 4.2 (description), ...
-  editor_mode: mcp
+  editor_mode: engine-bridge
   commit_policy: skip. Return list of modified files and manual_targets."
 
 For an ultra bundle the `Tasks:` line is replaced by the task specifications themselves —
@@ -279,7 +279,7 @@ Agent(unikit-implement-worker): "Execute Phase 1 from plan at .unikit/code/plans
   <full text>
   ### Verification
   <full text>
-  editor_mode: mcp
+  editor_mode: engine-bridge
   commit_policy: skip. Return list of modified files and manual_targets."
 ```
 
@@ -402,14 +402,15 @@ PR checkpoints: <same form as /unikit-implement Step 4>
 Awaiting results: <n> task(s) — <task id and instruction, one per line>
 Hand-back: <report path> · 🧭 <command from the task's to: field>
 Rule candidates: <n> recorded — /unikit-implement will propose them at the end of the call
-MCP findings: <n> recorded — run /unikit-mcp-trap <plan path> to move them into
-  .unikit/MCP-RECHECK-NOTES.md
+Engine bridge findings: <n> recorded — run /unikit-bridge-trap <plan path> to move them into
+  .unikit/bridge-notes/
+Bridges used: <union of the workers' bridges: fields and the ids of its own calls>
 
 ⏎ This agent session is complete. Please close it (Ctrl+C or /exit)
   and return to your main Claude Code session to continue working.
 ```
 
-The `MCP findings:` line appears **only when the plan's `## MCP Findings` table has rows**, and is omitted entirely otherwise — no "none this run" line. A run without findings is the ordinary case, and announcing it every time is how the line stops being read.
+The `Bridges used:` line appears only when at least one worker returned a `bridges:` field or this session made a bridge call of its own. The `Engine bridge findings:` line appears **only when the plan's `## Engine Bridge Findings` table has rows**, and is omitted entirely otherwise — no "none this run" line. A run without findings is the ordinary case, and announcing it every time is how the line stops being read.
 
 The `PR checkpoints:` line appears only when the session met a PR checkpoint.
 
@@ -419,4 +420,4 @@ The `Test runs:` line follows the same rule: it is omitted entirely under `Testi
 
 The `Rule candidates:` line follows it as well, omitted entirely when nothing was recorded. It is a report and not a question on purpose: this agent ends by telling the user to close the session, so a choice offered here would be cut off mid-answer — `/unikit-implement` Step 5.2 is where the candidates are actually put to the user.
 
-**Why this one is printed rather than invoked.** `/unikit-implement` Step 5.5 offers the same handoff as a real skill invocation, and that is the right shape there. Here it is not: this agent ends by telling the user to close the session, and `/unikit-mcp-trap` is interactive — it presents candidates and asks which to record. Started here it would be cut off mid-question. This is the legitimate printed handoff, chosen because the session boundary makes the inline call impossible, not to avoid making it.
+**Why this one is printed rather than invoked.** `/unikit-implement` Step 5.5 offers the same handoff as a real skill invocation, and that is the right shape there. Here it is not: this agent ends by telling the user to close the session, and `/unikit-bridge-trap` is interactive — it presents candidates and asks which to record. Started here it would be cut off mid-question. This is the legitimate printed handoff, chosen because the session boundary makes the inline call impossible, not to avoid making it.

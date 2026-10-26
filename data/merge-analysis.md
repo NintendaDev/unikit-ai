@@ -79,7 +79,7 @@ Where implicit conflicts hide. These are classes, not file names:
 - "formatting only" commits and line-ending changes;
 - tests and documents tied to the changed code, and the artifacts under `.unikit/`.
 
-Take the file names of each class from the repository (`.gitattributes`, `.gitignore`, the extensions in the diff itself), from §6 (and §1, §2) of `ENGINE_RULES.md` — the `references/ENGINE_RULES.md` inside the `unikit-plan` skill directory — and from Context7 and the engine MCP. Nothing available → say what was not checked. No engine fact is written into this file or into a skill: engine documentation is not stored here.
+Take the file names of each class from the repository (`.gitattributes`, `.gitignore`, the extensions in the diff itself), from §6 (and §1, §2) of `ENGINE_RULES.md` — the `references/ENGINE_RULES.md` inside the `unikit-plan` skill directory — and from Context7 and the engine bridges. Nothing available → say what was not checked. No engine fact is written into this file or into a skill: engine documentation is not stored here.
 
 ## Directive for a conflicted file
 

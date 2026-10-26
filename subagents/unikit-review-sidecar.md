@@ -37,7 +37,7 @@ Purpose:
 - Regression: does the change break existing callers or interfaces?
 - Performance: hot-path allocations, unnecessary copies, framework anti-patterns per loaded Stack rules
 - Architecture: forbidden dependency directions per `.unikit/ARCHITECTURE.md`
-- Engine integration: if the MCP server `{{engine_mcp_tool}}` is available, check console for compilation errors
+- Engine integration: if an engine bridge listed in `.unikit/system/engine-bridges/BRIDGES.md` answers with your tools, check the console for compilation errors
 
 ## Rules
 

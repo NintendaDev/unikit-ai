@@ -44,7 +44,7 @@ restore_package_state() {
     if [[ -n "$FIXTURE_JSON" && -n "$FIXTURE_JSON_BACKUP" && -f "$FIXTURE_JSON_BACKUP" ]]; then
         cp "$FIXTURE_JSON_BACKUP" "$FIXTURE_JSON"
     fi
-    # A failing run gets the engine-mcp evidence dumped before the temp tree goes: the
+    # A failing run gets the engine-bridge evidence dumped before the temp tree goes: the
     # assertion that aborted printed one path and nothing about the state around it.
     if [[ $exit_code -ne 0 ]]; then
         dump_mcp_state "$TMPDIR"
@@ -72,7 +72,7 @@ cat > "$PROJECT_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": {
     "servers": {}
   },
@@ -247,7 +247,7 @@ cat > "$COMPAT_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "language": "en",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": {
     "servers": []
   },
@@ -318,7 +318,7 @@ cat > "$CLAUDE_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -372,7 +372,7 @@ cat > "$HASH_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -422,7 +422,7 @@ cat > "$ARTIFACT_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -468,7 +468,7 @@ cat > "$SA_DRIFT_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -522,7 +522,7 @@ cat > "$MULTI_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -608,7 +608,7 @@ cat > "$ENGINE_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -680,7 +680,7 @@ cat > "$NEWSKILL_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -722,7 +722,7 @@ cat > "$LEGACY_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -776,7 +776,7 @@ cat > "$SA_REMOVED_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -840,7 +840,7 @@ cat > "$SKILLCTX_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -915,7 +915,7 @@ cat > "$SA_HASH_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -977,7 +977,7 @@ cat > "$SA_ARTIFACT_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1022,7 +1022,7 @@ cat > "$ZERO_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [],
   "rules": {
@@ -1070,7 +1070,7 @@ cat > "$EXTMISSING_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1128,7 +1128,7 @@ cat > "$ENGEXT_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1193,7 +1193,7 @@ cat > "$DRIFTEXT_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1269,7 +1269,7 @@ cat > "$SAFRC_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1318,7 +1318,7 @@ cat > "$SAMMS_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1398,7 +1398,7 @@ cat > "$DEVPRIN_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1554,65 +1554,71 @@ fi
 echo "  ✓ genre profiles: update delivers + refreshes installed profiles from data/ (update.ts wiring)"
 
 # ─────────────────────────────────────────────
-# Test 30e: engine-mcp assets on update — the ONLY mechanical guard on the update.ts
-# wiring. Three legs, because the same call has three branches and only one of them is
+# Test 30e: engine-bridge assets on update — the ONLY mechanical guard on the update.ts
+# wiring. Four legs, because the same call has four branches and only one of them is
 # about writing files:
 #   Leg 1 — a pre-cutover shard profile on disk is SWEPT (the migration path). System
 #           assets have NO migration chain, so this orphan-delete is the only thing that
 #           will ever remove the three shards a pre-cutover project still carries.
-#   Leg 2 — the selected server's rules tree is DELIVERED, stamped (the fresh path).
+#   Leg 2 — the selected bridge's rules tree is DELIVERED, stamped (the fresh path).
 #   Leg 3 — a hand-edited copy is REFRESHED, and a file the tree does not contain is
 #           removed (tamper-refresh + recursive orphan-delete).
+#   Leg 4 — the 2.x folder engine-mcp/, with a stamp of the old kind, is removed whole.
 # ─────────────────────────────────────────────
 CONFIG="$DEVPRIN_CONFIG" node -e "
     const fs=require('fs'); const f=process.env.CONFIG;
     const c=JSON.parse(fs.readFileSync(f,'utf8'));
-    c.engineMcpKey = 'UnityMCP';
-    c.mcp = { servers: ['unity-biome-mcp'] };
+    delete c.engineMcpKey;
+    c.mcp = { servers: {} };
+    c.engineBridges = { selected: { 'unity-biome-mcp': 'unity-biome-mcp' } };
     fs.writeFileSync(f, JSON.stringify(c,null,2));
 "
-MCP_SHARD_DIR="$DEVPRIN_DIR/.unikit/system/engine-mcp"
+MCP_LEGACY_DIR="$DEVPRIN_DIR/.unikit/system/engine-mcp"
+MCP_SHARD_DIR="$DEVPRIN_DIR/.unikit/system/engine-bridges/unity-biome-mcp"
 
 # Leg 1 — the UPGRADE path. Every project installed before the cutover carries the three
-# shards on disk, and the orphan-delete inside installEngineMcpRules is the only thing
-# that will ever remove them: system assets have no migration chain. Two of the three
-# names are absent from the rules tree and go as orphans; `verification.md` survives as a
-# NAME and is overwritten instead — which is the point of seeding all three with the same
-# marker. A sweep that only removed files would leave the pre-cutover body in place under
-# a name the new tree still uses, and no assertion on the other two would notice.
-mkdir -p "$MCP_SHARD_DIR"
+# shards on disk, in the old folder engine-mcp/, and the sweep inside installEngineBridges
+# is the only thing that will ever remove them: system assets have no migration chain.
+# Since 3.0.0 the folder is removed whole, whatever it holds. The tree of the bridge is
+# seeded with the same marker under a name the new tree reuses (`verification.md`): a
+# sweep that only removed files would leave a pre-cutover body in place under it.
+mkdir -p "$MCP_LEGACY_DIR" "$MCP_SHARD_DIR"
 for shard in capabilities scene-authoring verification; do
-    echo "STALE_PRE_CUTOVER_PROFILE" > "$MCP_SHARD_DIR/$shard.md"
+    echo "STALE_PRE_CUTOVER_PROFILE" > "$MCP_LEGACY_DIR/$shard.md"
 done
+echo "STALE_PRE_CUTOVER_PROFILE" > "$MCP_SHARD_DIR/verification.md"
 
 MCP_SHARD_OUT1="$TMPDIR/update-mcp-shards-1.log"
 (cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$MCP_SHARD_OUT1" 2>&1)
 
-for shard in capabilities scene-authoring; do
-    assert_not_exists "$MCP_SHARD_DIR/$shard.md" \
+for shard in capabilities scene-authoring verification; do
+    assert_not_exists "$MCP_LEGACY_DIR/$shard.md" \
         "update sweeps the pre-cutover engine-mcp $shard.md (no stale profile survives)"
 done
+assert_not_exists "$MCP_LEGACY_DIR" "update removes the 2.x engine-mcp folder altogether"
 assert_not_contains "$MCP_SHARD_DIR/verification.md" 'STALE_PRE_CUTOVER_PROFILE' \
-    "a pre-cutover shard whose name the rules tree reuses is overwritten, not left in place"
-echo "  ✓ engine-mcp: a pre-cutover profile is swept / overwritten on update (update.ts wiring)"
+    "a stale file whose name the rules tree reuses is overwritten, not left in place"
+echo "  ✓ engine-bridges: a pre-cutover profile is swept / overwritten on update (update.ts wiring)"
 
 # The same update that swept the shards delivered the tree in their place — one call,
 # both branches, which is why Leg 1 does not need its own re-run.
 assert_exists "$MCP_SHARD_DIR/INDEX.md" \
-    "update delivers the selected server's rules tree in place of the swept shards"
-assert_contains "$MCP_SHARD_DIR/INDEX.md" '^server: unity-biome-mcp$' \
-    "the delivered tree is stamped with the server it came from"
+    "update delivers the selected bridge's rules tree in place of the swept shards"
+assert_contains "$MCP_SHARD_DIR/INDEX.md" '^bridge: unity-biome-mcp$' \
+    "the delivered tree is stamped with the bridge it came from"
 
 # Leg 2 — the FRESH path. Nothing on disk, a populated selection: the tree is created.
-rm -rf "$MCP_SHARD_DIR"
+rm -rf "$DEVPRIN_DIR/.unikit/system/engine-bridges"
 MCP_SHARD_OUT2="$TMPDIR/update-mcp-shards-2.log"
 (cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$MCP_SHARD_OUT2" 2>&1)
 
 assert_exists "$MCP_SHARD_DIR/INDEX.md" \
-    "selecting an engine MCP delivers its rules tree on a clean project"
+    "selecting an engine bridge delivers its rules tree on a clean project"
 assert_exists "$MCP_SHARD_DIR/verification.md" \
     "the whole tree is delivered, not just its entry point"
-echo "  ✓ engine-mcp: the selected server's rules tree is delivered on update"
+assert_exists "$DEVPRIN_DIR/.unikit/system/engine-bridges/BRIDGES.md" \
+    "BRIDGES.md is delivered with the tree"
+echo "  ✓ engine-bridges: the selected bridge's rules tree is delivered on update"
 
 # Leg 3 — TAMPER-REFRESH + recursive orphan-delete. System assets are not hash-tracked,
 # so a hand-edited copy must be overwritten on the next update rather than kept; and the
@@ -1629,7 +1635,18 @@ assert_not_contains "$MCP_SHARD_DIR/INDEX.md" 'HAND_EDITED' \
     "a hand-edited rules file is rewritten on update (system assets are not hash-tracked)"
 assert_not_exists "$MCP_SHARD_DIR/stale-subdir/orphan.txt" \
     "orphan-delete reaches a nested non-markdown file (recursive, not *.md-only)"
-echo "  ✓ engine-mcp: tamper-refresh restores the tree and sweeps a nested orphan"
+echo "  ✓ engine-bridges: tamper-refresh restores the tree and sweeps a nested orphan"
+
+# Leg 4 — the 2.x folder with a stamp of the old kind (`server:`), as a project upgraded
+# in place would still have it. It is not a tree of this release and nothing reads it.
+mkdir -p "$MCP_LEGACY_DIR"
+printf 'server: unity-biome-mcp\n\n# Tree\n' > "$MCP_LEGACY_DIR/INDEX.md"
+echo "OLD" > "$MCP_LEGACY_DIR/capabilities.md"
+MCP_SHARD_OUT4="$TMPDIR/update-mcp-shards-4.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$MCP_SHARD_OUT4" 2>&1)
+assert_not_exists "$MCP_LEGACY_DIR" "a 2.x engine-mcp folder with an old-kind stamp is removed whole on update"
+assert_exists "$MCP_SHARD_DIR/INDEX.md" "...and the tree of the bridge is still there"
+echo "  ✓ engine-bridges: the 2.x engine-mcp folder is removed whole"
 
 # ─────────────────────────────────────────────
 # Test 30f: the MCP selection is part of the skill source hash
@@ -1658,8 +1675,8 @@ cat > "$MCPHASH_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": "UnityMCP",
-  "mcp": { "servers": { "coplay-unity-mcp": "UnityMCP" } },
+  "mcp": { "servers": {} },
+  "engineBridges": { "selected": { "coplay-unity-mcp": "UnityMCP" } },
   "agents": [
     {
       "id": "claude",
@@ -1693,7 +1710,7 @@ MCPHASH_CONFIG="$MCPHASH_DIR/.unikit.json"
 CONFIG="$MCPHASH_CONFIG" node -e "
     const fs=require('fs'); const f=process.env.CONFIG;
     const c=JSON.parse(fs.readFileSync(f,'utf8'));
-    c.mcp = { servers: ['unity-biome-mcp'] };
+    c.engineBridges = { selected: { 'unity-biome-mcp': 'unity-biome-mcp' } };
     fs.writeFileSync(f, JSON.stringify(c,null,2));
 "
 MCPHASH_OUT2="$TMPDIR/update-mcp-hash-2.log"
@@ -1745,8 +1762,8 @@ cat > "$ENGSWITCH_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": "UnityMCP",
-  "mcp": { "servers": { "unity-biome-mcp": "UnityMCP" } },
+  "mcp": { "servers": {} },
+  "engineBridges": { "selected": { "unity-biome-mcp": "UnityMCP" } },
   "agents": [
     {
       "id": "claude",
@@ -1775,8 +1792,8 @@ CONFIG="$ENGSWITCH_CONFIG" node -e "
     const fs=require('fs'); const f=process.env.CONFIG;
     const c=JSON.parse(fs.readFileSync(f,'utf8'));
     c.engine = 'godot';
-    c.engineMcpKey = null;
     c.mcp = { servers: {} };
+    c.engineBridges = { selected: {} };
     fs.writeFileSync(f, JSON.stringify(c,null,2));
 "
 ENGSWITCH_OUT2="$TMPDIR/update-engine-switch-2.log"
@@ -1806,7 +1823,7 @@ echo "  ✓ engine switch: unity+biome -> godot+none reinstalls skills and clear
 # reaches: the engine does not change, the selected servers do not change — only the
 # grant list INSIDE the server's own JSON does.
 #
-# `mcpHashComponent` hashes `mcp:<engineMcpKey>|<sorted fileIds>`, i.e. the INPUT of
+# `selectionHashComponent` hashes `mcp:<sorted pairs>|bridges:<sorted pairs>`, i.e. the INPUT of
 # the injection, not its output. Both are identical here, so no artifact's source hash
 # moves and `skipUnchanged` keeps the installed copy. The named grants therefore
 # survive on disk unless `injectMcpRules` removes them itself.
@@ -1830,8 +1847,8 @@ cat > "$NARROW_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": "FixtureTreed",
-  "mcp": { "servers": { "fixture-treed-mcp": "FixtureTreed" } },
+  "mcp": { "servers": {} },
+  "engineBridges": { "selected": { "fixture-treed-mcp": "FixtureTreed" } },
   "agents": [
     {
       "id": "claude",
@@ -1857,12 +1874,13 @@ inject_fake_registry "$NARROW_DIR"
 # that reads as if it had proved they do not.
 #
 # The doctored file is a COPY of the fixture catalog under $TMPDIR, selected through
-# UNIKIT_MCP_DIR: the suites run in parallel (test-skills.sh), and a git-tracked fixture
-# edited in place is visible to the install suite that reads the same catalog.
+# UNIKIT_MCP_DIR and UNIKIT_BRIDGES_DIR: the suites run in parallel (test-skills.sh), and a
+# git-tracked fixture edited in place is visible to the install suite that reads the same catalog.
 NARROW_CATALOG="$TMPDIR/mcp-two-unity-servers"
 cp -r "$ROOT_DIR/scripts/test-fixtures/mcp/two-unity-servers" "$NARROW_CATALOG"
-export UNIKIT_MCP_DIR="$(normalize_path_for_json "$NARROW_CATALOG")"
-FIXTURE_JSON="$UNIKIT_MCP_DIR/unity/fixture-treed-mcp.json"
+export UNIKIT_MCP_DIR="$(normalize_path_for_json "$NARROW_CATALOG/mcp")"
+export UNIKIT_BRIDGES_DIR="$(normalize_path_for_json "$NARROW_CATALOG/engine-bridges")"
+FIXTURE_JSON="$UNIKIT_BRIDGES_DIR/unity/fixture-treed-mcp.json"
 FIXTURE_JSON_BACKUP="$TMPDIR/fixture-treed-mcp.json.orig"
 cp "$FIXTURE_JSON" "$FIXTURE_JSON_BACKUP"
 
@@ -1908,70 +1926,93 @@ unuse_fake_mcp_catalog
 echo "  ✓ narrowed grants: dead mcp__ names removed without a reinstall, hand-authored entries kept"
 
 # ─────────────────────────────────────────────
-# Test 30i: the MCP findings log follows the server it belongs to
+# Test 30i: the findings log follows the bridge it belongs to
 # ─────────────────────────────────────────────
-# `.unikit/MCP-RECHECK-NOTES.md` records what one MCP server was caught doing.
-# Carried across a server switch it would be worse than lost — it would read as
-# evidence about a server that never produced it. So the installer parks it under
-# the outgoing server's id and restores it on the way back.
+# `.unikit/bridge-notes/<bridge>.md` records what one bridge was caught doing.
+# Carried across a switch it would be worse than lost — it would read as evidence
+# about a bridge that never produced it. So the installer parks the log of a bridge
+# that left the selection in `archive/<bridge>.md` and restores it when the bridge
+# comes back: the difference of the two SETS, bridge by bridge.
 #
-# Module-level rather than CLI-level, and the reason is a contract, not
-# convenience: the swap's live caller is `init`, whose previous selection comes
-# from the config it is about to overwrite. `update` never re-asks for servers, so
-# its call is a documented no-op and drives none of this. That leaves `init`, and
-# `init` is a wizard no smoke test can drive. Same precedent as the TomlMcpWriter
-# and `sortMcpChoices` checks: exercise the unit through node.
+# Module-level rather than CLI-level, and the reason is a contract, not convenience:
+# the swap's call from `init` takes its previous set from the config it is about to
+# overwrite, which no smoke test can drive (the wizard is interactive). Same precedent
+# as the TomlMcpWriter and `sortMcpChoices` checks: exercise the unit through node.
+# The `update` path is Test 30j.
 #
-# Covered: park under the OUTGOING id, restore the incoming server's own file,
-# never overwrite a taken archive slot, and idempotence when nothing changed.
+# Covered: park under the OUTGOING id, restore the incoming bridge's own file, never
+# overwrite a taken archive slot, idempotence, a set of several bridges changing in part,
+# the fallback when there is no record of the previous set (only known ids are touched),
+# and the warning for a bridge whose notes are both active and archived.
 
 NOTES_SWAP_TMP=$(mktemp -d)
 NOTES_SWAP_ERR="$TMPDIR/update-notes-swap.err"
 NOTES_SWAP_RESULT=$(cd "$ROOT_DIR" && NOTES_ROOT="$NOTES_SWAP_TMP" node --input-type=module -e "
   import fs from 'fs';
   import path from 'path';
-  import { swapMcpRecheckNotes } from './dist/core/installer/mcp-notes.js';
+  import { swapBridgeNotes } from './dist/core/installer/bridge-notes.js';
 
   const root = process.env.NOTES_ROOT;
-  const unikit = path.join(root, '.unikit');
-  fs.mkdirSync(unikit, { recursive: true });
-  const active = path.join(unikit, 'MCP-RECHECK-NOTES.md');
-  const archive = id => path.join(unikit, 'MCP-RECHECK-NOTES.archive.' + id + '.md');
+  const notesDir = path.join(root, '.unikit', 'bridge-notes');
+  const archiveDir = path.join(notesDir, 'archive');
+  fs.mkdirSync(notesDir, { recursive: true });
+  const active = id => path.join(notesDir, id + '.md');
+  const archive = (id, n) => path.join(archiveDir, n ? id + '.' + n + '.md' : id + '.md');
+  const put = (file, text) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text); };
+  const known = new Set(['unity-biome-mcp', 'fennara-godot-mcp', 'a', 'b', 'c']);
   const why = [];
   const read = f => (fs.existsSync(f) ? fs.readFileSync(f, 'utf8').trim() : null);
 
   // park: biome -> fennara
-  fs.writeFileSync(active, 'BIOME_FINDING');
-  await swapMcpRecheckNotes(root, 'unity-biome-mcp', 'fennara-godot-mcp');
-  if (fs.existsSync(active)) why.push('active-survived-the-switch');
+  put(active('unity-biome-mcp'), 'BIOME_FINDING');
+  await swapBridgeNotes(root, ['unity-biome-mcp'], ['fennara-godot-mcp'], known);
+  if (fs.existsSync(active('unity-biome-mcp'))) why.push('active-survived-the-switch');
   if (read(archive('unity-biome-mcp')) !== 'BIOME_FINDING') why.push('parked-under-wrong-id-or-rewritten');
 
   // restore: fennara -> biome, with fennara's own notes parked in turn
-  fs.writeFileSync(active, 'FENNARA_FINDING');
-  await swapMcpRecheckNotes(root, 'fennara-godot-mcp', 'unity-biome-mcp');
-  if (read(active) !== 'BIOME_FINDING') why.push('restore-did-not-return-the-servers-own-notes');
+  put(active('fennara-godot-mcp'), 'FENNARA_FINDING');
+  await swapBridgeNotes(root, ['fennara-godot-mcp'], ['unity-biome-mcp'], known);
+  if (read(active('unity-biome-mcp')) !== 'BIOME_FINDING') why.push('restore-did-not-return-the-bridges-own-notes');
   if (read(archive('fennara-godot-mcp')) !== 'FENNARA_FINDING') why.push('outgoing-notes-not-parked-on-restore');
   if (fs.existsSync(archive('unity-biome-mcp'))) why.push('archive-left-beside-the-restored-active');
 
   // a taken archive slot is never overwritten — it is evidence of an interrupted run
-  fs.writeFileSync(archive('unity-biome-mcp'), 'ORPHAN_FROM_A_BROKEN_RUN');
-  fs.writeFileSync(active, 'SECOND_BIOME_FINDING');
-  await swapMcpRecheckNotes(root, 'unity-biome-mcp', 'fennara-godot-mcp');
+  put(archive('unity-biome-mcp'), 'ORPHAN_FROM_A_BROKEN_RUN');
+  put(active('unity-biome-mcp'), 'SECOND_BIOME_FINDING');
+  await swapBridgeNotes(root, ['unity-biome-mcp'], ['fennara-godot-mcp'], known);
   if (read(archive('unity-biome-mcp')) !== 'ORPHAN_FROM_A_BROKEN_RUN') why.push('taken-archive-slot-overwritten');
-  if (read(path.join(unikit, 'MCP-RECHECK-NOTES.archive.unity-biome-mcp.1.md')) !== 'SECOND_BIOME_FINDING')
-    why.push('collision-not-indexed');
+  if (read(archive('unity-biome-mcp', 1)) !== 'SECOND_BIOME_FINDING') why.push('collision-not-indexed');
 
-  // idempotence: same server in and out touches nothing
-  const before = fs.readdirSync(unikit).sort().join('|');
-  await swapMcpRecheckNotes(root, 'fennara-godot-mcp', 'fennara-godot-mcp');
-  if (fs.readdirSync(unikit).sort().join('|') !== before) why.push('no-op-branch-touched-the-disk');
+  // idempotence: the same set in and out touches nothing
+  const snapshot = () => [notesDir, archiveDir].flatMap(d => fs.readdirSync(d).map(n => d + '/' + n)).sort().join('|');
+  const before = snapshot();
+  await swapBridgeNotes(root, ['fennara-godot-mcp'], ['fennara-godot-mcp'], known);
+  if (snapshot() !== before) why.push('no-op-branch-touched-the-disk');
+
+  // a set in part: (a, b) -> (b, c): b stays, a is parked, c comes back from the archive
+  put(active('a'), 'A_FINDING'); put(active('b'), 'B_FINDING'); put(archive('c'), 'C_FINDING');
+  await swapBridgeNotes(root, ['a', 'b'], ['b', 'c'], known);
+  if (read(active('b')) !== 'B_FINDING') why.push('kept-bridge-was-touched');
+  if (fs.existsSync(active('a')) || read(archive('a')) !== 'A_FINDING') why.push('dropped-bridge-not-parked');
+  if (read(active('c')) !== 'C_FINDING' || fs.existsSync(archive('c'))) why.push('returning-bridge-not-restored');
+
+  // no record of the previous set: only the notes of KNOWN bridges are read as the previous set
+  put(active('a'), 'A_AGAIN'); put(path.join(notesDir, 'zz-mine.md'), 'USER_OWN_FILE');
+  await swapBridgeNotes(root, null, ['b'], known);
+  if (fs.existsSync(active('a'))) why.push('fallback-left-a-known-bridge-active');
+  if (read(path.join(notesDir, 'zz-mine.md')) !== 'USER_OWN_FILE') why.push('fallback-touched-a-file-that-is-not-a-bridge');
+
+  // active AND archived: left as they are, and said so
+  put(active('c'), 'C_ACTIVE'); put(archive('c'), 'C_ARCHIVED');
+  await swapBridgeNotes(root, ['b'], ['b', 'c'], known);
+  if (read(active('c')) !== 'C_ACTIVE' || read(archive('c')) !== 'C_ARCHIVED') why.push('both-states-were-merged-or-moved');
 
   console.log(why.length ? why.join(' ') : 'ok');
 " 2>"$NOTES_SWAP_ERR" || echo "swap-error")
 rm -rf "$NOTES_SWAP_TMP"
 
 if [[ "$NOTES_SWAP_RESULT" != "ok" ]]; then
-    echo "Assertion failed: MCP recheck-notes swap is broken: $NOTES_SWAP_RESULT"
+    echo "Assertion failed: the bridge notes swap is broken: $NOTES_SWAP_RESULT"
     echo "--- stderr ---"; cat "$NOTES_SWAP_ERR" 2>/dev/null || true; echo "--------------"
     exit 1
 fi
@@ -1979,15 +2020,20 @@ fi
 # The collision branch must also SAY so. Indexing the archive silently would leave the
 # orphan of an interrupted run sitting on disk with nothing pointing at it: the notes are
 # hand-authored, no installer step ever revisits them, and the only moment anyone can
-# learn that two files now claim the same server is the run that made it happen.
+# learn that two files now claim the same bridge is the run that made it happen.
 if ! grep -qF 'archive name taken' "$NOTES_SWAP_ERR"; then
     echo "Assertion failed: an indexed archive slot was written without a WARN"
     echo "  (the .N file is the outcome; the warning is the only notice the operator gets)"
     echo "--- stderr ---"; cat "$NOTES_SWAP_ERR" 2>/dev/null || true; echo "--------------"
     exit 1
 fi
+if ! grep -qF 'both active and archived' "$NOTES_SWAP_ERR"; then
+    echo "Assertion failed: a bridge with notes both active and archived was restored over, or silently skipped"
+    echo "--- stderr ---"; cat "$NOTES_SWAP_ERR" 2>/dev/null || true; echo "--------------"
+    exit 1
+fi
 
-echo "  ✓ recheck notes: parked under the outgoing server, restored on the way back, archives never overwritten (collision warns)"
+echo "  ✓ bridge notes: parked under the outgoing bridge, restored on the way back, a set changes bridge by bridge, archives never overwritten (collision warns)"
 
 # ─────────────────────────────────────────────
 # Test 30j: an engine switch through `update` parks the findings log too
@@ -1998,18 +2044,17 @@ echo "  ✓ recheck notes: parked under the outgoing server, restored on the way
 # above proves the command honours it everywhere else (skills reinstalled, stale
 # grants cleared). The findings log has to follow the same switch.
 #
-# The ordering is the whole point and it fails silently: the previous server id
-# comes from the provenance stamp in the tree on disk, and `installEngineMcpRules`
-# overwrites that stamp. Read it after, and the "previous" server is the new one,
-# the swap no-ops, and biome's findings sit active under fennara looking like
-# evidence about fennara.
+# The ordering is the whole point and it fails silently: the previous set comes
+# from the BRIDGES.md on disk, and `installEngineBridges` rewrites that file. Read it
+# after, and the "previous" set is the new one, the swap no-ops, and biome's findings
+# sit active under fennara looking like evidence about fennara.
 #
 # Three steps, not two. Step 2 (biome to fennara) is about the notes: they follow the
-# server, and whether the incoming server has a tree is irrelevant to that. Step 3
-# (fennara to gdai) is about the sweep, and for that the incoming server MUST be
-# treeless -- otherwise "empty" stops being the correct end state and the orphan-delete
-# branch is never executed at all. Folding them into one step holds both assertions
-# hostage to whether one particular server happened to grow a tree.
+# bridge, and whether the incoming bridge has a tree is irrelevant to that. Step 3
+# (fennara to a treeless bridge) is about the sweep, and for that the incoming bridge
+# MUST be treeless -- otherwise "empty" stops being the correct end state and the
+# orphan-delete branch is never executed at all. Folding them into one step holds both
+# assertions hostage to whether one particular server happened to grow a tree.
 
 NOTES_CLI_DIR="$TMPDIR/update-notes-engine-switch"
 mkdir -p "$NOTES_CLI_DIR"
@@ -2017,8 +2062,8 @@ cat > "$NOTES_CLI_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": "UnityMCP",
-  "mcp": { "servers": { "unity-biome-mcp": "UnityMCP" } },
+  "mcp": { "servers": {} },
+  "engineBridges": { "selected": { "unity-biome-mcp": "UnityMCP" } },
   "agents": [
     {
       "id": "claude",
@@ -2036,80 +2081,77 @@ inject_fake_registry "$NOTES_CLI_DIR"
 NOTES_CLI_OUT1="$TMPDIR/update-notes-cli-1.log"
 (cd "$NOTES_CLI_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$NOTES_CLI_OUT1" 2>&1)
 
-# The log is user-authored (`/unikit-mcp-trap` writes it); seed it by hand, because
+# The log is user-authored (`/unikit-bridge-trap` writes it); seed it by hand, because
 # the installer must only ever rename this file, never create or rewrite it.
-NOTES_CLI_ACTIVE="$NOTES_CLI_DIR/.unikit/MCP-RECHECK-NOTES.md"
-NOTES_CLI_ARCHIVE="$NOTES_CLI_DIR/.unikit/MCP-RECHECK-NOTES.archive.unity-biome-mcp.md"
+NOTES_CLI_ACTIVE="$NOTES_CLI_DIR/.unikit/bridge-notes/unity-biome-mcp.md"
+NOTES_CLI_ARCHIVE="$NOTES_CLI_DIR/.unikit/bridge-notes/archive/unity-biome-mcp.md"
+mkdir -p "$(dirname "$NOTES_CLI_ACTIVE")"
 echo "BIOME_FINDING" > "$NOTES_CLI_ACTIVE"
 
 CONFIG="$NOTES_CLI_DIR/.unikit.json" node -e "
     const fs=require('fs'); const f=process.env.CONFIG;
     const c=JSON.parse(fs.readFileSync(f,'utf8'));
     c.engine = 'godot';
-    c.engineMcpKey = 'fennara';
-    c.mcp = { servers: ['fennara-godot-mcp'] };
+    c.mcp = { servers: {} };
+    c.engineBridges = { selected: { 'fennara-godot-mcp': 'fennara' } };
     fs.writeFileSync(f, JSON.stringify(c,null,2));
 "
 NOTES_CLI_OUT2="$TMPDIR/update-notes-cli-2.log"
 (cd "$NOTES_CLI_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$NOTES_CLI_OUT2" 2>&1)
 
 if [[ -f "$NOTES_CLI_ACTIVE" ]]; then
-    echo "Assertion failed: an engine switch through update left the old server's findings active"
-    echo "  (the previous id is read from the delivered stamp — reading it AFTER"
-    echo "   installEngineMcpRules rewrites the stamp makes the swap a silent no-op)"
+    echo "Assertion failed: an engine switch through update left the old bridge's findings active"
+    echo "  (the previous set is read from the BRIDGES.md on disk — reading it AFTER"
+    echo "   installEngineBridges rewrites the file makes the swap a silent no-op)"
     echo "--- content still active ---"
     cat "$NOTES_CLI_ACTIVE"
     echo "----------------------------"
     exit 1
 fi
 assert_exists "$NOTES_CLI_ARCHIVE" \
-    "the log is parked under the id of the server that produced it"
+    "the log is parked under the id of the bridge that produced it"
 assert_contains "$NOTES_CLI_ARCHIVE" 'BIOME_FINDING' \
     "parking is a rename — the installer never rewrites note content"
 
 # Tree -> tree. Both trees name their files the same way, so orphan-delete does not
-# fire here at all and "empty" is not the correct end state: the replacement is proved
-# by the stamp. Before fennara this path was untestable -- there was no second tree on
-# one engine.
-NOTES_CLI_RULES="$NOTES_CLI_DIR/.unikit/system/engine-mcp"
+# fire on a shared name and "empty" is not the correct end state: the replacement is
+# proved by the stamp, and by the old bridge's folder being gone.
+NOTES_CLI_BRIDGES="$NOTES_CLI_DIR/.unikit/system/engine-bridges"
+NOTES_CLI_RULES="$NOTES_CLI_BRIDGES/fennara-godot-mcp"
 assert_exists "$NOTES_CLI_RULES/INDEX.md" \
-    "the incoming server's own rules tree is delivered in place of the outgoing one"
-assert_contains "$NOTES_CLI_RULES/INDEX.md" '^server: fennara-godot-mcp$' \
-    "the delivered tree is stamped with the server that replaced the previous one"
-assert_not_contains "$NOTES_CLI_RULES/INDEX.md" 'unity-biome-mcp' \
-    "nothing of the outgoing server's tree survives the replacement"
+    "the incoming bridge's own rules tree is delivered"
+assert_contains "$NOTES_CLI_RULES/INDEX.md" '^bridge: fennara-godot-mcp$' \
+    "the delivered tree is stamped with the bridge that replaced the previous one"
+assert_not_exists "$NOTES_CLI_BRIDGES/unity-biome-mcp" \
+    "nothing of the outgoing bridge's tree survives the replacement"
+assert_not_contains "$NOTES_CLI_BRIDGES/BRIDGES.md" 'unity-biome-mcp' \
+    "BRIDGES.md lists only the bridge that replaced the previous one"
 
 # Step 3 - the sweep. Deliberately separated from step 2: there the assertion is that
-# the notes follow the server, here that the outgoing server's tree leaves with it.
-# The incoming server MUST be treeless, otherwise "empty" stops being the correct end
-# state and with it goes the only branch on which orphan-delete runs at all. Fennara no
-# longer qualifies - it grows a tree; GDAI no longer qualifies either as of its own
-# conformance run (2026-09-04) - it grows a tree too; neither does Coding-Solo as of
-# its own conformance run (2026-09-05) - all three Godot servers now carry a tree.
-# chir24-unreal-mcp (Unreal Engine 5) no longer qualifies either as of its own
-# conformance run - it now carries a tree too, closing out every real is_engine server
-# in the shipped mcp/ catalog. There is no real treeless is_engine server left to target,
-# so this step falls back to the fixture catalog (the same one test-install.sh Test 13c
-# uses) for its one genuinely treeless is_engine server.
+# the notes follow the bridge, here that the outgoing bridge's tree leaves with it.
+# The incoming bridge MUST be treeless, otherwise "empty" stops being the correct end
+# state and with it goes the only branch on which orphan-delete runs at all. Every real
+# bridge of the shipped catalog ships a tree now, so this step falls back to the fixture
+# catalog (the same one test-install.sh Test 13c uses) for its one genuinely treeless one.
 use_fake_mcp_catalog "two-unity-servers"
 CONFIG="$NOTES_CLI_DIR/.unikit.json" node -e "
     const fs=require('fs'); const f=process.env.CONFIG;
     const c=JSON.parse(fs.readFileSync(f,'utf8'));
     c.engine = 'unity';
-    c.engineMcpKey = 'FixtureTreeless';
-    c.mcp = { servers: ['fixture-treeless-mcp'] };
+    c.mcp = { servers: {} };
+    c.engineBridges = { selected: { 'fixture-treeless-mcp': 'FixtureTreeless' } };
     fs.writeFileSync(f, JSON.stringify(c,null,2));
 "
 NOTES_CLI_OUT3="$TMPDIR/update-notes-cli-3.log"
 (cd "$NOTES_CLI_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$NOTES_CLI_OUT3" 2>&1)
 unuse_fake_mcp_catalog
 
-assert_not_exists "$NOTES_CLI_RULES/INDEX.md" \
-    "a switch to a treeless server sweeps the outgoing server's rules tree (INDEX.md does not survive)"
-assert_not_exists "$NOTES_CLI_RULES/verification.md" \
-    "the sweep covers the whole tree, not just its entry point"
+assert_not_exists "$NOTES_CLI_RULES" \
+    "a switch to a treeless bridge sweeps the outgoing bridge's rules tree (the folder does not survive)"
+assert_contains "$NOTES_CLI_BRIDGES/BRIDGES.md" '^## fixture-treeless-mcp$' \
+    "BRIDGES.md lists the bridge that was selected last"
 
-echo "  ✓ recheck notes: an engine switch parks the log; a switch to a treeless server sweeps the tree"
+echo "  ✓ bridge notes: an engine switch parks the log; a switch to a treeless bridge sweeps the tree"
 
 # ─────────────────────────────────────────────
 # Test 30k: ultra-plan-read.md is delivered on update — the ONLY mechanical guard for
@@ -2316,7 +2358,7 @@ cat > "$INSTALLNEW_DIR/.unikit.json" << 'EOF'
   "version": "1.1.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     { "id": "claude", "skillsDir": ".claude/skills", "subagentsDir": ".claude/agents", "installedSkills": ["unikit"], "installedSubagents": [] }
@@ -2382,7 +2424,7 @@ cat > "$BOTHFLAGS_DIR/.unikit.json" << 'EOF'
   "version": "1.1.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     { "id": "claude", "skillsDir": ".claude/skills", "subagentsDir": ".claude/agents", "installedSkills": ["unikit"], "installedSubagents": [] }
@@ -2420,7 +2462,7 @@ cat > "$AK_DIR/.unikit.json" << 'EOF'
   "version": "1.1.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": { "context7": "context7", "github": "github" } },
   "agents": [
     {
@@ -2476,11 +2518,11 @@ if cmp -s "$AK_AG_SKILL" "$AK_KIMI_SKILL"; then
     echo "Assertion failed: the Kimi and Antigravity copies of unikit-implement must differ"
     exit 1
 fi
-assert_contains "$AK_KIMI_SKILL" '\.kimi-code/mcp\.json' "kimi copy: {{settings_file}} is .kimi-code/mcp.json"
+# (the substitution of {{settings_file}} is asserted by BR-13 in test-bridges.mjs: no base skill writes the variable any more)
 assert_contains "$AK_KIMI_SKILL" 'subagent_type: "coder"' "kimi copy: the coder subagent type"
 assert_contains "$AK_KIMI_SKILL" 'Read \.kimi-code/skills/unikit-devcontext/SKILL\.md in full' \
     "kimi copy: develop-agent reads its skill file from .kimi-code/skills"
-assert_contains "$AK_AG_SKILL" '\.agents/mcp_config\.json' "antigravity copy: {{settings_file}} is .agents/mcp_config.json"
+# (the substitution of {{settings_file}} is asserted by BR-13 in test-bridges.mjs: no base skill writes the variable any more)
 assert_contains "$AK_AG_SKILL" 'subagent_type: "self"' "antigravity copy: its own worker type"
 assert_not_contains "$AK_AG_SKILL" 'subagent_type: "coder"' "antigravity copy: no Kimi rewrite"
 assert_contains "$AK_AG_SKILL" 'Read \.agents/skills/unikit-devcontext/SKILL\.md in full' \
@@ -2587,7 +2629,7 @@ cat > "$UC_DIR/.unikit.json" << 'EOF'
   "version": "1.1.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": { "context7": "context7", "github": "github" } },
   "agents": [
     {
@@ -2693,7 +2735,7 @@ cat > "$UX_DIR/.unikit.json" << 'EOF'
   "version": "1.1.0",
   "language": "en",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -2754,6 +2796,330 @@ done
 assert_not_exists "$UX_DIR/.agents" "the refused extension commands must write no skills"
 
 echo "  ✓ universal: next to Claude one .mcp.json and an idle second update with per-tree repair; next to Antigravity update and extension commands stop with exit 1 before writing"
+
+# ─────────────────────────────────────────────
+# Test 35: skill renames — the new name takes the old one's place, per agent, with no question
+# ─────────────────────────────────────────────
+# unikit-mcp-trap / unikit-mcp-audit became unikit-bridge-trap / unikit-bridge-audit in 3.0.0.
+# Without the rename table a project would lose both skills in CI: the old directory is removed
+# as "not in the package", and the new name is only "new" (skipped without --install-new).
+#
+# Two agents. The first has both old skills installed; the second never had them and must NOT
+# get the new ones (the set of newly offered skills is global, the rename is per agent).
+# A skill-context directory of the old name belongs to the user: it is named, not moved.
+
+RENAME_DIR="$TMPDIR/update-skill-rename"
+mkdir -p "$RENAME_DIR/.claude/skills/unikit-mcp-trap" "$RENAME_DIR/.claude/skills/unikit-mcp-audit" \
+         "$RENAME_DIR/.unikit/skill-context/unikit-mcp-trap"
+echo "OLD TRAP" > "$RENAME_DIR/.claude/skills/unikit-mcp-trap/SKILL.md"
+echo "OLD AUDIT" > "$RENAME_DIR/.claude/skills/unikit-mcp-audit/SKILL.md"
+echo "MY OVERRIDE" > "$RENAME_DIR/.unikit/skill-context/unikit-mcp-trap/SKILL.md"
+cat > "$RENAME_DIR/.unikit.json" << 'EOF'
+{
+  "version": "2.5.0",
+  "engine": "unity",
+  "mcp": { "servers": {} },
+  "engineBridges": { "selected": {} },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit", "unikit-mcp-trap", "unikit-mcp-audit"],
+      "installedSubagents": []
+    },
+    {
+      "id": "codex",
+      "skillsDir": ".codex/skills",
+      "subagentsDir": ".codex/agents",
+      "installedSkills": ["unikit"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": { "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } } }
+}
+EOF
+inject_fake_registry "$RENAME_DIR"
+
+RENAME_OUT1="$TMPDIR/update-skill-rename-1.log"
+(cd "$RENAME_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$RENAME_OUT1" 2>&1)
+
+assert_exists "$RENAME_DIR/.claude/skills/unikit-bridge-trap/SKILL.md" "rename: the first agent gets the new trap skill without --install-new"
+assert_exists "$RENAME_DIR/.claude/skills/unikit-bridge-audit/SKILL.md" "rename: the first agent gets the new audit skill without --install-new"
+assert_not_exists "$RENAME_DIR/.claude/skills/unikit-mcp-trap" "rename: the old trap directory is gone"
+assert_not_exists "$RENAME_DIR/.claude/skills/unikit-mcp-audit" "rename: the old audit directory is gone"
+assert_not_exists "$RENAME_DIR/.codex/skills/unikit-bridge-trap" "rename: an agent that never had the old skill does not get the new one"
+assert_not_exists "$RENAME_DIR/.codex/skills/unikit-bridge-audit" "rename: ...nor the other one"
+
+RENAME_STATE=$(node -e "
+  const c = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
+  const claude = c.agents.find(a => a.id === 'claude'), codex = c.agents.find(a => a.id === 'codex');
+  process.stdout.write(JSON.stringify({
+    installed: claude.installedSkills.filter(s => /trap|audit/.test(s)).sort(),
+    managed: Object.keys(claude.managedSkills || {}).filter(s => /trap|audit/.test(s)).sort(),
+    codex: codex.installedSkills.filter(s => /trap|audit/.test(s)),
+  }));
+" "$RENAME_DIR/.unikit.json")
+if [[ "$RENAME_STATE" == '{"installed":["unikit-bridge-audit","unikit-bridge-trap"],"managed":["unikit-bridge-audit","unikit-bridge-trap"],"codex":[]}' ]]; then
+    echo "  ✓ rename: installedSkills and managedSkills carry the new names, the other agent none"
+else
+    echo "Assertion failed: renamed skills are not recorded as expected: $RENAME_STATE"
+    exit 1
+fi
+
+assert_contains "$RENAME_OUT1" 'renamed from unikit-mcp-trap' "rename: the report says the new skill replaces the old one"
+assert_contains "$RENAME_OUT1" 'renamed from unikit-mcp-audit' "rename: ...for both skills"
+assert_not_contains "$RENAME_OUT1" 'unikit-bridge-trap (new in package)' "rename: a rename target is not offered as a new skill"
+assert_contains "$RENAME_OUT1" 'renamed skill' "rename: the user's skill-context of the old name is named in a warning"
+assert_exists "$RENAME_DIR/.unikit/skill-context/unikit-mcp-trap/SKILL.md" "rename: the user's own directory is left where it is"
+
+# Idempotence: the old names are gone, the new ones match their hash.
+RENAME_SHA=$(sha_of "$RENAME_DIR/.unikit.json")
+RENAME_SKILL_SHA=$(sha_of "$RENAME_DIR/.claude/skills/unikit-bridge-trap/SKILL.md")
+RENAME_OUT2="$TMPDIR/update-skill-rename-2.log"
+(cd "$RENAME_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$RENAME_OUT2" 2>&1)
+assert_same_sha "$RENAME_DIR/.unikit.json" "$RENAME_SHA" "rename: a second update leaves .unikit.json byte-identical"
+assert_same_sha "$RENAME_DIR/.claude/skills/unikit-bridge-trap/SKILL.md" "$RENAME_SKILL_SHA" "rename: ...and the renamed skill"
+assert_not_contains "$RENAME_OUT2" 'renamed from' "rename: nothing is renamed twice"
+echo "  ✓ skill renames: per agent, without a question, reported once, idempotent"
+
+# Test 35b: an extension that REPLACED a base skill which has been renamed. `update` removes the old
+# directory (and the replacement in it) and installs the new base skill; the replacement has to come
+# back under the new name, and the record in .unikit.json has to follow.
+RENAME_EXT_DIR="$TMPDIR/update-skill-rename-ext"
+mkdir -p "$RENAME_EXT_DIR/.claude/skills/unikit-mcp-trap" "$RENAME_EXT_DIR/.unikit/extensions/ext-old/skills/trap"
+printf -- '---\nname: unikit-mcp-trap\ndescription: Trap replaced by an extension\n---\n\n# Custom Trap (from extension)\n' > "$RENAME_EXT_DIR/.unikit/extensions/ext-old/skills/trap/SKILL.md"
+cp "$RENAME_EXT_DIR/.unikit/extensions/ext-old/skills/trap/SKILL.md" "$RENAME_EXT_DIR/.claude/skills/unikit-mcp-trap/SKILL.md"
+cat > "$RENAME_EXT_DIR/.unikit/extensions/ext-old/extension.json" << 'EOF'
+{ "name": "ext-old", "version": "1.0.0", "replaces": { "skills/trap": "unikit-mcp-trap" } }
+EOF
+cat > "$RENAME_EXT_DIR/.unikit.json" << 'EOF'
+{
+  "version": "2.5.0",
+  "engine": "unity",
+  "mcp": { "servers": {} },
+  "engineBridges": { "selected": {} },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit", "unikit-mcp-trap"],
+      "installedSubagents": []
+    }
+  ],
+  "extensions": [
+    { "name": "ext-old", "source": "local", "version": "1.0.0", "replacedSkills": { "unikit-mcp-trap": "skills/trap" } }
+  ],
+  "rules": { "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } } }
+}
+EOF
+inject_fake_registry "$RENAME_EXT_DIR"
+RENAME_EXT_OUT="$TMPDIR/update-skill-rename-ext.log"
+(cd "$RENAME_EXT_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$RENAME_EXT_OUT" 2>&1)
+assert_not_exists "$RENAME_EXT_DIR/.claude/skills/unikit-mcp-trap" "rename + extension: the old directory is gone"
+assert_contains "$RENAME_EXT_DIR/.claude/skills/unikit-bridge-trap/SKILL.md" 'Custom Trap \(from extension\)' \
+  "rename + extension: the extension's replacement is back under the new base name"
+RENAME_EXT_KEYS=$(node -e "
+  const c = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
+  console.log(Object.keys(c.extensions[0].replacedSkills || {}).join(','));
+" "$RENAME_EXT_DIR/.unikit.json")
+if [[ "$RENAME_EXT_KEYS" != "unikit-bridge-trap" ]]; then
+    echo "Assertion failed: the extension record should name the replaced base skill under its new name, got: $RENAME_EXT_KEYS"
+    exit 1
+fi
+RENAME_EXT_SHA=$(sha_of "$RENAME_EXT_DIR/.claude/skills/unikit-bridge-trap/SKILL.md")
+(cd "$RENAME_EXT_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/update-skill-rename-ext-2.log" 2>&1)
+assert_same_sha "$RENAME_EXT_DIR/.claude/skills/unikit-bridge-trap/SKILL.md" "$RENAME_EXT_SHA" "rename + extension: a second update keeps the replacement"
+echo "  ✓ skill renames: an extension's replacement of a renamed base skill is put back under the new name"
+
+
+# ─────────────────────────────────────────────
+# Test 36: the grants of a command-line bridge — written for every shell the card names, narrow,
+# never conferred on the roles that must not have them, and removed again when the bridge goes
+# ─────────────────────────────────────────────
+# Unity CLI is the first bridge of kind cli: no entry in the agent's settings file, only frontmatter
+# grants of the form "<Shell>(unity <verb> *)". Removal has to recognise them as the installer's own
+# (the prefix the adapter names), while a hand-written "Bash(git *)" beside them stays.
+
+# Fixed-string assertions: the grants are full of parentheses and asterisks, which assert_contains reads as a regex.
+assert_has_text() {
+    if ! grep -qF "$2" "$1"; then
+        echo "Assertion failed: $3"
+        echo "Text: $2"
+        echo "File: $1"
+        exit 1
+    fi
+}
+assert_lacks_text() {
+    if grep -qF "$2" "$1"; then
+        echo "Assertion failed: $3"
+        echo "Text: $2"
+        echo "File: $1"
+        echo "--- matching lines ---"
+        grep -F "$2" "$1" | head -5
+        echo "----------------------"
+        exit 1
+    fi
+}
+
+CLIGRANT_DIR="$TMPDIR/update-cli-grants"
+mkdir -p "$CLIGRANT_DIR"
+cat > "$CLIGRANT_DIR/.unikit.json" << 'EOF'
+{
+  "version": "3.0.0",
+  "engine": "unity",
+  "mcp": { "servers": {} },
+  "engineBridges": { "selected": { "unity-cli": "unity", "unity-biome-mcp": "unity-biome-mcp" } },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit", "unikit-implement", "unikit-plan", "unikit-bridge-trap"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": { "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } } }
+}
+EOF
+inject_fake_registry "$CLIGRANT_DIR"
+CLIGRANT_OUT1="$TMPDIR/update-cli-grants-1.log"
+(cd "$CLIGRANT_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$CLIGRANT_OUT1" 2>&1)
+
+CLIGRANT_IMPL="$CLIGRANT_DIR/.claude/skills/unikit-implement/SKILL.md"
+CLIGRANT_PLAN="$CLIGRANT_DIR/.claude/skills/unikit-plan/SKILL.md"
+CLIGRANT_TRAP="$CLIGRANT_DIR/.claude/skills/unikit-bridge-trap/SKILL.md"
+CLIGRANT_UNIKIT="$CLIGRANT_DIR/.claude/skills/unikit/SKILL.md"
+for skill_file in "$CLIGRANT_IMPL" "$CLIGRANT_PLAN" "$CLIGRANT_TRAP" "$CLIGRANT_UNIKIT"; do
+    assert_exists "$skill_file" "cli grants: $(basename "$(dirname "$skill_file")") must be installed for the grant test"
+done
+for verb in command status recompile test --version; do
+    assert_has_text "$CLIGRANT_IMPL" "Bash(unity $verb *)" "cli grants: unikit-implement may run 'unity $verb' through Bash"
+    assert_has_text "$CLIGRANT_IMPL" "PowerShell(unity $verb *)" "cli grants: ...and through PowerShell"
+done
+assert_contains "$CLIGRANT_IMPL" 'mcp__unity-biome-mcp__\*' "cli grants: the MCP bridge beside it is granted as before"
+assert_has_text "$CLIGRANT_IMPL" 'Bash(git *)' "cli grants: a hand-written entry stays"
+assert_lacks_text "$CLIGRANT_IMPL" 'pipeline' "cli grants: no pipeline verb is granted to anyone"
+assert_has_text "$CLIGRANT_PLAN" 'Bash(unity list *)' "cli grants: the planner reads the live catalog"
+assert_has_text "$CLIGRANT_PLAN" 'PowerShell(unity list *)' "cli grants: ...through either shell"
+assert_lacks_text "$CLIGRANT_PLAN" 'Bash(unity command' "cli grants: the planner calls no command"
+assert_lacks_text "$CLIGRANT_TRAP" 'Bash(unity' "cli grants: the trap skill has none (it makes no calls)"
+assert_has_text "$CLIGRANT_UNIKIT" 'Bash(unity --version *)' "cli grants: /unikit may ask the CLI for its version"
+assert_has_text "$CLIGRANT_UNIKIT" 'Bash(unity status *)' "cli grants: ...and for its status"
+if [[ -f "$CLIGRANT_DIR/.mcp.json" ]] && grep -qF '"unity"' "$CLIGRANT_DIR/.mcp.json"; then
+    echo "Assertion failed: a command-line bridge was registered in .mcp.json"
+    exit 1
+fi
+
+# Idempotence on the full selection: a second update changes nothing it wrote.
+CLIGRANT_IMPL_SHA=$(sha_of "$CLIGRANT_IMPL")
+CLIGRANT_CFG_SHA=$(sha_of "$CLIGRANT_DIR/.unikit.json")
+(cd "$CLIGRANT_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/update-cli-grants-2.log" 2>&1)
+assert_same_sha "$CLIGRANT_IMPL" "$CLIGRANT_IMPL_SHA" "cli grants: a second update leaves the executor skill byte-identical (no duplicated entries)"
+assert_same_sha "$CLIGRANT_DIR/.unikit.json" "$CLIGRANT_CFG_SHA" "cli grants: ...and the config"
+CLIGRANT_COUNT=$(grep -cF 'Bash(unity command *)' "$CLIGRANT_IMPL" || true)
+if [[ "$CLIGRANT_COUNT" != "1" ]]; then
+    echo "Assertion failed: Bash(unity command *) appears $CLIGRANT_COUNT times in $CLIGRANT_IMPL, expected 1"
+    exit 1
+fi
+
+# --force reinstalls every skill from the package and injects the grants into a fresh copy: the entries are
+# all there once more, and none is written twice.
+(cd "$CLIGRANT_DIR" && node "$ROOT_DIR/dist/cli/index.js" update --force > "$TMPDIR/update-cli-grants-force.log" 2>&1)
+for verb in command status recompile test --version; do
+    CLIGRANT_COUNT=$(grep -cF "Bash(unity $verb *)" "$CLIGRANT_IMPL" || true)
+    if [[ "$CLIGRANT_COUNT" != "1" ]]; then
+        echo "Assertion failed: after update --force Bash(unity $verb *) appears $CLIGRANT_COUNT times, expected 1"
+        exit 1
+    fi
+done
+assert_has_text "$CLIGRANT_IMPL" 'PowerShell(unity command *)' "cli grants: --force keeps the PowerShell form too"
+assert_has_text "$CLIGRANT_IMPL" 'mcp__unity-biome-mcp__' "cli grants: ...and the MCP grants"
+
+# The SAME selection, but the catalog narrows: the card loses the "recompile" verb. The selection hash
+# does not move (it hashes the input of the injection), so nothing reinstalls; only the removal branch can
+# take the entry away, and it can do that only because it owns the prefix of the cli kind.
+CLIGRANT_BRIDGES="$TMPDIR/update-cli-grants-catalog"
+cp -r "$ROOT_DIR/engine-bridges" "$CLIGRANT_BRIDGES"
+CARD="$CLIGRANT_BRIDGES/unity/unity-cli.json" node -e "
+    const fs=require('fs'); const f=process.env.CARD;
+    const c=JSON.parse(fs.readFileSync(f,'utf8'));
+    for (const [name,verbs] of Object.entries(c['allowed-tools'].skills)) c['allowed-tools'].skills[name]=verbs.filter(v=>v!=='recompile');
+    fs.writeFileSync(f, JSON.stringify(c,null,2));
+"
+(cd "$CLIGRANT_DIR" && UNIKIT_BRIDGES_DIR="$CLIGRANT_BRIDGES" node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/update-cli-grants-3.log" 2>&1)
+assert_lacks_text "$CLIGRANT_IMPL" 'unity recompile' "cli grants: a verb the card dropped is removed from the installed skill (managed prefix)"
+assert_has_text "$CLIGRANT_IMPL" 'Bash(unity command *)' "cli grants: ...and the others stay"
+assert_has_text "$CLIGRANT_IMPL" 'Bash(git *)' "cli grants: ...and the hand-written entry"
+
+# The CLI is deselected, Biome stays: every entry of the CLI disappears everywhere, the MCP grants stay.
+CONFIG="$CLIGRANT_DIR/.unikit.json" node -e "
+    const fs=require('fs'); const f=process.env.CONFIG;
+    const c=JSON.parse(fs.readFileSync(f,'utf8'));
+    c.engineBridges = { selected: { 'unity-biome-mcp': 'unity-biome-mcp' } };
+    fs.writeFileSync(f, JSON.stringify(c,null,2));
+"
+(cd "$CLIGRANT_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/update-cli-grants-4.log" 2>&1)
+for skill_file in "$CLIGRANT_IMPL" "$CLIGRANT_PLAN" "$CLIGRANT_UNIKIT"; do
+    skill_label=$(basename "$(dirname "$skill_file")")
+    assert_lacks_text "$skill_file" 'Bash(unity' "cli grants: after deselecting the CLI no Bash(unity entry survives in $skill_label"
+    assert_lacks_text "$skill_file" 'PowerShell(unity' "cli grants: ...nor a PowerShell(unity entry in $skill_label"
+done
+assert_contains "$CLIGRANT_IMPL" 'mcp__unity-biome-mcp__\*' "cli grants: the MCP bridge that stays keeps its grants"
+assert_has_text "$CLIGRANT_IMPL" 'Bash(git *)' "cli grants: the hand-written entry survives the removal"
+echo "  ✓ cli grants: per shell, narrow, absent for the trap skill, idempotent, narrowed and removed through the managed prefix"
+
+
+# ─────────────────────────────────────────────
+# Test 37: bridge-docs and references are hash-tracked skills — a tampered file and a missing reference
+# file are both restored by update, and a settled project changes nothing
+# ─────────────────────────────────────────────
+# Both skills ship a references folder, which the non-flat copy delivers whole. A hand edit of the
+# SKILL.md and a deleted reference file are the two ways an installed copy drifts; neither may survive.
+
+DOCSTAMP_DIR="$TMPDIR/update-docs-skills-tamper"
+mkdir -p "$DOCSTAMP_DIR"
+cat > "$DOCSTAMP_DIR/.unikit.json" << 'EOF'
+{
+  "version": "3.0.0",
+  "engine": "unity",
+  "mcp": { "servers": {} },
+  "engineBridges": { "selected": {} },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit-bridge-docs", "unikit-references"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": { "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } } }
+}
+EOF
+inject_fake_registry "$DOCSTAMP_DIR"
+(cd "$DOCSTAMP_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/update-docs-skills-1.log" 2>&1)
+
+DOCSTAMP_SKILL="$DOCSTAMP_DIR/.claude/skills/unikit-bridge-docs/SKILL.md"
+DOCSTAMP_FORMAT="$DOCSTAMP_DIR/.claude/skills/unikit-references/references/index-format.md"
+assert_exists "$DOCSTAMP_SKILL" "docs skills: the button is installed on the first update"
+assert_exists "$DOCSTAMP_FORMAT" "docs skills: the index format is installed on the first update"
+
+echo "<!-- tampered -->" >> "$DOCSTAMP_SKILL"
+rm -f "$DOCSTAMP_FORMAT"
+(cd "$DOCSTAMP_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/update-docs-skills-2.log" 2>&1)
+assert_not_contains "$DOCSTAMP_SKILL" 'tampered' "docs skills: a tampered SKILL.md is reinstalled"
+assert_exists "$DOCSTAMP_FORMAT" "docs skills: a deleted reference file is back"
+
+DOCSTAMP_SKILL_SHA=$(sha_of "$DOCSTAMP_SKILL")
+DOCSTAMP_FORMAT_SHA=$(sha_of "$DOCSTAMP_FORMAT")
+DOCSTAMP_CFG_SHA=$(sha_of "$DOCSTAMP_DIR/.unikit.json")
+(cd "$DOCSTAMP_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/update-docs-skills-3.log" 2>&1)
+assert_same_sha "$DOCSTAMP_SKILL" "$DOCSTAMP_SKILL_SHA" "docs skills: a settled project leaves the button byte-identical"
+assert_same_sha "$DOCSTAMP_FORMAT" "$DOCSTAMP_FORMAT_SHA" "docs skills: ...and the reference file"
+assert_same_sha "$DOCSTAMP_DIR/.unikit.json" "$DOCSTAMP_CFG_SHA" "docs skills: ...and the config"
+echo "  ✓ docs skills: tamper and a missing reference file are recovered, a settled project is untouched"
 
 echo ""
 echo "update smoke tests passed"

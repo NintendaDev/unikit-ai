@@ -105,8 +105,8 @@ export const SYSTEM_GAMEDESIGN_DIR_NAME = GAMEDESIGN_MODULE_ID;
 export const GAMEDESIGN_GENRES_DIR_NAME = 'genres';
 
 /**
- * Name of the engine-MCP subdir under `.unikit/system/` — the home for the
- * rules tree of the MCP server the user actually picked. It is a **system
+ * Legacy (2.x layout): the engine-MCP subdir under `.unikit/system/`, home of the rules
+ * tree of the one MCP server the user picked (3.0.0: `engine-bridges/`). It is a **system
  * asset**, not a memory rule: the content records the exceptions that server
  * imposes (which failure classes are live there, which gates are reachable),
  * not project knowledge the user curates.
@@ -134,8 +134,8 @@ export const ENGINE_MCP_DIR_NAME = 'engine-mcp';
 export const MCP_TOOL_ENTRY_PREFIX = 'mcp__';
 
 /**
- * Entry point of a server's rules tree — `mcp/<engine>/rules/<fileId>/INDEX.md`
- * at the source, `.unikit/system/engine-mcp/INDEX.md` once delivered. Its
+ * Entry point of a bridge's rules tree — `engine-bridges/<engine>/rules/<fileId>/INDEX.md`
+ * at the source, `.unikit/system/engine-bridges/<fileId>/INDEX.md` once delivered. Its
  * presence is what makes a `rules` pointer usable, so the schema guard keys on
  * this name. A missing INDEX means "no known exceptions", never "no
  * capabilities" — absence of rules never degrades the run.
@@ -208,31 +208,31 @@ export const KIMI_AGENT_LAUNCH = 'kimi --agent';
 export const KIMI_BASE_PROMPT_PLACEHOLDER = '${base_prompt}';
 
 /**
- * Project-local log of MCP findings — `.unikit/MCP-RECHECK-NOTES.md`. It sits at
- * the root of `.unikit/` rather than under `system/` **by construction**: every
- * system asset is flat-rewritten on init/update, and this file is user-owned
- * (written by `/unikit-mcp-trap`, curated by `/unikit-mcp-audit`). The installer
- * only ever renames it — see {@link MCP_RECHECK_NOTES_ARCHIVE_PREFIX}.
+ * Legacy (2.x layout): the project-local findings log, `.unikit/MCP-RECHECK-NOTES.md`.
+ * Since 3.0.0 each bridge has its own file in `.unikit/bridge-notes/`; this name stays
+ * only for the migration that moves the old file there (written by the trap and audit
+ * skills, renamed by the installer — see {@link MCP_RECHECK_NOTES_ARCHIVE_PREFIX}).
+ * It sat at the root of `.unikit/`, outside `system/`, so no flat rewrite could reach it.
  */
 export const MCP_RECHECK_NOTES_FILE = 'MCP-RECHECK-NOTES.md';
 
 /**
- * Prefix of a parked notes file: `MCP-RECHECK-NOTES.archive.<fileId>.md`.
- * Switching the engine MCP server parks the active notes under the id of the
+ * Legacy (2.x layout): prefix of a parked notes file, `MCP-RECHECK-NOTES.archive.<fileId>.md`.
+ * Switching the engine MCP server parked the active notes under the id of the
  * server that produced them, because a finding is a statement about one server
- * and means nothing against another. Invariant: one file per server — active
- * **or** archived, never both.
+ * and means nothing against another. Since 3.0.0 parked files are
+ * `bridge-notes/archive/<bridge>.md`; the migration reads this prefix.
  */
 export const MCP_RECHECK_NOTES_ARCHIVE_PREFIX = 'MCP-RECHECK-NOTES.archive.';
 
 /**
- * Key of the line naming the server a file belongs to. It appears in two
- * places that are compared against each other: the delivery stamp at the top of
+ * Legacy (2.x layout): key of the line naming the server a file belongs to. It appeared
+ * in two places that were compared against each other: the delivery stamp at the top of
  * every file in `.unikit/system/engine-mcp/`, and the header of the project's
- * `.unikit/MCP-RECHECK-NOTES.md`. Both carry a FILE ID, which is why renaming a
- * file id has to rewrite both — a stamp updated alone turns every pipeline
- * skill's Bootstrap into a permanent "notes header ≠ configured server" warning
- * that nothing but a human can clear.
+ * `.unikit/MCP-RECHECK-NOTES.md`. Both carried a FILE ID, so renaming a file id had to
+ * rewrite both. Since 3.0.0 the key is `bridge:` (`BRIDGE_STAMP_KEY` in
+ * `constants-bridges.ts`); the migration rewrites the old one in the moved notes.
+ * It is kept as a constant for that migration alone.
  */
 export const MCP_STAMP_SERVER_KEY = 'server:';
 
@@ -402,12 +402,11 @@ export function systemGamedesignGenresDir(projectDir: string): string {
 }
 
 /**
- * `<projectDir>/.unikit/system/engine-mcp` — home for the rules tree of the
- * selected engine MCP server. Written by `installEngineMcpRules` as a recursive
- * copy of that server's `rules` directory; outside hash tracking and
- * flat-rewritten on every init/update, so a MCP or engine switch never leaves a
- * stale profile behind (the installer orphan-deletes everything the new
- * selection did not contribute).
+ * `<projectDir>/.unikit/system/engine-mcp` — the rules-tree folder of the 2.x
+ * layout, where the one selected engine MCP server delivered its tree. Since
+ * 3.0.0 the trees live in `engine-bridges/<bridge>/` and `installEngineBridges`
+ * sweeps this folder on every init/update; the 2.0.0 rename step still reads
+ * it (legacy accessor, no longer written).
  */
 export function systemEngineMcpDir(projectDir: string): string {
   return path.join(systemDir(projectDir), ENGINE_MCP_DIR_NAME);

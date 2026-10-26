@@ -210,7 +210,7 @@ await group('V', async () => {
 
 await group('V4', async () => {
     const skillDir = path.join(ROOT, 'skills', 'unikit-help');
-    const hash = () => computeSourceHashWithTemplate(skillDir, 'unity', 'unikit-help', 'claude', null, {});
+    const hash = () => computeSourceHashWithTemplate(skillDir, 'unity', 'unikit-help', 'claude', { mcp: {}, bridges: {} });
     const profile = AGENT_REGISTRY.claude.subagentProfile;
     const before = await hash();
     assertTrue('V4a the skill hash is computed', typeof before === 'string' && before.length > 0);
@@ -367,8 +367,8 @@ await group('R', async () => {
 
     const skillDir = path.join(ROOT, 'skills', 'unikit-help');
     const subagent = path.join(ROOT, 'subagents', 'unikit-implement-worker.md');
-    const skillHash = (agent) => computeSourceHashWithTemplate(skillDir, 'unity', 'unikit-help', agent, null, {});
-    const subagentHash = (agent) => computeSubagentSourceHash(subagent, 'unity', agent, null, {});
+    const skillHash = (agent) => computeSourceHashWithTemplate(skillDir, 'unity', 'unikit-help', agent, { mcp: {}, bridges: {} });
+    const subagentHash = (agent) => computeSubagentSourceHash(subagent, 'unity', agent, { mcp: {}, bridges: {} });
 
     // Raising a revision changes both hashes of that agent and restoring it restores them (the V4 shape).
     for (const id of rewriters) {
@@ -512,7 +512,7 @@ await group('I', async () => {
     for (const agent of agents) {
         const projectDir = await fs.mkdtemp(path.join(os.tmpdir(), `unikit-profile-${agent.id}-`));
         try {
-            await installSkills({ projectDir, skillsDir: agent.skillsDir, skills: INSTALL_SKILLS, agentId: agent.id, engineId: 'unity', engineMcpKey: null });
+            await installSkills({ projectDir, skillsDir: agent.skillsDir, skills: INSTALL_SKILLS, agentId: agent.id, engineId: 'unity', mcpBridgeCode: null });
             const skill = (name, file = 'SKILL.md') => fs.readFile(path.join(projectDir, agent.skillsDir, name, file), 'utf8');
             const texts = {
                 unikit: await skill('unikit'),

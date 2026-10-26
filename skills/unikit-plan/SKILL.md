@@ -204,17 +204,17 @@ Silently load the project knowledge base before any exploration — do not narra
 
    **If the file is absent** — a **normal path**, not an error (an engine whose planning vocabulary has not shipped yet): set `engine_rules_loaded = false`. Every step that writes an `Editor:` field, the `Editor tasks` setting or a confirmation line reads that flag (Step 5, Step 6, `mode-full.md`, `mode-fast.md`, `mode-add.md`). `add` mode runs this step too.
 
-6. **Read `.unikit/system/engine-mcp/INDEX.md` — the base section only**: the delivery stamp plus every section **except** the `## Check` table — the exceptions that shape planning: where a commit boundary falls, what may never run in parallel, how the work splits into phases. Set `mcp_index_loaded = true`.
+6. **Read `.unikit/system/engine-bridges/BRIDGES.md`, and for each bridge whose block names a rules tree its `.unikit/system/engine-bridges/<bridge>/INDEX.md` — the base section only**: the delivery stamp plus every section **except** the `## Check` table — the exceptions that shape planning: where a commit boundary falls, what may never run in parallel, how the work splits into phases. Set `bridge_rules_loaded = true`.
 
    **Do not read the `## Check` table** — it is the executors', grepped per task by area.
 
-   **If the file is absent** — a normal path: set `mcp_index_loaded = false`, print exactly one line, and continue with the same rights:
+   **If the file is absent** — a normal path: set `bridge_rules_loaded = false`, print exactly one line, and continue with the same rights:
 
    ```
-   MCP rules: no INDEX.md — no known exceptions for this server, rights unchanged
+   Bridge rules: <bridge> has no INDEX.md — no known exceptions for it, rights unchanged
    ```
 
-   Absence never switches a task to `⏸️ MANUAL`, never suppresses an `Editor:` field, and never disables the engine MCP (`.unikit/system/dev-principles.md` → **A9 · no rules ≠ no rights**).
+   Absence never switches a task to `⏸️ MANUAL`, never suppresses an `Editor:` field, and never disables an engine bridge (`.unikit/system/dev-principles.md` → **A9 · no rules ≠ no rights**).
 
 7. **`.unikit/config.yaml` → `testing.plan.checkpoints`** — the test-run placement policy, resolved per mode by `mode-full.md` / `mode-fast.md` / `mode-ultra.md`; here it is only read. File or key absent → the mode file's default, silently.
 
@@ -473,23 +473,30 @@ An experiment plan skips this step (`references/experiment-plan.md`) even when `
 
 ### Step 4.6: Read the Catalog Negatively (only when the plan carries editor work)
 
-**Gate.** Runs only when Step 4 established that the feature touches the editor's **serialized state** *and* an engine MCP is configured (MCP server `{{engine_mcp_tool}}` present in `{{settings_file}}`). A pure-code plan skips this step and makes no call at all.
+**Gate.** Runs only when Step 4 established that the feature touches the editor's **serialized state** *and* `.unikit/system/engine-bridges/BRIDGES.md` lists at least one bridge. A pure-code plan skips this step and makes no call at all.
 
-Whatever engine-MCP grants this skill's frontmatter carries are read-only discovery and nothing else — that is the whole of the planner's contact with the engine MCP. Use them **once**, to answer exactly two questions:
+Whatever discovery this skill's frontmatter carries is read-only and is the whole of the planner's contact with the bridges. Per bridge listed, in the package order `BRIDGES.md` states (a plan never names a bridge, so the user's order does not matter here):
+
+- a bridge of kind mcp: the discovery names the frontmatter grants, once;
+- a bridge of kind cli: the whole live listing, once, by the `catalog list:` line of its block - one read-only call that gives the name, group and description of every command. The call fails (no editor answered) → its table of contents `.unikit/references/bridges/<bridge>/CATALOG.md`, read as a file. Neither → this bridge is **not read**; print once `INFO [plan] <bridge>: the editor did not answer and there is no catalog table of contents - run /unikit-bridge-docs with the editor open; this bridge is not read` and go on.
+
+From the catalogs read, answer exactly two questions about their **union**:
 
 1. **Which kinds of editor work have no route here at all** — so the plan does not schedule an intent this project cannot carry out. The six-word `kind` vocabulary is in `.unikit/system/dev-principles.md` → A8.
 2. **Which evidence classes are reachable** — so no acceptance criterion is written against evidence nobody can produce. The claim-class → evidence-class lattice is A2 of the same file.
 
 That is the entire question — **not** which tool does it, **not** how it is called, **not** a strategy — and neither the question nor its answer is written into the plan.
 
+**A bridge that was not read makes the union incomplete.** Then "no route" is not a finding (unknown is not no — A9): print each such answer as a note — `NOTE [plan] <kind or class> is not reachable in the bridges read; <bridge> was not read` — and change nothing in the plan. Only when every listed bridge was read do the outcomes below apply.
+
 **What the outcome may change, and what it may not:**
 
-- a kind of work with no route → do not schedule it as engine-MCP work: express the change in a form that has a route, or keep the task and name the missing capability in its `WHY:`. **Do not pre-write `⏸️ MANUAL` into the task** — it is a runtime verdict (A9);
-- an evidence class that is not reachable → rewrite the acceptance criterion against a class that is, or say plainly in `## Overview` that it cannot be closed here. Never silently downgrade it to the cheapest observation available.
+- a kind of work with no route in any bridge → do not schedule it as bridge work: express the change in a form that has a route, or keep the task and name the missing capability in its `WHY:`. **Do not pre-write `⏸️ MANUAL` into the task** — it is a runtime verdict (A9);
+- an evidence class that no bridge reaches → rewrite the acceptance criterion against a class that is, or say plainly in `## Overview` that it cannot be closed here. Never silently downgrade it to the cheapest observation available.
 
-**The planner never:** calls anything that changes state, reads the `## Check` table, reads `.unikit/MCP-RECHECK-NOTES.md`, or opens Context7.
+**The planner never:** calls anything that changes state, reads the `## Check` table, reads the notes of a bridge (`.unikit/bridge-notes/`), or opens Context7.
 
-**No engine MCP configured, or discovery yields nothing → skip.** Plan against the base principles, unchanged.
+**No bridge listed, or discovery yields nothing → skip.** Plan against the base principles, unchanged.
 
 ### Step 5: Create the Plan
 
@@ -527,7 +534,7 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
    - `Testing: yes/no` — whether tests are written at all: tests for logic and system values (`dev-principles.md` item 5)
    - `Test checkpoints: task | phase | plan` — where the test-checkpoint tasks stand; resolved in the mode file, omitted when `Testing: no`, `task` only in ultra.
    - `Docs: yes/no` — whether to show documentation checkpoint (invokes `/unikit-docs`)
-   - `Editor tasks: mcp | manual | direct` — read by `/unikit-implement`: how tasks carrying an `Editor:` line are carried out. Resolved in `mode-full.md` / `mode-fast.md`. **Omit this line entirely when `engine_rules_loaded = false`**.
+   - `Editor tasks: engine-bridge | manual | direct` — read by `/unikit-implement`: how tasks carrying an `Editor:` line are carried out. Resolved in `mode-full.md` / `mode-fast.md`. Default when the line is not asked: `engine-bridge` if `BRIDGES.md` lists a bridge, otherwise `manual`. **Omit this line entirely when `engine_rules_loaded = false`**.
    - `PR checkpoints: yes` — only when this plan carries at least one PR checkpoint task (`pr_checkpoints = true` in the mode file and two or more modules); otherwise the line is absent.
 
 4. **`## Roadmap Linkage`** (optional, only if `.unikit/ROADMAP.md` exists):
@@ -550,7 +557,7 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
 
 6. **`## Commit Plan`** — when 5+ tasks, checkpoints every 3-5 tasks, each mirrored by a decorative `<!-- Commit checkpoint: tasks X-Y -->` marker in `## Checklist`; `/unikit-implement` does not parse it (`TASK-FORMAT.md`). A range never crosses a module boundary.
 
-7. **`## MCP Findings`** — emitted **empty** (heading and header row) whenever the plan carries at least one `Editor:` task, omitted otherwise; filled by the executor. Contract: `TASK-FORMAT.md` → `### MCP findings section`.
+7. **`## Engine Bridge Findings`** — emitted **empty** (heading and header row) whenever the plan carries at least one `Editor:` task, omitted otherwise; filled by the executor. Contract: `TASK-FORMAT.md` → `### MCP findings section`.
 
 8. **`## Rule Candidates`** — emitted **always, and empty** (heading and header row). Contract: `TASK-FORMAT.md` → `### Rule candidates section`.
 
@@ -613,4 +620,4 @@ Beyond Step 5 item 5 and `references/TASK-FORMAT.md`: name a dependency on anoth
 2. **Right granularity** — not too big (overwhelming), not too small (noise). A task should be completable in one focused session
 3. **Dependencies matter** — order tasks so they can be done sequentially without blockers
 4. **Respect module boundaries** — follow the dependency rules of `.unikit/ARCHITECTURE.md`; never invent a direction it does not state
-5. **A plan is intent, not inventory — no tool name ever reaches it.** Names live in the live catalog and in the `evidence` column of a findings row, and nowhere else. The planner never lifts an obligation on the executor's behalf — no pre-declared gate, no "this server cannot do X", no `⏸️ MANUAL` written in advance
+5. **A plan is intent, not inventory — no tool name ever reaches it.** Names live in the live catalog and in the `evidence` column of a findings row, and nowhere else. No bridge id reaches the plan either: the `bridge` cell of a findings row is written by an executor. The planner never lifts an obligation on the executor's behalf — no pre-declared gate, no "this server cannot do X", no `⏸️ MANUAL` written in advance

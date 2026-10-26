@@ -1,8 +1,9 @@
 // --- MCP JSON schema parsing ---
 //
-// Turns one raw `mcp/<engine>/<name>.json` object into a typed `McpServerEntry`.
-// Split out of `mcp.ts` for the same reason as `mcp-rules.ts` and
-// `mcp-platform.ts`: that module carries discovery, configuration, rule
+// Turns one raw `engine-bridges/<engine>/<name>.json` (or `mcp/universal/<name>.json`) object
+// into a typed `McpServerEntry`.
+// Split out of `mcp.ts` for the same reason as `mcp-platform.ts` and
+// `bridges/selection.ts`: that module carries discovery, configuration, rule
 // collection and frontmatter injection, and the schema kept growing a field per
 // task. The dependency runs one way — this module imports types from `mcp.ts`,
 // never the reverse.
@@ -16,7 +17,9 @@
 
 import path from 'path';
 import { MCP_PLATFORM_KEYS, type McpPlatformKey } from './constants.js';
-import type { McpAllowedTools, McpServerEntry } from './mcp.js';
+import type { BridgeKind, McpAllowedTools, McpServerEntry } from './mcp.js';
+import { parseCli, parseDetect, parseDocsSources, parseRequires, parseSetup } from './bridges/schema-fields.js';
+import type { BridgeCli } from './bridges/types.js';
 import { logInfo, logWarn } from '../utils/log.js';
 
 /**
@@ -63,6 +66,12 @@ function parseDocs(raw: unknown, fileName: string): McpServerEntry['docs'] | nul
   if (typeof raw.repo === 'string' && raw.repo.length > 0) {
     docs.repo = raw.repo;
   }
+  // `sources` rides on a block that already says something: pointers alone, with neither a Context7
+  // id nor a repository, are not a `docs` block and take the warning below.
+  const sources = parseDocsSources(raw.sources, fileName);
+  if (sources && (docs.context7 !== undefined || docs.repo !== undefined)) {
+    docs.sources = sources;
+  }
 
   if (docs.context7 === undefined && docs.repo === undefined) {
     logWarn('parseMcpServerEntry', `dropped malformed docs field in ${fileName}`);
@@ -77,7 +86,7 @@ function parseDocs(raw: unknown, fileName: string): McpServerEntry['docs'] | nul
  * tree (`INDEX.md` plus whatever else it grew). The JSON stores the path
  * relative to its own directory, exactly as the retired `shards` pointers did;
  * it is resolved to absolute here so no consumer needs to know which
- * `mcp/<engine>/` dir the entry came from.
+ * `engine-bridges/<engine>/` dir the entry came from.
  *
  * Returns `null` when the key is absent — a server without a rules tree is a
  * normal state, and by the "no rules is not no rights" invariant it degrades
@@ -94,6 +103,12 @@ function parseRulesDir(raw: unknown, dirPath: string, fileName: string): string 
   }
 
   return path.resolve(dirPath, raw);
+}
+
+/** The optional `kind` key: absent means `mcp`; a value that is neither `mcp` nor `cli` is `null`. */
+function parseBridgeKind(raw: unknown): BridgeKind | null {
+  if (raw === undefined) return 'mcp';
+  return raw === 'mcp' || raw === 'cli' ? raw : null;
 }
 
 /**
@@ -122,7 +137,7 @@ function parseConfigByPlatform(raw: unknown): Partial<Record<McpPlatformKey, Rec
  * @param raw      the parsed JSON object.
  * @param dirPath  directory the JSON was read from — the `rules` pointer is
  *                 relative to it and is resolved to an absolute path here so no
- *                 consumer needs to know which `mcp/<engine>/` dir it came from.
+ *                 consumer needs to know which `engine-bridges/<engine>/` dir it came from.
  * @param fileName the JSON's own file name, quoted in warn messages so a
  *                 malformed field names its source without the caller having to
  *                 re-derive it.
@@ -149,22 +164,52 @@ export function parseMcpServerEntry(raw: unknown, dirPath: string, fileName: str
     return null;
   }
 
+  // Present but unknown is a defect worth a warning; absent is `mcp`, the only kind that existed.
+  const kind = parseBridgeKind(raw['kind']);
+  if (kind === null) {
+    logWarn('parseMcpServerEntry', `dropped ${fileName}: unknown kind "${String(raw['kind'])}"`);
+    return null;
+  }
+
+  // What makes an entry usable depends on its kind: an MCP server needs a config to be registered with,
+  // a command line needs a valid `cli` block. The old rule ("config or configByPlatform") dropped every
+  // entry of kind `cli` without a word.
   const configByPlatform = parseConfigByPlatform(raw['configByPlatform']);
-  if (!raw.config && !configByPlatform) return null;
+  let cli: BridgeCli | undefined;
+  if (kind === 'cli') {
+    cli = parseCli(raw['cli'], fileName);
+    if (!cli) {
+      logWarn('parseMcpServerEntry', `dropped ${fileName}: kind "cli" needs a valid "cli" block`);
+      return null;
+    }
+    if (raw.config || raw['configByPlatform'] !== undefined) {
+      logWarn('parseMcpServerEntry', `${fileName}: "config" is ignored for kind "cli"`);
+    }
+  } else {
+    if (!raw.config && !configByPlatform) return null;
+    if (raw['cli'] !== undefined) {
+      logWarn('parseMcpServerEntry', `${fileName}: the "cli" block is ignored for kind "mcp"`);
+    }
+  }
 
   const entry: ParsedMcpServerEntry = {
     key: raw.key as string,
     code: raw.code,
     isEngine: (raw['is_engine'] as boolean) ?? false,
+    kind,
     displayName: raw.displayName as string,
   };
 
-  if (raw.config) {
-    entry.config = raw.config as Record<string, unknown>;
-  }
+  if (cli) {
+    entry.cli = cli;
+  } else {
+    if (raw.config) {
+      entry.config = raw.config as Record<string, unknown>;
+    }
 
-  if (configByPlatform) {
-    entry.configByPlatform = configByPlatform;
+    if (configByPlatform) {
+      entry.configByPlatform = configByPlatform;
+    }
   }
 
   const allowedTools = raw['allowed-tools'] as McpAllowedTools | undefined;
@@ -192,9 +237,23 @@ export function parseMcpServerEntry(raw: unknown, dirPath: string, fileName: str
     entry.rulesDir = rulesDir;
   }
 
+  // The fields every kind of bridge shares: each is kept only when it parsed to something.
+  const setup = parseSetup(raw['setup'], fileName);
+  if (setup) {
+    entry.setup = setup;
+  }
+  const requires = parseRequires(raw['requires'], fileName);
+  if (requires) {
+    entry.requires = requires;
+  }
+  const detect = parseDetect(raw['detect'], fileName);
+  if (detect) {
+    entry.detect = detect;
+  }
+
   logInfo(
     'parseMcpServerEntry',
-    `${fileName}: key=${entry.key} code=${entry.code} is_engine=${entry.isEngine}`,
+    `${fileName}: key=${entry.key} code=${entry.code} is_engine=${entry.isEngine} kind=${entry.kind} sources=${entry.docs?.sources?.length ?? 0}`,
   );
 
   return entry;

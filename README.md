@@ -6,7 +6,7 @@
     <img src="https://img.shields.io/github/actions/workflow/status/NintendaDev/unikit-ai/tests.yml?branch=main&label=tests" alt="Tests" />
   </a>
   <a href="https://github.com/NintendaDev/unikit-ai/blob/main/docs/skills.md">
-    <img src="https://img.shields.io/badge/skills-37-8b5cf6" alt="Skills" />
+    <img src="https://img.shields.io/badge/skills-39-8b5cf6" alt="Skills" />
   </a>
   <a href="https://unikit.nintenda.dev/">
     <img src="https://img.shields.io/badge/official%20site-unikit.nintenda.dev-0ea5e9" alt="Official Site" />
@@ -30,13 +30,13 @@
 
 > **The AI Development Pipeline for Games: design, code, and the engine editor**
 
-Building a game with AI usually breaks in the same place: the agent writes a class, and then stops. The design lives in someone's head, the scene lives in the editor, and neither is something a prompt can reach. UniKit AI closes that gap - it authors the **game design**, plans and writes the **code** against a memory of your engine and stack, and carries the same plan into the **engine editor** through the engine's MCP server. An engineered pipeline instead of vibe-coded prompts.
+Building a game with AI usually breaks in the same place: the agent writes a class, and then stops. The design lives in someone's head, the scene lives in the editor, and neither is something a prompt can reach. UniKit AI closes that gap - it authors the **game design**, plans and writes the **code** against a memory of your engine and stack, and carries the same plan into the **engine editor** through the engine bridges - the engine's MCP servers and, for Unity, the Unity CLI. An engineered pipeline instead of vibe-coded prompts.
 
 ## Why UniKit AI?
 
 - **Spec-driven development cycle** - explore the idea, plan, implement, review, verify, document. Each step reads the artifact the previous one wrote: no prompt engineering, no re-explaining the project every session, and a plan you can read and correct *before* a line is written. Predictable enough that a small model can execute a plan a large one made
 - **Almost the whole cycle, not just the code** - design the game, write the code, work in the editor. One pipeline covers all three, and a single plan can mix code tasks with editor tasks
-- **The engine MCP is used to the full, and checked** - the agent gets real-time feedback from the running editor: console, compilation errors, test runs, editor state. Every result is read back from the editor rather than taken from the server's response
+- **Engine bridges, used to the full and checked** - the agent gets real-time feedback from the running editor through the bridges you selected (the Unity CLI and the MCP servers of the engine): console, compilation errors, test runs, editor state. Every result is read back from the editor rather than taken from the bridge's response
 - **Framework rules out of the box** - ready-made rules for engine modules and popular frameworks from the [official registry](https://github.com/NintendaDev/unikit-ai-rules). Plug in your own Git registry to carry a private rule library across projects, or generate fresh rules from your codebase on the fly
 - **Dynamic memory** - one memory for all engine frameworks instead of a separate skill per library. Core rules are always loaded, stack rules are pulled in by task context - saving tokens and keeping the context window lean
 - **Self-learning memory** - the agent turns bug fixes and code reviews into patches, then distills them into improved project rules. The system gets smarter with every fix
@@ -49,23 +49,23 @@ UniKit AI covers three layers of game development:
 | ----------------- | ------------------------------------------------------------------------------------------------------------- |
 | **Game design**   | concept, pillars, systems, flows, content schemas - a machine-readable design that code plans read from       |
 | **Game code**     | architecture, systems, tests, refactoring, review, documentation                                              |
-| **Engine editor** | scenes, prefabs, UI, materials, animation, assets, project settings - planned as explicit tasks, executed through the engine MCP |
+| **Engine editor** | scenes, prefabs, UI, materials, animation, assets, project settings - planned as explicit tasks, executed through the engine bridges |
 
-Editor work is a first-class part of a plan, not an afterthought: it is planned next to the code, carried out through the engine MCP and verified by reading the result back from the editor. See [Editor tasks](docs/plan-files.md#editor-tasks).
+Editor work is a first-class part of a plan, not an afterthought: it is planned next to the code, carried out through the engine bridges and verified by reading the result back from the editor. See [Editor tasks](docs/plan-files.md#editor-tasks).
 
 Art production, audio authoring, and store/build pipelines are **not** covered.
 
 ## Supported Engines
 
-Each engine ships one or more MCP servers. Where several are listed, they are alternatives - `unikit-ai init` offers them as a choice and the first one is the default. The versions are each vendor's own minimum, and UniKit AI does not detect your engine version, so check yours before accepting the default.
+Each engine ships one or more bridges to the editor - MCP servers and, for Unity, the Unity CLI. You can select several; the order you set decides which is used first. The versions are each vendor's own minimum. UniKit AI reads the Unity version from `ProjectSettings/ProjectVersion.txt` only to decide whether to pre-select the Unity CLI in the wizard (together with finding `unity` on your `PATH`); it does not check the minimum version of any other bridge, so check yours before accepting the defaults.
 
-| Engine                 | MCP servers (in wizard order)                                                                                                                                                                                                                                                       |
+| Engine                 | Engine bridges (default order)                                                                                                                                                                                                                                                      |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Unity                  | [Unity Biome MCP](https://github.com/german-krasnikov/unity-biome-mcp) (Unity 6000.0+) · [Coplay Unity MCP](https://github.com/CoplayDev/unity-mcp) (Unity 2021.3 LTS+)                                                                                                                    |
+| Unity                  | [Unity CLI](https://docs.unity.com/en-us/unity-cli) (Unity 6000.0+, with the `com.unity.pipeline` package) · [Unity Biome MCP](https://github.com/german-krasnikov/unity-biome-mcp) (Unity 6000.0+) · [Coplay Unity MCP](https://github.com/CoplayDev/unity-mcp) (Unity 2021.3 LTS+)                                                                                                                    |
 | Godot 4 / Godot 4 .NET | [Fennara Godot AI](https://github.com/fennaraOfficial/fennara-godot-ai) - free (Godot 4.5+) · [GDAI Godot MCP](https://github.com/3ddelano/gdai-mcp-plugin-godot) - paid (Godot 4.1+) · [Coding-Solo Godot MCP](https://github.com/Coding-Solo/godot-mcp) - free (no declared minimum) |
 | Unreal Engine 5        | [ChiR24 Unreal MCP](https://github.com/ChiR24/Unreal_mcp) (Unreal Engine 5.0+)                                                                                                                                                                                                          |
 
-See [Configuration](docs/configuration.md#engine-mcp-rules-tree) for how UniKit AI works with each server.
+See [Configuration](docs/configuration.md#engine-bridge-rules-trees) for how UniKit AI works with each bridge.
 
 ---
 
@@ -173,7 +173,7 @@ See the full [Development Workflow](docs/workflow.md) with diagram and decision 
   explore ──▶ plan ──▶ improve ──▶ implement ──▶ review ──▶ verify ──▶ commit
                │                       │                                 │
          design brief         code + editor tasks      fix ──▶ patch ────┤
-                              through the engine MCP                     │
+                              through the engine bridges                 │
                                                                          │
                                      evolve ◀────────────────────────────┘
                            distill patches into rules
@@ -231,7 +231,7 @@ UniKit AI works alongside any other AI framework - it uses its own config direct
 | [Agents](docs/agents.md)                        | Supported AI agents and their known limitations          |
 | [Best Practices](docs/best-practices.md)        | Practical tips for working with the agent                |
 | [Development Workflow](docs/workflow.md)        | Workflow diagram, skill pipeline, spec-driven approach   |
-| [Skills Reference](docs/skills.md)              | All 37 skills - 24 code-pipeline + 13 game-design        |
+| [Skills Reference](docs/skills.md)              | All 39 skills - 26 code-pipeline + 13 game-design        |
 | [Subagents](docs/subagents.md)                  | Coordinators, workers and sidecars                       |
 | [Plan Files](docs/plan-files.md)                | Plans, editor tasks, patches                             |
 | [Game-Design Module](docs/gamedesign.md)        | Game design authoring and genre profiles                 |

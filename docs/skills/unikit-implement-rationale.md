@@ -33,7 +33,7 @@ explore save pipeline, on the same criterion — see
   delegation to `/unikit-devcontext` for sequential work.
 - **A notes header naming another server is a warning, and the entries still apply.** They are
   suspect, not void, and a suspect check still fails safe. Retiring them belongs to
-  `/unikit-mcp-audit`, never to this skill.
+  `/unikit-bridge-audit`, never to this skill.
 
 ## Step 3 — Execute
 
@@ -95,7 +95,7 @@ explore save pipeline, on the same criterion — see
 - **A red run has one reporter — the Step 3.3 blocker.** Two places printing one failure drift
   apart.
 - **A test-checkpoint task is ticked by the `Edit` that records its run.** One write surface,
-  one `Edit` — the rule `## MCP Findings` is written by as well.
+  one `Edit` — the rule `## Engine Bridge Findings` is written by as well.
 - **Why the test-run block is a reference** (`skills/unikit-implement/references/test-runs.md`).
   Its gate, `Testing: yes`, is known at plan load, before the context fills: a plan without
   tests never pays for the ~10 KB, and a plan with tests pays at the cheapest moment of the run.
@@ -147,11 +147,11 @@ explore save pipeline, on the same criterion — see
   deletion.** The folder manifest shares the name `PLAN.md` with the flat fast plan and differs
   from it only by path.
 
-## 5.5 — MCP Findings handoff
+## 5.5 — Engine Bridge Findings handoff
 
 - **No rows means silence.** A run with no findings is the ordinary case, and a line announcing
   it every time is how a signal becomes wallpaper.
-- **The explicit plan path** is what makes `/unikit-mcp-trap` read this plan and nothing else —
+- **The explicit plan path** is what makes `/unikit-bridge-trap` read this plan and nothing else —
   see that skill's `## Input`.
 - **The step sits before review and commit.** The findings are the part of a run's result with
   no other keeper: the code is in git, the tasks are in the plan, and a finding lives only in a

@@ -22,7 +22,7 @@ source "$SCRIPT_DIR/test-fixtures.sh"
 
 TMPDIR=$(mktemp -d)
 # The dump has to run BEFORE the cleanup: `set -e` aborts on the first failed assertion,
-# and the assertion message alone cannot say what the engine-mcp tree contained.
+# and the assertion message alone cannot say what the engine-bridges layer contained.
 trap 'AIF_EXIT_CODE=$?; if [[ $AIF_EXIT_CODE -ne 0 ]]; then dump_mcp_state "$TMPDIR"; fi; rm -rf "$TMPDIR"' EXIT
 
 # Ensure dist/ is up to date (skipped when a parent runner already built).
@@ -67,7 +67,7 @@ cat > "$CLAUDE_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -148,7 +148,7 @@ PRINCIPLES_PATH="$CLAUDE_DIR/.unikit/system/dev-principles.md"
 assert_exists "$PRINCIPLES_PATH" "dev-principles.md created in .unikit/system/"
 assert_not_contains "$PRINCIPLES_PATH" '\{\{engine_name\}\}' "no unsubstituted {{engine_name}}"
 assert_not_contains "$PRINCIPLES_PATH" '\{\{engine_code_language\}\}' "no unsubstituted {{engine_code_language}}"
-assert_not_contains "$PRINCIPLES_PATH" '\{\{engine_mcp_tool\}\}' "no unsubstituted {{engine_mcp_tool}}"
+assert_not_contains "$PRINCIPLES_PATH" '\{\{engine_bridge_mcp_code\}\}' "no unsubstituted {{engine_bridge_mcp_code}}"
 # Verify both engine vars are actually substituted by checking a phrase
 # that ONLY exists after substitution (Core Principle 1 reads
 # "well-documented C# code adhering to Unity best practices" post-substitution).
@@ -359,14 +359,16 @@ assert_not_contains "$USER_QUESTIONS_PATH" '\{\{' \
   "user-questions.md is a flat copy — no unresolved {{vars}}"
 
 # ─────────────────────────────────────────────────────
-# Test 1b-mcp: engine-mcp shard EMPTY branch — this fixture selects zero MCP
-# servers (mcp.servers = {}), so nothing contributes a shard and the directory
-# must NOT be created. installEngineMcpShards treats an empty set as a normal
-# path (an engine with no shard-carrying MCP), not a warning.
-# The populated branch is Test 13b below.
+# Test 1b-mcp: the engine-bridge layer, EMPTY branch — this fixture selects zero
+# bridges (engineBridges.selected = {}), so nothing contributes a tree or a
+# BRIDGES.md and the directory must NOT be created. installEngineBridges treats an
+# empty set as a normal path, not a warning.
+# The populated branches are Tests 13b, 13c and 15 below.
 # ─────────────────────────────────────────────────────
+assert_not_exists "$CLAUDE_DIR/.unikit/system/engine-bridges" \
+  "engine-bridges dir NOT created when no bridge is selected (empty branch)"
 assert_not_exists "$CLAUDE_DIR/.unikit/system/engine-mcp" \
-  "engine-mcp dir NOT created when no MCP server is selected (empty branch)"
+  "the 2.x engine-mcp dir is not created either"
 
 # ─────────────────────────────────────────────────────
 # Test 1b-dr: design-read.md installed as a system asset under .unikit/system/gamedesign/
@@ -488,7 +490,7 @@ cat > "$NOSUB_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -527,7 +529,7 @@ cat > "$CODEX_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -666,7 +668,7 @@ cat > "$QWEN_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -760,7 +762,7 @@ cat > "$ANTIGRAVITY_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -844,7 +846,7 @@ cat > "$KIMI_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": { "context7": "context7", "github": "github" } },
   "agents": [
     {
@@ -910,8 +912,7 @@ assert_not_contains "$KIMI_SKILLS/unikit-plan/references/TASK-FORMAT.md" '\$unik
   "kimi: no Codex/Qwen-style invocation rewrite"
 
 # Variable substitution (REQ-001): {{settings_file}} → .kimi-code/mcp.json, nothing raw left
-assert_contains "$KIMI_SKILLS/unikit-implement/SKILL.md" '\.kimi-code/mcp\.json' \
-  "kimi: {{settings_file}} renders to .kimi-code/mcp.json"
+# (the substitution of {{settings_file}} is asserted by BR-13 in test-bridges.mjs: no base skill writes the variable any more)
 assert_not_contains "$KIMI_SKILLS/unikit-implement/SKILL.md" '\.agents/mcp_config\.json' \
   "kimi: no Antigravity settings path in a Kimi skill"
 KIMI_TOKEN_RE="\{\{($TEMPLATE_NAMES_ERE)\}\}|\{\{agent_skill_call:"
@@ -1050,7 +1051,7 @@ cat > "$UNIVERSAL_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": { "context7": "context7", "github": "github" } },
   "agents": [
     {
@@ -1091,8 +1092,7 @@ assert_not_exists "$UNIVERSAL_DIR/.agents/mcp_config.json" \
   "universal: no Antigravity MCP file"
 
 # Variable substitution and the profile: settings file, Claude's types, no model, no Codex block
-assert_contains "$UNIVERSAL_SKILLS/unikit-implement/SKILL.md" '\.mcp\.json' \
-  "universal: {{settings_file}} renders to .mcp.json"
+# (the substitution of {{settings_file}} is asserted by BR-13 in test-bridges.mjs: no base skill writes the variable any more)
 assert_not_contains "$UNIVERSAL_SKILLS/unikit-implement/SKILL.md" '\.agents/mcp_config\.json' \
   "universal: no Antigravity settings path in a universal skill"
 assert_contains "$UNIVERSAL_SKILLS/unikit-implement/SKILL.md" 'subagent_type: "general-purpose"' \
@@ -1172,7 +1172,7 @@ cat > "$LOCAL_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1275,7 +1275,7 @@ cat > "$GODOT_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "godot",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1346,7 +1346,7 @@ cat > "$GODOT_NET_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "godot-net",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1379,7 +1379,7 @@ cat > "$UE5_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unreal-engine-5",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -1425,8 +1425,8 @@ cat > "$MCP_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": "EngineMCP",
-  "mcp": { "servers": { "unity-mcp": "EngineMCP", "context7": "context7" } },
+  "mcp": { "servers": { "context7": "context7" } },
+  "engineBridges": { "selected": { "unity-mcp": "EngineMCP" } },
   "agents": [
     {
       "id": "claude",
@@ -1499,7 +1499,7 @@ mkdir -p "$COMPAT_DIR"
 cat > "$COMPAT_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [
     {
@@ -2063,7 +2063,7 @@ cat > "$CODEX_MCP_RULES_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": { "context7": "context7" } },
   "agents": [
     {
@@ -2094,7 +2094,7 @@ assert_contains "$CODEX_UNIKIT_SKILL" 'mcp__context7__query-docs' \
 echo "  ✓ codex MCP rules: context7 tool ids injected into .codex/skills/unikit/SKILL.md"
 
 # ─────────────────────────────────────────────────────
-# Test 13b: engine-mcp rules-tree delivery (populated selection)
+# Test 13b: engine-bridges rules-tree delivery (populated selection)
 # ─────────────────────────────────────────────────────
 # The two smoke fixtures above both pin mcp.servers = {}, so they only exercise the
 # no-selection branch (Test 1b-mcp). This fixture selects unity-biome-mcp — one of
@@ -2102,8 +2102,8 @@ echo "  ✓ codex MCP rules: context7 tool ids injected into .codex/skills/uniki
 # tree arrives, every file carries the provenance stamp, and nothing about the
 # server's capabilities rides along with it.
 #
-# The stamp assertions are the load-bearing ones. `server:` is what a skill compares
-# the MCP-RECHECK-NOTES header against to tell a finding about the configured server
+# The stamp assertions are the load-bearing ones. `bridge:` is what a skill compares
+# the header of the bridge's notes against to tell a finding about this bridge
 # from one inherited from another, so a stamp that silently stops being written turns
 # that check into a no-op rather than a failure. It is also the WHOLE stamp: `version:`
 # and `delivered:` were removed, and the negative asserts below are what keep them out.
@@ -2118,8 +2118,8 @@ cat > "$MCP_SHARDS_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": "UnityMCP",
-  "mcp": { "servers": { "unity-biome-mcp": "UnityMCP" } },
+  "mcp": { "servers": {} },
+  "engineBridges": { "selected": { "unity-biome-mcp": "UnityMCP" } },
   "agents": [
     {
       "id": "claude",
@@ -2139,17 +2139,31 @@ inject_fake_registry "$MCP_SHARDS_DIR"
 seed_rule "$MCP_SHARDS_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
 run_update "$MCP_SHARDS_DIR"
 
-MCP_RULES_BASE="$MCP_SHARDS_DIR/.unikit/system/engine-mcp"
+MCP_BRIDGES_BASE="$MCP_SHARDS_DIR/.unikit/system/engine-bridges"
+MCP_RULES_BASE="$MCP_BRIDGES_BASE/unity-biome-mcp"
 MCP_RULES_INDEX="$MCP_RULES_BASE/INDEX.md"
 
 assert_exists "$MCP_RULES_INDEX" \
-  "engine-mcp/INDEX.md delivered for the selected server's rules tree"
+  "engine-bridges/unity-biome-mcp/INDEX.md delivered for the selected bridge's rules tree"
 assert_exists "$MCP_RULES_BASE/verification.md" \
-  "engine-mcp/verification.md delivered alongside the INDEX"
+  "engine-bridges/unity-biome-mcp/verification.md delivered alongside the INDEX"
+assert_not_exists "$MCP_SHARDS_DIR/.unikit/system/engine-mcp" \
+  "the 2.x engine-mcp dir is not delivered"
+
+# BRIDGES.md: the answer to "is a bridge configured?" — the set, the package's default order and a block per bridge.
+MCP_BRIDGES_MANIFEST="$MCP_BRIDGES_BASE/BRIDGES.md"
+assert_exists "$MCP_BRIDGES_MANIFEST" "BRIDGES.md delivered for the selected bridge"
+assert_contains "$MCP_BRIDGES_MANIFEST" '^## unity-biome-mcp$' "BRIDGES.md has a block for the selected bridge"
+assert_contains "$MCP_BRIDGES_MANIFEST" '^default order: unity-biome-mcp$' "BRIDGES.md names the default order of the selection"
+assert_contains "$MCP_BRIDGES_MANIFEST" '^- rules: .unikit/system/engine-bridges/unity-biome-mcp/INDEX.md$' \
+  "BRIDGES.md points at the bridge's rules tree"
+assert_not_contains "$MCP_BRIDGES_MANIFEST" 'coplay' "BRIDGES.md lists only what the project selected"
 
 # The stamp: provenance of THIS copy, and nothing else.
-assert_contains "$MCP_RULES_INDEX" '^server: unity-biome-mcp$' \
-  "delivered rules file carries the server id it came from"
+assert_contains "$MCP_RULES_INDEX" '^bridge: unity-biome-mcp$' \
+  "delivered rules file carries the bridge id it came from"
+assert_not_contains "$MCP_RULES_INDEX" '^server:' \
+  "the 2.x stamp key is gone"
 assert_contains "$MCP_RULES_INDEX" 'not here' \
   "delivered rules file says where to fix it (the source tree, not this copy)"
 
@@ -2171,14 +2185,14 @@ assert_not_contains "$MCP_RULES_INDEX" '^version:' \
 assert_not_contains "$MCP_RULES_INDEX" '^delivered:' \
   "no delivery date in the delivery stamp"
 
-# SV-3 with a tree: engine-mcp/INDEX.md and verification.md are the rows engine_mcp_rules_index and
-# engine_mcp_rules_verification, and they exist exactly because this project selected a server with one.
-assert_system_tree "$MCP_SHARDS_DIR" yes "system tree matches the variable registry (engine MCP rules tree delivered)"
+# SV-3 with a bridge: engine-bridges/ and BRIDGES.md are the rows system_engine_bridges_dir and
+# engine_bridges_manifest, and they exist exactly because this project selected a bridge.
+assert_system_tree "$MCP_SHARDS_DIR" yes "system tree matches the variable registry (engine-bridge layer delivered)"
 
-echo "  ✓ engine-mcp: biome rules tree delivered (INDEX + verification), stamped with the server id alone, no counters"
+echo "  ✓ engine-bridges: biome rules tree delivered (INDEX + verification) with BRIDGES.md, stamped with the bridge id alone, no counters"
 
 # ─────────────────────────────────────────────────────
-# Test 13c: an engine MCP that ships NO rules tree — nothing degrades
+# Test 13c: an engine bridge that ships NO rules tree — nothing degrades
 # ─────────────────────────────────────────────────────
 # Invariant 3 at the install layer: no rules ≠ no rights. A server without a tree has to
 # be indistinguishable from a well-behaved install except for one absent directory. The
@@ -2203,8 +2217,8 @@ cat > "$MCP_NOTREE_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": "FixtureTreeless",
-  "mcp": { "servers": { "fixture-treeless-mcp": "FixtureTreeless" } },
+  "mcp": { "servers": {} },
+  "engineBridges": { "selected": { "fixture-treeless-mcp": "FixtureTreeless" } },
   "agents": [
     {
       "id": "claude",
@@ -2224,10 +2238,18 @@ inject_fake_registry "$MCP_NOTREE_DIR"
 seed_rule "$MCP_NOTREE_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
 run_update "$MCP_NOTREE_DIR"
 
-# The one visible difference: no tree to deliver, so no directory. Absent, not empty —
-# an empty directory would read to a skill as a tree whose files failed to arrive.
-assert_not_exists "$MCP_NOTREE_DIR/.unikit/system/engine-mcp" \
-  "no rules tree for the selected server leaves the engine-mcp dir absent (not empty)"
+# The one visible difference: no tree to deliver, so no directory for the bridge. Absent, not
+# empty — an empty directory would read to a skill as a tree whose files failed to arrive.
+# BRIDGES.md is still written: it is how a skill learns that the bridge is configured, and it
+# says plainly that this one has no tree.
+assert_not_exists "$MCP_NOTREE_DIR/.unikit/system/engine-bridges/fixture-treeless-mcp" \
+  "no rules tree for the selected bridge leaves its engine-bridges dir absent (not empty)"
+assert_not_exists "$MCP_NOTREE_DIR/.unikit/system/engine-bridges/fixture-treed-mcp" \
+  "the tree of the sibling bridge that was NOT selected is not delivered"
+assert_contains "$MCP_NOTREE_DIR/.unikit/system/engine-bridges/BRIDGES.md" '^## fixture-treeless-mcp$' \
+  "BRIDGES.md lists the selected bridge although it ships no tree"
+assert_contains "$MCP_NOTREE_DIR/.unikit/system/engine-bridges/BRIDGES.md" '^- rules: none$' \
+  "BRIDGES.md says the bridge has no rules tree"
 
 # ...and nothing else differs. The selection is still live, and the mechanical evidence
 # of that is the GRANTS: `update` never rewrites the MCP config itself (configureMcp is
@@ -2261,7 +2283,7 @@ assert_exists "$MCP_NOTREE_DIR/.claude/skills/unikit-memory/scripts/material-pre
 # yet a bare `assert_exists` on .../rules/fixture-treed-mcp/INDEX.md still passed — the
 # orphaned directory outlives the pointer, so the guard would keep confirming an invariant
 # the fixture had stopped satisfying. Same shape Part 5b uses on the shipped configs.
-MCP_NOTREE_TREED_JSON="$(fake_mcp_catalog_path two-unity-servers)/unity/fixture-treed-mcp.json"
+MCP_NOTREE_TREED_JSON="$(fake_mcp_catalog_path two-unity-servers)/engine-bridges/unity/fixture-treed-mcp.json"
 if ! MCP_NOTREE_TREED_JSON="$MCP_NOTREE_TREED_JSON" node -e "
     const fs = require('fs'), path = require('path');
     const p = process.env.MCP_NOTREE_TREED_JSON;
@@ -2270,7 +2292,7 @@ if ! MCP_NOTREE_TREED_JSON="$MCP_NOTREE_TREED_JSON" node -e "
     process.exit(fs.existsSync(path.join(path.dirname(p), m.rules, 'INDEX.md')) ? 0 : 1);
 "; then
   echo "Assertion failed: the fixture engine no longer carries a server WITH a rules tree"
-  echo "  (a treeless server whose engine-mcp dir is absent proves nothing unless a sibling"
+  echo "  (a treeless bridge whose tree dir is absent proves nothing unless a sibling"
   echo "   server in the SAME engine ships a tree — that contrast is the whole test)"
   echo "  File: $MCP_NOTREE_TREED_JSON"
   exit 1
@@ -2278,9 +2300,9 @@ fi
 
 unuse_fake_mcp_catalog
 
-# SV-3 after `update` with a treeless server: the engine-mcp rows must be absent with the directory.
-assert_system_tree "$MCP_NOTREE_DIR" no "system tree matches the variable registry (treeless engine MCP server, after update)"
-echo "  ✓ engine-mcp: a server with no rules tree degrades nothing (grants, layer A, skill assets)"
+# SV-3 after `update` with a treeless bridge: BRIDGES.md and its directory are there, because a bridge is selected.
+assert_system_tree "$MCP_NOTREE_DIR" yes "system tree matches the variable registry (treeless engine bridge, after update)"
+echo "  ✓ engine-bridges: a bridge with no rules tree degrades nothing (grants, layer A, skill assets)"
 
 # ─────────────────────────────────────────────────────
 # Test 14: resolveExistingEngine verdict matrix (wizard engine reuse)
@@ -2368,16 +2390,17 @@ echo "  ✓ resolveExistingEngine(' unity ') -> action=use, engine=unity (trim a
 # Test 14b: MCP picker pre-selection (wizard remembers the previous choice)
 # ─────────────────────────────────────────────────────
 # The wizard is interactive and never runs in this smoke, so the contract is
-# tested through the three exported pure helpers instead of the prompt:
+# tested through the exported pure helpers instead of the prompt:
 #   sortMcpChoices        — order asc, missing order last, ties by fileId
-#   isMcpPreselected      — checkbox: null = fresh (all checked), array = mirror
-#   resolveMcpGroupDefault— radio: INDEX of the restored entry, or undefined
-# The regression this guards: once two servers share one key (Unity ships biome
-# + coplay) the picker becomes a radio, and a radio has no notion of "already
-# installed" — a blind Enter on re-init would silently swap the engine MCP.
+#   isMcpPreselected      — universal checkbox: null = fresh (all checked), array = mirror
+#   defaultBridgeIds      — bridge checkbox on a fresh install: the first MCP bridge of the package order
+#   isBridgePreselected   — bridge checkbox: null = the defaults, array = mirror (empty = none)
+# The regression this guards: the engine's servers used to be a radio with a Skip, and a blind
+# Enter on re-init would silently swap the engine MCP. They are a checkbox group now, and a
+# re-init must show what the project had, not the defaults.
 
 MCP_DEFAULTS=$(cd "$ROOT_DIR" && node --input-type=module -e "
-  const { sortMcpChoices, isMcpPreselected, resolveMcpGroupDefault } =
+  const { sortMcpChoices, isMcpPreselected, defaultBridgeIds, isBridgePreselected } =
     await import('./dist/cli/wizard/prompts.js');
   const { parseMcpServerEntry } = await import('./dist/core/mcp-schema.js');
   const parsePreselect = (value) => parseMcpServerEntry(
@@ -2393,9 +2416,13 @@ MCP_DEFAULTS=$(cd "$ROOT_DIR" && node --input-type=module -e "
 
   process.stdout.write(JSON.stringify({
     sorted:        group.map(e => e.fileId),
-    freshDefault:  resolveMcpGroupDefault(group, null),
-    reinitDefault: resolveMcpGroupDefault(group, ['coplay-unity-mcp']),
-    absentDefault: resolveMcpGroupDefault(group, ['not-in-this-group']),
+    bridgeDefault: [...defaultBridgeIds(group)],
+    cliOnlyDefault: [...defaultBridgeIds([{ fileId: 'cli-a', displayName: 'A', isEngine: true, kind: 'cli', order: 1 }])],
+    bridgeFresh:       isBridgePreselected('unity-biome-mcp', null, defaultBridgeIds(group)),
+    bridgeFreshOther:  isBridgePreselected('coplay-unity-mcp', null, defaultBridgeIds(group)),
+    bridgeReinit:      isBridgePreselected('coplay-unity-mcp', ['coplay-unity-mcp'], defaultBridgeIds(group)),
+    bridgeReinitOther: isBridgePreselected('unity-biome-mcp', ['coplay-unity-mcp'], defaultBridgeIds(group)),
+    bridgeEmpty:       isBridgePreselected('unity-biome-mcp', [], defaultBridgeIds(group)),
     freshChecked:  isMcpPreselected('context7', null),
     reinitChecked: isMcpPreselected('context7', ['context7']),
     reinitUnchecked: isMcpPreselected('context7', ['something-else']),
@@ -2411,18 +2438,23 @@ if [[ "$MCP_DEFAULTS" != *'"sorted":["unity-biome-mcp","coplay-unity-mcp","zz-no
   echo "Assertion failed: sortMcpChoices should order by order asc with missing last, got: $MCP_DEFAULTS"
   exit 1
 fi
-# A fresh install must NOT pin a default — inquirer then pre-selects choice 0,
-# which is the order:1 recommendation.
-if [[ "$MCP_DEFAULTS" == *'"freshDefault"'* ]]; then
-  echo "Assertion failed: resolveMcpGroupDefault(group, null) must be undefined (omitted from JSON), got: $MCP_DEFAULTS"
+# A fresh install checks the first MCP bridge of the package order (the old radio's order:1) and
+# nothing else; a catalog of CLI bridges alone checks nothing. A re-init mirrors the previous choice,
+# and an EMPTY previous choice is not a fresh install.
+if [[ "$MCP_DEFAULTS" != *'"bridgeDefault":["unity-biome-mcp"]'* ]] \
+   || [[ "$MCP_DEFAULTS" != *'"cliOnlyDefault":[]'* ]]; then
+  echo "Assertion failed: defaultBridgeIds must give the first MCP bridge only (and nothing for CLI-only), got: $MCP_DEFAULTS"
   exit 1
 fi
-if [[ "$MCP_DEFAULTS" != *'"reinitDefault":1'* ]]; then
-  echo "Assertion failed: re-init with coplay installed should default to index 1, got: $MCP_DEFAULTS"
+if [[ "$MCP_DEFAULTS" != *'"bridgeFresh":true'* ]] \
+   || [[ "$MCP_DEFAULTS" != *'"bridgeFreshOther":false'* ]]; then
+  echo "Assertion failed: a fresh install must check the default bridge and not the other, got: $MCP_DEFAULTS"
   exit 1
 fi
-if [[ "$MCP_DEFAULTS" == *'"absentDefault"'* ]]; then
-  echo "Assertion failed: nothing from the group installed -> default must be undefined (never pre-select Skip), got: $MCP_DEFAULTS"
+if [[ "$MCP_DEFAULTS" != *'"bridgeReinit":true'* ]] \
+   || [[ "$MCP_DEFAULTS" != *'"bridgeReinitOther":false'* ]] \
+   || [[ "$MCP_DEFAULTS" != *'"bridgeEmpty":false'* ]]; then
+  echo "Assertion failed: a re-init must mirror the previous bridges (an empty array checks none), got: $MCP_DEFAULTS"
   exit 1
 fi
 if [[ "$MCP_DEFAULTS" != *'"freshChecked":true'* ]] \
@@ -2447,7 +2479,7 @@ if [[ "$MCP_DEFAULTS" != *'"parsedJunkHasPreselect":false'* ]] \
   exit 1
 fi
 
-echo "  ✓ MCP picker pre-selection: sorted by order, re-init restores prior choice, fresh falls back to order:1, preselect:false stays unchecked"
+echo "  ✓ MCP picker pre-selection: sorted by order, re-init restores both groups, a fresh install checks the first MCP bridge, preselect:false stays unchecked"
 
 # ─────────────────────────────────────────────────────
 # Test 14c: configByPlatform resolution writes a token-free command
@@ -2601,7 +2633,7 @@ cat > "$GH_GRANTS_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": { "context7": "context7", "github": "github" } },
   "agents": [
     {
@@ -2627,6 +2659,372 @@ assert_not_contains "$GH_GRANTS_DIR/.claude/skills/unikit-commit/SKILL.md" 'mcp_
   "no other skill gets a GitHub grant"
 
 echo "  ✓ GitHub MCP: eight clients get their own env reference syntax, unchecked by default, only unikit-pr granted"
+
+# ─────────────────────────────────────────────────────
+# Test 14e: the Unity CLI is checked on a fresh install only when it is found AND the project is new enough
+# ─────────────────────────────────────────────────────
+# The wizard asks `detectBridge` for every bridge of the engine and checks the ones it finds, in
+# addition to the first MCP bridge. Driven here through the real catalog and the real functions of the
+# build, on a fake PATH that holds an empty file called like the binary: nothing is executed, which is
+# exactly what the installer promises (REQ-5).
+
+E14_BIN="$TMPDIR/test-detect-bin"
+mkdir -p "$E14_BIN" "$TMPDIR/test-detect-empty"
+: > "$E14_BIN/unity"
+: > "$E14_BIN/unity.exe"
+
+e14_selected_by_default() {
+  # $1 = project dir, $2 = folder on PATH, $3 = engine version line ("" = no version file)
+  local project="$1" on_path="$2" version_line="$3"
+  mkdir -p "$project"
+  if [[ -n "$version_line" ]]; then
+    mkdir -p "$project/ProjectSettings"
+    printf '%s\nm_EditorVersionWithRevision: 0 (0)\n' "$version_line" > "$project/ProjectSettings/ProjectVersion.txt"
+  fi
+  (cd "$ROOT_DIR" && node --input-type=module -e "
+    const { discoverMcpServers } = await import('./dist/core/mcp.js');
+    const { detectBridge } = await import('./dist/core/bridges/detect.js');
+    const { defaultBridgeIds } = await import('./dist/cli/wizard/prompts.js');
+    const [project, onPath] = process.argv.slice(1);
+    const servers = await discoverMcpServers('unity');
+    const ctx = { projectDir: project, env: { PATH: onPath, Path: onPath, PATHEXT: '.EXE' }, platform: process.platform };
+    const detected = new Set();
+    const choices = [];
+    for (const [fileId, entry] of servers) {
+      if (!entry.isEngine) continue;
+      choices.push({ fileId, displayName: entry.displayName, isEngine: true, kind: entry.kind, order: entry.order });
+      if (await detectBridge(entry, ctx)) detected.add(fileId);
+    }
+    process.stdout.write([...defaultBridgeIds(choices, detected)].sort().join(','));
+  " "$project" "$on_path" 2>/dev/null)
+}
+
+E14_FOUND=$(e14_selected_by_default "$TMPDIR/test-detect-old" "$E14_BIN" "m_EditorVersion: 2022.3.45f1")
+[[ "$E14_FOUND" == "unity-biome-mcp" ]] || { echo "Assertion failed: found binary + Unity 2022.3 must NOT pre-select the CLI, got: $E14_FOUND"; exit 1; }
+E14_NEW=$(e14_selected_by_default "$TMPDIR/test-detect-new" "$E14_BIN" "m_EditorVersion: 6000.3.22f1")
+[[ "$E14_NEW" == "unity-biome-mcp,unity-cli" ]] || { echo "Assertion failed: found binary + Unity 6000.3.22f1 must pre-select the CLI beside Biome, got: $E14_NEW"; exit 1; }
+E14_FLOOR=$(e14_selected_by_default "$TMPDIR/test-detect-floor" "$E14_BIN" "m_EditorVersion: 6000.0.77f1")
+[[ "$E14_FLOOR" == "unity-biome-mcp,unity-cli" ]] || { echo "Assertion failed: found binary + Unity 6000.0.77f1 (the floor) must pre-select the CLI, got: $E14_FLOOR"; exit 1; }
+E14_NOBIN=$(e14_selected_by_default "$TMPDIR/test-detect-nobin" "$TMPDIR/test-detect-empty" "m_EditorVersion: 6000.3.22f1")
+[[ "$E14_NOBIN" == "unity-biome-mcp" ]] || { echo "Assertion failed: no binary on PATH must not pre-select the CLI, got: $E14_NOBIN"; exit 1; }
+E14_NOFILE=$(e14_selected_by_default "$TMPDIR/test-detect-nofile" "$E14_BIN" "")
+[[ "$E14_NOFILE" == "unity-biome-mcp" ]] || { echo "Assertion failed: a project without a version file must not pre-select the CLI, got: $E14_NOFILE"; exit 1; }
+echo "  ✓ wizard detection: CLI pre-selected only with the binary on PATH and a project at or above the floor"
+
+# The summary of `init` prints the preparation lines of a selected bridge and the order line for two.
+E14_SUMMARY=$(cd "$ROOT_DIR" && node --input-type=module -e "
+  const { discoverMcpServers } = await import('./dist/core/mcp.js');
+  const { getBridgeSetupLines } = await import('./dist/core/bridges/summary.js');
+  const servers = await discoverMcpServers('unity');
+  process.stdout.write(getBridgeSetupLines(servers, ['unity-biome-mcp', 'unity-cli'], process.argv[1]).join('\n'));
+" "$TMPDIR/test-detect-new" 2>/dev/null)
+E14_SUMMARY_FILE="$TMPDIR/test-detect-summary.txt"
+printf '%s\n' "$E14_SUMMARY" > "$E14_SUMMARY_FILE"
+assert_contains "$E14_SUMMARY_FILE" 'requires: CLI >= 1\.0\.0-beta\.14; package >= 0\.9\.1-exp\.1; engine >= 6000\.0' "init summary: the floors of the CLI"
+assert_contains "$E14_SUMMARY_FILE" '\[asks first\] unity pipeline install --project-path "' "init summary: installing the package is asked for first, not done"
+assert_contains "$E14_SUMMARY_FILE" '^Order: unity-cli > unity-biome-mcp \(package default\)' "init summary: one line with the package order for two bridges"
+echo "  ✓ init summary: floors, who performs each step, and the order line"
+
+# ─────────────────────────────────────────────────────
+# Test 15: two bridges at once, then one — BRIDGES.md, per-bridge trees, the sweep
+# ─────────────────────────────────────────────────────
+# The selection is a SET now. Two bridges deliver two trees under their own ids and one
+# BRIDGES.md naming both in the package's default order; dropping one removes its tree and
+# its block, leaves the other untouched, and a planted file in the sweep area disappears.
+# Changing the selection never touches the user's order (it is not in any installed file).
+
+TWO_BRIDGES_DIR="$TMPDIR/test-two-bridges"
+mkdir -p "$TWO_BRIDGES_DIR"
+cat > "$TWO_BRIDGES_DIR/.unikit.json" << 'EOF'
+{
+  "version": "1.0.0",
+  "engine": "unity",
+  "mcp": { "servers": {} },
+  "engineBridges": { "selected": { "unity-biome-mcp": "unity-biome-mcp", "coplay-unity-mcp": "UnityMCP" } },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit-implement", "unikit-verify"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": {
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
+  }
+}
+EOF
+inject_fake_registry "$TWO_BRIDGES_DIR"
+seed_rule "$TWO_BRIDGES_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
+run_update "$TWO_BRIDGES_DIR"
+
+TWO_BRIDGES_BASE="$TWO_BRIDGES_DIR/.unikit/system/engine-bridges"
+assert_exists "$TWO_BRIDGES_BASE/unity-biome-mcp/INDEX.md" "two bridges: the first bridge's tree is delivered"
+assert_exists "$TWO_BRIDGES_BASE/coplay-unity-mcp/INDEX.md" "two bridges: the second bridge's tree is delivered"
+assert_contains "$TWO_BRIDGES_BASE/unity-biome-mcp/INDEX.md" '^bridge: unity-biome-mcp$' "two bridges: each tree carries its own bridge id (first)"
+assert_contains "$TWO_BRIDGES_BASE/coplay-unity-mcp/INDEX.md" '^bridge: coplay-unity-mcp$' "two bridges: each tree carries its own bridge id (second)"
+assert_contains "$TWO_BRIDGES_BASE/BRIDGES.md" '^default order: unity-biome-mcp > coplay-unity-mcp$' \
+  "two bridges: BRIDGES.md gives the package's default order"
+assert_contains "$TWO_BRIDGES_BASE/BRIDGES.md" '^## coplay-unity-mcp$' "two bridges: BRIDGES.md has a block for the second bridge"
+assert_contains "$TWO_BRIDGES_DIR/.claude/skills/unikit-implement/SKILL.md" 'mcp__unity-biome-mcp__' "two bridges: the grants of the first are injected"
+assert_contains "$TWO_BRIDGES_DIR/.claude/skills/unikit-implement/SKILL.md" 'mcp__UnityMCP__' "two bridges: the grants of the second are injected"
+assert_system_tree "$TWO_BRIDGES_DIR" yes "system tree matches the variable registry (two bridges)"
+
+# Drop the first bridge and plant a stray file where the sweep must reach it.
+mkdir -p "$TWO_BRIDGES_BASE/unity-biome-mcp/nested"
+echo "ORPHAN" > "$TWO_BRIDGES_BASE/unity-biome-mcp/nested/orphan.txt"
+echo "ORPHAN" > "$TWO_BRIDGES_BASE/stray.md"
+TWO_BRIDGES_COPLAY_SHA=$(sha_of "$TWO_BRIDGES_BASE/coplay-unity-mcp/INDEX.md")
+CONFIG="$TWO_BRIDGES_DIR/.unikit.json" node -e "
+    const fs=require('fs'); const f=process.env.CONFIG;
+    const c=JSON.parse(fs.readFileSync(f,'utf8'));
+    c.engineBridges = { selected: { 'coplay-unity-mcp': 'UnityMCP' } };
+    fs.writeFileSync(f, JSON.stringify(c,null,2));
+"
+run_update "$TWO_BRIDGES_DIR"
+
+assert_not_exists "$TWO_BRIDGES_BASE/unity-biome-mcp" "one bridge dropped: its whole tree is gone, nested orphan included"
+assert_not_exists "$TWO_BRIDGES_BASE/stray.md" "one bridge dropped: a stray file in the layer is swept"
+assert_file_unchanged "$TWO_BRIDGES_BASE/coplay-unity-mcp/INDEX.md" "$TWO_BRIDGES_COPLAY_SHA" "one bridge dropped: the tree that stays is byte-identical"
+assert_contains "$TWO_BRIDGES_BASE/BRIDGES.md" '^default order: coplay-unity-mcp$' "one bridge dropped: BRIDGES.md follows the selection"
+assert_not_contains "$TWO_BRIDGES_BASE/BRIDGES.md" 'unity-biome-mcp' "one bridge dropped: its block is gone from BRIDGES.md"
+assert_not_contains "$TWO_BRIDGES_DIR/.claude/skills/unikit-implement/SKILL.md" 'mcp__unity-biome-mcp__' "one bridge dropped: its grants are removed (the hash took the set)"
+assert_system_tree "$TWO_BRIDGES_DIR" yes "system tree matches the variable registry (one bridge left)"
+echo "  ✓ engine-bridges: two bridges deliver two trees and one BRIDGES.md; dropping one sweeps exactly its own"
+
+# ─────────────────────────────────────────────────────
+# Test 15b: a command-line bridge beside an MCP bridge — its block in BRIDGES.md, nothing in the settings
+# file, the section of what was not selected, and the order that is not part of any installed byte
+# ─────────────────────────────────────────────────────
+# The Unity CLI registers nothing in .mcp.json; it ships a small rules tree of measured exceptions. What the skills need from it
+# (how to call it, how to list its catalog, how to probe its version and the package, the floors) is
+# printed into its block of BRIDGES.md from the card.
+
+CLI_BRIDGE_DIR="$TMPDIR/test-cli-bridge"
+mkdir -p "$CLI_BRIDGE_DIR"
+cat > "$CLI_BRIDGE_DIR/.unikit.json" << 'EOF'
+{
+  "version": "3.0.0",
+  "engine": "unity",
+  "mcp": { "servers": {} },
+  "engineBridges": { "selected": { "unity-cli": "unity", "unity-biome-mcp": "unity-biome-mcp" } },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit-implement", "unikit-verify"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": {
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
+  }
+}
+EOF
+inject_fake_registry "$CLI_BRIDGE_DIR"
+seed_rule "$CLI_BRIDGE_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
+run_update "$CLI_BRIDGE_DIR"
+
+CLI_BRIDGE_BASE="$CLI_BRIDGE_DIR/.unikit/system/engine-bridges"
+CLI_BRIDGE_MANIFEST="$CLI_BRIDGE_BASE/BRIDGES.md"
+assert_exists "$CLI_BRIDGE_MANIFEST" "cli bridge: BRIDGES.md is delivered"
+CLI_BLOCK_AT=$(grep -n '^## unity-cli$' "$CLI_BRIDGE_MANIFEST" | head -1 | cut -d: -f1)
+BIOME_BLOCK_AT=$(grep -n '^## unity-biome-mcp$' "$CLI_BRIDGE_MANIFEST" | head -1 | cut -d: -f1)
+if [[ -z "$CLI_BLOCK_AT" || -z "$BIOME_BLOCK_AT" || "$CLI_BLOCK_AT" -ge "$BIOME_BLOCK_AT" ]]; then
+  echo "Assertion failed: the block of unity-cli must come before the block of unity-biome-mcp (got $CLI_BLOCK_AT / $BIOME_BLOCK_AT)"
+  exit 1
+fi
+assert_contains "$CLI_BRIDGE_MANIFEST" '^default order: unity-cli > unity-biome-mcp$' "cli bridge: the default order puts the CLI first"
+assert_contains "$CLI_BRIDGE_MANIFEST" '^- call: `unity command --project-path ' "cli bridge: the call form carries the project path"
+assert_contains "$CLI_BRIDGE_MANIFEST" '^- probe version: `unity --version`$' "cli bridge: the version probe"
+assert_contains "$CLI_BRIDGE_MANIFEST" '^- probe package: read `Packages/packages-lock.json`' "cli bridge: the package is probed by reading a file, not by a command"
+assert_contains "$CLI_BRIDGE_MANIFEST" '^- ready: `unity status --project-path ' "cli bridge: the ready form carries the project path"
+assert_contains "$CLI_BRIDGE_MANIFEST" '^- catalog list: `unity list --project-path ' "cli bridge: the whole-catalog form carries the project path"
+assert_contains "$CLI_BRIDGE_MANIFEST" '^- floor: CLI >= 1\.0\.0-beta\.14; package >= 0\.9\.1-exp\.1; engine >= 6000\.0$' "cli bridge: the floors of the card"
+assert_not_contains "$CLI_BRIDGE_MANIFEST" '^## Not selected$' "cli bridge: nothing is left unselected, so no such section"
+
+# The CLI registers nothing: the settings file names Biome and not the CLI.
+CLI_BRIDGE_KEYS=$(node -e "
+  const fs = require('fs'); const f = process.argv[1];
+  const j = fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')) : { mcpServers: {} };
+  process.stdout.write(Object.keys(j.mcpServers || {}).sort().join(','));
+" "$CLI_BRIDGE_DIR/.mcp.json")
+if [[ "$CLI_BRIDGE_KEYS" != *"unity-biome-mcp"* || ",$CLI_BRIDGE_KEYS," == *",unity,"* ]]; then
+  echo "Assertion failed: .mcp.json should hold the Biome entry and none for the CLI, got: $CLI_BRIDGE_KEYS"
+  exit 1
+fi
+assert_exists "$CLI_BRIDGE_BASE/unity-biome-mcp/INDEX.md" "cli bridge: the tree of the MCP bridge is delivered"
+assert_exists "$CLI_BRIDGE_BASE/unity-cli/INDEX.md" "cli bridge: the rules tree of the CLI is delivered"
+assert_exists "$CLI_BRIDGE_BASE/unity-cli/verification.md" "cli bridge: ...with its gate calibration"
+assert_contains "$CLI_BRIDGE_BASE/unity-cli/INDEX.md" '^bridge: unity-cli$' "cli bridge: the tree carries the stamp of its bridge (INDEX)"
+assert_contains "$CLI_BRIDGE_BASE/unity-cli/verification.md" '^bridge: unity-cli$' "cli bridge: ...and the calibration"
+assert_contains "$CLI_BRIDGE_MANIFEST" '^- rules: \.unikit/system/engine-bridges/unity-cli/INDEX\.md$' "cli bridge: BRIDGES.md points to the tree"
+assert_contains "$CLI_BRIDGE_MANIFEST" '^- verification: \.unikit/system/engine-bridges/unity-cli/verification\.md$' "cli bridge: ...and to the calibration"
+assert_system_tree "$CLI_BRIDGE_DIR" yes "system tree matches the variable registry (CLI and Biome)"
+
+# Order lives in .unikit/config.yaml and in no installed byte: writing it reinstalls nothing and leaves
+# BRIDGES.md byte-identical. A change of the SET is the opposite: it reinstalls.
+CLI_BRIDGE_SKILL="$CLI_BRIDGE_DIR/.claude/skills/unikit-implement/SKILL.md"
+CLI_BRIDGE_SKILL_SHA=$(sha_of "$CLI_BRIDGE_SKILL")
+CLI_BRIDGE_MANIFEST_SHA=$(sha_of "$CLI_BRIDGE_MANIFEST")
+mkdir -p "$CLI_BRIDGE_DIR/.unikit"
+printf 'engine_bridges:\n  order: [unity-biome-mcp, unity-cli]\n' > "$CLI_BRIDGE_DIR/.unikit/config.yaml"
+run_update "$CLI_BRIDGE_DIR"
+assert_same_sha "$CLI_BRIDGE_SKILL" "$CLI_BRIDGE_SKILL_SHA" "cli bridge: a user order reinstalls no skill"
+assert_same_sha "$CLI_BRIDGE_MANIFEST" "$CLI_BRIDGE_MANIFEST_SHA" "cli bridge: ...and does not touch BRIDGES.md"
+
+# Only Biome selected: the CLI moves to the section of what was not selected, with its probe, and
+# the skill (whose source hash took the set) loses the CLI's grants.
+CONFIG="$CLI_BRIDGE_DIR/.unikit.json" node -e "
+    const fs=require('fs'); const f=process.env.CONFIG;
+    const c=JSON.parse(fs.readFileSync(f,'utf8'));
+    c.engineBridges = { selected: { 'unity-biome-mcp': 'unity-biome-mcp' } };
+    fs.writeFileSync(f, JSON.stringify(c,null,2));
+"
+run_update "$CLI_BRIDGE_DIR"
+assert_contains "$CLI_BRIDGE_MANIFEST" '^## Not selected$' "cli bridge: a bridge that can be probed but was not selected gets its section"
+assert_contains "$CLI_BRIDGE_MANIFEST" '^- unity-cli - .* - probe: `unity --version`$' "cli bridge: ...with the probe that tells whether it is installed here"
+assert_not_contains "$CLI_BRIDGE_MANIFEST" '^## unity-cli$' "cli bridge: ...and no block of its own"
+assert_contains "$CLI_BRIDGE_MANIFEST" '^default order: unity-biome-mcp$' "cli bridge: the default order follows the selection"
+if [[ "$(sha_of "$CLI_BRIDGE_SKILL")" == "$CLI_BRIDGE_SKILL_SHA" ]]; then
+  echo "Assertion failed: changing the set of bridges should reinstall the executor skill (its grants changed)"
+  exit 1
+fi
+echo "  ✓ engine-bridges: a CLI bridge is described in BRIDGES.md and registers nothing; order is no installed byte; the unselected CLI is offered with its probe"
+
+# ─────────────────────────────────────────────────────
+# Test 16: the bridge-docs and references skills are delivered with their grants, and Context7 reaches
+# the executors that read documentation
+# ─────────────────────────────────────────────────────
+# (a) /unikit-bridge-docs: its references folder, the grants of the CLI card and its own git grant;
+#     with the CLI deselected the CLI grants go and its own stay.
+# (b) /unikit-references: the question tool and curl; a Codex project gets the slash calls rewritten
+#     in the reference files too.
+# (c) Context7 in worker, coordinator and verify, and removed again with the server.
+
+DOCS_SKILLS_DIR="$TMPDIR/test-docs-skills"
+mkdir -p "$DOCS_SKILLS_DIR"
+cat > "$DOCS_SKILLS_DIR/.unikit.json" << 'EOF'
+{
+  "version": "3.0.0",
+  "engine": "unity",
+  "mcp": { "servers": {} },
+  "engineBridges": { "selected": { "unity-cli": "unity", "unity-biome-mcp": "unity-biome-mcp" } },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit-bridge-docs", "unikit-references", "unikit-implement"],
+      "installedSubagents": []
+    },
+    {
+      "id": "codex",
+      "skillsDir": ".codex/skills",
+      "subagentsDir": ".codex/agents",
+      "installedSkills": ["unikit-bridge-docs", "unikit-references"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": {
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
+  }
+}
+EOF
+inject_fake_registry "$DOCS_SKILLS_DIR"
+run_update "$DOCS_SKILLS_DIR"
+
+DOCS_SKILL="$DOCS_SKILLS_DIR/.claude/skills/unikit-bridge-docs"
+for doc_file in SKILL.md references/sources.md references/catalog.md references/stamp-and-report.md; do
+  assert_exists "$DOCS_SKILL/$doc_file" "bridge docs: $doc_file is delivered"
+done
+grep -qF 'Bash(git clone *)' "$DOCS_SKILL/SKILL.md" || { echo "Assertion failed: the button's own git grant is missing"; exit 1; }
+for grant in 'Bash(unity skill show *)' 'Bash(unity command *)' 'Bash(unity status *)' 'Bash(unity --version *)'; do
+  grep -qF "$grant" "$DOCS_SKILL/SKILL.md" || { echo "Assertion failed: the card's grant '$grant' did not reach the button"; exit 1; }
+done
+if grep -qF 'pipeline' "$DOCS_SKILL/SKILL.md"; then
+  echo "Assertion failed: no pipeline verb may be granted to the button"; exit 1
+fi
+assert_not_contains "$DOCS_SKILL/SKILL.md" '\{\{(skills_dir|self_name)\}\}' "bridge docs: the path variables are substituted"
+assert_contains "$DOCS_SKILL/SKILL.md" '\.claude/skills/unikit-bridge-docs/references/sources\.md' "bridge docs: the reference is named by its installed path"
+
+REFS_SKILL="$DOCS_SKILLS_DIR/.claude/skills/unikit-references"
+assert_exists "$REFS_SKILL/SKILL.md" "references: the skill is delivered"
+assert_exists "$REFS_SKILL/references/index-format.md" "references: the index format is delivered"
+assert_contains "$REFS_SKILL/SKILL.md" 'AskUserQuestion' "references: the question tool is granted"
+grep -qF 'Bash(curl *)' "$REFS_SKILL/SKILL.md" || { echo "Assertion failed: references: curl is not granted"; exit 1; }
+assert_not_contains "$REFS_SKILL/SKILL.md" 'unity' "references: the user-references skill names no engine tool"
+
+# A Codex project: the slash calls in the reference files are rewritten like the skill text is.
+CODEX_REFS="$DOCS_SKILLS_DIR/.codex/skills/unikit-references/references/index-format.md"
+assert_exists "$CODEX_REFS" "references (codex): the index format is delivered"
+assert_contains "$CODEX_REFS" '\$unikit-bridge-docs' "references (codex): /unikit-bridge-docs is written as \$unikit-bridge-docs in the reference file"
+assert_not_contains "$CODEX_REFS" '/unikit-bridge-docs' "references (codex): no slash call is left in the reference file"
+grep -qF 'Bash(unity command *)' "$DOCS_SKILLS_DIR/.codex/skills/unikit-bridge-docs/SKILL.md" || { echo "Assertion failed: codex: the CLI grants did not reach the button"; exit 1; }
+
+# The CLI deselected: its grants leave the button, its own stay.
+CONFIG="$DOCS_SKILLS_DIR/.unikit.json" node -e "
+    const fs=require('fs'); const f=process.env.CONFIG;
+    const c=JSON.parse(fs.readFileSync(f,'utf8'));
+    c.engineBridges = { selected: { 'unity-biome-mcp': 'unity-biome-mcp' } };
+    fs.writeFileSync(f, JSON.stringify(c,null,2));
+"
+run_update "$DOCS_SKILLS_DIR"
+if grep -qF 'Bash(unity' "$DOCS_SKILL/SKILL.md"; then
+  echo "Assertion failed: bridge docs: the CLI is deselected and its grants are still in the button"; exit 1
+fi
+grep -qF 'Bash(git clone *)' "$DOCS_SKILL/SKILL.md" || { echo "Assertion failed: the button lost its own git grant with the CLI"; exit 1; }
+echo "  ✓ bridge docs and references: delivered with their reference files, the card's grants come and go with the CLI, Codex gets the slash calls rewritten"
+
+# (c) Context7 for the executors
+C7_DIR="$TMPDIR/test-context7-executors"
+mkdir -p "$C7_DIR"
+cat > "$C7_DIR/.unikit.json" << 'EOF'
+{
+  "version": "3.0.0",
+  "engine": "unity",
+  "mcp": { "servers": { "context7": "context7" } },
+  "engineBridges": { "selected": {} },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit-verify", "unikit-implement"],
+      "installedSubagents": ["unikit-implement-worker", "unikit-implement-coordinator", "unikit-review-sidecar"]
+    }
+  ],
+  "rules": {
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
+  }
+}
+EOF
+inject_fake_registry "$C7_DIR"
+run_update "$C7_DIR"
+C7_FILES=("$C7_DIR/.claude/agents/unikit-implement-worker.md" "$C7_DIR/.claude/agents/unikit-implement-coordinator.md" "$C7_DIR/.claude/skills/unikit-verify/SKILL.md")
+for c7_file in "${C7_FILES[@]}"; do
+  assert_exists "$c7_file" "context7: ${c7_file#$TMPDIR/} is installed"
+  assert_contains "$c7_file" 'mcp__context7__resolve-library-id' "context7: ${c7_file##*/} may resolve a library"
+  assert_contains "$c7_file" 'mcp__context7__query-docs' "context7: ${c7_file##*/} may query its documentation"
+done
+grep -qF 'Agent(unikit-implement-worker' "$C7_DIR/.claude/agents/unikit-implement-coordinator.md" || { echo "Assertion failed: the coordinator lost its Agent(...) entry"; exit 1; }
+assert_contains "$C7_DIR/.claude/agents/unikit-implement-coordinator.md" 'AskUserQuestion' "context7: the coordinator keeps its question tool"
+assert_exists "$C7_DIR/.claude/agents/unikit-review-sidecar.md" "context7: the review sidecar is installed (so its absence of grants means something)"
+assert_not_contains "$C7_DIR/.claude/agents/unikit-review-sidecar.md" 'mcp__context7__' "context7: the review sidecar is not granted"
+
+CONFIG="$C7_DIR/.unikit.json" node -e "
+    const fs=require('fs'); const f=process.env.CONFIG;
+    const c=JSON.parse(fs.readFileSync(f,'utf8'));
+    c.mcp = { servers: {} };
+    fs.writeFileSync(f, JSON.stringify(c,null,2));
+"
+run_update "$C7_DIR"
+for c7_file in "${C7_FILES[@]}"; do
+  assert_not_contains "$c7_file" 'mcp__context7__' "context7 deselected: ${c7_file##*/} loses the grants"
+done
+echo "  ✓ context7: granted to verify, the worker and the coordinator, and taken back with the server"
 
 # ─────────────────────────────────────────────────────
 # Final sweep: agent-filter markers must not leak into any install

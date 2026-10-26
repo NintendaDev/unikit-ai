@@ -22,6 +22,15 @@ const __dirname = path.dirname(__filename);
  */
 export const MCP_DIR_ENV_VAR = 'UNIKIT_MCP_DIR';
 
+/**
+ * Dev/test-only override for the packaged engine-bridge catalog (`engine-bridges/`), the
+ * mirror of {@link MCP_DIR_ENV_VAR}: that one stays with the universal servers, this one
+ * with the bridges. Same layer rule, same single point of read ({@link getBridgesDir}).
+ */
+export const BRIDGES_DIR_ENV_VAR = 'UNIKIT_BRIDGES_DIR';
+
+const BRIDGES_PACKAGE_DIR = 'engine-bridges';
+
 function getPackageRoot(): string {
   return path.resolve(__dirname, '..', '..');
 }
@@ -47,6 +56,16 @@ export function getMcpDir(): string {
   return path.join(getPackageRoot(), 'mcp');
 }
 
+/** Root of the engine-bridge catalog; the dev/test seam is `UNIKIT_BRIDGES_DIR` (see `getMcpDir`). */
+export function getBridgesDir(): string {
+  const override = process.env[BRIDGES_DIR_ENV_VAR];
+  if (override) {
+    logInfo('getBridgesDir', `Engine bridge catalog overridden via ${BRIDGES_DIR_ENV_VAR}=${override}`);
+    return override;
+  }
+  return path.join(getPackageRoot(), BRIDGES_PACKAGE_DIR);
+}
+
 export function getDataDir(): string {
   return path.join(getPackageRoot(), 'data');
 }
@@ -64,6 +83,15 @@ export async function fileExists(filePath: string): Promise<boolean> {
   try {
     await fs.access(filePath);
     return true;
+  } catch {
+    return false;
+  }
+}
+
+/** True for an existing regular file; a directory of the same name is not one. */
+export async function isFile(filePath: string): Promise<boolean> {
+  try {
+    return (await fs.stat(filePath)).isFile();
   } catch {
     return false;
   }
@@ -112,7 +140,7 @@ export async function listDirectories(dirPath: string): Promise<string[]> {
 
 // Sorted, not raw readdir order: callers turn this list into user-visible order
 // (the MCP wizard pre-selects the first entry) and into concatenated content
-// (engine-MCP shards, gamedesign system assets). readdir order is filesystem
+// (bridge rules trees, gamedesign system assets). readdir order is filesystem
 // dependent, so without the sort the same repo produces different output on
 // different machines.
 export async function listFiles(dirPath: string): Promise<string[]> {

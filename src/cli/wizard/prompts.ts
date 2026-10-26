@@ -3,7 +3,8 @@ import chalk from 'chalk';
 import { getAgentChoices, getAgentConfig } from '../../core/agents.js';
 import { getEngineChoices, getAllEngineIds, getEngineConfig } from '../../core/engines.js';
 import { describeSharedSkillsDir } from '../../core/agent-skills-dir.js';
-import { discoverMcpServers } from '../../core/mcp.js';
+import { discoverMcpServers, type BridgeKind } from '../../core/mcp.js';
+import { detectBridge, type DetectContext } from '../../core/bridges/detect.js';
 import { getAvailableSkills } from '../../core/installer/skills.js';
 import { groupSkills, findUngrouped, resolveSkillDefaults } from '../../core/skill-groups.js';
 import { normalizeRegistryUrl, validateRegistry, manifestEngineIds } from '../../core/registry/validator.js';
@@ -32,8 +33,10 @@ export interface WizardAnswers {
   agents: AgentWizardSelection[];
   engine: string;
   selectedSkills: string[];
+  /** Universal MCP servers only; the engine's bridges are in {@link WizardAnswers.engineBridges}. */
   mcpServers: string[];
-  engineMcpKey: string | null;
+  /** Engine bridges (file ids), any number; the order between them is set later, in `.unikit/config.yaml`. */
+  engineBridges: string[];
   rulesRegistry: string;
 }
 
@@ -81,18 +84,18 @@ export interface McpChoiceEntry {
   fileId: string;
   displayName: string;
   isEngine: boolean;
+  /** Absent = `mcp`. */
+  kind?: BridgeKind;
   order?: number;
   /** `false` = unchecked on a fresh install (the catalog's `preselect`). */
   preselect?: boolean;
 }
 
 // Pure helper -- orders MCP choices deterministically: ascending `order`,
-// entries without one last, ties broken by fileId. Since the shard corpus was
-// retired this is the ONLY thing `order` still drives: one engine takes one
-// engine server, so there is no longer any content to concatenate in a defined
-// order. It matters more than cosmetics: inquirer's `type: 'list'` pre-selects
-// the FIRST choice, so without a stable order the wizard's default MCP would
-// vary with filesystem readdir order.
+// entries without one last, ties broken by fileId. It is the presentation order
+// of both checkbox groups and, for the bridges, the package default that
+// `defaultBridgeIds` reads: without a stable order the bridge checked on a fresh
+// install would vary with filesystem readdir order.
 export function sortMcpChoices(entries: McpChoiceEntry[]): McpChoiceEntry[] {
   return [...entries].sort((a, b) => {
     const orderA = a.order ?? Number.MAX_SAFE_INTEGER;
@@ -103,7 +106,7 @@ export function sortMcpChoices(entries: McpChoiceEntry[]): McpChoiceEntry[] {
   });
 }
 
-// Pure helper -- checkbox pre-selection for a unique-key MCP server.
+// Pure helper -- checkbox pre-selection for a universal MCP server.
 // `null` = fresh install (check everything, the historical default); an array =
 // re-init, where we mirror what .unikit.json says is installed. Same semantics
 // as existingInstalledSkills for the skill picker. An empty array is NOT
@@ -114,24 +117,23 @@ export function isMcpPreselected(fileId: string, existingMcpServers: string[] | 
   return existingMcpServers ? existingMcpServers.includes(fileId) : preselect !== false;
 }
 
-// Pure helper -- radio `default` for one duplicate-key group, as an INDEX into
-// the already-sorted entries (inquirer accepts either the value or the index;
-// the index keeps this independent of the choice-value encoding).
-// `undefined` = do not pass a default, which lets inquirer pre-select the first
-// choice, i.e. the `order: 1` recommendation. Returned both for a fresh install
-// and when nothing from this group was previously installed -- "the user skipped
-// this group last time" and "there was no choice to make last time" are
-// indistinguishable on disk, and silently pre-selecting Skip (thereby disabling
-// an MCP on a blind Enter) is worse than re-offering the recommended server.
-export function resolveMcpGroupDefault(
-  sortedEntries: McpChoiceEntry[],
-  existingMcpServers: string[] | null,
-): number | undefined {
-  if (!existingMcpServers) return undefined;
+// Pure helper -- the bridge checkbox on a fresh install: the first MCP-kind bridge in the package
+// order is checked, the others are not. That is what the radio's `order: 1` used to mean. A bridge of
+// another kind is never checked by position; it is checked when detection found it on this machine
+// (`detected`, from `detectBridge`), and then in addition to the first MCP bridge.
+export function defaultBridgeIds(entries: McpChoiceEntry[], detected: ReadonlySet<string> = new Set()): Set<string> {
+  const first = sortMcpChoices(entries).find(entry => (entry.kind ?? 'mcp') === 'mcp');
+  return new Set([...(first ? [first.fileId] : []), ...detected]);
+}
 
-  const index = sortedEntries.findIndex(entry => existingMcpServers.includes(entry.fileId));
+/** Added to the label of a bridge that detection found, so the user sees why it is already ticked. */
+const DETECTED_LABEL_SUFFIX = ' — found on this machine';
 
-  return index === -1 ? undefined : index;
+// Pure helper -- checkbox pre-selection for one bridge. `null` = fresh install (the defaults); an
+// array = re-init, where we mirror what .unikit.json says the project had. An empty array is NOT
+// "fresh": it means no bridge was selected before, so none is pre-checked.
+export function isBridgePreselected(fileId: string, existingBridges: string[] | null, defaults: Set<string>): boolean {
+  return existingBridges ? existingBridges.includes(fileId) : defaults.has(fileId);
 }
 
 function isCustomRegistry(stored: string | null | undefined): boolean {
@@ -220,7 +222,7 @@ export async function runWizard(
   existingRulesRegistry: string | null = null,
   existingEngine: string | null = null,
   existingInstalledSkills: string[] | null = null,
-  existingMcpServers: string[] | null = null,
+  existingSelection: { mcp: string[]; bridges: string[] } | null = null,
 ): Promise<WizardAnswers> {
   const inquirer = await loadInquirer();
   console.log(chalk.dim('\n\u{1F4A1} Run /unikit after setup to analyze your project and generate project-relevant skills.\n'));
@@ -329,83 +331,50 @@ export async function runWizard(
 
   console.log('');
 
-  // Step 5: MCP servers (global, not per-agent)
+  // Step 5: universal MCP servers and engine bridges (global, not per-agent)
+  //
+  // Two groups of checkboxes, split by `is_engine`: the universal servers (Context7, GitHub) and the
+  // bridges of the engine. A project takes any number of bridges, so there is no radio and no Skip;
+  // the order between them is not asked here -- it lives in `.unikit/config.yaml`
+  // (`engine_bridges.order`) and the installer never reads it. The catalog folder an entry came from
+  // no longer groups anything: the bridges of one engine are one group by construction.
   const discoveredServers = await discoverMcpServers(engine);
   const mcpServers: string[] = [];
-  let engineMcpKey: string | null = null;
+  const engineBridges: string[] = [];
 
   if (discoveredServers.size > 0) {
-    // The picker has exactly two shapes, and the split is `is_engine` + the
-    // catalog directory the server was scanned out of:
-    //
-    //   - ENGINE servers of one directory are alternatives — a project takes one
-    //     of them — so they render as a radio with a Skip. `mcp/godot/` holds
-    //     three, and `godot` / `godot-net` share that directory, which is why the
-    //     grouping is by directory and not by engine id.
-    //   - everything else is additive and renders as a checkbox.
-    //
-    // Before 2.0.0 the axis was `server.key`, which worked only while the
-    // alternatives of one engine were made to share a key by hand. Since `key`
-    // became each JSON's own basename that is no longer true of any of them, and
-    // grouping on it would put every engine server in its own group of one — a
-    // checkbox offering three mutually exclusive Godot servers at once.
-    const engineGroups = new Map<string, McpChoiceEntry[]>();
-    const standaloneEntries: McpChoiceEntry[] = [];
+    const universal: McpChoiceEntry[] = [];
+    const bridges: McpChoiceEntry[] = [];
 
     for (const [fileId, server] of discoveredServers) {
       const entry: McpChoiceEntry = {
         fileId,
         displayName: server.displayName,
         isEngine: server.isEngine,
+        kind: server.kind,
         ...(server.order === undefined ? {} : { order: server.order }),
         ...(server.preselect === undefined ? {} : { preselect: server.preselect }),
       };
-
-      if (!server.isEngine || server.originDir === null) {
-        standaloneEntries.push(entry);
-        continue;
-      }
-
-      const group = engineGroups.get(server.originDir);
-      if (group) {
-        group.push(entry);
-      } else {
-        engineGroups.set(server.originDir, [entry]);
-      }
+      (server.isEngine ? bridges : universal).push(entry);
     }
+    logInfo('wizard:mcp', `universal: ${universal.map(e => e.fileId).join(', ') || '(none)'}; bridges: ${bridges.map(e => e.fileId).join(', ') || '(none)'}`);
 
-    // A directory holding exactly one engine server has no choice to offer:
-    // fold it into the checkbox rather than rendering a one-option radio.
-    const uniqueKeyEntries: McpChoiceEntry[] = [...standaloneEntries];
-    const duplicateKeyGroups: Array<{ entries: McpChoiceEntry[] }> = [];
-
-    for (const [dir, entries] of engineGroups) {
-      logInfo('wizard:mcp', `engine group "${dir}": ${entries.map(e => e.fileId).join(', ')}`);
-      if (entries.length === 1) {
-        uniqueKeyEntries.push(entries[0]);
-      } else {
-        // Sorted here, once: the radio's `default` (Task 23) is an INDEX into
-        // this array, so ordering must be settled before it is computed.
-        duplicateKeyGroups.push({ entries: sortMcpChoices(entries) });
-      }
-    }
-    logInfo('wizard:mcp', `checkbox group: ${uniqueKeyEntries.map(e => e.fileId).join(', ') || '(empty)'}`);
-    const uncheckedIds = uniqueKeyEntries.filter(e => e.preselect === false).map(e => e.fileId);
+    const uncheckedIds = universal.filter(e => e.preselect === false).map(e => e.fileId);
     if (uncheckedIds.length > 0) {
       logInfo('wizard:mcp', `unchecked by default: ${uncheckedIds.join(', ')}`);
     }
 
-    // Unique keys: checkbox (multi-select), all checked by default
-    if (uniqueKeyEntries.length > 0) {
+    // Universal servers: checkbox, all checked by default except those that ask for a token
+    if (universal.length > 0) {
       const { selected } = await inquirer.prompt([
         {
           type: 'checkbox',
           name: 'selected',
-          message: 'Configure MCP servers:',
-          choices: sortMcpChoices(uniqueKeyEntries).map(entry => ({
+          message: 'Configure universal MCP servers:',
+          choices: sortMcpChoices(universal).map(entry => ({
             name: entry.displayName,
             value: entry.fileId,
-            checked: isMcpPreselected(entry.fileId, existingMcpServers, entry.preselect),
+            checked: isMcpPreselected(entry.fileId, existingSelection?.mcp ?? null, entry.preselect),
           })),
         },
       ]);
@@ -413,46 +382,36 @@ export async function runWizard(
       mcpServers.push(...(selected as string[]));
     }
 
-    // Engine alternatives: radio per group + Skip
-    for (const group of duplicateKeyGroups) {
-      // `default` is omitted (not set to undefined explicitly) when there is
-      // nothing to restore, so inquirer falls back to the first choice -- the
-      // `order: 1` recommendation.
-      const groupDefault = resolveMcpGroupDefault(group.entries, existingMcpServers);
+    // Engine bridges: checkbox; a fresh install checks the first MCP bridge of the package order
+    if (bridges.length > 0) {
+      // Detection only reads PATH and the version file of the project; it runs nothing (REQ-5).
+      const context: DetectContext = { projectDir: process.cwd(), env: process.env, platform: process.platform };
+      const detected = new Set<string>();
+      for (const bridge of bridges) {
+        const server = discoveredServers.get(bridge.fileId);
+        if (server && await detectBridge(server, context)) detected.add(bridge.fileId);
+      }
+      logInfo('wizard:mcp', `detected: ${[...detected].join(', ') || '(none)'}`);
+
+      const defaults = defaultBridgeIds(bridges, detected);
+      logInfo('wizard:mcp', `bridges checked by default: ${[...defaults].join(', ') || '(none)'}`);
       const { selected } = await inquirer.prompt([
         {
-          type: 'list',
+          type: 'checkbox',
           name: 'selected',
-          // The label is the ENGINE's display name, assigned rather than
-          // derived. It used to be the shared `key` ("UnityMCP"), which no
-          // longer exists as a concept; the directory that replaced it as the
-          // grouping axis is a package-layout detail ("mcp/unity") and printing
-          // it would leak our folder names at the user. `engine` is the id the
-          // user just picked, so this is the one name in play they already know.
-          message: `Select MCP server for "${getEngineConfig(engine).displayName}":`,
-          choices: [
-            ...group.entries.map(entry => ({
-              name: entry.displayName,
-              value: entry.fileId,
-            })),
-            { name: chalk.dim('Skip'), value: '__skip__' },
-          ],
-          ...(groupDefault === undefined ? {} : { default: groupDefault }),
+          // The label is the ENGINE's display name, assigned rather than derived: `engine` is the id
+          // the user just picked, the one name in play they already know. The package folder
+          // ("engine-bridges/unity") is a layout detail and stays out of the prompt.
+          message: `Engine bridges for "${getEngineConfig(engine).displayName}" (pick any number; the order is set later in .unikit/config.yaml):`,
+          choices: sortMcpChoices(bridges).map(entry => ({
+            name: detected.has(entry.fileId) ? `${entry.displayName}${DETECTED_LABEL_SUFFIX}` : entry.displayName,
+            value: entry.fileId,
+            checked: isBridgePreselected(entry.fileId, existingSelection?.bridges ?? null, defaults),
+          })),
         },
       ]);
 
-      if (selected !== '__skip__') {
-        mcpServers.push(selected as string);
-      }
-    }
-
-    // Derive engineMcpKey from selected servers with isEngine=true
-    for (const fileId of mcpServers) {
-      const server = discoveredServers.get(fileId);
-      if (server?.isEngine) {
-        engineMcpKey = server.code;
-        break;
-      }
+      engineBridges.push(...(selected as string[]));
     }
   }
 
@@ -466,7 +425,7 @@ export async function runWizard(
     engine,
     selectedSkills: selectedSkills as string[],
     mcpServers,
-    engineMcpKey,
+    engineBridges,
     rulesRegistry,
   };
 }

@@ -9,6 +9,15 @@
     "unikit-archive": [
       "bootstrap"
     ],
+    "unikit-bridge-audit": [
+      "bootstrap"
+    ],
+    "unikit-bridge-docs": [
+      "bootstrap"
+    ],
+    "unikit-bridge-trap": [
+      "bootstrap"
+    ],
     "unikit-commit": [
       "bootstrap"
     ],
@@ -72,12 +81,6 @@
     "unikit-improve": [
       "bootstrap"
     ],
-    "unikit-mcp-audit": [
-      "bootstrap"
-    ],
-    "unikit-mcp-trap": [
-      "bootstrap"
-    ],
     "unikit-memory": [
       "bootstrap"
     ],
@@ -85,6 +88,9 @@
       "bootstrap"
     ],
     "unikit-pr": [
+      "bootstrap"
+    ],
+    "unikit-references": [
       "bootstrap"
     ],
     "unikit-review": [

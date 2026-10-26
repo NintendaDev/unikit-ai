@@ -5,7 +5,8 @@
 // that file sits at the Part 7i ceiling (`SIZE_LIMIT=500` over `src/core/*.ts`). Unlike its sibling
 // it is NOT re-exported from `constants.ts`: this table reads constants while the module loads, so
 // an `export *` back from `constants.ts` would make the two a cycle and the first read a TDZ error
-// (guard SV-1c). It is a leaf of the import graph — it imports `./constants.js` and nothing else.
+// (guard SV-1c). It is a leaf of the import graph — it imports `./constants.js` and `./constants-bridges.js`
+// (itself a leaf over `./constants.js`) and nothing else.
 //
 // The golden-guard #1 Part C exclusion is by FILE NAME (`constants\.ts|modules\.ts`) and this file
 // does not match it — no module id, tier path or modules registry file name may be spelled out
@@ -13,17 +14,17 @@
 //
 // A variable name is PUBLIC API of extensions, like the extension-point anchor: the value (the path)
 // follows the file, the name never does. Renaming one needs a release that warns first, which is
-// why guard SV-1b pins the set of names (adding, removing or renaming one takes two edits).
+// why guard SV-1b pins the set of names (adding, removing or renaming one takes two edits). 3.0.0 is the
+// one exception: the names of the single-engine-server era were replaced at once (docs/extensions.md);
+// the files of a bridge are addressed as `{{system_engine_bridges_dir}}/<bridge id>/…`.
 
 import {
   BALANCE_HANDBACK_FILE,
   CLI_CONTRACT_FILE,
   DEV_PRINCIPLES_FILE,
-  ENGINE_MCP_DIR_NAME,
   GAMEDESIGN_GENRES_DIR_NAME,
   GATE_RESULT_CONTRACT_FILE,
   GD_PRINCIPLES_FILE,
-  MCP_RULES_INDEX_FILE,
   MERGE_ANALYSIS_FILE,
   MODULES_YML_FILE,
   PLAN_BOUNDARIES_FILE,
@@ -37,6 +38,7 @@ import {
   UNIKIT_DIR,
   USER_QUESTIONS_FILE,
 } from './constants.js';
+import { BRIDGES_MANIFEST_FILE, ENGINE_BRIDGES_DIR_NAME } from './constants-bridges.js';
 
 // --- File names that have no constant in `constants.ts` ---
 //
@@ -55,9 +57,6 @@ const GD_CRITIQUE_FILE = 'gd-critique.md';
 /** The shared design-read contract; delivered with the shards from `data/gamedesign/` (SV-4). */
 const DESIGN_READ_FILE = 'design-read.md';
 
-/** The verification file of the rules tree of the selected engine MCP server; present only while that server ships one (SV-3 with `--engine-tree yes`). */
-const ENGINE_MCP_VERIFICATION_FILE = 'verification.md';
-
 /** Written by the `/unikit` skill, not by the CLI; the CLI ships only its template, so SV-4 checks the template and SV-5 the path in the texts. */
 const LANGUAGE_RULES_FILE = 'LANGUAGE_RULES.md';
 
@@ -69,7 +68,7 @@ export type SystemFileVarKind = 'file' | 'dir';
 /**
  * Who puts the entry on disk: `cli` — `init`/`update` always; `cli-generated` — `init`/`update`
  * write it from the module registry (there is no file in `data/`); `cli-conditional` — only when
- * the project asks for it (the rules tree of the selected engine MCP server, selected genre
+ * the project asks for it (the engine-bridge layer once a bridge is selected, selected genre
  * profiles); `skill` — a skill writes it, the CLI never does.
  */
 export type SystemFileVarDelivery = 'cli' | 'cli-generated' | 'cli-conditional' | 'skill';
@@ -87,13 +86,13 @@ const SYSTEM_PATH_SEPARATOR = '/';
 
 const SYSTEM_ROOT = [UNIKIT_DIR, SYSTEM_DIR_NAME] as const;
 const GAMEDESIGN_ROOT = [...SYSTEM_ROOT, SYSTEM_GAMEDESIGN_DIR_NAME] as const;
-const ENGINE_MCP_ROOT = [...SYSTEM_ROOT, ENGINE_MCP_DIR_NAME] as const;
+const ENGINE_BRIDGES_ROOT = [...SYSTEM_ROOT, ENGINE_BRIDGES_DIR_NAME] as const;
 
 export const SYSTEM_FILE_VARS = [
   { name: 'system_dir', segments: SYSTEM_ROOT, kind: 'dir', delivery: 'cli' },
   { name: 'system_gamedesign_dir', segments: GAMEDESIGN_ROOT, kind: 'dir', delivery: 'cli' },
   { name: 'system_genres_dir', segments: [...GAMEDESIGN_ROOT, GAMEDESIGN_GENRES_DIR_NAME], kind: 'dir', delivery: 'cli-conditional' },
-  { name: 'system_engine_mcp_dir', segments: ENGINE_MCP_ROOT, kind: 'dir', delivery: 'cli-conditional' },
+  { name: 'system_engine_bridges_dir', segments: ENGINE_BRIDGES_ROOT, kind: 'dir', delivery: 'cli-conditional' },
   { name: 'cli_contract', segments: [...SYSTEM_ROOT, CLI_CONTRACT_FILE], kind: 'file', delivery: 'cli' },
   { name: 'dev_principles', segments: [...SYSTEM_ROOT, DEV_PRINCIPLES_FILE], kind: 'file', delivery: 'cli' },
   { name: 'modules_yml', segments: [...SYSTEM_ROOT, MODULES_YML_FILE], kind: 'file', delivery: 'cli-generated' },
@@ -115,8 +114,7 @@ export const SYSTEM_FILE_VARS = [
   { name: 'gd_provenance', segments: [...GAMEDESIGN_ROOT, GD_PROVENANCE_FILE], kind: 'file', delivery: 'cli' },
   { name: 'gd_critique', segments: [...GAMEDESIGN_ROOT, GD_CRITIQUE_FILE], kind: 'file', delivery: 'cli' },
   { name: 'design_read_contract', segments: [...GAMEDESIGN_ROOT, DESIGN_READ_FILE], kind: 'file', delivery: 'cli' },
-  { name: 'engine_mcp_rules_index', segments: [...ENGINE_MCP_ROOT, MCP_RULES_INDEX_FILE], kind: 'file', delivery: 'cli-conditional' },
-  { name: 'engine_mcp_rules_verification', segments: [...ENGINE_MCP_ROOT, ENGINE_MCP_VERIFICATION_FILE], kind: 'file', delivery: 'cli-conditional' },
+  { name: 'engine_bridges_manifest', segments: [...ENGINE_BRIDGES_ROOT, BRIDGES_MANIFEST_FILE], kind: 'file', delivery: 'cli-conditional' },
   { name: 'language_rules', segments: [...SYSTEM_ROOT, LANGUAGE_RULES_FILE], kind: 'file', delivery: 'skill' },
 ] as const satisfies readonly SystemFileVarRow[];
 
@@ -153,7 +151,7 @@ export const FIXED_TEMPLATE_VAR_NAMES = [
   'self_name',
   'engine_name',
   'engine_code_language',
-  'engine_mcp_tool',
+  'engine_bridge_mcp_code',
   'agent_id',
   'agent_reader_type',
   'agent_worker_type',

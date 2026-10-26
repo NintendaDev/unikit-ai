@@ -108,7 +108,7 @@ cat > "$CWD2/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [],
   "rules": {

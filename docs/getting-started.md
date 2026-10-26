@@ -7,9 +7,9 @@
 UniKit AI is an **AI-powered game code development toolkit**. It bootstraps an AI coding agent for your game project by:
 
 1. **Detecting the engine** - Unity, Godot 4, Godot 4 .NET, or Unreal Engine 5
-2. **Installing skills and subagents** - 37 skills (24 code-pipeline + 13 game-design) tailored to the selected engine, grouped by category so you only install what you need, plus 8 background agents (sidecars, coordinators, workers) for Claude Code and Kimi Code - other agents run those workflows inline, see [Agents](agents.md)
+2. **Installing skills and subagents** - 39 skills (26 code-pipeline + 13 game-design) tailored to the selected engine, grouped by category so you only install what you need, plus 8 background agents (sidecars, coordinators, workers) for Claude Code and Kimi Code - other agents run those workflows inline, see [Agents](agents.md)
 3. **Wiring the knowledge base** - a remote rules registry feeds dynamic memory, module-aware (`code` and, if you install the game-design skills, `gamedesign`), with core rules always loaded and stack/library rules loaded by task context
-4. **Configuring MCP servers** - engine MCP (real-time console / tests) + Context7 (up-to-date library docs), plus an optional GitHub MCP for `/unikit-pr`, for agents that support MCP
+4. **Configuring engine bridges and MCP servers** - the Unity CLI and the MCP servers of the engine (real-time console / tests), Context7 (up-to-date library docs), plus an optional GitHub MCP for `/unikit-pr`, for agents that support MCP
 5. **Providing a spec-driven workflow** - explore → plan → improve → implement → review → verify → commit, with self-learning patches feeding back into the rules. A parallel `gamedesign` pipeline (brainstorm → spec → system/flow/content → review/verify) authors the GDD that code plans read from
 
 ## Supported Agents
@@ -34,7 +34,7 @@ The wizard renders a single flat selection checkbox with one row per agent.
 - **Node.js** >= 18
 - A supported game project: **Unity**, **Godot 4**, **Godot 4 .NET**, or **Unreal Engine 5**
 - An AI coding agent (Claude Code, Codex CLI, Cursor, Qwen Code, OpenCode, Antigravity, Kimi Code, or any other agent that reads `.agents/skills/` through Universal / Other)
-- Recommended: an engine MCP server installed (see [MCP Servers](#mcp-servers) below)
+- Recommended: an engine bridge installed (see [Configuration](configuration.md#mcp-configuration) and [MCP Servers](#mcp-servers) below)
 
 ## Your First Project
 
@@ -55,7 +55,7 @@ The `init` wizard asks only about installation concerns - it does **not** genera
 2. **Engine** - Unity / Godot 4 / Godot 4 .NET / Unreal Engine 5. On a repeat `init` the engine is reused from `.unikit.json` and the prompt is skipped
 3. **Skills** - grouped multi-select checkbox (Core, Memory and rules, Code, Game Design, Tools). On a fresh `init` every skill is checked by default; uncheck any you don't want (at least one is required). On a repeat `init` the previously installed set is pre-checked, and de-selecting a skill removes it on save
 4. **Custom rules registry** - confirm Y/N. If yes, enter a URL or local path; invalid registries offer retry / skip (skip falls back to the official registry `NintendaDev/unikit-ai-rules`)
-5. **MCP servers** - discovered automatically for the selected engine (engine MCP, Context7, optional GitHub). For MCP keys with multiple implementations you pick one from a radio list, for the rest it is a checkbox
+5. **Engine bridges and MCP servers** - two groups of checkboxes: the universal MCP servers (Context7, optional GitHub) and the engine bridges of the engine you selected; tick any number of bridges. The order of the bridges is not asked here - `/unikit` sets it
 
 After `init` finishes, open your AI agent and run `/unikit`:
 
@@ -69,6 +69,7 @@ After `init` finishes, open your AI agent and run `/unikit`:
 - generates `.unikit/DESCRIPTION.md`, `.unikit/ARCHITECTURE.md`, `AGENTS.md`, and `.unikit/config.yaml`
 - calls `unikit-ai rules install defaults` to bootstrap rules for every module whose skills are installed
 - drives stack rule selection - for each detected framework it either pulls a pre-built rule from the registry or generates one on the fly via `/unikit-memory` (Context7 + web research)
+- checks the engine bridges (is the Unity CLI there, is the package in the project) and, with two bridges or more, asks which comes first; it then recommends `/unikit-bridge-docs` to collect their documentation, and never runs it itself
 
 From then on, the dynamic memory is ready and you can start building features:
 
@@ -131,7 +132,7 @@ See [Extensions](extensions.md) for authoring guidelines.
 
 ## What Gets Installed
 
-### Skills (37)
+### Skills (39)
 
 All skills use the `unikit-` prefix and are installed to the agent's skills directory. The install wizard groups them into the same five categories shown in the Step 3 picker above:
 
@@ -141,9 +142,9 @@ All skills use the `unikit-` prefix and are installed to the agent's skills dire
 | **Memory and rules** | `unikit-memory`, `unikit-rules`, `unikit-rules-registry`, `unikit-skills-context` |
 | **Code** | `unikit-architecture`, `unikit-archive`, `unikit-commit`, `unikit-devcontext`, `unikit-evolve`, `unikit-explore`, `unikit-fix`, `unikit-implement`, `unikit-improve`, `unikit-plan`, `unikit-pr`, `unikit-review`, `unikit-roadmap`, `unikit-verify` |
 | **Game Design** | 13 `unikit-gd-*` skills - GDD authoring (brainstorm, spec, system, flow, content), research (explore, recon), balance (balance), experiments (experiment), quality (review, verify), dispatch (apply), and export (docs). See [Game-Design Module](gamedesign.md) |
-| **Tools** | `unikit-docs`, `unikit-mcp-audit`, `unikit-mcp-trap`, `unikit-todo` |
+| **Tools** | `unikit-bridge-audit`, `unikit-bridge-docs`, `unikit-bridge-trap`, `unikit-docs`, `unikit-references`, `unikit-todo` |
 
-24 skills form the code pipeline (Core + Memory and rules + Code + Tools); the 13 Game Design skills are a separate, optional module - see [Skills Reference](skills.md) for the full per-skill breakdown.
+26 skills form the code pipeline (Core + Memory and rules + Code + Tools); the 13 Game Design skills are a separate, optional module - see [Skills Reference](skills.md) for the full per-skill breakdown.
 
 ### Subagents (8)
 
@@ -177,17 +178,17 @@ A `RULES_INDEX.md` file is auto-generated with descriptions and "Load when" trig
 
 ### MCP Servers
 
-For agents with MCP support, the wizard configures:
+The wizard offers the engine bridges of your engine (any number) and the universal MCP servers; MCP servers are written into the settings file of agents that support MCP, a command-line bridge is not:
 
-| Engine | Engine MCP (you pick one) | General |
+| Engine | Engine bridges (tick any number) | General |
 |--------|---------------------------|---------|
-| Unity | [Unity Biome MCP](https://github.com/german-krasnikov/unity-biome-mcp) (default, Unity 6000.0+) · [Coplay Unity MCP](https://github.com/CoplayDev/unity-mcp) (Unity 2021.3 LTS+) | [Context7](https://github.com/upstash/context7) · [GitHub MCP](https://github.com/github/github-mcp-server) (optional) |
-| Godot 4 / Godot 4 .NET | [Fennara Godot AI](https://github.com/fennaraOfficial/fennara-godot-ai) (default, Godot 4.5+) · [GDAI Godot MCP](https://github.com/3ddelano/gdai-mcp-plugin-godot) (Godot 4.1+) · [Coding-Solo Godot MCP](https://github.com/Coding-Solo/godot-mcp) (no declared minimum) | [Context7](https://github.com/upstash/context7) · [GitHub MCP](https://github.com/github/github-mcp-server) (optional) |
+| Unity | [Unity CLI](https://docs.unity.com/en-us/unity-cli) (Unity 6000.0+, needs the `com.unity.pipeline` package; pre-selected when `unity` is on your `PATH`) · [Unity Biome MCP](https://github.com/german-krasnikov/unity-biome-mcp) (checked by default, Unity 6000.0+) · [Coplay Unity MCP](https://github.com/CoplayDev/unity-mcp) (Unity 2021.3 LTS+) | [Context7](https://github.com/upstash/context7) · [GitHub MCP](https://github.com/github/github-mcp-server) (optional) |
+| Godot 4 / Godot 4 .NET | [Fennara Godot AI](https://github.com/fennaraOfficial/fennara-godot-ai) (checked by default, Godot 4.5+) · [GDAI Godot MCP](https://github.com/3ddelano/gdai-mcp-plugin-godot) (Godot 4.1+) · [Coding-Solo Godot MCP](https://github.com/Coding-Solo/godot-mcp) (no declared minimum) | [Context7](https://github.com/upstash/context7) · [GitHub MCP](https://github.com/github/github-mcp-server) (optional) |
 | Unreal Engine 5 | [ChiR24 Unreal MCP](https://github.com/ChiR24/Unreal_mcp) (Unreal Engine 5.0+) | [Context7](https://github.com/upstash/context7) · [GitHub MCP](https://github.com/github/github-mcp-server) (optional) |
 
-The versions are each vendor's own **floor**, and the default is not the most permissive choice: on Godot the default (Fennara) has the highest floor of the three, so a 4.3 project wants GDAI or Coding-Solo instead. UniKit AI does not detect your engine version — the bracket in the wizard is the whole warning you get.
+The versions are each vendor's own **floor**, and the default is not the most permissive choice: on Godot the checked bridge (Fennara) has the highest floor of the three, so a 4.3 project wants GDAI or Coding-Solo. UniKit AI reads your Unity version only to decide whether to pre-select the Unity CLI; it does not check the floor of any other bridge — the bracket in the wizard is the whole warning you get.
 
-Engine MCP servers give the agent real-time feedback - compilation errors, tests, logs - so it can fix issues without developer involvement. Context7 is used by `/unikit-memory` and other skills for up-to-date library documentation lookup. The GitHub MCP is unchecked by default and is used only by `/unikit-pr`; it reads a token from the `GITHUB_PAT` environment variable (see [Configuration](configuration.md)).
+Engine bridges give the agent real-time feedback - compilation errors, tests, logs - so it can fix issues without developer involvement. Context7 is used by `/unikit-memory` and other skills for up-to-date library documentation lookup. The GitHub MCP is unchecked by default and is used only by `/unikit-pr`; it reads a token from the `GITHUB_PAT` environment variable (see [Configuration](configuration.md)).
 
 ## Project Structure After Init
 
@@ -196,13 +197,14 @@ Example for a Unity project with Claude Code (full schema in [Configuration](con
 ```
 your-game-project/
 ├── .claude/                      # Agent config dir (varies by agent)
-│   ├── skills/                   # 37 skills (or fewer, per your Step 3 selection)
+│   ├── skills/                   # 39 skills (or fewer, per your Step 3 selection)
 │   └── agents/                   # 8 subagents (sidecars, coordinators, workers)
 ├── .unikit/                      # UniKit AI working directory
 │   ├── config.yaml               # User-editable config (language, workflow, git) - written by /unikit
 │   ├── system/                   # Flat-rewritten on every init/update - never hand-edit
-│   │   └── engine-mcp/           # Rules tree of the selected engine MCP - exceptions, not capabilities
-│   ├── MCP-RECHECK-NOTES.md      # Your findings about that server - /unikit-mcp-trap writes, the installer only renames
+│   │   └── engine-bridges/       # BRIDGES.md and the rules tree of each selected bridge - exceptions, not capabilities
+│   ├── bridge-notes/             # Your findings, one file per bridge - /unikit-bridge-trap writes, the installer only renames
+│   ├── references/               # bridges/ (/unikit-bridge-docs), user/ and INDEX.md (/unikit-references)
 │   ├── DESCRIPTION.md            # Project spec - generated by /unikit
 │   ├── ARCHITECTURE.md           # Architecture guidelines - generated by /unikit-architecture
 │   ├── RULES.md                  # Project-specific rules - managed by /unikit-rules

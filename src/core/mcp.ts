@@ -1,11 +1,17 @@
 import path from 'path';
-import { readJsonFile, readTextFile, writeTextFile, getMcpDir, ensureDir, fileExists, listFiles } from '../utils/fs.js';
+import { readJsonFile, readTextFile, writeTextFile, getMcpDir, getBridgesDir, ensureDir, fileExists, listFiles } from '../utils/fs.js';
 import { getAgentConfig } from './agents.js';
 import { MCP_TOOL_ENTRY_PREFIX, type McpPlatformKey } from './constants.js';
+import { UNIVERSAL_MCP_DIR_NAME } from './constants-bridges.js';
+import { getBridgeAdapter } from './bridges/adapter.js';
 import { getEngineConfig } from './engines.js';
 import { isRecord, parseMcpServerEntry } from './mcp-schema.js';
 import { getMcpWriter } from './mcp-writers/index.js';
+import type { BridgeCli, BridgeDetect, BridgeRequires, BridgeSetupLine, DocsSource } from './bridges/types.js';
 import { logInfo } from '../utils/log.js';
+
+/** What kind of bridge an entry is: an MCP server, or a command line. */
+export type BridgeKind = 'mcp' | 'cli';
 
 export interface McpAllowedTools {
   agents: Record<string, string[]>;
@@ -14,7 +20,8 @@ export interface McpAllowedTools {
 
 export interface McpServerEntry {
   /**
-   * The server's INTERNAL identity — the basename of its JSON file under `mcp/`.
+   * The server's INTERNAL identity — the basename of its JSON file under
+   * `mcp/universal/` or `engine-bridges/<engine>/`.
    * It never leaves the package: nothing is written under it, no grant is
    * prefixed with it, and no user ever types it. It is what `config.mcp.servers`
    * keys on and what the rules tree, the delivery stamp and the findings log are
@@ -24,7 +31,7 @@ export interface McpServerEntry {
   /**
    * The VENDOR code — the name this server is registered under in the agent's
    * settings file (`mcpServers.<code>`), the prefix of every grant it confers
-   * (`mcp__<code>__*`), and the value `{{engine_mcp_tool}}` resolves to.
+   * (`mcp__<code>__*`), and the value `{{engine_bridge_mcp_code}}` resolves to for the first selected MCP-kind engine bridge in the package order.
    *
    * Split from {@link key} in 2.0.0 because the two were one field and the
    * conflation was writing a second, dead entry: UniKit registered the Unity
@@ -36,7 +43,7 @@ export interface McpServerEntry {
   code: string;
   /**
    * Which catalog directory this entry was scanned out of: the name of the
-   * engine's `mcp/<mcpDir>/` folder, or `null` for a server read from
+   * engine's `engine-bridges/<bridgesDir>/` folder, or `null` for a server read from
    * `mcp/universal/`.
    *
    * Filled at scan time because that is the only place the directory is known —
@@ -47,18 +54,23 @@ export interface McpServerEntry {
    * honest axis anyway — "these are the servers for this engine" is exactly what
    * the folder means, and it needs no field to be kept in sync.
    *
-   * It is an INTERNAL discriminator, never shown: `mcp/unity` in a prompt would
+   * It is an INTERNAL discriminator, never shown: `engine-bridges/unity` in a prompt would
    * leak the package's layout at the user. The radio prints the engine's display
    * name instead.
    */
   originDir: string | null;
   isEngine: boolean;
+  /**
+   * `mcp` — an MCP server the agent talks to; `cli` — a command line the agent runs. A file that does
+   * not say is `mcp`: every entry written before the field existed is one.
+   */
+  kind: BridgeKind;
   displayName: string;
   /**
    * The platform-independent server config. Optional because a server may ship
    * `configByPlatform` instead (an absolute binary path that differs per OS);
    * exactly one of the two must be present — `scanMcpDirectory` drops entries
-   * carrying neither.
+   * carrying neither. A bridge of kind `cli` carries {@link cli} instead and no config.
    */
   config?: Record<string, unknown>;
   /**
@@ -76,7 +88,7 @@ export interface McpServerEntry {
    * Never affects the order servers are written into a settings file.
    *
    * The group used to be "the servers sharing a `key`"; it is now "the
-   * `is_engine` servers of one `mcp/<dir>/` folder" — see {@link originDir}.
+   * `is_engine` servers of one `engine-bridges/<dir>/` folder" — see {@link originDir}.
    */
   order?: number;
   /**
@@ -92,15 +104,23 @@ export interface McpServerEntry {
    * hand-written `instruction` prose, which restated vendor documentation and
    * went stale claim by claim.
    */
-  docs?: { context7?: string; repo?: string };
+  docs?: { context7?: string; repo?: string; sources?: DocsSource[] };
   /**
    * Absolute path to this server's rules tree (`INDEX.md` and whatever else it
    * grew) — the exceptions this server imposes, never a list of what it can do.
    * The JSON stores the path relative to the config's own directory; it is
-   * resolved here so consumers never need to know which `mcp/<engine>/` dir the
+   * resolved here so consumers never need to know which `engine-bridges/<engine>/` dir the
    * entry came from. Absent = no known exceptions, which degrades nothing.
    */
   rulesDir?: string;
+  /** Lines of preparation the user performs (or the agent, once confirmed); see {@link BridgeSetupLine}. */
+  setup?: BridgeSetupLine[];
+  /** Version floors below which the bridge is unavailable. */
+  requires?: BridgeRequires;
+  /** What the wizard may look at, without running anything, to pre-select the bridge. */
+  detect?: BridgeDetect;
+  /** The command line of a bridge of kind `cli`: its binary, the project flag and the forms of calling it. Present iff `kind` is `cli`. */
+  cli?: BridgeCli;
 }
 
 export type DiscoveredServers = Map<string, McpServerEntry>;
@@ -130,20 +150,20 @@ async function scanMcpDirectory(dirPath: string, originDir: string | null): Prom
 }
 
 export async function discoverMcpServers(engineId: string): Promise<DiscoveredServers> {
-  const mcpDir = getMcpDir();
+  const mcpRoot = getMcpDir();
   const merged: DiscoveredServers = new Map();
 
   // Scan universal servers
-  const universalDir = path.join(mcpDir, 'universal');
+  const universalDir = path.join(mcpRoot, UNIVERSAL_MCP_DIR_NAME);
   const universalServers = await scanMcpDirectory(universalDir, null);
   for (const [fileId, entry] of universalServers) {
     merged.set(fileId, entry);
   }
 
   // Scan engine-specific servers (override universal on fileId collision)
-  const engineMcpDir = getEngineConfig(engineId).mcpDir;
-  const engineDir = path.join(mcpDir, engineMcpDir);
-  const engineServers = await scanMcpDirectory(engineDir, engineMcpDir);
+  const bridgesDir = getEngineConfig(engineId).bridgesDir;
+  const engineDir = path.join(getBridgesDir(), bridgesDir);
+  const engineServers = await scanMcpDirectory(engineDir, bridgesDir);
   for (const [fileId, entry] of engineServers) {
     if (merged.has(fileId)) {
       console.log(`MCP: engine server "${fileId}" overrides universal server with same filename`);
@@ -151,10 +171,10 @@ export async function discoverMcpServers(engineId: string): Promise<DiscoveredSe
     merged.set(fileId, entry);
   }
 
-  // Validate: at least one engine MCP
+  // Validate: at least one engine bridge
   const engineMcps = getEngineMcpServers(merged);
   if (engineMcps.length === 0) {
-    throw new Error(`MCP: engine "${engineId}" has no MCP server with is_engine=true`);
+    throw new Error(`MCP: engine "${engineId}" has no entry with is_engine=true under engine-bridges/${bridgesDir}`);
   }
 
   // Validate: all is_engine=true entries must carry DISTINCT vendor codes.
@@ -230,18 +250,17 @@ export function collectMcpRules(
   for (const [fileId, server] of discoveredServers) {
     if (!enabled.has(fileId) || !server.allowedTools) continue;
 
-    const prefix = `${MCP_TOOL_ENTRY_PREFIX}${server.code}__`;
+    // The form of a grant is the bridge kind's business (adapter point 2), not this loop's.
+    const adapter = getBridgeAdapter(server.kind);
 
     for (const [agentName, tools] of Object.entries(server.allowedTools.agents ?? {})) {
       if (!merged.agents[agentName]) merged.agents[agentName] = [];
-      const prefixed = tools.map(t => `${prefix}${t}`);
-      merged.agents[agentName].push(...prefixed);
+      merged.agents[agentName].push(...adapter.grantEntries(server, tools));
     }
 
     for (const [skillName, tools] of Object.entries(server.allowedTools.skills ?? {})) {
       if (!merged.skills[skillName]) merged.skills[skillName] = [];
-      const prefixed = tools.map(t => `${prefix}${t}`);
-      merged.skills[skillName].push(...prefixed);
+      merged.skills[skillName].push(...adapter.grantEntries(server, tools));
     }
   }
 
@@ -265,19 +284,24 @@ const FRONTMATTER_ENTRY_INDENT = '  - ';
  * were dropped from the JSON keep sitting in the installed frontmatter — where
  * they read as permissions the project still confers.
  *
- * So this is a sync, not an append: entries carrying {@link MCP_TOOL_ENTRY_PREFIX}
- * that the current selection does not grant are removed. Hand-authored entries
- * (Read, Bash, Agent, …) have no such prefix and are never touched, and neither
- * is the order of the entries that stay.
+ * So this is a sync, not an append: entries that carry one of the managed
+ * prefixes (`mcp__` for an MCP bridge, `<Shell>(<binary> ` for a command-line
+ * bridge — each kind of bridge names its own) and are not granted by the current
+ * selection are removed. Hand-authored entries (Read, Bash(git *), Agent, …)
+ * start with none of them and are never touched, and neither is the order of
+ * the entries that stay.
  *
  * @param field the frontmatter key holding the list — `allowed-tools:` for
  *              skills, `tools:` for subagents.
+ * @param managedPrefixes the prefixes of the entries the installer owns, see
+ *              `collectManagedGrantPrefixes`.
  * @returns whether the file was rewritten.
  */
 async function syncToolEntriesInFrontmatter(
   filePath: string,
   field: string,
   tools: string[],
+  managedPrefixes: readonly string[],
 ): Promise<boolean> {
   const content = await readTextFile(filePath);
   if (!content) return false;
@@ -316,12 +340,9 @@ async function syncToolEntriesInFrontmatter(
   }
 
   const granted = new Set(tools);
-  const kept = existing.filter(
-    e => !e.value.startsWith(MCP_TOOL_ENTRY_PREFIX) || granted.has(e.value),
-  );
-  const stale = existing.filter(
-    e => e.value.startsWith(MCP_TOOL_ENTRY_PREFIX) && !granted.has(e.value),
-  );
+  const owned = (value: string) => managedPrefixes.some(prefix => value.startsWith(prefix));
+  const kept = existing.filter(e => !owned(e.value) || granted.has(e.value));
+  const stale = existing.filter(e => owned(e.value) && !granted.has(e.value));
 
   const present = new Set(kept.map(e => e.value));
   const added = tools.filter(t => !present.has(t));
@@ -352,12 +373,23 @@ const SKILL_TOOLS_FIELD = 'allowed-tools:';
 /** Frontmatter key holding a subagent's tool list. */
 const AGENT_TOOLS_FIELD = 'tools:';
 
-export async function injectToolsIntoSkillFrontmatter(filePath: string, tools: string[]): Promise<boolean> {
-  return syncToolEntriesInFrontmatter(filePath, SKILL_TOOLS_FIELD, tools);
+/** What the installer owns when the caller names nothing else: the grants of an MCP bridge. */
+const DEFAULT_MANAGED_PREFIXES: readonly string[] = [MCP_TOOL_ENTRY_PREFIX];
+
+export async function injectToolsIntoSkillFrontmatter(
+  filePath: string,
+  tools: string[],
+  managedPrefixes: readonly string[] = DEFAULT_MANAGED_PREFIXES,
+): Promise<boolean> {
+  return syncToolEntriesInFrontmatter(filePath, SKILL_TOOLS_FIELD, tools, managedPrefixes);
 }
 
-export async function injectToolsIntoAgentFrontmatter(filePath: string, tools: string[]): Promise<boolean> {
-  return syncToolEntriesInFrontmatter(filePath, AGENT_TOOLS_FIELD, tools);
+export async function injectToolsIntoAgentFrontmatter(
+  filePath: string,
+  tools: string[],
+  managedPrefixes: readonly string[] = DEFAULT_MANAGED_PREFIXES,
+): Promise<boolean> {
+  return syncToolEntriesInFrontmatter(filePath, AGENT_TOOLS_FIELD, tools, managedPrefixes);
 }
 
 // --- Extension MCP ---

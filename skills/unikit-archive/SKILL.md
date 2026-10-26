@@ -100,7 +100,7 @@ Run this for every folder the mode looks at. It reads, it never writes.
    - `empty` — no checkbox line at all. An empty plan is not archived.
 5. **Ultra bundle.** The task file's first line is `<!-- unikit:plan-mode:ultra -->` → every link under its `## Phase Index` heading must resolve to an existing file directly inside the folder. A missing one → verdict `broken bundle (<missing file>)`, not archived.
 6. **Follow-ups** — checked for a `completed` plan only. Each is **a question, never a stop**: the plan stays archivable, and the mode asks the user through [the follow-up question](#the-follow-up-question).
-   - **MCP findings not transferred.** The task file's `## MCP Findings` table has rows (a row's first cell is `F<n>`), and at least one of them has no back-reference in `.unikit/MCP-RECHECK-NOTES.md` or in a parked `.unikit/MCP-RECHECK-NOTES.archive.*.md` — the installer parks the notes there when the engine server changes. The back-reference of row `F<n>` is the text `<folder>/<task file name>#F<n>`: `/unikit-mcp-trap` writes it into every note it takes from a plan, so it is the exact record of what was moved. No notes file at all → nothing was transferred. A missing back-reference is not always a loss: `/unikit-mcp-trap` lets the user decline a finding, and a declined row leaves no back-reference behind; `/unikit-mcp-audit` removes a note it retires together with its back-reference.
+   - **MCP findings not transferred.** The task file's `## Engine Bridge Findings` table has rows (a row's first cell is `F<n>`), and at least one of them has no back-reference in `.unikit/bridge-notes/*.md` or in a parked `.unikit/bridge-notes/archive/*.md` — the installer parks the notes of a bridge there when the bridge leaves the selection. The back-reference of row `F<n>` is the text `<folder>/<task file name>#F<n>`: `/unikit-bridge-trap` writes it into every note it takes from a plan, so it is the exact record of what was moved. No notes file at all → nothing was transferred. A missing back-reference is not always a loss: `/unikit-bridge-trap` lets the user decline a finding, and a declined row leaves no back-reference behind; `/unikit-bridge-audit` removes a note it retires together with its back-reference.
    - **Rule candidates never proposed.** A row of `## Rule Candidates` has the status `open`.
 
    The verdict names what is left: `completed, <k> MCP findings not transferred`, `completed, <m> open rule candidates`, or both.
@@ -110,7 +110,7 @@ Run this for every folder the mode looks at. It reads, it never writes.
 
 Print one line per folder as it is classified: `INFO [archive] <folder>: <verdict>`.
 
-**Commands that handle a follow-up:** untransferred findings → `/unikit-mcp-trap .unikit/code/plans/<folder>/<task file name>`; open rule candidates → `/unikit-verify <folder>` — it proposes them and records each as `added` or `declined`.
+**Commands that handle a follow-up:** untransferred findings → `/unikit-bridge-trap .unikit/code/plans/<folder>/<task file name>`; open rule candidates → `/unikit-verify <folder>` — it proposes them and records each as `added` or `declined`.
 
 ## Step 3: Modes
 
@@ -119,11 +119,11 @@ Print one line per folder as it is classified: `INFO [archive] <folder>: <verdic
 Asked once per run, for every plan about to be archived that has a follow-up left. First print, per plan, the findings rows that have no back-reference and the open rule candidates, then:
 
 ```
-The question tool of your agent (`AskUserQuestion`): <folder list> still have follow-ups: <k> MCP findings not transferred to .unikit/MCP-RECHECK-NOTES.md, <m> rule candidates never proposed.
+The question tool of your agent (`AskUserQuestion`): <folder list> still have follow-ups: <k> MCP findings not transferred to .unikit/bridge-notes/, <m> rule candidates never proposed.
 
 Options:
 1. Handle them first — leave these plans in place
-2. Archive anyway — the rows move with the plan, and /unikit-mcp-trap and /unikit-verify will no longer find them
+2. Archive anyway — the rows move with the plan, and /unikit-bridge-trap and /unikit-verify will no longer find them
 3. Cancel
 ```
 
@@ -230,5 +230,5 @@ Omit `Skipped` when `<k>` is 0.
 ## Artifact Ownership
 
 - **Owns:** `.unikit/code/archive/plans/`.
-- **Reads:** `.unikit/code/plans/*/`, `.unikit/MCP-RECHECK-NOTES.md` and its parked `.archive.*` copies, `.unikit/config.yaml`.
+- **Reads:** `.unikit/code/plans/*/`, `.unikit/bridge-notes/*.md` and its parked `archive/` copies, `.unikit/config.yaml`.
 - **Modifies:** nothing outside the folders it moves.

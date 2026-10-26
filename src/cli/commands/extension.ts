@@ -20,6 +20,7 @@ import {
   EXTENSION_UPDATE_CANCELLED_MESSAGE, EXTENSION_LIST_SKIPPED_LABEL, EXTENSION_LIST_UNDECIDED_LABEL,
 } from '../../core/constants.js';
 import { applyExtensionInjections, injectionInputFromConfig } from '../../core/extension-injections.js';
+import { resolveMcpBridgeCodeForConfig } from '../../core/bridges/selection.js';
 import { exitOnSharedSkillsDir } from '../guards.js';
 import { printInjectionReport } from './injection-report.js';
 import {
@@ -105,7 +106,8 @@ export async function extensionAddCommand(source: string, options: ExtensionAddO
 
     const record = await commitResolvedExtension(projectDir, config, resolved, selection);
     // One pass over every extension: blocks and reference files go in once the set is final.
-    const injections = await applyExtensionInjections(injectionInputFromConfig(projectDir, config));
+    const mcpBridgeCode = await resolveMcpBridgeCodeForConfig(config);
+    const injections = await applyExtensionInjections(injectionInputFromConfig(projectDir, config, mcpBridgeCode));
     await saveConfig(projectDir, config);
 
     console.log(chalk.green(`\n✓ Extension "${record.name}" installed (v${record.version})`));
@@ -169,7 +171,8 @@ export async function extensionRemoveCommand(name: string): Promise<void> {
     }
 
     // Always: takes the removed extension's blocks and reference directories out of the skills.
-    const injections = await applyExtensionInjections(injectionInputFromConfig(projectDir, config));
+    const mcpBridgeCode = await resolveMcpBridgeCodeForConfig(config);
+    const injections = await applyExtensionInjections(injectionInputFromConfig(projectDir, config, mcpBridgeCode));
 
     console.log(chalk.green(`✓ Extension "${name}" removed`));
     printInjectionReport(injections);
@@ -256,7 +259,8 @@ export async function extensionUpdateCommand(options: ExtensionUpdateOptions = {
     await saveConfig(projectDir, config);
 
     if (updated.length > 0) {
-      const injections = await applyExtensionInjections(injectionInputFromConfig(projectDir, config));
+      const mcpBridgeCode = await resolveMcpBridgeCodeForConfig(config);
+      const injections = await applyExtensionInjections(injectionInputFromConfig(projectDir, config, mcpBridgeCode));
       console.log(chalk.green(`✓ Updated: ${updated.join(', ')}`));
       printInjectionReport(injections);
     } else if (pending.length === 0 && !cancelled) {

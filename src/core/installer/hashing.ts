@@ -12,6 +12,7 @@ import {
 } from '../../utils/fs.js';
 import { getAgentConfig } from '../agents.js';
 import { getEngineConfig } from '../engines.js';
+import type { ServerSelection } from '../bridges/selection.js';
 import { getTransformer } from '../transformer.js';
 import { logInfo } from '../../utils/log.js';
 import {
@@ -168,31 +169,34 @@ export async function hashInstalledSubagent(filePath: string): Promise<string | 
  * Fold the MCP selection into a source hash.
  *
  * MCP tool ids are injected into an installed skill's frontmatter, and the
- * injection is purely **additive** — there is no removal branch. The managed
- * state snapshot is also taken *after* injection, so `installedHash` always
+ * managed state snapshot is taken *after* injection, so `installedHash` always
  * matches itself and the drift check can never fire. Without this component a
- * changed MCP selection reinstalls nothing and dead `mcp__*` ids accumulate as
- * the union of every selection the project ever had.
+ * changed MCP selection reinstalls nothing and the grants of a server that was
+ * switched off stay in the frontmatter until something else rewrites it. (The
+ * injection has had a removal branch since `mcp.ts` learned to strip names no
+ * longer granted; the reinstall is what makes it run. The removal branch owns
+ * the prefixes the adapters name: `mcp__`, and `Bash(<binary> ` for a cli bridge.)
  *
  * This hashes the **input** of the injection, not its output: materialising the
  * final text would mean running the whole pipeline just to decide whether to
  * install, plus a second in-memory implementation of an injection that is
  * currently file-based and positional — two paths that would drift.
  *
- * Sorting is mandatory: `config.mcp.servers` comes out of the wizard in answer
- * order, which is not deterministic.
+ * Sorting is mandatory: the maps come out of the wizard in answer order, which
+ * is not deterministic. The order the USER chose for the bridges
+ * (`.unikit/config.yaml`, `engine_bridges.order`) is not an input at all: the
+ * installer never reads it, so a reorder cannot reach this hash and reinstalls
+ * nothing.
  *
  * Both halves of each entry are hashed (`key=code`, not `key` alone). The code
  * is what gets substituted into a skill's text and injected as its `mcp__<code>`
  * grants, so a server whose vendor code changes while the SELECTION stays put
  * must still reinstall every skill — a set-only hash would call that identical.
  */
-function mcpHashComponent(
-  engineMcpKey: string | null | undefined,
-  mcpServers: Record<string, string>,
-): string {
-  const pairs = Object.entries(mcpServers).map(([key, code]) => `${key}=${code}`).sort();
-  return `mcp:${engineMcpKey ?? 'none'}|${pairs.join(',')}`;
+function selectionHashComponent(selection: ServerSelection): string {
+  const pairs = (map: Record<string, string>) =>
+    Object.entries(map).map(([key, code]) => `${key}=${code}`).sort().join(',');
+  return `mcp:${pairs(selection.mcp)}|bridges:${pairs(selection.bridges)}`;
 }
 
 /**
@@ -234,8 +238,7 @@ export async function computeSourceHashWithTemplate(
   engineId: string,
   skillName: string,
   agentId: string,
-  engineMcpKey: string | null | undefined,
-  mcpServers: Record<string, string>,
+  selection: ServerSelection,
 ): Promise<string | null> {
   const baseHash = await hashDirectory(sourceSkillDir);
   if (!baseHash) return null;
@@ -244,7 +247,7 @@ export async function computeSourceHashWithTemplate(
   // agent-specific filter output both trigger a reinstall for every skill.
   // The MCP selection is the same kind of global dimension — see mcpHashComponent.
   const combined = createHash('sha256');
-  const mcpComponent = mcpHashComponent(engineMcpKey, mcpServers);
+  const mcpComponent = selectionHashComponent(selection);
   const profileComponent = profileHashComponent(agentId);
   const transformComponent = transformRevisionComponent(agentId);
   combined.update(baseHash);
@@ -280,14 +283,13 @@ export async function computeSubagentSourceHash(
   sourcePath: string,
   engineId: string,
   agentId: string,
-  engineMcpKey: string | null | undefined,
-  mcpServers: Record<string, string>,
+  selection: ServerSelection,
 ): Promise<string | null> {
   const fileHash = await hashFile(sourcePath);
   if (!fileHash) return null;
 
   const combined = createHash('sha256');
-  const mcpComponent = mcpHashComponent(engineMcpKey, mcpServers);
+  const mcpComponent = selectionHashComponent(selection);
   const transformComponent = transformRevisionComponent(agentId);
   combined.update(fileHash);
   combined.update(`engine:${engineId}`);

@@ -264,3 +264,15 @@ subagents:
     # either: their subagent call takes no effort argument, or takes one only
     # after you set up the client itself, so UniKit passes nothing. Set the
     # effort in the client's own settings.
+
+# =============================================================================
+# Engine Bridge Settings
+# =============================================================================
+# The order in which the engine bridges are tried for one check. Written by /unikit (the first
+# setup, and "change the bridge order"); safe to edit by hand. The ids come from
+# .unikit/system/engine-bridges/BRIDGES.md. An id BRIDGES.md does not list is skipped silently;
+# the listed bridges this list does not name follow in the default order BRIDGES.md states.
+# An empty list or a missing key means the default order. An instruction in the session beats it.
+
+engine_bridges:
+  order: []

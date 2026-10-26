@@ -6,6 +6,7 @@ import { CODE_MODULE_ID, CONFIG_FILE, RULE_CATEGORIES, type Tier } from './const
 import { getModule, listModules } from './modules.js';
 import { logInfo } from '../utils/log.js';
 import { normalizeSelection, type ExtensionSelection } from './extension-selection.js';
+import { renameRecordKeys } from './skill-renames.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../../package.json');
@@ -26,6 +27,15 @@ export interface McpConfig {
    * on the raw JSON (see `mcp-migrations`).
    */
   servers: Record<string, string>;
+}
+
+/**
+ * Engine bridges the project selected: `fileId → vendor code`, the same shape as `mcp.servers`.
+ * Only the SET lives here. The user's order is in `.unikit/config.yaml` (`engine_bridges.order`),
+ * which the installer never reads, so a reorder reinstalls nothing and cannot reach the skill hash.
+ */
+export interface EngineBridgesConfig {
+  selected: Record<string, string>;
 }
 
 export interface ManagedSkillState {
@@ -93,15 +103,10 @@ export interface GenreInstallEntry {
 export interface UniKitConfig {
   version: string;
   engine: string;
-  /**
-   * The vendor code of the selected ENGINE server — a DERIVED field, kept for
-   * back-compat reading (and as the migration's only source of the pre-2.0.0
-   * code). It is recomputed from `mcp.servers` + the catalog's `is_engine` flag
-   * on every write; never treat it as an independent input.
-   */
-  engineMcpKey: string | null;
   rulesRegistry: string | null;
+  /** The universal MCP servers only; the engine's servers are in {@link UniKitConfig.engineBridges}. */
   mcp: McpConfig;
+  engineBridges: EngineBridgesConfig;
   agents: AgentInstallation[];
   extensions?: ExtensionRecord[];
   rules: {
@@ -151,7 +156,7 @@ function normalizeManagedSkills(raw: unknown): Record<string, ManagedSkillState>
  * Normalize `mcp` into the `key → code` map form.
  *
  * The legacy array form is deliberately NOT converted here. Building the map
- * needs the OLD vendor code of the engine server (kept in `engineMcpKey`) and
+ * needs the OLD vendor code of the engine server (kept in the raw `engineMcpKey` of a 2.x file) and
  * the package catalog — knowledge that belongs to a migration step, not to a
  * loader. `loadConfig` therefore reports the legacy form as an empty selection,
  * exactly as it did before this field changed shape, and the `mcp-servers-map`
@@ -187,6 +192,26 @@ function normalizeMcp(raw: unknown): McpConfig {
   }
 
   return { servers: {} };
+}
+
+/**
+ * Normalize `engineBridges` into `{ selected }`. Anything else — the key missing, a config written
+ * before 3.0.0, a hand edit gone wrong — is an empty selection, silently, like `normalizeMcp`: the
+ * `engine-bridges-config-split` migration moves the old selection on the raw JSON before this runs.
+ */
+function normalizeBridges(raw: unknown): EngineBridgesConfig {
+  const selectedRaw = raw && typeof raw === 'object' ? (raw as Record<string, unknown>).selected : undefined;
+  if (!selectedRaw || typeof selectedRaw !== 'object' || Array.isArray(selectedRaw)) {
+    return { selected: {} };
+  }
+
+  const selected: Record<string, string> = {};
+  for (const [key, code] of Object.entries(selectedRaw as Record<string, unknown>)) {
+    if (key && typeof code === 'string' && code.length > 0) {
+      selected[key] = code;
+    }
+  }
+  return { selected };
 }
 
 function normalizeRuleEntries(raw: unknown): InstalledRuleEntry[] {
@@ -340,6 +365,8 @@ function normalizeExtensions(raw: unknown): ExtensionRecord[] {
       // Fields this version does not know (written by a newer CLI) are kept; only `selection`
       // is re-read, so a malformed value reads as "no selection" instead of misleading a caller.
       const next: ExtensionRecord = { ...ext };
+      // A base skill that was renamed: the record names it under the new name (the next save writes it).
+      if (ext.replacedSkills) next.replacedSkills = renameRecordKeys(ext.replacedSkills);
       const selection = normalizeSelection(ext.selection);
       if (selection === undefined) {
         if (ext.selection !== undefined) {
@@ -416,9 +443,9 @@ export async function loadConfig(projectDir: string): Promise<UniKitConfig | nul
   return {
     version: (raw.version as string) ?? CURRENT_VERSION,
     engine: (raw.engine as string) ?? 'unity',
-    engineMcpKey: (raw.engineMcpKey as string) ?? null,
     rulesRegistry: (raw.rulesRegistry as string) ?? null,
     mcp: normalizeMcp(raw.mcp),
+    engineBridges: normalizeBridges(raw.engineBridges),
     agents: normalizedAgents,
     extensions: normalizeExtensions(raw.extensions),
     rules: {

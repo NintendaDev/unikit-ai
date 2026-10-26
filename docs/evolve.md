@@ -114,7 +114,7 @@ Most code-pipeline skills read their own context file at startup:
 Read .unikit/skill-context/<skill-name>/SKILL.md
 ```
 
-If the file exists, the skill treats its rules as project-level overrides - more specific context always wins over general instructions. The `unikit-gd-*` game-design skills and a few utility skills (`/unikit`, `/unikit-help`, `/unikit-pr`, `/unikit-mcp-trap`, `/unikit-mcp-audit`, `/unikit-rules-registry`) do not read a context file.
+If the file exists, the skill treats its rules as project-level overrides - more specific context always wins over general instructions. The `unikit-gd-*` game-design skills and a few utility skills (`/unikit`, `/unikit-help`, `/unikit-pr`, `/unikit-bridge-trap`, `/unikit-bridge-audit`, `/unikit-rules-registry`) do not read a context file.
 
 ## Running /unikit-evolve
 
