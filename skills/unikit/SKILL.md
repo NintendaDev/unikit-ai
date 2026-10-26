@@ -217,9 +217,9 @@ Install the centralized language rules file that all skills and subagents refere
 
 The file instructs skills to read `.unikit/config.yaml` at runtime for language values. No placeholder substitution is needed — the template is static.
 
-### Step 3.2: Bridge order (first setup)
+### Step 3.2: Bridge order
 
-Read `.unikit/system/engine-bridges/BRIDGES.md`. Two or more bridges listed → follow Phases 3-5 of `{{skills_dir}}/{{self_name}}/references/mode-bridge-order.md` and write the list into the freshly written config; fewer → skip silently (the template's empty list stands).
+Read `.unikit/system/engine-bridges/BRIDGES.md`. Two or more bridges listed **and** `engine_bridges.order` in `.unikit/config.yaml` empty or absent → carry out **Decide and write** of `{{skills_dir}}/{{self_name}}/references/mode-bridge-order.md` and write the list into the config, print the `INFO [config] bridge order: …` line of that file and go on to Step 4 (the report and the STOP of that file are not part of this call); a list that is not empty is an order already decided — leave it and do not ask again; fewer than two bridges → skip silently (the template's empty list stands).
 
 ---
 

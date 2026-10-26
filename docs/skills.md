@@ -38,7 +38,7 @@ Scans your game project and sets up AI context:
 - Bootstraps the knowledge base under `.unikit/memory/` via the rules registry - the `code` module always, plus the `gamedesign` design library when its skills are installed
 - Invokes `/unikit-architecture` for architecture guidelines
 - At the end of setup checks the engine bridges - for the Unity CLI whether it is installed and the Pipeline package is in the project - and offers `unity pipeline install` only after you confirm. It recommends `/unikit-bridge-docs` and never runs it
-- With two bridges or more it asks their order once and writes `engine_bridges.order` into the config; later, "make Biome the main bridge" changes it in a narrow order mode - no `init`, no `update`
+- With two bridges or more it asks their order once - at the first setup, or in the same run in which the config update adds the key to an older project - and writes `engine_bridges.order` into the config; later, "make Biome the main bridge" changes it in a narrow order mode - no `init`, no `update`
 - **Does NOT implement** - only sets up context
 
 ### `/unikit-architecture` - architecture analysis

@@ -7833,6 +7833,68 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# MN: /unikit on a project that is already set up (MN-1…MN-9)
+# ─────────────────────────────────────────────
+# MN-1…MN-4: the bridge order reaches the end of the config update and is not asked twice.
+MN_DIR="$ROOT_DIR/skills/unikit"
+MN_SKILL="$MN_DIR/SKILL.md"
+MN_CONFIG_MODE="$MN_DIR/references/mode-config.md"
+MN_ORDER_MODE="$MN_DIR/references/mode-bridge-order.md"
+MN_MENU_MODE="$MN_DIR/references/mode-menu.md"
+MN_WHY=""
+MN_CHK=0
+mn_has() {   # <id> <literal> <file>: the file holds the literal
+    MN_CHK=$((MN_CHK + 1))
+    [[ -s "$3" ]] || { MN_WHY+=" $1:missing(${3##*/})"; return 0; }
+    grep -qF "$2" "$3" || MN_WHY+=" $1:no(${2:0:30})"
+}
+mn_lacks() { # <id> <literal> <file>: the file does not hold it
+    MN_CHK=$((MN_CHK + 1))
+    [[ -s "$3" ]] || { MN_WHY+=" $1:missing(${3##*/})"; return 0; }
+    if grep -qF "$2" "$3"; then MN_WHY+=" $1:still(${2:0:30})"; fi
+}
+mn_once() {  # <id> <literal> <file>: exactly one line holds the literal
+    MN_CHK=$((MN_CHK + 1))
+    local n; n="$({ grep -cF "$2" "$3" 2>/dev/null || true; })"
+    [[ "$n" == "1" ]] || MN_WHY+=" $1:count($n)(${2:0:30})"
+}
+MN_STEP32="$(awk '/^### Step 3.2/{f=1;next} f&&/^---$/{exit} f' "$MN_SKILL")"
+if [[ -z "$MN_STEP32" ]]; then MN_WHY+=" MN-3:step-3.2-window-empty"; fi
+# (MN-1) the chain in the actualization mode
+mn_has  MN-1 'Runs only when Phase A found the key `engine_bridges.order` **absent**' "$MN_CONFIG_MODE"
+mn_has  MN-1 '## Phase F — Bridge order' "$MN_CONFIG_MODE"
+mn_has  MN-1 '## Phase G — Report, then STOP' "$MN_CONFIG_MODE"
+mn_lacks MN-1 '## Phase F — Report, then STOP' "$MN_CONFIG_MODE"
+mn_once MN-1 '**Exception — `engine_bridges.order`.**' "$MN_CONFIG_MODE"
+mn_lacks MN-1 'a deliberate state and not a missing value' "$MN_CONFIG_MODE"
+mn_has  MN-1 'it has already carried out Phases A and B' "$MN_CONFIG_MODE"
+# (MN-2) the shared block is called by its name; no caller counts phases
+mn_once MN-2 '3. **Decide and write.**' "$MN_ORDER_MODE"
+mn_has  MN-2 'Decide and write' "$MN_CONFIG_MODE"
+for mn_f in "$MN_SKILL" "$MN_CONFIG_MODE" "$MN_ORDER_MODE" "$MN_MENU_MODE"; do
+    [[ -e "$mn_f" ]] || continue
+    mn_lacks MN-2 'Phases 3-5' "$mn_f"
+done
+if [[ -n "$MN_STEP32" ]]; then
+    MN_CHK=$((MN_CHK + 1))
+    printf '%s' "$MN_STEP32" | grep -qF 'carry out **Decide and write**' || MN_WHY+=" MN-2:step-3.2-calls-by-number"
+fi
+# (MN-3) Step 3.2 asks only an undecided order
+if [[ -n "$MN_STEP32" ]]; then
+    MN_CHK=$((MN_CHK + 2))
+    printf '%s' "$MN_STEP32" | grep -qF 'a list that is not empty is an order already decided' || MN_WHY+=" MN-3:no-decided-clause"
+    printf '%s' "$MN_STEP32" | grep -qF 'empty or absent' || MN_WHY+=" MN-3:no-empty-condition"
+fi
+# (MN-4) the block writes the complete order and a caller does not run its report
+mn_has MN-4 'Always write the complete order' "$MN_ORDER_MODE"
+mn_has MN-4 'does not run this phase' "$MN_ORDER_MODE"
+if [[ -z "$MN_WHY" && "$MN_CHK" -gt 0 ]]; then
+    pass "MN-1…MN-4 the bridge order is asked in the same run that adds the key, by a shared block, and never asked twice ($MN_CHK checks)"
+else
+    fail "MN-1…MN-4 bridge order chain:$MN_WHY"
+fi
+
+# ─────────────────────────────────────────────
 # RCA: rule capture — ask, never write (RCA-1…RCA-19)
 # ─────────────────────────────────────────────
 # The auto-write path existed from the repository's first commit and never turned anything

@@ -857,8 +857,12 @@ await group('BR-11', async () => {
     if (template.includes('{{')  && /engine_bridges:[\s\S]{0,40}\{\{/.test(template)) violations.push('config-template.yaml: the order value is a placeholder, it must be a literal');
     scanned++;
     if (!modeConfig.includes('**Exception — `engine_bridges.order`.**')) violations.push('mode-config.md: the empty-order exception of bucket 3 is missing');
+    scanned++;
+    if (!modeConfig.includes('Runs only when Phase A found the key `engine_bridges.order` **absent**')) violations.push('mode-config.md: the bridge-order phase of the actualization mode is missing');
+    scanned++;
+    if (!read('skills/unikit/references/mode-bridge-order.md').includes('**Decide and write.**')) violations.push('mode-bridge-order.md: the reusable block is missing');
 
-    report('BR-11', 'the order key is a literal in the template and the actualization mode keeps its empty state', scanned, violations);
+    report('BR-11', 'the order key is a literal in the template, the actualization mode keeps its empty state and asks the order when it adds the key', scanned, violations);
 });
 
 // ── BR-13: the settings file of an agent is still a template variable, although no base text asks for it ──
