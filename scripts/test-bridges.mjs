@@ -1140,6 +1140,9 @@ await group('BR-2c', async () => {
     check(cli.forms.ready?.includes('--until-ready') === true, 'ready waits with --until-ready');
     check(cli.probes?.package !== undefined && !path.isAbsolute(cli.probes.package.file) && !cli.forms.status?.includes('pipeline list'), 'the package version is read from a project file, not asked of a command');
     check(typeof cli.forms.list === 'string' && cli.forms.list.startsWith('unity list '), 'the planner has a whole-catalog listing form');
+    check(cli.forms.tags !== undefined && cli.forms.tags.endsWith('--tags') && cli.forms.tag !== undefined && cli.forms.tag.endsWith('--tag <tag>'), 'tags lists with --tags, and tag takes the tag last');
+    check(!cli.forms.tags?.includes('--detail') && !cli.forms.tag?.includes('--detail'), 'neither the tags form nor the tag form asks for a detail level');
+    check((cli.notes ?? []).some(note => note.includes('answers with an empty result')), 'a note says that a tag or a group that is not in the listing answers empty, without an error');
     check(scanned >= MIN_CARD_CHECKS, `only ${scanned} checks ran, expected at least ${MIN_CARD_CHECKS}`);
 
     report('BR-2c', 'the Unity CLI card keeps the measured forms', scanned, violations);
@@ -1365,7 +1368,7 @@ await group('BR-3c', async () => {
         text.includes('\n| 1 | unity-cli | cli |\n| 2 | unity-biome-mcp | mcp |\n| 3 | coplay-unity-mcp | mcp |\n'), true);
     assertEq('BR-3c', 'the blocks come in the package order', lines.filter(line => line.startsWith('## ')), ['## unity-cli', '## unity-biome-mcp', '## coplay-unity-mcp']);
     assertEq('BR-3c', 'the fields of the block, in the order the readers rely on', rows.map(row => row.slice(2, row.indexOf(' |'))),
-        ['kind', 'call', 'catalog groups', 'catalog group', 'catalog search', 'catalog list', 'schema of one command', 'compile', 'status', 'ready',
+        ['kind', 'call', 'catalog groups', 'catalog group', 'catalog tags', 'catalog tag', 'catalog search', 'catalog list', 'schema of one command', 'compile', 'status', 'ready',
             'probe version', 'probe package', 'floor', 'available when', 'rules', 'verification', 'notes', 'docs', 'context7']);
     assertEq('BR-3c', 'the block points to the rules tree and the gate calibration of the bridge',
         [rows.includes('| rules | .unikit/system/engine-bridges/unity-cli/INDEX.md |'), rows.includes('| verification | .unikit/system/engine-bridges/unity-cli/verification.md |')], [true, true]);
@@ -1386,6 +1389,10 @@ await group('BR-3c', async () => {
     assertEq('BR-3c', 'the same input renders the same text', render(), text);
     assertEq('BR-3c', 'an MCP block has no package probe, no floor and no catalog forms',
         [...biome, ...coplay].some(row => /^\| (probe package|floor|catalog (list|tags|tag|groups|group|search)) \|/.test(row)), false);
+    assertEq('BR-3c', 'the tags and the tag forms are the card forms, the tag form takes the tag last',
+        [rowOf(rows, 'catalog tags').endsWith('--tags` |'), rowOf(rows, 'catalog tag').endsWith('--tag <tag>` |')], [true, true]);
+    assertEq('BR-3c', 'the Biome block reads its version from the settings files, the Coplay block has no version probe',
+        [rowOf(biome, 'probe version').includes('(`.mcp.json`, `.cursor/mcp.json`)'), rowOf(biome, 'probe version').includes('@v(\\d[^#\\s]*)'), rowOf(coplay, 'probe version')], [true, true, '']);
 });
 
 await group('BR-3d', async () => {
@@ -1780,6 +1787,22 @@ await group('BR-14', async () => {
     assertEq('BR-14', 'without settings files the row says none', versionRow(rendered([])).includes('(none)'), true);
     assertEq('BR-14', 'an MCP block without a version probe has no such row',
         versionRow(renderBridgesManifest({ engineId: 'unity', bridges: [{ fileId: 'm', entry: { ...parsed({}).result, originDir: 'unity' }, hasRulesTree: false }], unselected: [], settingsFiles: ['.mcp.json'] })), '');
+
+    const biomeCard = JSON.parse(readRepo('engine-bridges/unity/unity-biome-mcp.json'));
+    const probePattern = new RegExp(biomeCard.versionProbe.pattern);
+    assertEq('BR-14', 'the Biome pattern finds the pinned version and skips the placeholder',
+        [probePattern.exec('git+https://github.com/german-krasnikov/unity-biome-mcp.git@v2.1.0#subdirectory=server')?.[1], probePattern.exec('git+https://x.git@v{{ VERSION }}#subdirectory=server')], ['2.1.0', null]);
+    const withToken = [];
+    for (const file of filesBelow(path.join(ROOT, PACKAGE_BRIDGES_DIR_NAME)).filter((rel) => rel.endsWith('.json') && !rel.includes('/rules/'))) {
+        const card = JSON.parse(readRepo(file));
+        for (const source of card.docs?.sources ?? []) {
+            if (String(source.ref ?? '').includes('{version}')) withToken.push([source.kind, Boolean(card.versionProbe || card.cli?.forms?.version)]);
+        }
+    }
+    assertEq('BR-14', 'a {version} token stands only in the ref of a git source of a bridge that can tell its version',
+        [withToken.length > 0, withToken.every(([kind, canTell]) => kind === 'git' && canTell)], [true, true]);
+    assertEq('BR-14', 'the Biome docs are taken by the version tag and leave out the generated quality reports',
+        [biomeCard.docs.sources.every(source => source.ref === 'v{version}'), biomeCard.docs.sources.find(source => source.id === 'docs').exclude.includes('quality/**')], [true, true]);
 
     report('BR-14', 'version probe checks ran', passed - before, []);
 });

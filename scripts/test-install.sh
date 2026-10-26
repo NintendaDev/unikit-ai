@@ -2843,6 +2843,9 @@ assert_contains "$CLI_BRIDGE_MANIFEST" '^\| probe version \| `unity --version` \
 assert_contains "$CLI_BRIDGE_MANIFEST" '^\| probe package \| read `Packages/packages-lock.json`' "cli bridge: the package is probed by reading a file, not by a command"
 assert_contains "$CLI_BRIDGE_MANIFEST" '^\| ready \| `unity status --project-path ' "cli bridge: the ready form carries the project path"
 assert_contains "$CLI_BRIDGE_MANIFEST" '^\| catalog list \| `unity list --project-path ' "cli bridge: the whole-catalog form carries the project path"
+assert_contains "$CLI_BRIDGE_MANIFEST" '^\| catalog tags \| `unity command --project-path ' "cli bridge: the tags form carries the project path"
+assert_contains "$CLI_BRIDGE_MANIFEST" '^\| catalog tag \| `unity command --project-path .* --tag <tag>` \|$' "cli bridge: the tag form takes the tag last"
+assert_contains "$CLI_BRIDGE_MANIFEST" '^\| probe version \| read the entry `unity-biome-mcp` in the MCP settings files of this project' "cli bridge: the MCP bridge reads its version from the settings files"
 assert_contains "$CLI_BRIDGE_MANIFEST" '^\| floor \| CLI >= 1\.0\.0-beta\.14; package >= 0\.9\.1-exp\.1; engine >= 6000\.0 \|$' "cli bridge: the floors of the card"
 assert_not_contains "$CLI_BRIDGE_MANIFEST" '^## Not selected$' "cli bridge: nothing is left unselected, so no such section"
 
