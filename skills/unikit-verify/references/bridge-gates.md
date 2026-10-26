@@ -12,7 +12,7 @@ For every bridge listed in `BRIDGES.md` whose block names a rules tree, read `.u
 For the gate a step asks for, walk the bridges in the order `.unikit/system/dev-principles.md` → D3 gives and stop at the first that closes it with evidence of the class A2 requires:
 
 1. The bridge's row for the gate says what proves it there and how far it is reachable (yes · partly · no). **partly** means "closed by the compensation the row names", never "lifted".
-2. A bridge whose `available when` line fails is skipped for this gate with one line — `Gate <name>: <bridge> unavailable - <the observation>` — and the walk goes on.
+2. A bridge whose `available when` row fails is skipped for this gate with one line — `Gate <name>: <bridge> unavailable - <the observation>` — and the walk goes on.
 3. A gate ends in one of three outcomes, and only these:
    - **closed** — report the bridge and the evidence, and nothing else;
    - **`GATE LIFTED`** — a verdict this skill produces, never a line it reads. `verification.md` pre-declares nothing. A gate is lifted only when you tried it **on every bridge that was available**, found no affordance on any of them, and can present the evidence of each absence; skip it and note the reason as the observation that established it. Lifting a gate on one bridge while another could close it is a substituted observation: do not do it;

@@ -37,6 +37,10 @@ export interface BridgeCliForms {
   groups?: string;
   /** list the commands of one group */
   group?: string;
+  /** list the tags of the live catalog (the hierarchical sort of the commands; a tag value is taken from this list only) */
+  tags?: string;
+  /** list the commands of one tag */
+  tag?: string;
   /** find commands by a word */
   search?: string;
   /** the schema of one command */
@@ -63,6 +67,17 @@ export interface BridgeFileProbe {
   fallback?: { file: string; path: string[] };
 }
 
+/**
+ * Where the installed version of an MCP bridge is read: the server is started from a pinned release, the pin sits in
+ * the arguments of the bridge's entry in the agent's settings file, and the card says which part of them is the
+ * number. `pattern` is a regular expression with exactly ONE capture group; it is data so that the code never
+ * learns how one server spells its pin.
+ */
+export interface BridgeSettingsVersionProbe {
+  in: 'args';
+  pattern: string;
+}
+
 /** The tool names a cli bridge's grants can be rendered for. */
 export type BridgeShell = 'Bash' | 'PowerShell';
 
@@ -86,7 +101,8 @@ export interface BridgeCli {
  *  - package: files inside a package installed in the project (`root` is a project-relative glob of the installed
  *    folder, `path` is relative to the folder it matches, `include`/`exclude` as for git);
  *  - git: a repository path with include/exclude globs relative to `path` (`ref` omitted = the default branch).
- * `into` is the folder under `.unikit/references/bridges/<id>/` (or `_engine/`) the copy lands in.
+ * `into` is the folder under `.unikit/references/bridges/<id>/` the copy lands in. The `ref` of a git pointer may
+ * hold `{version}`, which stands for the installed version of the bridge (the number its `probe version` row yields).
  */
 export type DocsSource =
   | { kind: 'command'; id: string; list: string; show: string; into: string }

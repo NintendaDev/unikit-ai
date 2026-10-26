@@ -33,6 +33,8 @@
       "call": "unity command --project-path \"<project-root>\" --format ndjson --non-interactive --no-color --quiet <command> [-- <params>]",
       "groups": "unity command --project-path \"<project-root>\" --format tsv --detail groups --non-interactive --no-color",
       "group": "unity command --project-path \"<project-root>\" --format tsv --non-interactive --no-color <group>",
+      "tags": "unity command --project-path \"<project-root>\" --format tsv --non-interactive --no-color --tags",
+      "tag": "unity command --project-path \"<project-root>\" --format tsv --non-interactive --no-color --tag <tag>",
       "search": "unity command --project-path \"<project-root>\" --format tsv --detail compact --non-interactive --no-color --query <word>",
       "list": "unity list --project-path \"<project-root>\" --format tsv --non-interactive --no-color",
       "schema": "unity command --project-path \"<project-root>\" --format json --detail full --non-interactive --no-color --quiet --query <command>",
@@ -56,6 +58,7 @@
       "On Windows in Git Bash a scene-object path that starts with one slash is rewritten into a file path before the CLI sees it (/Name becomes C:/Program Files/Git/Name) and the editor answers that no such object exists: write the path without the leading slash (Parent/Child) or with two slashes, or address the object by its instance id",
       "compile exits 0 on success, 6 when the code has errors or the time ran out, 7 when no editor answered - also for a few seconds after a compile or a Play Mode change, while the domain reloads: run the ready form and try once more before reporting the editor unavailable. A cold compile of a big project can take minutes: keep --timeout above it and give the shell call that long",
       "The status form names Safe Mode (documented by Unity: STATUS_SAFE_MODE with the compile errors under data.instances[].safeMode.compileErrors; not reproduced by the measurement) and STATUS_PIPELINE_LOAD_PENDING (the package is in the manifest but the open editor has not loaded it yet). Status contacts every editor that is open on the machine: use it for diagnosis, not as a polling loop",
+      "A tag or a group that is not in its listing answers with an empty result and exit 0, never with an error: --tag with the header row only, --query with the text 'No Pipeline commands match'. Take the value from the listing (the tags form, the groups form), never from memory: tags are hierarchical (prefabs, assets/import), groups are not (prefab), and the two are different lists. Measured on CLI 1.0.0-beta.14 and package 0.9.1-exp.1 on 2026-10-26",
       "Measured on CLI 1.0.0-beta.14 and package 0.9.1-exp.1 on 2026-10-25; the forms change between betas, so re-measure when the floors move"
     ]
   },
@@ -68,7 +71,7 @@
       "unikit-verify": ["command", "status", "recompile", "test", "--version"],
       "unikit-plan": ["list"],
       "unikit-bridge-audit": ["command", "status", "--version"],
-      "unikit-bridge-docs": ["skill show", "command", "status", "--version"],
+      "unikit-bridge-docs": ["skill show", "--version"],
       "unikit": ["--version", "status", "self-update --check"]
     }
   }

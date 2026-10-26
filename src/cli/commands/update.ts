@@ -338,7 +338,7 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     await swapBridgeNotes(projectDir, previousBridges, Object.keys(config.engineBridges.selected), catalogBridgeIds(discoveredServers));
 
     // Refresh BRIDGES.md and the rules trees (orphan-deletes a dropped bridge's tree and the 2.x folder)
-    await installEngineBridges(projectDir, engineId, discoveredServers, Object.keys(config.engineBridges.selected));
+    await installEngineBridges(projectDir, engineId, discoveredServers, Object.keys(config.engineBridges.selected), config.agents.map(agent => agent.id));
 
     // Update engine development principles (shared system file, plain rewrite)
     await installDevPrinciples(projectDir, engineId, mcpBridgeCode);

@@ -8,7 +8,8 @@
 import path from 'path';
 import semver from 'semver';
 import type {
-  BridgeCli, BridgeCliForms, BridgeDetect, BridgeFileProbe, BridgeRequires, BridgeSetupLine, BridgeShell, DocsSource,
+  BridgeCli, BridgeCliForms, BridgeDetect, BridgeFileProbe, BridgeRequires, BridgeSetupLine, BridgeSettingsVersionProbe,
+  BridgeShell, DocsSource,
 } from './types.js';
 import { logWarn } from '../../utils/log.js';
 
@@ -24,7 +25,9 @@ const FLAG_PREFIX = '--';
 const CLI_SHELLS: ReadonlySet<string> = new Set(['Bash', 'PowerShell']);
 const DEFAULT_CLI_SHELLS: BridgeShell[] = ['Bash'];
 /** The forms a card may carry besides `call`, which is mandatory. */
-const OPTIONAL_CLI_FORM_KEYS = ['groups', 'group', 'search', 'schema', 'compile', 'list', 'status', 'ready', 'version'] as const;
+const OPTIONAL_CLI_FORM_KEYS = ['groups', 'group', 'tags', 'tag', 'search', 'schema', 'compile', 'list', 'status', 'ready', 'version'] as const;
+/** The part of an MCP entry that a `versionProbe` may read. */
+const VERSION_PROBE_FIELDS: ReadonlySet<string> = new Set(['args']);
 /** The one form that does not address a project: it asks the executable itself. */
 const CLI_FORM_WITHOUT_PROJECT = 'version';
 
@@ -117,6 +120,19 @@ export function parseDetect(raw: unknown, fileName: string): BridgeDetect | unde
     }
   }
   return Object.keys(detect).length > 0 ? detect : undefined;
+}
+
+/**
+ * `versionProbe`: where the installed version of an MCP bridge is written (see {@link BridgeSettingsVersionProbe}).
+ * A value that is not `{ "in": "args", "pattern": <a regular expression with one capture group> }` is dropped with a warning.
+ */
+export function parseVersionProbe(raw: unknown, fileName: string): BridgeSettingsVersionProbe | undefined {
+  if (raw === undefined) return undefined;
+  if (!isRecord(raw) || typeof raw.in !== 'string' || !VERSION_PROBE_FIELDS.has(raw.in) || !hasExactlyOneCaptureGroup(raw.pattern)) {
+    logWarn(LOG_COMPONENT, `dropped versionProbe in ${fileName}: expected { "in": "args", "pattern": <a regular expression with exactly one capture group> }`);
+    return undefined;
+  }
+  return { in: raw.in as BridgeSettingsVersionProbe['in'], pattern: raw.pattern };
 }
 
 /** True for a string that compiles as a regular expression with exactly ONE capture group. */

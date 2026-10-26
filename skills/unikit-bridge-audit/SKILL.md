@@ -70,7 +70,7 @@ Silently load — do not narrate:
    classes (A3), the area vocabulary (A8), and `no rules ≠ no rights` (A9). Read it
    whole — the part below its `LAZY-READ BOUNDARY` marker too: this skill touches editor
    state, so it is a first Editor task by definition.
-3. **`.unikit/system/engine-bridges/BRIDGES.md`** and the **`.unikit/system/engine-bridges/<bridge>/INDEX.md`** of the bridge being curated — the delivery stamp (`bridge:`) and the
+3. **`.unikit/system/engine-bridges/BRIDGES.md`** and the **`.unikit/system/engine-bridges/<bridge>/INDEX.md`** of the bridge being curated — the stamp under the title (the `bridge` row) and the
    base section, including **how a project-relative asset path is written for this
    engine** (see "The asset root is a contract" below). File absent →
    there are no known exceptions; that restricts nothing and switches nothing to
@@ -143,7 +143,7 @@ compensated by the structural rollback in SWEEP and CONFIRM.
 
 A call that the grants of this skill do not cover (a `cli` bridge grants only the verbs its catalog entry names) is
 shown, never run: `WARN [bridge-audit] replay skipped: <call head> is not granted`. Availability of the bridge is
-established by its own `available when` line in `BRIDGES.md`, not by the editor as a whole.
+established by its own `available when` row in `BRIDGES.md`, not by the editor as a whole.
 
 ### The six-step safety envelope
 

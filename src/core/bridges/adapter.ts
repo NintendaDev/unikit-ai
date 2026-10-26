@@ -21,6 +21,17 @@ import { mcpAdapter } from './adapter-mcp.js';
 export interface BridgeBlockInput {
   fileId: string;
   entry: McpServerEntry;
+  /** Project-relative MCP settings files of the agents of this project, each once, in agent order. */
+  settingsFiles: string[];
+}
+
+/**
+ * What an adapter says about its kind in the block of a bridge: the rows of the `field | value` table, in
+ * the order the readers rely on, and the free-text cautions printed as a list under the table.
+ */
+export interface BridgeBlockParts {
+  rows: Array<[field: string, value: string]>;
+  notes: string[];
 }
 
 export interface BridgeAdapter {
@@ -31,11 +42,11 @@ export interface BridgeAdapter {
   grantEntries(entry: McpServerEntry, names: string[]): string[];
   /** 2. grants, removal: prefixes of the entries this kind owns, so a grant that narrowed later can be removed. */
   managedGrantPrefixes(entry: McpServerEntry): string[];
-  /** 3-5. call form, catalog source, availability signal: the first lines of the bridge's block in BRIDGES.md. */
-  describe(input: BridgeBlockInput): string[];
+  /** 3-5. call form, catalog source, availability signal: the first rows of the bridge's block in BRIDGES.md. */
+  describe(input: BridgeBlockInput): BridgeBlockParts;
   /**
-   * 5. availability, before the bridge is selected: the one line a `Not selected` entry of BRIDGES.md carries so
-   * that `/unikit` can tell whether a bridge the project did not select is installed on this machine.
+   * 5. availability, before the bridge is selected: the command a `Not selected` entry of BRIDGES.md carries as its
+   * probe so that `/unikit` can tell whether a bridge the project did not select is installed on this machine.
    * `null` for a kind with no such probe (an MCP server is "installed" when the client lists it).
    */
   probeLine(entry: McpServerEntry): string | null;

@@ -204,7 +204,7 @@ Silently load the project knowledge base before any exploration — do not narra
 
    **If the file is absent** — a **normal path**, not an error (an engine whose planning vocabulary has not shipped yet): set `engine_rules_loaded = false`. Every step that writes an `Editor:` field, the `Editor tasks` setting or a confirmation line reads that flag (Step 5, Step 6, `mode-full.md`, `mode-fast.md`, `mode-add.md`). `add` mode runs this step too.
 
-6. **Read `.unikit/system/engine-bridges/BRIDGES.md`, and for each bridge whose block names a rules tree its `.unikit/system/engine-bridges/<bridge>/INDEX.md` — the base section only**: the delivery stamp plus every section **except** the `## Check` table — the exceptions that shape planning: where a commit boundary falls, what may never run in parallel, how the work splits into phases. Set `bridge_rules_loaded = true`.
+6. **Read `.unikit/system/engine-bridges/BRIDGES.md`, and for each bridge whose block names a rules tree its `.unikit/system/engine-bridges/<bridge>/INDEX.md` — the base section only**: the stamp under the title plus every section **except** the `## Check` table — the exceptions that shape planning: where a commit boundary falls, what may never run in parallel, how the work splits into phases. Set `bridge_rules_loaded = true`.
 
    **Do not read the `## Check` table** — it is the executors', grepped per task by area.
 
@@ -478,7 +478,7 @@ An experiment plan skips this step (`references/experiment-plan.md`) even when `
 Whatever discovery this skill's frontmatter carries is read-only and is the whole of the planner's contact with the bridges. Per bridge listed, in the package order `BRIDGES.md` states (a plan never names a bridge, so the user's order does not matter here):
 
 - a bridge of kind mcp: the discovery names the frontmatter grants, once;
-- a bridge of kind cli: the whole live listing, once, by the `catalog list:` line of its block - one read-only call that gives the name, group and description of every command. The call fails (no editor answered) → its table of contents `.unikit/references/bridges/<bridge>/CATALOG.md`, read as a file. Neither → this bridge is **not read**; print once `INFO [plan] <bridge>: the editor did not answer and there is no catalog table of contents - run /unikit-bridge-docs with the editor open; this bridge is not read` and go on.
+- a bridge of kind cli: the whole live listing, once, by the `catalog list` row of its block - one read-only call that gives the name, group and description of every command. The call fails (no editor answered) → this bridge is **not read**; print once `INFO [plan] <bridge>: the editor did not answer; this bridge is not read` and go on.
 
 From the catalogs read, answer exactly two questions about their **union**:
 

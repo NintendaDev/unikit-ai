@@ -552,18 +552,17 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   saves the scene.
 
 ### unikit-bridge-docs
-- **Purpose:** One button for the technical documentation of the selected engine bridges: copies, word
-  for word, what each bridge points to (what its command or installed package ships, vendor docs and skill
-  folders from a repository) into `.unikit/references/bridges/`, stamps every copy with the versions it was
-  taken from, and for a command-line bridge writes a table of contents of the live command catalog.
-- **When:** after installing or updating a bridge, its package or its plugin; after adding your own editor
-  commands; "collect the bridge docs", "the CLI was updated"; or when an agent says the collected
-  documentation is older than the installed versions.
-- **In:** nothing, a bridge id, `engine`, or `catalog`.
-- **Out:** `.unikit/references/bridges/<bridge>/` (copies, `INDEX.md`, `CATALOG.md`), `bridges/_engine/`, and a
-  report table.
-- **Optional.** Needs the network for vendor repositories and a running editor for the catalog part (skipped
-  with a line in the report otherwise). Agents read the copy first, then the documentation library, then try.
+- **Purpose:** One button for the technical documentation of the selected engine bridges. It first checks which
+  copies are current and whole (a table of states) and does nothing when all of them are; otherwise it asks what
+  to collect, then copies, word for word, what each bridge points to (what its command or installed package ships,
+  vendor docs and skill folders from a repository) into `.unikit/references/bridges/`, stamps every copy with
+  the versions it was taken from and writes an index by folder and by file.
+- **When:** after installing or updating a bridge, its package or its plugin; "collect the bridge docs", "the CLI
+  was updated"; or when an agent says the collected documentation is older than the installed versions.
+- **In:** nothing, a bridge id, `<bridge id>/<source id>`, and the word `force` (rebuild without the check).
+- **Out:** `.unikit/references/bridges/<bridge>/` (copies, `INDEX.md`, `FILES.md`) and a report table.
+- **Optional.** Needs the network for vendor repositories; never starts the editor. Agents search the live
+  catalog of the bridge first and read the copy for the command they chose.
 
 ### unikit-references
 - **Purpose:** Your own reference material for the agents: a local file or folder is copied word for word, a

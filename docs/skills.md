@@ -627,18 +627,19 @@ unikit-ai genres install <id|alias…>  # selectively install profile(s)
 - Deletes only what it created in this run. Leftovers from an aborted earlier run are recognisable by their `<runid>` and swept only under a separate confirmation
 - A **project** tool, not a release tool: it never edits the packaged rules tree (`init`/`update` rewrite it), it prints a PR diff instead
 
-### `/unikit-bridge-docs [bridge id | engine | catalog]` - collect the bridge documentation
+### `/unikit-bridge-docs [bridge id | bridge id/source id] [force]` - collect the bridge documentation
 
 ```
-/unikit-bridge-docs             # every selected bridge, the engine level, and the catalog contents
-/unikit-bridge-docs unity-cli   # one bridge
-/unikit-bridge-docs engine      # only the engine-level sources
-/unikit-bridge-docs catalog     # only the table of contents of the command catalog (the editor must be running)
+/unikit-bridge-docs                           # a table of the state of every copy, then a question when something needs collecting
+/unikit-bridge-docs unity-cli                 # one bridge: collects what is outdated, damaged or missing, asks nothing
+/unikit-bridge-docs unity-cli/pipeline-docs   # one source of one bridge
+/unikit-bridge-docs force                     # rebuild everything, without the check
 ```
-- One button for everything technical. It reads the documentation pointers from `BRIDGES.md`, copies the files word for word into `.unikit/references/bridges/<bridge>/` (and `…/_engine/`), stamps each copy with the versions it was taken from (`INDEX.md`) and, for a command-line bridge, writes `CATALOG.md` - the groups of the live command catalog with a command count and one line each, no parameters.
-- What a bridge's own command or installed package ships is copied from the machine; the rest (vendor docs, skill folders) is downloaded from the repositories the pointers name. A source that cannot be collected keeps its previous copy. The report is a table `bridge · source · was -> is · result`, including "not found at the pointer" when a vendor moved a file.
-- Agents read the copy first, then the documentation library (Context7), then try. A copy older than the installed versions is still used; the agent says so once per session and suggests running this skill again.
-- Writes only under `.unikit/references/bridges/`. Needs the network for downloads and the running editor for the catalog part (skipped with a line in the report otherwise).
+- One button for everything technical. It reads the documentation pointers from `BRIDGES.md` and first checks every copy: **current** (the stamp of the installed version, the pointer of the card, the number of files and bytes all match), **outdated**, **damaged**, **missing**, or **unknown** (no network, no tool, no version in the settings). A table says which. When every copy is current the run downloads and writes nothing and says so; otherwise it asks once what to do (collect everything · only what this machine has · choose bridges · nothing) and copies the files word for word into `.unikit/references/bridges/<bridge>/`, with a line `[n/N]` before every step.
+- Every bridge folder gets an `INDEX.md` (the sources with their stamps and sizes, the folders with a description of each) and a `FILES.md` (every file with its size and a caption, searched for a word). Both are rewritten after every finished source, so an interrupted run continues where it stopped; the paths in them start at the project root.
+- What a bridge's own command or installed package ships is copied from the machine; the rest (vendor docs, skill folders) is downloaded from the repositories the pointers name, at the tag of the installed version when the bridge pins one (Unity Biome MCP). A source that cannot be collected keeps its previous copy. The report is a table `bridge · source · was -> is · result`, including "not found at the pointer" when a vendor moved a file.
+- Agents search the live catalog of the bridge first (a word, then the tags, then the groups) and read the copy only for the command they chose, when its version matches the installed one. A copy older than the installed versions is still used; the agent says so once per session and suggests running this skill again.
+- Writes only under `.unikit/references/bridges/`. Needs the network for downloads; it never starts the editor and never changes anything through a bridge.
 
 ### `/unikit-references [add <path|url> | list | show <name> | refresh <name> | delete <name>]` - your own references
 

@@ -174,3 +174,13 @@ export function getAgentChoices(): { name: string; value: string }[] {
     value: agent.id,
   }));
 }
+
+/** The project-relative MCP settings files of the given agents, each once, in the order of the agents; an unknown id or an agent without MCP is skipped. */
+export function mcpSettingsFiles(agentIds: string[]): string[] {
+  const files: string[] = [];
+  for (const id of agentIds) {
+    const agent = AGENT_REGISTRY[id];
+    if (agent?.supportsMcp && agent.settingsFile && !files.includes(agent.settingsFile)) files.push(agent.settingsFile);
+  }
+  return files;
+}

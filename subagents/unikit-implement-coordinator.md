@@ -405,12 +405,13 @@ Rule candidates: <n> recorded — /unikit-implement will propose them at the end
 Engine bridge findings: <n> recorded — run /unikit-bridge-trap <plan path> to move them into
   .unikit/bridge-notes/
 Bridges used: <union of the workers' bridges: fields and the ids of its own calls>
+Bridge search: <the workers' search: lines and the selection lines of its own calls, one per target>
 
 ⏎ This agent session is complete. Please close it (Ctrl+C or /exit)
   and return to your main Claude Code session to continue working.
 ```
 
-The `Bridges used:` line appears only when at least one worker returned a `bridges:` field or this session made a bridge call of its own. The `Engine bridge findings:` line appears **only when the plan's `## Engine Bridge Findings` table has rows**, and is omitted entirely otherwise — no "none this run" line. A run without findings is the ordinary case, and announcing it every time is how the line stops being read.
+The `Bridges used:` line appears only when at least one worker returned a `bridges:` field or this session made a bridge call of its own. The `Bridge search:` line follows the same rule. The `Engine bridge findings:` line appears **only when the plan's `## Engine Bridge Findings` table has rows**, and is omitted entirely otherwise — no "none this run" line. A run without findings is the ordinary case, and announcing it every time is how the line stops being read.
 
 The `PR checkpoints:` line appears only when the session met a PR checkpoint.
 
