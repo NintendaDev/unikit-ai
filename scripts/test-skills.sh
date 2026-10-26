@@ -7894,6 +7894,45 @@ else
     fail "MN-1…MN-4 bridge order chain:$MN_WHY"
 fi
 
+# MN-5…MN-8: the returning-project menu
+MN_WHY=""
+MN_CHK=0
+MN_STEP0="$(awk '/^### Step 0: Load Existing Config/{f=1;next} f&&/^---$/{exit} f' "$MN_SKILL")"
+MN_DESC="$(awk '/^description:/{f=1;print;next} f&&/^[a-zA-Z][a-zA-Z0-9_-]*:/{exit} f' "$MN_SKILL")"
+# (MN-5) the body: capability, plain markdown, the five actions, the recommendation rule
+mn_has  MN-5 'It writes nothing itself' "$MN_MENU_MODE"
+mn_has  MN-5 'Plain markdown only' "$MN_MENU_MODE"
+for mn_a in '**Config**' '**Order**' '**Environment**' '**Rules**' '**Description**' '**Finish the setup**'; do
+    mn_has MN-5 "$mn_a" "$MN_MENU_MODE"
+done
+mn_has  MN-5 'The first of these that applies is the recommended one' "$MN_MENU_MODE"
+mn_has  MN-5 'when it adds the bridge order key and two bridges or more are installed' "$MN_MENU_MODE"
+mn_has  MN-5 'Steps 7 and 8 are not run' "$MN_MENU_MODE"
+mn_has  MN-5 'the question tool of your agent (`AskUserQuestion`)' "$MN_MENU_MODE"
+MN_HITS="$({ grep -nE '(Agent|Skill|Bash)\(' "$MN_MENU_MODE" 2>/dev/null || true; })"
+MN_CHK=$((MN_CHK + 1)); [[ -z "$MN_HITS" ]] || MN_WHY+=" MN-5:call-form-in-menu-body"
+MN_HTML="$({ grep -nE '</?(details|summary|b|br|i|p|div)>' "$MN_MENU_MODE" 2>/dev/null || true; })"
+MN_CHK=$((MN_CHK + 1)); [[ -z "$MN_HTML" ]] || MN_WHY+=" MN-5:html-in-menu-body"
+# (MN-6) the dispatch lives inside Step 0 and says when the menu applies
+MN_CHK=$((MN_CHK + 3))
+[[ -n "$MN_STEP0" ]] || MN_WHY+=" MN-6:step-0-window-empty"
+printf '%s' "$MN_STEP0" | grep -qF 'references/mode-menu.md' || MN_WHY+=" MN-6:dispatch-outside-step-0"
+printf '%s' "$MN_STEP0" | grep -qF 'matches none of the two modes above' || MN_WHY+=" MN-6:no-fallback-condition"
+# (MN-7) the four contract clauses, and the retired absolute sentence
+mn_has   MN-7 'The returning-project menu is the one mode that may hand over instead' "$MN_SKILL"
+mn_has   MN-7 'Widened for two menu branches' "$MN_SKILL"
+mn_has   MN-7 'The returning-project menu also runs outside this order' "$MN_SKILL"
+mn_has   MN-7 'asks nothing itself and parses **no arguments**' "$MN_SKILL"
+mn_lacks MN-7 'performs **no user interaction**' "$MN_SKILL"
+# (MN-8) the trigger in the description
+MN_CHK=$((MN_CHK + 1)); printf '%s' "$MN_DESC" | grep -qF 'it offers the actions to choose from' || MN_WHY+=" MN-8:no-menu-trigger"
+if [[ -z "$MN_WHY" && "$MN_CHK" -gt 0 ]]; then
+    pass "MN-5…MN-8 returning-project menu — five actions, dispatched inside Step 0, four contract clauses, triggered in the description ($MN_CHK checks)"
+else
+    fail "MN-5…MN-8 returning-project menu:$MN_WHY"
+    [[ -n "$MN_HITS" ]] && echo "$MN_HITS" | head -5
+fi
+
 # ─────────────────────────────────────────────
 # RCA: rule capture — ask, never write (RCA-1…RCA-19)
 # ─────────────────────────────────────────────
