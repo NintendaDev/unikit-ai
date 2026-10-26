@@ -31,6 +31,7 @@ Then narrow with **at most one** follow-up:
   - feature → `/unikit-explore` (if direction unclear) → `/unikit-plan` → `/unikit-implement`
   - test    → `/unikit-verify` (vs plan) and/or the test phase in `/unikit-implement`
   - bug     → `/unikit-fix` (deep/unknown bug → `/unikit-explore` first)
+  - small   → `/unikit-execute <task>` (a small task, no plan wanted)
 - **3 Game design** → "Decide what game · write the GDD · detail/revise a system · design/revise a flow · new mechanic · edit GAME.md?"
   - what game             → `/unikit-gd-brainstorm`
   - write GDD             → `/unikit-gd-spec`
@@ -52,7 +53,7 @@ Keep it to one question + one follow-up. Never fan out into a questionnaire.
 | "update the config", "add missing settings", "actualize configuration", "fix my config" | actualize config | `/unikit` — Step 0 dispatches to config actualization (Steps 1-11 do not run) | — |
 | "change the bridge order" / "make the CLI the main bridge" | set the order of the engine bridges | `/unikit` (bridge order mode), or edit the bridge order list in `.unikit/config.yaml` | do the bridges exist? (`BRIDGES.md`) |
 | "I added a library, make rules for it" / "check the engine CLI" / "what can /unikit do here" | act on a project that is already set up | `/unikit` — the returning-project menu: update the config · bridge order · bridges' environment · rules for new frameworks · refresh the description | is `.unikit/config.yaml` there? |
-| "how do I start coding" | begin a feature | have a plan? yes→`/unikit-implement`; no→`/unikit-plan` | is there a plan / research? |
+| "how do I start coding" | begin a feature | have a plan? yes→`/unikit-implement`; no→`/unikit-plan` (a small task: `/unikit-execute`) | is there a plan / research? |
 | "how do I plan a feature" | plan | `/unikit-plan [fast\|full\|ultra] <feature>` | fast vs full vs ultra (throwaway / real / delegated to a smaller model) |
 | "the plan looks rough / wrong" | refine plan | `/unikit-improve` (run 1-3x) | — |
 | "how do I test my code" | verify/test | `/unikit-verify`; tests come from `/unikit-implement` test phase; failures→`/unikit-fix` | unit vs vs-plan vs manual (see QA note) |
@@ -112,11 +113,12 @@ Clarify if unknown: "Do you already have a game idea, or starting from zero?"
 ### "Как мне начать писать код?" / "How do I start coding?"
 Check for an existing plan first.
 ```
-Coding always goes through a plan in UniKit.
+Coding goes through a plan in UniKit; a small task is the exception.
 
   No plan yet → /unikit-plan full <describe the feature>
                 (direction unclear? /unikit-explore <topic> first to work out the approach)
   Have a plan → /unikit-implement
+  A small task, no plan wanted → /unikit-execute <describe the task>
 
 After building: /unikit-verify  →  /unikit-commit
 ```

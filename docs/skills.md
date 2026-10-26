@@ -284,13 +284,24 @@ Reviews code against the project's rule hierarchy. Four modes:
 
 ## Development Skills
 
-### `/unikit-execute` - standalone development skill
+### `/unikit-execute <task> [--docs=yes|no|warn] [--editor=engine-bridge|manual|direct]` - one task, no plan
 
-A standalone skill for writing, reviewing, or refactoring a single file or fragment without a plan:
-- Senior engine/language developer persona with full knowledge base access
-- Loads `dev-principles.md`, `RULES.md`, core rules from `RULES_INDEX.md`, and stack rules on demand
-- Used when working outside a pipeline (for example, a one-off file edit)
-- Pipeline skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`) no longer delegate every task here - they Bootstrap the same rules once and implement inline. Use `/unikit-execute` when you have no plan, or spawn it through the `develop-agent` alias for true parallel scopes or deep-dive single tasks
+```
+/unikit-execute add a pause button to the main menu and wire it to the pause controller
+/unikit-execute move the save-version check into its own class, with tests
+/unikit-execute register the two collision layers the new enemy needs --editor=manual
+```
+
+`/unikit-implement` without a plan: it carries out **one small task from a description**, the way `/unikit-implement` carries out a plan task, and it reads, creates and ticks no plan file. An existing `.unikit/code/PLAN.md`, `.unikit/code/FIX_PLAN.md` or the plan folder of the current branch is named in one `WARN [execute]` line and otherwise ignored.
+
+- **Bootstraps once** - `dev-principles.md` above its lazy-read boundary, `RULES.md`, the core rules, `BRIDGES.md`, the base part of each bridge's `INDEX.md`, the bridge order from `.unikit/config.yaml`, and `.unikit/skill-context/unikit-execute/SKILL.md`
+- **Reads the text into a card** and prints it once: the class (`question`, `code`, `editor` or `mixed`), the files to write, and one `Editor: [kind] <container> → <target> : <action>` line per editor change - the planner's own grammar, so the same procedures run as for a plan task. The kinds and the "serialized state" boundary come from the development principles, the engine's part from the `ENGINE_RULES.md` that `unikit-plan` installs. A pure question is answered in a few lines and the run stops
+- **Works in the order** code → compilation (the console read through the first bridge that can) → editor changes through the bridges in your order (live catalog, schema, check lines, read-back) → read-back. The mode is `engine-bridge` when `BRIDGES.md` lists a bridge and `manual` otherwise; `direct` only with `--editor=direct` or plain words asking for it, and only behind a rollback point
+- **Ends** with one report (changed files, editor lines with the bridge and the value read back, manual targets, compilation, tests, findings) and one question: review first (`/unikit-review`, then `/unikit-commit`) or commit now. It stages only the files of the run
+- Writes tests only when you ask or the project plainly requires them, and updates `DESCRIPTION.md`, `ARCHITECTURE.md`, `AGENTS.md` and `TODO.md` only for what the change touched; documentation follows `--docs` (default: one `WARN [docs]` line, no checkpoint)
+- It is also the target of the `develop-agent` alias of `/unikit-implement`, `/unikit-fix` and `/unikit-verify` (true parallel scopes or deep-dive single tasks) and is preloaded into `unikit-implement-worker`. A call whose arguments start with `Delegated hand-off:` is the **delegate mode**: nothing is asked, the start and the end of the flow belong to the caller, and the reply is the report
+
+Not for a bug (`/unikit-fix`), not for carrying out an existing plan (`/unikit-implement`), not for a multi-step feature (`/unikit-plan`), not for a discussion (`/unikit-explore`). Pipeline skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`) Bootstrap the same rules once and implement inline - they do not hand every task to this skill.
 
 ---
 
@@ -662,5 +673,5 @@ For the full reference - frontmatter, launch commands, design principles, sideca
 
 - [Subagents](subagents.md) - coordinators, workers, sidecars, delegation aliases
 - [Development Workflow](workflow.md) - how workflow skills connect end-to-end
-- [Dynamic Memory](dynamic-memory.md) - Bootstrap pattern, how pipeline skills load rules, standalone unikit-execute
+- [Dynamic Memory](dynamic-memory.md) - Bootstrap pattern, how pipeline skills load rules, and `/unikit-execute`, the task skill with no plan
 - [Plan Files](plan-files.md) - where workflow artifacts are stored

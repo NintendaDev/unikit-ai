@@ -118,7 +118,7 @@ Ships empty. Recurring review/verify conflicts, or house design conventions, lan
 
 ### RULES_INDEX.md
 
-A compact auto-generated index that tells pipeline skills (and `/unikit-execute` in standalone mode) when to load each stack rule. **Each module keeps its own index** - `.unikit/memory/code/RULES_INDEX.md` for the `code` module, `.unikit/memory/gamedesign/RULES_INDEX.md` for `gamedesign` - there is no single shared file across modules:
+A compact auto-generated index that tells pipeline skills (and `/unikit-execute`, which works with no plan) when to load each stack rule. **Each module keeps its own index** - `.unikit/memory/code/RULES_INDEX.md` for the `code` module, `.unikit/memory/gamedesign/RULES_INDEX.md` for `gamedesign` - there is no single shared file across modules:
 
 ```markdown
 ## Stack (`.unikit/memory/code/stack/`)
@@ -138,7 +138,7 @@ Generated automatically by `unikit-ai update`, `unikit-ai rules sync`, `unikit-a
 
 ### How Workflow Skills Load Rules
 
-Pipeline skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-improve`) Bootstrap the knowledge base once at the start of execution and implement tasks inline against the loaded rules. `/unikit-execute` remains available as a standalone skill for one-off work outside a plan.
+Pipeline skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-improve`) Bootstrap the knowledge base once at the start of execution and implement tasks inline against the loaded rules. `/unikit-execute` runs the same Bootstrap for one task with no plan.
 
 ```
 ┌──────────────────────────────────────────────┐
@@ -180,7 +180,7 @@ Steps 6-7 in detail:
 - `unitask.md` (loaded now)
 - But NOT `aspid-mvvm.md`, `r3.md`, `odin.md`, etc.
 
-`/unikit-execute` is a **standalone skill** for one-off file-level work without a plan: a quick review, a single refactor, or answering an architecture question. Pipeline skills no longer delegate every task to it:
+`/unikit-execute` is the skill for **one task with no plan**: a small feature, a refactor, an editor change. It loads the same knowledge base once, builds a task card from your text and carries it out; a pure question is answered in a few lines and the run stops (for a discussion use `/unikit-explore`). Pipeline skills no longer delegate every task to it:
 
 - **`/unikit-implement`** - Bootstraps rules once, then writes each task inline
 - **`/unikit-fix`** - Bootstraps rules in Step 0.2, then applies the fix inline
@@ -379,7 +379,7 @@ The same migration runs for the `gamedesign` module (`/unikit-memory migrate-rul
 
 ## See Also
 
-- [Skills Reference](skills.md) - full reference for pipeline skills, the standalone `/unikit-execute`, and delegation aliases
+- [Skills Reference](skills.md) - full reference for pipeline skills, the plan-free task skill `/unikit-execute`, and delegation aliases
 - [Game-Design Module](gamedesign.md) - the `gamedesign` module's domain-knowledge rules and its own pipeline
 - [Memory & Skill Evolution](evolve.md) - detailed evolve workflow and stale rule cleanup
 - [Rules Registry](rules-registry.md) - the registry chain, schema, CLI commands, and `.unikit.json` state fields

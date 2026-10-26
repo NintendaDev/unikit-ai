@@ -226,12 +226,16 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **Optional (feedback loop).** Before: `/unikit-fix`. After: `/unikit-rules`, `/unikit-memory`.
 
 ### unikit-execute
-- **Purpose:** The code-writing engine / senior-developer persona for direct, ad-hoc edits with
-  **no plan** (e.g. a one-off refactor). The skill the pipeline delegates to as `develop-agent`.
-- **When:** "just add this method", "refactor this", "do it directly, no plan".
-- **In:** a task or file path; bootstraps the full knowledge base.
-- **Out:** project code.
-- **Optional / internal.** Used directly for quick edits, or spawned by implement/fix/verify
+- **Purpose:** One small task straight from a description, with **no plan** — `/unikit-implement`
+  without the plan: it reads the text into a card (code, editor, mixed or question), carries it out
+  through the engine bridges, checks compilation and reads the changed state back. The skill the
+  pipeline delegates to as `develop-agent`.
+- **When:** "just add this method", "set this up in the editor, no plan", "do it directly".
+  Not for a bug (`/unikit-fix`), an existing plan (`/unikit-implement`), a multi-step feature
+  (`/unikit-plan`) or a discussion (`/unikit-explore`).
+- **In:** the task in words, optionally `--docs=yes|no|warn` and `--editor=engine-bridge|manual|direct`.
+- **Out:** project code and editor changes, one report, and an offer to review or commit.
+- **Optional / internal.** Used directly for small tasks, or spawned by implement/fix/verify
   for parallel or deep-dive work.
 
 ---

@@ -262,6 +262,7 @@ Pick the row that matches what the user already has:
 | **A clear feature** | `/unikit-plan [fast\|full\|ultra] <feature>` | `/unikit-improve` → `/unikit-implement` |
 | **A research brief already** | `/unikit-plan` (it finds the latest research) | `/unikit-implement` |
 | **A plan, wants code** | `/unikit-implement` | `/unikit-verify` → `/unikit-commit` |
+| **A small task, no plan wanted** | `/unikit-execute <task>` | `/unikit-review` → `/unikit-commit` |
 | **Written code to check** | `/unikit-review` and/or `/unikit-verify` | `/unikit-fix` |
 | **A bug** | `/unikit-fix <bug>` (deep bug → `/unikit-explore` first) | `/unikit-verify` → `/unikit-commit` |
 | **Finished plans piling up** | `/unikit-archive` (no args — it shows which plans qualify) | `/unikit-commit` the move |

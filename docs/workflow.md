@@ -195,6 +195,7 @@ While the plan has PR checkpoints a run never pushes: the branch reaches the rem
 | `/unikit-plan add` | Extend existing plan with new tasks | No | Modifies existing plan |
 | `/unikit-improve` | Refine plan before implementation | No | Improves existing plan |
 | `/unikit-implement` | Execute plan tasks one by one | No | Updates the plan manifest status |
+| `/unikit-execute` | One small task straight from a description, no plan wanted (code and editor changes) | No | A short report; stages only its own files |
 | `/unikit-fix` | Bug fixes, errors, hotfixes | No | Optional `.unikit/code/FIX_PLAN.md` |
 | `/unikit-verify` | Post-implementation quality check | No | Verification report |
 | `/unikit-review` | Code review against rules | No | Review report |
@@ -380,6 +381,16 @@ Post-completion, in order:
 A test is written for a target the code owns. Four classes decide it: **logic and system values** (calculations, state transitions, parsing, contracts between modules; identifiers, keys, format versions) get exact tests on inputs the test supplies; **tunable data** that game design owns (balance, costs, durations, probabilities) is never pinned — at most one validity check per data family, with bounds taken from the design source rather than from today's number; **authored content** (prefabs, scenes, materials, shaders, animation, UI layouts) gets no unit test — the evidence is a frame or a read-back; **lookup by name** gets at most one aggregate reference check per module. Everything else — the engine, trivial accessors, generated code — gets none. A quick smell check: if a designer changing a number, or a new catalog row, turns a test red while the system is intact, the test is pinned to the wrong thing.
 
 Timing follows the same idea. Once `/unikit-implement` hands a result over, you are reviewing it and answering with edits — visuals, feel, layout, tuning and code alike. Inside that **review loop** each edit is made and compiled (a visual or data edit is also checked by a frame or a read-back), no test is written and no suite runs; the first edit prints one line, `INFO [testing] review loop: tests deferred until you accept`. *Accepted* means your own words — "accepted", "ok, next", "write the tests"; silence is not acceptance, and calling `/unikit-verify` or `/unikit-commit` is not either. On acceptance the tests for the logic changed since the last commit are written once and the suite runs once; with `Testing: yes` and a plan manifest that run is recorded like a test checkpoint, so `/unikit-verify` does not ask to repeat it. A plan with `Testing: no` is outside the loop. If the loop is closed by a new request instead — a commit, a verification, a new feature — nothing is written or run, but the remainder is named in one line, `INFO [testing] review loop closed without acceptance: no tests written for <changed logic>`, and `/unikit-commit` prints it too. `/unikit-fix` on a defect of the handed-over result stays inside the loop.
+
+### `/unikit-execute <task> [--docs=yes|no|warn] [--editor=engine-bridge|manual|direct]` - one task with no plan
+
+```
+/unikit-execute add a "Pause" button to the pause menu and wire it up
+/unikit-execute extract the save-file version check into its own class, with tests
+/unikit-execute set up the two collision layers the new enemy needs --editor=manual
+```
+
+The plan-free counterpart of `/unikit-implement`, for a task that does not justify a plan and is not a bug. It loads the rules and the engine bridges once, builds a **task card** from your text (`code`, `editor`, `mixed` or `question`; editor changes in the planner's `Editor:` grammar), carries it out in the order code → compilation → editor → read-back, and ends with one report and one question: review first (`/unikit-review`, then `/unikit-commit`) or commit now. It never reads, creates or ticks a plan file - an existing one is named in a `WARN [execute]` line and ignored. Use `/unikit-plan` when the task has several steps, `/unikit-fix` for a bug, `/unikit-explore` to talk it over.
 
 ### `/unikit-fix [bug description]` - fix and learn
 
