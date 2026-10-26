@@ -30,14 +30,14 @@ explore save pipeline, on the same criterion — see
 ## Step 1.5 — Bootstrap
 
 - **The knowledge base is loaded once, before the first task.** This replaced per-task
-  delegation to `/unikit-devcontext` for sequential work.
+  delegation to `/unikit-execute` for sequential work.
 - **A notes header naming another server is a warning, and the entries still apply.** They are
   suspect, not void, and a suspect check still fails safe. Retiring them belongs to
   `/unikit-bridge-audit`, never to this skill.
 
 ## Step 3 — Execute
 
-- **Sequential tasks never go through `Skill(unikit-devcontext)`.** Invoking it per task
+- **Sequential tasks never go through `Skill(unikit-execute)`.** Invoking it per task
   defeats the rules-loading optimization: the rules are already in context from Step 1.5 and
   Step 3.0.
 - **A `⏸️ MANUAL` task is written `- [x]`.** The checkbox must be `[x]` so Step 2 does not pick

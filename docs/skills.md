@@ -284,13 +284,13 @@ Reviews code against the project's rule hierarchy. Four modes:
 
 ## Development Skills
 
-### `/unikit-devcontext` - standalone development skill
+### `/unikit-execute` - standalone development skill
 
 A standalone skill for writing, reviewing, or refactoring a single file or fragment without a plan:
 - Senior engine/language developer persona with full knowledge base access
 - Loads `dev-principles.md`, `RULES.md`, core rules from `RULES_INDEX.md`, and stack rules on demand
 - Used when working outside a pipeline (for example, a one-off file edit)
-- Pipeline skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`) no longer delegate every task here - they Bootstrap the same rules once and implement inline. Use `/unikit-devcontext` when you have no plan, or spawn it through the `develop-agent` alias for true parallel scopes or deep-dive single tasks
+- Pipeline skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`) no longer delegate every task here - they Bootstrap the same rules once and implement inline. Use `/unikit-execute` when you have no plan, or spawn it through the `develop-agent` alias for true parallel scopes or deep-dive single tasks
 
 ---
 
@@ -662,5 +662,5 @@ For the full reference - frontmatter, launch commands, design principles, sideca
 
 - [Subagents](subagents.md) - coordinators, workers, sidecars, delegation aliases
 - [Development Workflow](workflow.md) - how workflow skills connect end-to-end
-- [Dynamic Memory](dynamic-memory.md) - Bootstrap pattern, how pipeline skills load rules, standalone unikit-devcontext
+- [Dynamic Memory](dynamic-memory.md) - Bootstrap pattern, how pipeline skills load rules, standalone unikit-execute
 - [Plan Files](plan-files.md) - where workflow artifacts are stored

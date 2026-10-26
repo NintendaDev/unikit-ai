@@ -74,7 +74,7 @@ cat > "$CLAUDE_DIR/.unikit.json" << 'EOF'
       "id": "claude",
       "skillsDir": ".claude/skills",
       "subagentsDir": ".claude/agents",
-      "installedSkills": ["unikit", "unikit-plan", "unikit-devcontext", "unikit-evolve",
+      "installedSkills": ["unikit", "unikit-plan", "unikit-execute", "unikit-evolve",
                           "unikit-explore", "unikit-implement", "unikit-improve", "unikit-memory",
                           "unikit-rules", "unikit-skills-context", "unikit-verify",
                           "unikit-gd-explore", "unikit-gd-balance", "unikit-gd-experiment", "unikit-gd-recon", "unikit-gd-docs",
@@ -536,7 +536,7 @@ cat > "$CODEX_DIR/.unikit.json" << 'EOF'
       "id": "codex",
       "skillsDir": ".codex/skills",
       "subagentsDir": ".codex/agents",
-      "installedSkills": ["unikit", "unikit-plan", "unikit-devcontext",
+      "installedSkills": ["unikit", "unikit-plan", "unikit-execute",
                           "unikit-implement", "unikit-explore", "unikit-fix"],
       "installedSubagents": []
     }
@@ -653,8 +653,8 @@ assert_contains "$CODEX_DIR/.codex/skills/unikit-fix/SKILL.md" 'fork_turns: "non
   "codex install: every agent call carries fork_turns and a task name"
 assert_contains "$CODEX_DIR/.codex/skills/unikit-fix/SKILL.md" 'prompt: "<focused question> You are read-only: edit and write nothing\."' \
   "codex install: recon-agent says in words that it only reads"
-assert_contains "$CODEX_DIR/.codex/skills/unikit-fix/SKILL.md" 'Read \.codex/skills/unikit-devcontext/SKILL\.md in full before you do anything else' \
-  "codex install: develop-agent reads the devcontext skill file"
+assert_contains "$CODEX_DIR/.codex/skills/unikit-fix/SKILL.md" 'Read \.codex/skills/unikit-execute/SKILL\.md in full before you do anything else' \
+  "codex install: develop-agent reads the execute skill file"
 echo "  ✓ codex install: no subagent type, fork_turns none and a task name on every call, recon read-only"
 
 # ─────────────────────────────────────────────────────
@@ -675,7 +675,7 @@ cat > "$QWEN_DIR/.unikit.json" << 'EOF'
       "id": "qwen",
       "skillsDir": ".qwen/skills",
       "subagentsDir": ".qwen/agents",
-      "installedSkills": ["unikit", "unikit-plan", "unikit-devcontext",
+      "installedSkills": ["unikit", "unikit-plan", "unikit-execute",
                           "unikit-implement", "unikit-explore", "unikit-fix"],
       "installedSubagents": []
     }
@@ -935,8 +935,8 @@ assert_contains "$KIMI_SKILLS/unikit-implement/SKILL.md" 'subagent_type: "coder"
 # The delegation names the skill FILE by its installed path: the `skills:` key of an Agent call
 # delivers nothing on Kimi (live check 2026-10-06), so the subagent reads the file itself.
 assert_contains "$KIMI_SKILLS/unikit-implement/SKILL.md" \
-  'Read \.kimi-code/skills/unikit-devcontext/SKILL\.md in full before you do anything else' \
-  "kimi: develop-agent reads the devcontext skill file from .kimi-code/skills"
+  'Read \.kimi-code/skills/unikit-execute/SKILL\.md in full before you do anything else' \
+  "kimi: develop-agent reads the execute skill file from .kimi-code/skills"
 assert_not_contains "$KIMI_SKILLS/unikit-implement/SKILL.md" 'follow it as your instructions throughout this task' \
   "kimi: the retired delegation phrase is gone"
 assert_not_contains "$KIMI_SKILLS/unikit-implement/SKILL.md" '^[[:space:]]*skills:[[:space:]]*\[' \
@@ -1010,10 +1010,10 @@ done
 frontmatter_of "$KIMI_AGENTS/unikit-implement-worker.md" > "$TMPDIR/kimi-worker.fm"
 assert_contains "$TMPDIR/kimi-worker.fm" '^  - Skill$' "kimi: worker keeps its Skill tool"
 # `skills:` is gone from the frontmatter and its names are a read list at the top of the body
-# (Kimi does not read the field: live check 2026-10-06, Kimi 2.1.1). The worker names devcontext and verify.
+# (Kimi does not read the field: live check 2026-10-06, Kimi 2.1.1). The worker names execute and verify.
 assert_kimi_read_list "$KIMI_AGENTS/unikit-implement-worker.md" "$ROOT_DIR/subagents/unikit-implement-worker.md" "kimi: worker"
-assert_contains "$KIMI_AGENTS/unikit-implement-worker.md" '^- \.kimi-code/skills/unikit-devcontext/SKILL\.md$' \
-  "kimi: worker reads the devcontext rules named in its source"
+assert_contains "$KIMI_AGENTS/unikit-implement-worker.md" '^- \.kimi-code/skills/unikit-execute/SKILL\.md$' \
+  "kimi: worker reads the execute rules named in its source"
 assert_contains "$KIMI_AGENTS/unikit-implement-worker.md" '^- \.kimi-code/skills/unikit-verify/SKILL\.md$' \
   "kimi: worker reads the verify rules named in its source"
 assert_kimi_read_list "$KIMI_AGENTS/unikit-plan-polisher.md" "$ROOT_DIR/subagents/unikit-plan-polisher.md" "kimi: plan polisher"
@@ -1098,8 +1098,8 @@ assert_not_contains "$UNIVERSAL_SKILLS/unikit-implement/SKILL.md" '\.agents/mcp_
 assert_contains "$UNIVERSAL_SKILLS/unikit-implement/SKILL.md" 'subagent_type: "general-purpose"' \
   "universal: the worker type is the Claude literal"
 assert_contains "$UNIVERSAL_SKILLS/unikit-implement/SKILL.md" \
-  'Read \.agents/skills/unikit-devcontext/SKILL\.md in full before you do anything else' \
-  "universal: develop-agent reads the devcontext skill file from the shared .agents/skills"
+  'Read \.agents/skills/unikit-execute/SKILL\.md in full before you do anything else' \
+  "universal: develop-agent reads the execute skill file from the shared .agents/skills"
 assert_not_contains "$UNIVERSAL_SKILLS/unikit-implement/SKILL.md" 'subagent_type: "(self|coder|worker|generalPurpose|general)"' \
   "universal: no other agent's worker type"
 assert_contains "$UNIVERSAL_SKILLS/unikit-fix/SKILL.md" 'subagent_type: Explore, prompt:' \

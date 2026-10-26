@@ -14,6 +14,7 @@
 | `Editor tasks: mcp` in plans | `Editor tasks: engine-bridge` |
 | `.unikit/system/engine-mcp/` | `.unikit/system/engine-bridges/` - `BRIDGES.md` and one folder per bridge |
 | skills `/unikit-mcp-trap` and `/unikit-mcp-audit` | `/unikit-bridge-trap` and `/unikit-bridge-audit` - installed in their place, no `--install-new` needed (only for agents that had the old ones) |
+| skill `/unikit-devcontext` | `/unikit-execute` - installed in its place, no `--install-new` needed (only for an agent that had the old one). The skill now does one task from a description with no plan. A folder `.unikit/skill-context/unikit-devcontext/` is not moved: `update` names it in a warning, move it to `.unikit/skill-context/unikit-execute/` yourself. A rule of a studio registry whose `Required By` names `unikit-devcontext` stops matching until it names `unikit-execute` |
 
 The migration is idempotent: a second `update` changes nothing. The plan files are rewritten **in your working tree and are not committed** - review the diff and commit it yourself.
 
@@ -47,7 +48,7 @@ Four public template variables were replaced. The old names are no longer substi
 | `{{engine_mcp_rules_verification}}` | none - `<bridge>/verification.md` under `{{system_engine_bridges_dir}}` |
 | `{{engine_mcp_tool}}` | `{{engine_bridge_mcp_code}}` - the vendor code of the MCP-kind bridge with the lowest default order, `EngineMCP` when none is selected |
 
-A manifest that names a renamed skill (`replaces`, `injections[].target`: `unikit-mcp-trap`, `unikit-mcp-audit`) is read as the new name, with a warning - update the manifest.
+A manifest that names a renamed skill (`replaces`, `injections[].target`: `unikit-mcp-trap`, `unikit-mcp-audit`, `unikit-devcontext`) is read as the new name, with a warning - update the manifest.
 
 ## Unity's own agent plugin
 

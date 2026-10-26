@@ -21,13 +21,13 @@
     "unikit-commit": [
       "bootstrap"
     ],
-    "unikit-devcontext": [
-      "bootstrap"
-    ],
     "unikit-docs": [
       "bootstrap"
     ],
     "unikit-evolve": [
+      "bootstrap"
+    ],
+    "unikit-execute": [
       "bootstrap"
     ],
     "unikit-explore": [

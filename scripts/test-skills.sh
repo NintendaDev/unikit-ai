@@ -6179,7 +6179,7 @@ fi
 # Path vars: reuse UNIKIT_VERIFY_SKILL; new EM_* for the other three readers.
 EM_IMPLEMENT_SKILL="$ROOT_DIR/skills/unikit-implement/SKILL.md"
 EM_FIX_SKILL="$ROOT_DIR/skills/unikit-fix/SKILL.md"
-EM_DEVCONTEXT_SKILL="$ROOT_DIR/skills/unikit-devcontext/SKILL.md"
+EM_EXECUTE_SKILL="$ROOT_DIR/skills/unikit-execute/SKILL.md"
 EM_DEV_PRINCIPLES="$ROOT_DIR/data/dev-principles.md"
 
 # (EM-1) BRIDGES.md is the entry point of the delivered bridge layer and, with the INDEX.md of
@@ -6187,7 +6187,7 @@ EM_DEV_PRINCIPLES="$ROOT_DIR/data/dev-principles.md"
 # reader line is dead weight; this is the only thing that keeps the four in sync. (It replaced
 # the single engine-mcp/INDEX.md with the per-bridge layout of 3.0.0.)
 EM1_WHY=""
-for em1_skill in "implement:$EM_IMPLEMENT_SKILL" "fix:$EM_FIX_SKILL" "verify:$UNIKIT_VERIFY_SKILL" "devcontext:$EM_DEVCONTEXT_SKILL"; do
+for em1_skill in "implement:$EM_IMPLEMENT_SKILL" "fix:$EM_FIX_SKILL" "verify:$UNIKIT_VERIFY_SKILL" "execute:$EM_EXECUTE_SKILL"; do
     grep -qF 'engine-bridges/BRIDGES.md' "${em1_skill#*:}" || EM1_WHY+=" ${em1_skill%%:*}:BRIDGES.md"
     grep -qF 'engine-bridges/<bridge>/INDEX.md' "${em1_skill#*:}" || EM1_WHY+=" ${em1_skill%%:*}:INDEX.md"
 done
@@ -6205,12 +6205,12 @@ fi
 EM2_WHY=""
 grep -qF 'bridge-notes/<bridge>.md' "$EM_IMPLEMENT_SKILL"  || EM2_WHY+=" notes:implement-missing"
 grep -qF 'bridge-notes/<bridge>.md' "$EM_FIX_SKILL"        || EM2_WHY+=" notes:fix-missing"
-grep -qF 'bridge-notes/<bridge>.md' "$EM_DEVCONTEXT_SKILL" || EM2_WHY+=" notes:devcontext-missing"
+grep -qF 'bridge-notes/<bridge>.md' "$EM_EXECUTE_SKILL" || EM2_WHY+=" notes:execute-missing"
 grep -qF 'bridge-notes/<bridge>.md' "$UNIKIT_VERIFY_SKILL" || EM2_WHY+=" notes:verify-missing"
 grep -qF 'engine-bridges/<bridge>/verification.md' "$UNIKIT_VERIFY_SKILL" || EM2_WHY+=" verification:verify-missing"
 grep -qF '<bridge>/verification.md' "$EM_IMPLEMENT_SKILL"  && EM2_WHY+=" verification:leaked-into-implement"
 grep -qF '<bridge>/verification.md' "$EM_FIX_SKILL"        && EM2_WHY+=" verification:leaked-into-fix"
-grep -qF '<bridge>/verification.md' "$EM_DEVCONTEXT_SKILL" && EM2_WHY+=" verification:leaked-into-devcontext"
+grep -qF '<bridge>/verification.md' "$EM_EXECUTE_SKILL" && EM2_WHY+=" verification:leaked-into-execute"
 if [[ -z "$EM2_WHY" ]]; then
     pass "EM-2 rules-tree binding: notes → all four readers · verification → verify ONLY"
 else
@@ -6663,7 +6663,7 @@ fi
 # EW: the editor procedures live below it once, not restated per executor (DEC-015).
 LB_READERS=(
     "implement:$EM_IMPLEMENT_SKILL" "fix:$EM_FIX_SKILL" "verify:$UNIKIT_VERIFY_SKILL"
-    "improve:$ROOT_DIR/skills/unikit-improve/SKILL.md" "devcontext:$EM_DEVCONTEXT_SKILL"
+    "improve:$ROOT_DIR/skills/unikit-improve/SKILL.md" "execute:$EM_EXECUTE_SKILL"
     "worker:$ROOT_DIR/subagents/unikit-implement-worker.md"
     "coordinator:$ROOT_DIR/subagents/unikit-implement-coordinator.md"
 )
@@ -7642,10 +7642,10 @@ PX_VERIFY="$ROOT_DIR/skills/unikit-verify/SKILL.md"
 PX_DEV_PRINCIPLES="$ROOT_DIR/data/dev-principles.md"
 PX_DYNAMIC_MEMORY="$ROOT_DIR/docs/dynamic-memory.md"
 PX_WHY=""
-# (PX-1) the delegate fallback that contradicted "do NOT invoke /unikit-devcontext inline" — closed in
+# (PX-1) the delegate fallback that contradicted "do NOT invoke /unikit-execute inline" — closed in
 # all three skills that declare develop-agent, not only in implement
 for px1_f in "$PX_IMPLEMENT" "$ROOT_DIR/skills/unikit-fix/SKILL.md" "$PX_VERIFY"; do
-    grep -qF 'unavailable, invoke `/unikit-devcontext` inline' "$px1_f" && PX_WHY+=" PX-1:devcontext-inline-fallback:${px1_f##*/skills/}"
+    grep -qF 'unavailable, invoke `/unikit-execute` inline' "$px1_f" && PX_WHY+=" PX-1:execute-inline-fallback:${px1_f##*/skills/}"
 done
 # (PX-2) the findings column contract lives in the planner's reference, not in implement's own.
 # Every surface that names the file, D7 included (the defect-2 line moved there). Any path
@@ -8304,7 +8304,7 @@ RT6_WHY=""
 grep -qF "$RT6_ANCHOR" "$ED_IMPLEMENT_WORKER" || RT6_WHY+=" implement-worker"
 grep -qF "$RT6_ANCHOR" "$EM_IMPLEMENT_SKILL"  || RT6_WHY+=" implement"
 grep -qF "$RT6_ANCHOR" "$EM_FIX_SKILL"        || RT6_WHY+=" fix"
-grep -qF "$RT6_ANCHOR" "$EM_DEVCONTEXT_SKILL" || RT6_WHY+=" devcontext"
+grep -qF "$RT6_ANCHOR" "$EM_EXECUTE_SKILL" || RT6_WHY+=" execute"
 grep -qF "$RT6_ANCHOR" "$UNIKIT_VERIFY_SKILL" || RT6_WHY+=" verify"
 if [[ -z "$RT6_WHY" ]]; then
     pass "RT-6 invariant 3 (absence never means ⏸️ MANUAL) stated in all four skills + the worker"
@@ -11538,7 +11538,7 @@ EXPE_ROWS=(
     "skills/unikit-improve/SKILL.md|planning|manifest"
     "skills/unikit-review/SKILL.md|quality and the rest|both"
     "skills/unikit-fix/SKILL.md|quality and the rest|both"
-    "skills/unikit-devcontext/SKILL.md|quality and the rest|both"
+    "skills/unikit-execute/SKILL.md|quality and the rest|both"
     "skills/unikit-commit/SKILL.md|quality and the rest|manifest"
     "subagents/unikit-implement-coordinator.md|execution|manifest"
     "subagents/unikit-implement-worker.md|execution|note"
@@ -12294,7 +12294,8 @@ for mcp_json in "$MCP_DIR"/*/ "$BRIDGES_DIR"/*/; do
         # injectToolsIntoSkillFrontmatter returns false when the SKILL.md has no
         # `allowed-tools:` field, and injectToolsIntoAgentFrontmatter the same for a
         # subagent without `tools:` — silently, so a dead recipient is invisible
-        # without this guard. That was exactly the unikit-devcontext bug.
+        # without this guard. That was exactly the bug of the skill now called unikit-execute: it had no
+        # allowed-tools field, so every grant that named it was dead.
         RECIPIENTS_WHY=""
         while IFS= read -r recipient; do
             [[ -z "$recipient" ]] && continue
@@ -12890,7 +12891,7 @@ fi
 #   AP-9  no `skills: [` key in skills/**/*.md. Anchored at the line start: `Available unikit
 #         skills: [` in unikit-skills-context is legitimate prose.
 #   AP-10 no `prompt: "/unikit…` — only on `prompt:` lines; the many "Do NOT invoke
-#         `/unikit-devcontext` via `Skill(...)`" sentences are legitimate.
+#         `/unikit-execute` via `Skill(...)`" sentences are legitimate.
 #   AP-11 every `{{agent_skill_call:<name>}}` names an existing skills/<name>/.
 #   AP-12 no `{{skills_dir}}` in subagents/ or data/: an agent file renders it EMPTY by design,
 #         so a path built from it would lose its prefix without a sound (like AP-7).

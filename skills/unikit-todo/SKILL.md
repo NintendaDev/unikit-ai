@@ -1,6 +1,6 @@
 ---
 name: unikit-todo
-description: Manage the project's TODO list in .unikit/TODO.md — capture work to remember for later, not to do right now. Use it to add a deferred item, mark a todo complete, or show the list. The point is to park tasks you don't want to act on in the moment but don't want to forget. Trigger on "add a todo", "add this to the todo list", "put X on the todo list", "remind me to...", "don't forget to...", "note this for later", "we should do this later", "mark this todo done", "what's on the todo list", "what's left to do". This is only for parking reminders — to actually plan or do the work now, use /unikit-plan, /unikit-implement, or /unikit-devcontext.
+description: Manage the project's TODO list in .unikit/TODO.md — capture work to remember for later, not to do right now. Use it to add a deferred item, mark a todo complete, or show the list. The point is to park tasks you don't want to act on in the moment but don't want to forget. Trigger on "add a todo", "add this to the todo list", "put X on the todo list", "remind me to...", "don't forget to...", "note this for later", "we should do this later", "mark this todo done", "what's on the todo list", "what's left to do". This is only for parking reminders — to actually plan or do the work now, use /unikit-plan, /unikit-implement, or /unikit-execute.
 argument-hint: "[task description] | complete [description] | list | purge"
 allowed-tools:
   - Read

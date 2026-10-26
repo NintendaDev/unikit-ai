@@ -623,6 +623,22 @@ await group('BR-9', async () => {
     assertEq('BR-9', 'reading the same manifest again does not announce it again',
         captureWarnings(() => renames.renameManifestSkillNames(manifest, 'br9-label')).lines.length, 0);
 
+    assertEq('BR-9', 'unikit-devcontext is read as unikit-execute and the new name stays as it is',
+        [renames.renamedTo('unikit-devcontext'), renames.renamedTo('unikit-execute')],
+        ['unikit-execute', undefined]);
+    assertEq('BR-9', 'a list that holds both names of that skill keeps one, in place',
+        renames.renameSkillNames(['unikit', 'unikit-devcontext', 'unikit-execute']),
+        ['unikit', 'unikit-execute']);
+    const execManifest = {
+        replaces: { 'skills/exec': 'unikit-devcontext' },
+        injections: [{ target: 'unikit-devcontext', targetType: 'skill', file: 'a.md' }],
+    };
+    const execRun = captureWarnings(() => renames.renameManifestSkillNames(execManifest, 'br9-exec'));
+    assertEq('BR-9', 'a manifest of the old name is read under the new one',
+        [execRun.result.replaces, execRun.result.injections.map(injection => injection.target)],
+        [{ 'skills/exec': 'unikit-execute' }, ['unikit-execute']]);
+    assertEq('BR-9', 'the old name is announced once for that manifest', execRun.lines.length, 1);
+
     report('BR-9', 'skill rename checks ran', passed - before, []);
 });
 

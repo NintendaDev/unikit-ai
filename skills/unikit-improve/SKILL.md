@@ -114,7 +114,7 @@ This skill is a **plan refinement orchestrator**, not a code writer. It loads pr
 - Launch 2-3 tasks in parallel for different aspects of the codebase
 - Each task MUST receive references to project doc files in its prompt — paths to `.unikit/ARCHITECTURE.md` and relevant core/stack rule files loaded in Bootstrap
 
-**Do NOT use `/unikit-devcontext` or `develop-agent`** — these are for code-writing skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`). Plan refinement needs code reading and analysis, not code writing.
+**Do NOT use `/unikit-execute` or `develop-agent`** — these are for code-writing skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`). Plan refinement needs code reading and analysis, not code writing.
 
 **What you CAN do directly** (without Explore tasks):
 - Read any `.md` documentation files (the plan manifest, `.unikit/*.md`)

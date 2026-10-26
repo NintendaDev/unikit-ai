@@ -42,7 +42,7 @@
         "discover_tools",
         "mcp_status"
       ],
-      "unikit-devcontext": [
+      "unikit-execute": [
         "*"
       ],
       "unikit-implement": [

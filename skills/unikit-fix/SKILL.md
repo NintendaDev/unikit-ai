@@ -70,7 +70,7 @@ and use that model, no effort.
   ```
   Agent(
     {{agent_call_worker_quoted}}
-    prompt: "{{agent_skill_call:unikit-devcontext}} <fix details>",
+    prompt: "{{agent_skill_call:unikit-execute}} <fix details>",
     description: "Apply fix"
   )
   ```
@@ -429,7 +429,7 @@ nothing was left to guess. Step 3 fixes what this contract established, not what
 
 ## Step 3: Implement the Fix
 
-This skill OWNS code-writing for fixes. Implement inline using `Read/Edit/Write/Bash` with the rules already loaded in Step 0.2 Bootstrap. Do NOT invoke `/unikit-devcontext` via `Skill(...)`.
+This skill OWNS code-writing for fixes. Implement inline using `Read/Edit/Write/Bash` with the rules already loaded in Step 0.2 Bootstrap. Do NOT invoke `/unikit-execute` via `Skill(...)`.
 
 Choose execution mode:
 - **Default (single-file or tightly-scoped fix)** → inline implementation.
@@ -441,7 +441,7 @@ When implementing inline, apply:
 - Expected behavior after the fix
 - The principles from `dev-principles.md` (no inline comments, update docs, etc.)
 
-**Fallback:** If `Agent` tool is unavailable, do NOT invoke `/unikit-devcontext` inline. Implement directly with the loaded rules — Bootstrap already covers everything needed.
+**Fallback:** If `Agent` tool is unavailable, do NOT invoke `/unikit-execute` inline. Implement directly with the loaded rules — Bootstrap already covers everything needed.
 
 **When the fix touches the editor's serialized state** — a scene, a prefab, a component, an asset, UI, VFX, animation, project settings — rather than source text, carry it out through the engine bridges by `.unikit/system/dev-principles.md` → **D6** (route by **D3**; its part below the lazy-read boundary is read now if this session has not read it yet). **No rules file, or no check line for this area → nothing changes:** it is never a reason to declare the fix impossible or to mark it `⏸️ MANUAL` (A9).
 
@@ -519,7 +519,7 @@ Create the test?
 ```
 
 Based on choice:
-- Yes → write the test inline using `Read/Edit/Write` with the rules and principles loaded in Step 0.2 Bootstrap. Use `develop-agent` only if the test requires extensive codebase exploration. Do NOT invoke `/unikit-devcontext` via `Skill(...)` — Bootstrap already covers everything.
+- Yes → write the test inline using `Read/Edit/Write` with the rules and principles loaded in Step 0.2 Bootstrap. Use `develop-agent` only if the test requires extensive codebase exploration. Do NOT invoke `/unikit-execute` via `Skill(...)` — Bootstrap already covers everything.
 - No → skip, proceed to Step 6 (patch creation)
 
 **The patch in Step 6 is mandatory regardless of the test decision.**
@@ -708,7 +708,7 @@ Suggest the user to free up context space if needed: `/clear` (full reset) or `/
 2. **Plan mode = plan only** — when user chooses "Plan first", create the plan and STOP. Do NOT apply the fix
 3. **Execute mode = follow the plan** — when FIX_PLAN.md exists, follow it step by step. Deletion happens in Step 7.5
 4. **Load patches and skill-context** — learn from past fixes before investigating
-5. **Code-writing is owned by this skill** — fixes are implemented inline using `Read/Edit/Write/Bash` with the rules loaded in Step 0.2 Bootstrap. Delegate to `develop-agent` ONLY for complex fixes requiring extensive codebase exploration. Never invoke `/unikit-devcontext` via `Skill(...)` from this workflow.
+5. **Code-writing is owned by this skill** — fixes are implemented inline using `Read/Edit/Write/Bash` with the rules loaded in Step 0.2 Bootstrap. Delegate to `develop-agent` ONLY for complex fixes requiring extensive codebase exploration. Never invoke `/unikit-execute` via `Skill(...)` from this workflow.
 6. **Suggest a regression test for logic outside a review loop** — never for authored content or tunable data, and none inside a review loop (Step 5)
 7. **ALWAYS create patch** — every fix generates a `.unikit/code/patches/` entry
 8. **Root cause, not symptoms** — fix the actual problem. Don't refactor unrelated code, don't add features

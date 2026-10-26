@@ -547,9 +547,9 @@ Every skill below offers one point, `bootstrap`, at the end of its context-loadi
 | `unikit-bridge-docs` | `bootstrap` | Bootstrap | - |
 | `unikit-bridge-trap` | `bootstrap` | Bootstrap | - |
 | `unikit-commit` | `bootstrap` | Item 3 of the main list (Context Check), indented as part of the item | - |
-| `unikit-devcontext` | `bootstrap` | Rules Loading, the last lines of the file | - |
 | `unikit-docs` | `bootstrap` | Step 0 (Load Project Context) | - |
 | `unikit-evolve` | `bootstrap` | Step 2 (Load Context) | - |
+| `unikit-execute` | `bootstrap` | Rules Loading, the last lines of the file | - |
 | `unikit-explore` | `bootstrap` | Step 0 (Bootstrap Context), after the optional reads | - |
 | `unikit-fix` | `bootstrap` | Step 0.2 (Load Fix Context) | - |
 | `unikit-implement` | `bootstrap` | Step 1.5 (Bootstrap Rules & Principles) | `--list`, `status` |

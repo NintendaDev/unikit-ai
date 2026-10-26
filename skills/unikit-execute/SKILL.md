@@ -1,5 +1,5 @@
 ---
-name: unikit-devcontext
+name: unikit-execute
 description: >-
   Senior {{engine_name}}/{{engine_code_language}} developer that performs direct, ad-hoc
   code tasks without a formal plan — and the code-execution engine other unikit skills and

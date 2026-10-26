@@ -225,7 +225,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **Out:** proposed rules → `.unikit/RULES.md` and/or `.unikit/skill-context/<skill>/SKILL.md`.
 - **Optional (feedback loop).** Before: `/unikit-fix`. After: `/unikit-rules`, `/unikit-memory`.
 
-### unikit-devcontext
+### unikit-execute
 - **Purpose:** The code-writing engine / senior-developer persona for direct, ad-hoc edits with
   **no plan** (e.g. a one-off refactor). The skill the pipeline delegates to as `develop-agent`.
 - **When:** "just add this method", "refactor this", "do it directly, no plan".

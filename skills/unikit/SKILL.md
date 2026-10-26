@@ -42,7 +42,7 @@ Set up AI agent context for a game project by:
 The architecture sub-skill is invoked **before** the summary so the summary can honestly list `.unikit/ARCHITECTURE.md` alongside the other artifacts. When `/unikit-architecture` returns, do not stop in between — immediately print the Step 11 summary in the same response.
 
 This skill is the entry point for the unikit ecosystem. It creates the foundational
-context that other unikit skills (`unikit-devcontext`, `unikit-plan`, `unikit-implement`, etc.)
+context that other unikit skills (`unikit-execute`, `unikit-plan`, `unikit-implement`, etc.)
 rely on for informed decision-making, including the canonical `.unikit/config.yaml` they all
 read at the start of every command.
 

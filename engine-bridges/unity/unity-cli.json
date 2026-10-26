@@ -65,7 +65,7 @@
   "allowed-tools": {
     "agents": {},
     "skills": {
-      "unikit-devcontext": ["command", "status", "recompile", "test", "--version"],
+      "unikit-execute": ["command", "status", "recompile", "test", "--version"],
       "unikit-implement": ["command", "status", "recompile", "test", "--version"],
       "unikit-fix": ["command", "status", "recompile", "test", "--version"],
       "unikit-verify": ["command", "status", "recompile", "test", "--version"],

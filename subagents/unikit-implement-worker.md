@@ -13,7 +13,7 @@ model: inherit
 maxTurns: 16
 permissionMode: acceptEdits
 skills:
-  - unikit-devcontext
+  - unikit-execute
   - unikit-verify
 ---
 
@@ -53,7 +53,7 @@ Before writing code:
    - **RULES.md**: ALWAYS read `.unikit/RULES.md` first (highest priority). **Rule topics:** then load the topic files listed under its `## Topics` whose `Load when` matches your phase — its name and every task you were handed; when unsure, load. A listed file that is missing → `WARN [rules] topic file missing: .unikit/rules/<slug>.md`, continue.
    - **Core**: read the Core table. For EACH row where Required By = `all` or contains `{{self_name}}` — read that file from `.unikit/memory/code/core/` using the Read tool. Do NOT skip any matching row. Always re-read at skill start, never rely on prior conversation cache
    - **Stack**: load dynamically when the current task or context matches "Load When" column, or when a need arises during work
-4. Read `.unikit/skill-context/unikit-devcontext/SKILL.md` if it exists
+4. Read `.unikit/skill-context/unikit-execute/SKILL.md` if it exists
 5. Read `.unikit/system/dev-principles.md` **up to its lazy-read boundary**: find the marker line (`Grep -n '^<!-- === LAZY-READ BOUNDARY === -->'`) and `Read` with `limit` set to it. The part below the marker is read once, now, when a task you were handed carries an `Editor:` line — the deep reference and the editor procedures D6–D8 — unconditionally, never gated on which rules happen to be installed. An agent that cannot read with a limit reads the whole file.
 6. Read `.unikit/system/engine-bridges/BRIDGES.md` if it exists, and for each bridge whose block names a rules tree that tree's `.unikit/system/engine-bridges/<bridge>/INDEX.md`, **base section only** — the stamp under the title (the `bridge` row) plus every section **except** the `## Check` table — access, the live failure classes, shape and cost, what is irreversible, the lane, and what to do when the file is silent. The `## Check` table is **not** read here: it is grepped per editor target, by that target's area plus the six cross-cutting ones.
 7. For each bridge in `BRIDGES.md`, read `.unikit/bridge-notes/<bridge>.md` if it exists, **header only** (`bridge:` / `audited:`), and compare it against that bridge's stamp. A mismatch is one `WARN [bridges] notes header ≠ bridge (<header> ≠ <bridge>)` — the entries are suspect, not void, and they still apply.

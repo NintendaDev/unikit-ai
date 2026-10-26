@@ -24,7 +24,7 @@
     },
     "skills": {
       "unikit-plan": ["manage_tools"],
-      "unikit-devcontext": ["*"],
+      "unikit-execute": ["*"],
       "unikit-implement": ["*"],
       "unikit-fix": ["*"],
       "unikit-verify": ["*"],

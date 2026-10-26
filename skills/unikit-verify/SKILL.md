@@ -70,7 +70,7 @@ and use that model, no effort.
   ```
   Agent(
     {{agent_call_worker_quoted}}
-    prompt: "{{agent_skill_call:unikit-devcontext}} <fix details>",
+    prompt: "{{agent_skill_call:unikit-execute}} <fix details>",
     description: "Apply fix"
   )
   ```
@@ -641,11 +641,11 @@ Options:
 ```
 
 Based on choice:
-- Fix now → apply fixes inline using `Read/Edit/Write/Bash` with the rules and principles loaded in Step 0.2. Use `develop-agent` ONLY when fixes span many independent files OR require extensive codebase exploration. Do NOT invoke `/unikit-devcontext` via `Skill(...)` — Bootstrap already covers everything.
+- Fix now → apply fixes inline using `Read/Edit/Write/Bash` with the rules and principles loaded in Step 0.2. Use `develop-agent` ONLY when fixes span many independent files OR require extensive codebase exploration. Do NOT invoke `/unikit-execute` via `Skill(...)` — Bootstrap already covers everything.
 - Fix critical only → same inline approach, but only incomplete tasks — skip warnings
 - Accept as is → mark accepted issues in the report, proceed to Step 5
 
-**Fallback:** If `Agent` tool is unavailable, do NOT invoke `/unikit-devcontext` inline. Implement fixes directly with the rules from Step 0.2 Bootstrap.
+**Fallback:** If `Agent` tool is unavailable, do NOT invoke `/unikit-execute` inline. Implement fixes directly with the rules from Step 0.2 Bootstrap.
 
 For each fix iteration (Fix now / Fix critical only). Fixes are written by this skill directly; rules are already in context from Step 0.2 Bootstrap.
 - For each incomplete/partial task — implement the missing parts
@@ -791,7 +791,7 @@ Strict mode is recommended before merging to the base branch or creating a PR.
 4. **No false positives** — if unsure, mark as "⚠️ Verify manually"
 5. **Do not modify .unikit/ files** — only report drift and suggest updates. **Single exception:** Step 3.9's all-AC-met writeback to `.unikit/gamedesign/GD-IDS.yaml` (`implemented_version`) — the lone sanctioned code→design write (a single surface; GAME.md's `## System Map [gen]` renders the `implemented` state read-only from it)
 6. **Do not touch engine read-only paths** — see ENGINE_RULES.md for the list of read-only directories; ignore them during checks
-7. **Agent-based delegation** — use the `recon-agent` alias for read-only investigation. Fixes are applied INLINE by this skill using rules loaded in Step 0.2 Bootstrap. Use `develop-agent` for fixes ONLY when they span many independent files or require extensive codebase exploration. Never invoke `/unikit-devcontext` via `Skill(...)`. If Agent tool is unavailable, fall back to inline work for both exploration (Glob/Grep/Read) and fixes (direct Read/Edit/Write/Bash with loaded rules).
+7. **Agent-based delegation** — use the `recon-agent` alias for read-only investigation. Fixes are applied INLINE by this skill using rules loaded in Step 0.2 Bootstrap. Use `develop-agent` for fixes ONLY when they span many independent files or require extensive codebase exploration. Never invoke `/unikit-execute` via `Skill(...)`. If Agent tool is unavailable, fall back to inline work for both exploration (Glob/Grep/Read) and fixes (direct Read/Edit/Write/Bash with loaded rules).
 
 ---
 

@@ -2520,15 +2520,15 @@ if cmp -s "$AK_AG_SKILL" "$AK_KIMI_SKILL"; then
 fi
 # (the substitution of {{settings_file}} is asserted by BR-13 in test-bridges.mjs: no base skill writes the variable any more)
 assert_contains "$AK_KIMI_SKILL" 'subagent_type: "coder"' "kimi copy: the coder subagent type"
-assert_contains "$AK_KIMI_SKILL" 'Read \.kimi-code/skills/unikit-devcontext/SKILL\.md in full' \
+assert_contains "$AK_KIMI_SKILL" 'Read \.kimi-code/skills/unikit-execute/SKILL\.md in full' \
     "kimi copy: develop-agent reads its skill file from .kimi-code/skills"
 # (the substitution of {{settings_file}} is asserted by BR-13 in test-bridges.mjs: no base skill writes the variable any more)
 assert_contains "$AK_AG_SKILL" 'subagent_type: "self"' "antigravity copy: its own worker type"
 assert_not_contains "$AK_AG_SKILL" 'subagent_type: "coder"' "antigravity copy: no Kimi rewrite"
-assert_contains "$AK_AG_SKILL" 'Read \.agents/skills/unikit-devcontext/SKILL\.md in full' \
+assert_contains "$AK_AG_SKILL" 'Read \.agents/skills/unikit-execute/SKILL\.md in full' \
     "antigravity copy: develop-agent reads its skill file from the shared .agents/skills"
 assert_not_contains "$AK_AG_SKILL" '\.kimi-code/skills' "antigravity copy: no Kimi skills path"
-assert_not_contains "$AK_KIMI_SKILL" '\.agents/skills/unikit-devcontext' "kimi copy: no Antigravity skills path"
+assert_not_contains "$AK_KIMI_SKILL" '\.agents/skills/unikit-execute' "kimi copy: no Antigravity skills path"
 
 # MCP, each client in its own form
 assert_contains "$AK_KIMI_MCP" '"bearerTokenEnvVar": "GITHUB_PAT"' "kimi mcp.json: the variable NAME in bearerTokenEnvVar"
@@ -2553,7 +2553,7 @@ assert_contains "$AK_KIMI_COORD" '^- \.kimi-code/skills/unikit-implement/SKILL\.
 assert_exists "$AK_KIMI_WORKER" "kimi must have the worker installed under .kimi-code/agents"
 frontmatter_of "$AK_KIMI_WORKER" > "$TMPDIR/ak-worker-1.fm"
 assert_not_contains "$TMPDIR/ak-worker-1.fm" '^skills:' "kimi worker: update installs it without the skills: field"
-assert_contains "$AK_KIMI_WORKER" '^- \.kimi-code/skills/unikit-devcontext/SKILL\.md$' "kimi worker: the devcontext rules are on the read list"
+assert_contains "$AK_KIMI_WORKER" '^- \.kimi-code/skills/unikit-execute/SKILL\.md$' "kimi worker: the execute rules are on the read list"
 assert_contains "$AK_KIMI_WORKER" '^- \.kimi-code/skills/unikit-verify/SKILL\.md$' "kimi worker: the verify rules are on the read list"
 assert_not_contains "$AK_KIMI_WORKER" '\{\{skills_dir\}\}' "kimi worker: no unresolved {{skills_dir}}"
 
@@ -2598,7 +2598,7 @@ assert_same_sha "$AK_KIMI_COORD" "$AK_H_KIMI_COORD" \
 assert_contains "$AK_KIMI_COORD" '^Before you start, Read each file below and follow it as part of your instructions\.' \
     "the repaired coordinator must carry the skills read list again"
 assert_not_contains "$AK_KIMI_WORKER" 'TAMPER-KIMI' "update must overwrite the tampered Kimi worker"
-assert_contains "$AK_KIMI_WORKER" '^- \.kimi-code/skills/unikit-devcontext/SKILL\.md$' \
+assert_contains "$AK_KIMI_WORKER" '^- \.kimi-code/skills/unikit-execute/SKILL\.md$' \
     "the repaired worker must carry the skills read list again, not the raw source"
 assert_same_sha "$AK_KIMI_WORKER" "$AK_H_KIMI_WORKER" \
     "the repaired worker must be byte-identical to the adapted install (read list, no skills: field)"
@@ -2680,9 +2680,9 @@ if cmp -s "$UC_CLAUDE_SKILL" "$UC_UNI_SKILL"; then
 fi
 assert_contains "$UC_CLAUDE_SKILL" 'subagent_type: "general-purpose"' "claude copy: the Claude worker type"
 assert_contains "$UC_UNI_SKILL" 'subagent_type: "general-purpose"' "universal copy: the same Claude worker type"
-assert_contains "$UC_CLAUDE_SKILL" 'Call the Skill tool with skill "unikit-devcontext" and pass the text after the colon' "claude copy: develop-agent calls the Skill tool"
-assert_not_contains "$UC_CLAUDE_SKILL" 'Read \.claude/skills/unikit-devcontext/SKILL\.md in full' "claude copy: no file-read form"
-assert_contains "$UC_UNI_SKILL" 'Read \.agents/skills/unikit-devcontext/SKILL\.md in full' "universal copy: develop-agent reads the skill file"
+assert_contains "$UC_CLAUDE_SKILL" 'Call the Skill tool with skill "unikit-execute" and pass the text after the colon' "claude copy: develop-agent calls the Skill tool"
+assert_not_contains "$UC_CLAUDE_SKILL" 'Read \.claude/skills/unikit-execute/SKILL\.md in full' "claude copy: no file-read form"
+assert_contains "$UC_UNI_SKILL" 'Read \.agents/skills/unikit-execute/SKILL\.md in full' "universal copy: develop-agent reads the skill file"
 assert_not_contains "$UC_UNI_SKILL" 'Call the Skill tool with skill' "universal copy: no Skill-tool form"
 assert_exists "$UC_CLAUDE_PLAN" "claude must have unikit-plan installed (it carries the subagent-arguments pointer)"
 assert_exists "$UC_UNI_PLAN" "universal must have unikit-plan installed (it carries the subagent-arguments pointer)"
@@ -2932,6 +2932,90 @@ RENAME_EXT_SHA=$(sha_of "$RENAME_EXT_DIR/.claude/skills/unikit-bridge-trap/SKILL
 (cd "$RENAME_EXT_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/update-skill-rename-ext-2.log" 2>&1)
 assert_same_sha "$RENAME_EXT_DIR/.claude/skills/unikit-bridge-trap/SKILL.md" "$RENAME_EXT_SHA" "rename + extension: a second update keeps the replacement"
 echo "  ✓ skill renames: an extension's replacement of a renamed base skill is put back under the new name"
+
+# ─────────────────────────────────────────────
+# Test 35c: unikit-devcontext became unikit-execute — one more row of the same table
+# ─────────────────────────────────────────────
+# The skill that only loaded context got a flow of its own and a new name. For a project that has the old
+# one nothing is asked: the new name takes its place for every agent that had it and appears for no agent
+# that did not, exactly as in Test 35. The user's skill-context directory of the old name is named in a
+# warning and left where it is.
+
+EXEC_DIR="$TMPDIR/update-skill-rename-execute"
+mkdir -p "$EXEC_DIR/.claude/skills/unikit-devcontext" "$EXEC_DIR/.unikit/skill-context/unikit-devcontext"
+echo "OLD DEVCONTEXT" > "$EXEC_DIR/.claude/skills/unikit-devcontext/SKILL.md"
+echo "MY OVERRIDE" > "$EXEC_DIR/.unikit/skill-context/unikit-devcontext/SKILL.md"
+cat > "$EXEC_DIR/.unikit.json" << 'EOF'
+{
+  "version": "2.5.0",
+  "engine": "unity",
+  "mcp": { "servers": {} },
+  "engineBridges": { "selected": {} },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit", "unikit-devcontext"],
+      "installedSubagents": []
+    },
+    {
+      "id": "codex",
+      "skillsDir": ".codex/skills",
+      "subagentsDir": ".codex/agents",
+      "installedSkills": ["unikit"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": { "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } } }
+}
+EOF
+inject_fake_registry "$EXEC_DIR"
+
+EXEC_OUT1="$TMPDIR/update-skill-rename-execute-1.log"
+(cd "$EXEC_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$EXEC_OUT1" 2>&1)
+
+assert_exists "$EXEC_DIR/.claude/skills/unikit-execute/SKILL.md" "rename execute: the first agent gets the new skill without --install-new"
+assert_contains "$EXEC_DIR/.claude/skills/unikit-execute/SKILL.md" '^name: unikit-execute$' "rename execute: the installed skill carries the new name"
+assert_not_exists "$EXEC_DIR/.claude/skills/unikit-devcontext" "rename execute: the old directory is gone"
+assert_not_exists "$EXEC_DIR/.codex/skills/unikit-execute" "rename execute: an agent that never had the old skill does not get the new one"
+
+EXEC_STATE=$(node -e "
+  const c = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
+  const claude = c.agents.find(a => a.id === 'claude'), codex = c.agents.find(a => a.id === 'codex');
+  process.stdout.write(JSON.stringify({
+    installed: claude.installedSkills.filter(s => /devcontext|execute/.test(s)).sort(),
+    managed: Object.keys(claude.managedSkills || {}).filter(s => /devcontext|execute/.test(s)).sort(),
+    codex: codex.installedSkills.filter(s => /devcontext|execute/.test(s)),
+  }));
+" "$EXEC_DIR/.unikit.json")
+if [[ "$EXEC_STATE" == '{"installed":["unikit-execute"],"managed":["unikit-execute"],"codex":[]}' ]]; then
+    echo "  ✓ rename execute: installedSkills and managedSkills carry the new name, the other agent none"
+else
+    echo "Assertion failed: the renamed skill is not recorded as expected: $EXEC_STATE"
+    exit 1
+fi
+
+assert_contains "$EXEC_OUT1" 'renamed from unikit-devcontext' "rename execute: the report says the new skill replaces the old one"
+# The agent that had the old skill never sees its replacement as "new in package"; the agent that did not have it
+# sees the new skill as skipped, which is exactly "appears for no agent that did not".
+EXEC_BLOCK_CLAUDE="$TMPDIR/update-skill-rename-execute-claude.block"
+EXEC_BLOCK_CODEX="$TMPDIR/update-skill-rename-execute-codex.block"
+awk '/^\[claude\] Skills status:/{f=1;next} /^\[codex\] /{f=0} f' "$EXEC_OUT1" > "$EXEC_BLOCK_CLAUDE"
+awk '/^\[codex\] Skills status:/{f=1;next} /^\[claude\] /{f=0} f' "$EXEC_OUT1" > "$EXEC_BLOCK_CODEX"
+assert_not_contains "$EXEC_BLOCK_CLAUDE" 'unikit-execute \(new in package\)' "rename execute: a rename target is not offered as a new skill to the agent that had the old one"
+assert_contains "$EXEC_BLOCK_CODEX" 'unikit-execute \(new in package\)' "rename execute: the agent that never had the old skill only sees the new one as skipped"
+assert_contains "$EXEC_OUT1" 'renamed skill' "rename execute: the user's skill-context of the old name is named in a warning"
+assert_exists "$EXEC_DIR/.unikit/skill-context/unikit-devcontext/SKILL.md" "rename execute: the user's own directory is left where it is"
+
+EXEC_SHA=$(sha_of "$EXEC_DIR/.unikit.json")
+EXEC_SKILL_SHA=$(sha_of "$EXEC_DIR/.claude/skills/unikit-execute/SKILL.md")
+EXEC_OUT2="$TMPDIR/update-skill-rename-execute-2.log"
+(cd "$EXEC_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$EXEC_OUT2" 2>&1)
+assert_same_sha "$EXEC_DIR/.unikit.json" "$EXEC_SHA" "rename execute: a second update leaves .unikit.json byte-identical"
+assert_same_sha "$EXEC_DIR/.claude/skills/unikit-execute/SKILL.md" "$EXEC_SKILL_SHA" "rename execute: ...and the renamed skill"
+assert_not_contains "$EXEC_OUT2" 'renamed from' "rename execute: nothing is renamed twice"
+echo "  ✓ skill rename unikit-devcontext -> unikit-execute: per agent, without a question, reported once, idempotent"
 
 
 # ─────────────────────────────────────────────

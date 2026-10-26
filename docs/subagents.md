@@ -124,7 +124,7 @@ Executes exactly ONE task from the active plan, then returns control.
 - Never executes a `Measure:` or a `Hand-back:` task of a balance plan: one that reaches it is returned unexecuted (`returned: <task id> — Measure/Hand-back belongs to the coordinator`) and no row is written
 - Returns a `bridges:` field with the ids of the engine bridges its calls went through, and may use Context7 for the library-reference step - as the coordinator may, when the server is selected
 - **Writes its own row into the plan's `## Engine Bridge Findings` table** when a call through an engine bridge misled it (the `bridge` column names the bridge), rather than returning a candidate to the coordinator. Workers have no worktree isolation, so they all edit the same plan file - which is safe only because a phase carrying an `Editor:` line is alone in its execution layer, leaving one writer at a time. Handing the row back instead would defer the write to the end of the layer and lose it if the coordinator failed
-- Lists `unikit-devcontext` and `unikit-verify` under `skills:` so it has full access to the pipeline knowledge base without spawning anything - Claude Code preloads them, on Kimi Code the installed file starts with a read list (see [Skills listed in an agent file](#skills-listed-in-an-agent-file))
+- Lists `unikit-execute` and `unikit-verify` under `skills:` so it has full access to the pipeline knowledge base without spawning anything - Claude Code preloads them, on Kimi Code the installed file starts with a read list (see [Skills listed in an agent file](#skills-listed-in-an-agent-file))
 
 Frontmatter highlights: `permissionMode: acceptEdits`, `maxTurns: 16`.
 
@@ -159,7 +159,7 @@ Skills expose six named aliases in two families. The **skill-loading** two expan
 
 | Alias | Expands to | Used by | When to use |
 |-------|------------|---------|-------------|
-| `develop-agent` | `Agent(<call head>, prompt: "<skill call: unikit-devcontext> <task details>", …)` | `/unikit-implement`, `/unikit-fix`, `/unikit-verify` | **Only** for true parallel scopes or deep-dive single tasks after the Bootstrap refactor. Default sequential/fallback work stays inline in the calling skill |
+| `develop-agent` | `Agent(<call head>, prompt: "<skill call: unikit-execute> <task details>", …)` | `/unikit-implement`, `/unikit-fix`, `/unikit-verify` | **Only** for true parallel scopes or deep-dive single tasks after the Bootstrap refactor. Default sequential/fallback work stays inline in the calling skill |
 | `docs-agent` | `Agent(<call head>, prompt: "<skill call: unikit-docs> <context>", …)` | `/unikit-implement` (Step 5.3) | Update or create documentation pages |
 | `recon-agent` | `Agent(<reader call head>, prompt: "<focused question> You are read-only: edit and write nothing.")` | `/unikit-docs`, `/unikit-explore`, `/unikit-fix`, `/unikit-plan`, `/unikit-verify`, `/unikit-improve`, `/unikit-gd-explore`, `/unikit-gd-recon`, `/unikit-gd-balance`, `/unikit-gd-experiment` | Read-only parallel reconnaissance of a codebase or a reference corpus |
 | `check-agent` | `Agent(<reader call head>, …)` in a fresh context | `/unikit-improve`, `/unikit-review` (`+check`), `/unikit-explore` and `/unikit-gd-explore` (coherence gate) | Validate findings, or a written artifact, from a context that saw none of the work |
@@ -168,16 +168,16 @@ Skills expose six named aliases in two families. The **skill-loading** two expan
 
 Rule capture has no alias: `/unikit-implement` Step 5.2 and `/unikit-verify` Step 5 put the candidates to the user in the calling session and invoke `/unikit-rules` only with the batch the user selected — a background agent could not have asked.
 
-Fallback: if `Agent` is unavailable, `docs-agent` invokes its skill inline. `develop-agent` does **not** fall back to inline `/unikit-devcontext` - after the Bootstrap refactor, the calling skill already has rules and engine principles loaded and continues inline itself. The other four fall back per skill: `recon-agent` degrades to inline `Glob`/`Grep`/`Read`, `check-agent` is skipped in `+check` (one `WARN [+check]` line, never inline analysis) and run inline in the coherence gate, `lens-agent` runs its lenses sequentially in the calling session, `recon-writer-agent` asks through `recon-agent` and the session writes the answer into the file itself - it falls back when the call fails, when the agent returns without its file, or when the runtime has no subagent tool, and the file is checked on disk before the plan is synthesised.
+Fallback: if `Agent` is unavailable, `docs-agent` invokes its skill inline. `develop-agent` does **not** fall back to inline `/unikit-execute` - after the Bootstrap refactor, the calling skill already has rules and engine principles loaded and continues inline itself. The other four fall back per skill: `recon-agent` degrades to inline `Glob`/`Grep`/`Read`, `check-agent` is skipped in `+check` (one `WARN [+check]` line, never inline analysis) and run inline in the coherence gate, `lens-agent` runs its lenses sequentially in the calling session, `recon-writer-agent` asks through `recon-agent` and the session writes the answer into the file itself - it falls back when the call fails, when the agent returns without its file, or when the runtime has no subagent tool, and the file is checked on disk before the plan is synthesised.
 
 ### How a skill reaches a subagent
 
-An `Agent` call has no parameter that loads a skill: Claude Code takes none at call time (its `skills` field exists only in an agent file's frontmatter, see below) and Kimi Code has none at all. A slash command at the start of a `prompt` does not help either. It is not plain text for every runtime, but on Claude Code it proved unreliable: measured on `sonnet-5-5` with probe skills and the real `unikit-devcontext` skill (30 runs in all), the subagent called `Skill` in 19 of 30 runs - in 4 of 10 with the real skill - and in all 19 it lost or cut the arguments, and the skill's start was shallower than with a file read. So a skill that delegates to another skill writes **one call line**, and the installer expands it by the agent's profile (`skillCall`):
+An `Agent` call has no parameter that loads a skill: Claude Code takes none at call time (its `skills` field exists only in an agent file's frontmatter, see below) and Kimi Code has none at all. A slash command at the start of a `prompt` does not help either. It is not plain text for every runtime, but on Claude Code it proved unreliable: measured on `sonnet-5-5` with probe skills and the real skill that is now `unikit-execute` (30 runs in all), the subagent called `Skill` in 19 of 30 runs - in 4 of 10 with the real skill - and in all 19 it lost or cut the arguments, and the skill's start was shallower than with a file read. So a skill that delegates to another skill writes **one call line**, and the installer expands it by the agent's profile (`skillCall`):
 
 ```
 Agent(
   <call head>
-  prompt: "{{agent_skill_call:unikit-devcontext}} <task details>",
+  prompt: "{{agent_skill_call:unikit-execute}} <task details>",
   description: "Implement <task>"
 )
 ```

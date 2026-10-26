@@ -142,7 +142,7 @@ All skills use the `unikit-` prefix and are installed to the agent's skills dire
 |----------|--------|
 | **Core** | `unikit`, `unikit-help` |
 | **Memory and rules** | `unikit-memory`, `unikit-rules`, `unikit-rules-registry`, `unikit-skills-context` |
-| **Code** | `unikit-architecture`, `unikit-archive`, `unikit-commit`, `unikit-devcontext`, `unikit-evolve`, `unikit-explore`, `unikit-fix`, `unikit-implement`, `unikit-improve`, `unikit-plan`, `unikit-pr`, `unikit-review`, `unikit-roadmap`, `unikit-verify` |
+| **Code** | `unikit-architecture`, `unikit-archive`, `unikit-commit`, `unikit-evolve`, `unikit-execute`, `unikit-explore`, `unikit-fix`, `unikit-implement`, `unikit-improve`, `unikit-plan`, `unikit-pr`, `unikit-review`, `unikit-roadmap`, `unikit-verify` |
 | **Game Design** | 13 `unikit-gd-*` skills - GDD authoring (brainstorm, spec, system, flow, content), research (explore, recon), balance (balance), experiments (experiment), quality (review, verify), dispatch (apply), and export (docs). See [Game-Design Module](gamedesign.md) |
 | **Tools** | `unikit-bridge-audit`, `unikit-bridge-docs`, `unikit-bridge-trap`, `unikit-docs`, `unikit-references`, `unikit-todo` |
 

@@ -20,6 +20,7 @@ import { logWarn } from '../utils/log.js';
 export const SKILL_RENAMES: Readonly<Record<string, string>> = {
   'unikit-mcp-trap': 'unikit-bridge-trap',
   'unikit-mcp-audit': 'unikit-bridge-audit',
+  'unikit-devcontext': 'unikit-execute',
 };
 
 export function renamedTo(name: string): string | undefined {
