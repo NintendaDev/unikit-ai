@@ -2,7 +2,7 @@
 
 Loaded by Step 3.6 of `/unikit-implement` when `.unikit/system/engine-bridges/BRIDGES.md` lists at least one bridge.
 
-1. Take the bridges in the order `.unikit/system/dev-principles.md` → **D3** gives and use the first whose `available when` line holds in this session.
+1. Take the bridges in the order `.unikit/system/dev-principles.md` → **D3** gives and use the first whose `available when` row holds in this session.
 2. Read the {{engine_name}} console through it, filtering for errors, by the read procedure of its block in `BRIDGES.md` and D6 — a marker before the phase's change and the delta after it when the bridge offers one.
 3. No bridge is available → print `Console check: no engine bridge available, skipped` and go on to 3.7.
 4. Analyze each error:

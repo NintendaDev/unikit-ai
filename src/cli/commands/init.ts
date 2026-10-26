@@ -307,7 +307,7 @@ export async function initCommand(): Promise<void> {
     await installUserQuestionsContract(projectDir);
 
     // Deliver BRIDGES.md and the rules tree of every selected bridge (sweeps the 2.x engine-mcp folder)
-    await installEngineBridges(projectDir, engineId, discoveredServers, answers.engineBridges);
+    await installEngineBridges(projectDir, engineId, discoveredServers, answers.engineBridges, installedAgents.map(agent => agent.id));
 
     // Install engine development principles (shared system file)
     await installDevPrinciples(projectDir, engineId, mcpBridgeCode);

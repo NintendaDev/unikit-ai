@@ -7,7 +7,7 @@ import { getBridgeAdapter } from './bridges/adapter.js';
 import { getEngineConfig } from './engines.js';
 import { isRecord, parseMcpServerEntry } from './mcp-schema.js';
 import { getMcpWriter } from './mcp-writers/index.js';
-import type { BridgeCli, BridgeDetect, BridgeRequires, BridgeSetupLine, DocsSource } from './bridges/types.js';
+import type { BridgeCli, BridgeDetect, BridgeRequires, BridgeSetupLine, BridgeSettingsVersionProbe, DocsSource } from './bridges/types.js';
 import { logInfo } from '../utils/log.js';
 
 /** What kind of bridge an entry is: an MCP server, or a command line. */
@@ -119,6 +119,8 @@ export interface McpServerEntry {
   requires?: BridgeRequires;
   /** What the wizard may look at, without running anything, to pre-select the bridge. */
   detect?: BridgeDetect;
+  /** Where the installed version of a bridge of kind `mcp` is read: the arguments of its entry in the agent's settings file. */
+  versionProbe?: BridgeSettingsVersionProbe;
   /** The command line of a bridge of kind `cli`: its binary, the project flag and the forms of calling it. Present iff `kind` is `cli`. */
   cli?: BridgeCli;
 }

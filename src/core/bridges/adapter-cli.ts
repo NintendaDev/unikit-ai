@@ -8,12 +8,15 @@
 
 import type { McpServerEntry } from '../mcp.js';
 import { logWarn } from '../../utils/log.js';
-import type { BridgeAdapter } from './adapter.js';
+import type { BridgeAdapter, BridgeBlockParts } from './adapter.js';
 import type { BridgeCli, BridgeFileProbe } from './types.js';
 
 const LOG_COMPONENT = 'adapter-cli';
 const WILDCARD = '*';
 const KEY_PATH_SEPARATOR = ' > ';
+const FLOOR_PART_SEPARATOR = '; ';
+
+type Row = [field: string, value: string];
 
 /** The `cli` block of an entry of this kind. A parsed entry of kind `cli` always has one; the opposite is a programmer error. */
 function cliOf(entry: McpServerEntry): BridgeCli {
@@ -23,8 +26,8 @@ function cliOf(entry: McpServerEntry): BridgeCli {
   return entry.cli;
 }
 
-/** `CLI >= 1.0.0-beta.14; package >= 0.9.1-exp.1; engine >= 6000.0` from the floors the card sets, as a block line; `null` without any. */
-function floorLine(entry: McpServerEntry): string | null {
+/** `CLI >= 1.0.0-beta.14; package >= 0.9.1-exp.1; engine >= 6000.0` from the floors the card sets, as the value of the `floor` row; `null` without any. */
+function floorValue(entry: McpServerEntry): string | null {
   const requires = entry.requires;
   if (!requires) return null;
   const parts = [
@@ -32,19 +35,24 @@ function floorLine(entry: McpServerEntry): string | null {
     requires.package === undefined ? null : `package >= ${requires.package}`,
     requires.engineVersion === undefined ? null : `engine >= ${requires.engineVersion}`,
   ].filter((part): part is string => part !== null);
-  return parts.length > 0 ? `- floor: ${parts.join('; ')}` : null;
+  return parts.length > 0 ? parts.join(FLOOR_PART_SEPARATOR) : null;
 }
 
 /**
- * The block line of a probe that READS a project file: no shell, no grant, works with the editor
- * closed. The key `- probe package: ` is a contract with the readers of BRIDGES.md.
+ * The value of the `probe package` row: a probe that READS a project file - no shell, no grant, works with
+ * the editor closed. The row name `probe package` is a contract with the readers of BRIDGES.md.
  */
-export function probePackageLine(probe: BridgeFileProbe): string {
+function probePackageValue(probe: BridgeFileProbe): string {
   const read = (file: string, keyPath: string[]) => `read \`${file}\`, key path ${keyPath.join(KEY_PATH_SEPARATOR)}`;
   const fallback = probe.fallback
     ? `; when the file or the key is missing, ${read(probe.fallback.file, probe.fallback.path)} (the requested version: an open editor loads it only after it refreshes the project)`
     : '';
-  return `- probe package: ${read(probe.file, probe.path)}${fallback}`;
+  return `${read(probe.file, probe.path)}${fallback}`;
+}
+
+/** A row for a form of the card, or no row when the card has no such form. */
+function formRow(field: string, form: string | undefined): Row[] {
+  return form ? [[field, `\`${form}\``]] : [];
 }
 
 export const cliAdapter: BridgeAdapter = {
@@ -65,31 +73,34 @@ export const cliAdapter: BridgeAdapter = {
     const cli = cliOf(entry);
     return cli.shells.map(shell => `${shell}(${cli.binary} `);
   },
-  describe: ({ entry }) => {
+  describe: ({ entry }): BridgeBlockParts => {
     const cli = cliOf(entry);
     const forms = cli.forms;
-    const floor = floorLine(entry);
+    const floor = floorValue(entry);
     const versionIsFloored = forms.version !== undefined && entry.requires?.cli !== undefined;
-    return [
-      '- kind: cli',
-      `- call: \`${forms.call}\``,
-      ...(forms.groups ? [`- catalog groups: \`${forms.groups}\``] : []),
-      ...(forms.group ? [`- catalog group: \`${forms.group}\``] : []),
-      ...(forms.search ? [`- catalog search: \`${forms.search}\``] : []),
-      ...(forms.list ? [`- catalog list: \`${forms.list}\``] : []),
-      ...(forms.schema ? [`- schema of one command: \`${forms.schema}\``] : []),
-      ...(forms.compile ? [`- compile: \`${forms.compile}\``] : []),
-      ...(forms.status ? [`- status: \`${forms.status}\``] : []),
-      ...(forms.ready ? [`- ready: \`${forms.ready}\``] : []),
-      ...(forms.version ? [`- probe version: \`${forms.version}\``] : []),
-      ...(cli.probes?.package ? [probePackageLine(cli.probes.package)] : []),
-      ...(floor ? [floor] : []),
-      `- available when: the status form answers without an error${versionIsFloored ? ' and the version probe is at or above the floor' : ''}`,
-      ...(cli.notes ?? []).map(note => `- note: ${note}`),
-    ];
+    const packageProbe: Row[] = cli.probes?.package ? [['probe package', probePackageValue(cli.probes.package)]] : [];
+    const floorRow: Row[] = floor ? [['floor', floor]] : [];
+    return {
+      rows: [
+        ['kind', 'cli'],
+        ...formRow('call', forms.call),
+        ...formRow('catalog groups', forms.groups),
+        ...formRow('catalog group', forms.group),
+        ...formRow('catalog tags', forms.tags),
+        ...formRow('catalog tag', forms.tag),
+        ...formRow('catalog search', forms.search),
+        ...formRow('catalog list', forms.list),
+        ...formRow('schema of one command', forms.schema),
+        ...formRow('compile', forms.compile),
+        ...formRow('status', forms.status),
+        ...formRow('ready', forms.ready),
+        ...formRow('probe version', forms.version),
+        ...packageProbe,
+        ...floorRow,
+        ['available when', `the status form answers without an error${versionIsFloored ? ' and the version probe is at or above the floor' : ''}`],
+      ],
+      notes: cli.notes ?? [],
+    };
   },
-  probeLine: entry => {
-    const version = entry.cli?.forms.version;
-    return version ? `probe: \`${version}\`` : null;
-  },
+  probeLine: entry => entry.cli?.forms.version ?? null,
 };

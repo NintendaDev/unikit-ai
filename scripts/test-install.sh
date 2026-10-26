@@ -2154,8 +2154,8 @@ assert_not_exists "$MCP_SHARDS_DIR/.unikit/system/engine-mcp" \
 MCP_BRIDGES_MANIFEST="$MCP_BRIDGES_BASE/BRIDGES.md"
 assert_exists "$MCP_BRIDGES_MANIFEST" "BRIDGES.md delivered for the selected bridge"
 assert_contains "$MCP_BRIDGES_MANIFEST" '^## unity-biome-mcp$' "BRIDGES.md has a block for the selected bridge"
-assert_contains "$MCP_BRIDGES_MANIFEST" '^default order: unity-biome-mcp$' "BRIDGES.md names the default order of the selection"
-assert_contains "$MCP_BRIDGES_MANIFEST" '^- rules: .unikit/system/engine-bridges/unity-biome-mcp/INDEX.md$' \
+assert_contains "$MCP_BRIDGES_MANIFEST" '^\| 1 \| unity-biome-mcp \| mcp \|$' "BRIDGES.md gives the default order of the selection as a numbered table"
+assert_contains "$MCP_BRIDGES_MANIFEST" '^\| rules \| \.unikit/system/engine-bridges/unity-biome-mcp/INDEX\.md \|$' \
   "BRIDGES.md points at the bridge's rules tree"
 assert_not_contains "$MCP_BRIDGES_MANIFEST" 'coplay' "BRIDGES.md lists only what the project selected"
 
@@ -2248,7 +2248,7 @@ assert_not_exists "$MCP_NOTREE_DIR/.unikit/system/engine-bridges/fixture-treed-m
   "the tree of the sibling bridge that was NOT selected is not delivered"
 assert_contains "$MCP_NOTREE_DIR/.unikit/system/engine-bridges/BRIDGES.md" '^## fixture-treeless-mcp$' \
   "BRIDGES.md lists the selected bridge although it ships no tree"
-assert_contains "$MCP_NOTREE_DIR/.unikit/system/engine-bridges/BRIDGES.md" '^- rules: none$' \
+assert_contains "$MCP_NOTREE_DIR/.unikit/system/engine-bridges/BRIDGES.md" '^\| rules \| none \|$' \
   "BRIDGES.md says the bridge has no rules tree"
 
 # ...and nothing else differs. The selection is still live, and the mechanical evidence
@@ -2764,8 +2764,8 @@ assert_exists "$TWO_BRIDGES_BASE/unity-biome-mcp/INDEX.md" "two bridges: the fir
 assert_exists "$TWO_BRIDGES_BASE/coplay-unity-mcp/INDEX.md" "two bridges: the second bridge's tree is delivered"
 assert_contains "$TWO_BRIDGES_BASE/unity-biome-mcp/INDEX.md" '^bridge: unity-biome-mcp$' "two bridges: each tree carries its own bridge id (first)"
 assert_contains "$TWO_BRIDGES_BASE/coplay-unity-mcp/INDEX.md" '^bridge: coplay-unity-mcp$' "two bridges: each tree carries its own bridge id (second)"
-assert_contains "$TWO_BRIDGES_BASE/BRIDGES.md" '^default order: unity-biome-mcp > coplay-unity-mcp$' \
-  "two bridges: BRIDGES.md gives the package's default order"
+assert_contains "$TWO_BRIDGES_BASE/BRIDGES.md" '^\| 1 \| unity-biome-mcp \| mcp \|$' "two bridges: BRIDGES.md gives the package's default order (first)"
+assert_contains "$TWO_BRIDGES_BASE/BRIDGES.md" '^\| 2 \| coplay-unity-mcp \| mcp \|$' "two bridges: ...and the second"
 assert_contains "$TWO_BRIDGES_BASE/BRIDGES.md" '^## coplay-unity-mcp$' "two bridges: BRIDGES.md has a block for the second bridge"
 assert_contains "$TWO_BRIDGES_DIR/.claude/skills/unikit-implement/SKILL.md" 'mcp__unity-biome-mcp__' "two bridges: the grants of the first are injected"
 assert_contains "$TWO_BRIDGES_DIR/.claude/skills/unikit-implement/SKILL.md" 'mcp__UnityMCP__' "two bridges: the grants of the second are injected"
@@ -2787,7 +2787,7 @@ run_update "$TWO_BRIDGES_DIR"
 assert_not_exists "$TWO_BRIDGES_BASE/unity-biome-mcp" "one bridge dropped: its whole tree is gone, nested orphan included"
 assert_not_exists "$TWO_BRIDGES_BASE/stray.md" "one bridge dropped: a stray file in the layer is swept"
 assert_file_unchanged "$TWO_BRIDGES_BASE/coplay-unity-mcp/INDEX.md" "$TWO_BRIDGES_COPLAY_SHA" "one bridge dropped: the tree that stays is byte-identical"
-assert_contains "$TWO_BRIDGES_BASE/BRIDGES.md" '^default order: coplay-unity-mcp$' "one bridge dropped: BRIDGES.md follows the selection"
+assert_contains "$TWO_BRIDGES_BASE/BRIDGES.md" '^\| 1 \| coplay-unity-mcp \| mcp \|$' "one bridge dropped: BRIDGES.md follows the selection"
 assert_not_contains "$TWO_BRIDGES_BASE/BRIDGES.md" 'unity-biome-mcp' "one bridge dropped: its block is gone from BRIDGES.md"
 assert_not_contains "$TWO_BRIDGES_DIR/.claude/skills/unikit-implement/SKILL.md" 'mcp__unity-biome-mcp__' "one bridge dropped: its grants are removed (the hash took the set)"
 assert_system_tree "$TWO_BRIDGES_DIR" yes "system tree matches the variable registry (one bridge left)"
@@ -2836,13 +2836,14 @@ if [[ -z "$CLI_BLOCK_AT" || -z "$BIOME_BLOCK_AT" || "$CLI_BLOCK_AT" -ge "$BIOME_
   echo "Assertion failed: the block of unity-cli must come before the block of unity-biome-mcp (got $CLI_BLOCK_AT / $BIOME_BLOCK_AT)"
   exit 1
 fi
-assert_contains "$CLI_BRIDGE_MANIFEST" '^default order: unity-cli > unity-biome-mcp$' "cli bridge: the default order puts the CLI first"
-assert_contains "$CLI_BRIDGE_MANIFEST" '^- call: `unity command --project-path ' "cli bridge: the call form carries the project path"
-assert_contains "$CLI_BRIDGE_MANIFEST" '^- probe version: `unity --version`$' "cli bridge: the version probe"
-assert_contains "$CLI_BRIDGE_MANIFEST" '^- probe package: read `Packages/packages-lock.json`' "cli bridge: the package is probed by reading a file, not by a command"
-assert_contains "$CLI_BRIDGE_MANIFEST" '^- ready: `unity status --project-path ' "cli bridge: the ready form carries the project path"
-assert_contains "$CLI_BRIDGE_MANIFEST" '^- catalog list: `unity list --project-path ' "cli bridge: the whole-catalog form carries the project path"
-assert_contains "$CLI_BRIDGE_MANIFEST" '^- floor: CLI >= 1\.0\.0-beta\.14; package >= 0\.9\.1-exp\.1; engine >= 6000\.0$' "cli bridge: the floors of the card"
+assert_contains "$CLI_BRIDGE_MANIFEST" '^\| 1 \| unity-cli \| cli \|$' "cli bridge: the default order puts the CLI first"
+assert_contains "$CLI_BRIDGE_MANIFEST" '^\| 2 \| unity-biome-mcp \| mcp \|$' "cli bridge: ...and Biome second"
+assert_contains "$CLI_BRIDGE_MANIFEST" '^\| call \| `unity command --project-path ' "cli bridge: the call form carries the project path"
+assert_contains "$CLI_BRIDGE_MANIFEST" '^\| probe version \| `unity --version` \|$' "cli bridge: the version probe"
+assert_contains "$CLI_BRIDGE_MANIFEST" '^\| probe package \| read `Packages/packages-lock.json`' "cli bridge: the package is probed by reading a file, not by a command"
+assert_contains "$CLI_BRIDGE_MANIFEST" '^\| ready \| `unity status --project-path ' "cli bridge: the ready form carries the project path"
+assert_contains "$CLI_BRIDGE_MANIFEST" '^\| catalog list \| `unity list --project-path ' "cli bridge: the whole-catalog form carries the project path"
+assert_contains "$CLI_BRIDGE_MANIFEST" '^\| floor \| CLI >= 1\.0\.0-beta\.14; package >= 0\.9\.1-exp\.1; engine >= 6000\.0 \|$' "cli bridge: the floors of the card"
 assert_not_contains "$CLI_BRIDGE_MANIFEST" '^## Not selected$' "cli bridge: nothing is left unselected, so no such section"
 
 # The CLI registers nothing: the settings file names Biome and not the CLI.
@@ -2860,8 +2861,8 @@ assert_exists "$CLI_BRIDGE_BASE/unity-cli/INDEX.md" "cli bridge: the rules tree 
 assert_exists "$CLI_BRIDGE_BASE/unity-cli/verification.md" "cli bridge: ...with its gate calibration"
 assert_contains "$CLI_BRIDGE_BASE/unity-cli/INDEX.md" '^bridge: unity-cli$' "cli bridge: the tree carries the stamp of its bridge (INDEX)"
 assert_contains "$CLI_BRIDGE_BASE/unity-cli/verification.md" '^bridge: unity-cli$' "cli bridge: ...and the calibration"
-assert_contains "$CLI_BRIDGE_MANIFEST" '^- rules: \.unikit/system/engine-bridges/unity-cli/INDEX\.md$' "cli bridge: BRIDGES.md points to the tree"
-assert_contains "$CLI_BRIDGE_MANIFEST" '^- verification: \.unikit/system/engine-bridges/unity-cli/verification\.md$' "cli bridge: ...and to the calibration"
+assert_contains "$CLI_BRIDGE_MANIFEST" '^\| rules \| \.unikit/system/engine-bridges/unity-cli/INDEX\.md \|$' "cli bridge: BRIDGES.md points to the tree"
+assert_contains "$CLI_BRIDGE_MANIFEST" '^\| verification \| \.unikit/system/engine-bridges/unity-cli/verification\.md \|$' "cli bridge: ...and to the calibration"
 assert_system_tree "$CLI_BRIDGE_DIR" yes "system tree matches the variable registry (CLI and Biome)"
 
 # Order lives in .unikit/config.yaml and in no installed byte: writing it reinstalls nothing and leaves
@@ -2885,9 +2886,9 @@ CONFIG="$CLI_BRIDGE_DIR/.unikit.json" node -e "
 "
 run_update "$CLI_BRIDGE_DIR"
 assert_contains "$CLI_BRIDGE_MANIFEST" '^## Not selected$' "cli bridge: a bridge that can be probed but was not selected gets its section"
-assert_contains "$CLI_BRIDGE_MANIFEST" '^- unity-cli - .* - probe: `unity --version`$' "cli bridge: ...with the probe that tells whether it is installed here"
+assert_contains "$CLI_BRIDGE_MANIFEST" '^\| unity-cli \| .* \| `unity --version` \|$' "cli bridge: ...with the probe that tells whether it is installed here"
 assert_not_contains "$CLI_BRIDGE_MANIFEST" '^## unity-cli$' "cli bridge: ...and no block of its own"
-assert_contains "$CLI_BRIDGE_MANIFEST" '^default order: unity-biome-mcp$' "cli bridge: the default order follows the selection"
+assert_contains "$CLI_BRIDGE_MANIFEST" '^\| 1 \| unity-biome-mcp \| mcp \|$' "cli bridge: the default order follows the selection"
 if [[ "$(sha_of "$CLI_BRIDGE_SKILL")" == "$CLI_BRIDGE_SKILL_SHA" ]]; then
   echo "Assertion failed: changing the set of bridges should reinstall the executor skill (its grants changed)"
   exit 1

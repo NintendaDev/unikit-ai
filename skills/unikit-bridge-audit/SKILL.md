@@ -143,7 +143,7 @@ compensated by the structural rollback in SWEEP and CONFIRM.
 
 A call that the grants of this skill do not cover (a `cli` bridge grants only the verbs its catalog entry names) is
 shown, never run: `WARN [bridge-audit] replay skipped: <call head> is not granted`. Availability of the bridge is
-established by its own `available when` line in `BRIDGES.md`, not by the editor as a whole.
+established by its own `available when` row in `BRIDGES.md`, not by the editor as a whole.
 
 ### The six-step safety envelope
 

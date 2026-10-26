@@ -17,6 +17,7 @@ import path from 'path';
 import {
   fileExists, listDirectories, listEntries, listFilesRecursive, readTextFile, removeDirectory, removeFile, writeTextFile,
 } from '../../utils/fs.js';
+import { mcpSettingsFiles } from '../agents.js';
 import { MCP_RULES_INDEX_FILE, systemEngineMcpDir } from '../constants.js';
 import {
   BRIDGES_MANIFEST_FILE, BRIDGE_STAMP_LINE_PREFIX, STAMPABLE_EXTENSION, systemEngineBridgesDir,
@@ -102,6 +103,7 @@ export async function installEngineBridges(
   engineId: string,
   discovered: DiscoveredServers,
   bridgeIds: string[],
+  agentIds: string[] = [],
 ): Promise<void> {
   const bridges = orderBridges(discovered, bridgeIds);
   const destRoot = systemEngineBridgesDir(projectDir);
@@ -151,6 +153,7 @@ export async function installEngineBridges(
       engineId,
       bridges: bridges.map(bridge => ({ ...bridge, hasRulesTree: withTree.has(bridge.fileId) })),
       unselected: orderBridges(discovered, unselectedBridgeIds(discovered, bridgeIds)),
+      settingsFiles: mcpSettingsFiles(agentIds),
     }));
     wanted.add(BRIDGES_MANIFEST_FILE);
   }

@@ -18,7 +18,7 @@ export const ENGINE_BRIDGES_DIR_NAME = 'engine-bridges';
 
 export const BRIDGES_MANIFEST_FILE = 'BRIDGES.md';
 
-/** Between bridge ids in an order printed for people: BRIDGES.md's `default order` line and the init summary. */
+/** Between bridge ids in an order printed for people: the init summary. */
 export const BRIDGE_ORDER_SEPARATOR = ' > ';
 
 /** First line of BRIDGES.md: it is generated, and the next run rewrites it. */

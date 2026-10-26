@@ -18,7 +18,7 @@
 import path from 'path';
 import { MCP_PLATFORM_KEYS, type McpPlatformKey } from './constants.js';
 import type { BridgeKind, McpAllowedTools, McpServerEntry } from './mcp.js';
-import { parseCli, parseDetect, parseDocsSources, parseRequires, parseSetup } from './bridges/schema-fields.js';
+import { parseCli, parseDetect, parseDocsSources, parseRequires, parseSetup, parseVersionProbe } from './bridges/schema-fields.js';
 import type { BridgeCli } from './bridges/types.js';
 import { logInfo, logWarn } from '../utils/log.js';
 
@@ -249,6 +249,14 @@ export function parseMcpServerEntry(raw: unknown, dirPath: string, fileName: str
   const detect = parseDetect(raw['detect'], fileName);
   if (detect) {
     entry.detect = detect;
+  }
+  const versionProbe = parseVersionProbe(raw['versionProbe'], fileName);
+  if (versionProbe) {
+    if (kind === 'mcp') {
+      entry.versionProbe = versionProbe;
+    } else {
+      logWarn('parseMcpServerEntry', `${fileName}: "versionProbe" is ignored for kind "${kind}"`);
+    }
   }
 
   logInfo(
