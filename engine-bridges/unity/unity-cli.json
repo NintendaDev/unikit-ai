@@ -71,7 +71,7 @@
       "unikit-verify": ["command", "status", "recompile", "test", "--version"],
       "unikit-plan": ["list"],
       "unikit-bridge-audit": ["command", "status", "--version"],
-      "unikit-bridge-docs": ["skill show", "command", "status", "--version"],
+      "unikit-bridge-docs": ["skill show", "--version"],
       "unikit": ["--version", "status", "self-update --check"]
     }
   }
