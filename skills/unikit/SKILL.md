@@ -88,7 +88,7 @@ and use that model, no effort.
 
 ### Step 0: Load Existing Config (if any)
 
-Check whether `.unikit/config.yaml` already exists. The dispatch below asks nothing itself and parses **no arguments**; the only user interaction Step 0 leads to is the menu of the returning-project branch, which lives in its own file. The one thing the dispatch reads besides the file is the **intent** of the prompt, and only to select the mode below: classifying intent picks a branch and never a value, so item 2 of `## Execution Contract` holds literally.
+Check whether `.unikit/config.yaml` already exists. The dispatch below asks nothing itself and parses **no arguments**; the modes it selects ask their own questions, and the menu of the returning-project branch, which lives in its own file, is the one that asks which of them to run. The one thing the dispatch reads besides the file is the **intent** of the prompt, and only to select the mode below: classifying intent picks a branch and never a value, so item 2 of `## Execution Contract` holds literally.
 
 - **If it exists** — Read it. Treat its values as the source of truth for `language.*`, `git.*`, `workflow.*`. Mark Steps 1 / 2 / 3 as "merge mode": prefer existing values, prompt only when a critical field is missing or empty.
 - **If it does not exist** — set "bootstrap mode": Steps 1 / 2 / 3 will collect values from the user / git and write a fresh `config.yaml`.

@@ -51,6 +51,6 @@ Print `INFO [config] returning-project menu: <action>` and carry out the branch:
 - **Order** — follow `mode-bridge-order.md` from **Decide and write**, then its report.
 - **Environment** — follow `bridge-setup.md` as it stands.
 - **Rules** — Step 5; Step 6 (print its analysis; when there is no engine project, say so and stop); then Step 9 with `required` made of `detected_from_scan` alone, because Steps 7 and 8 are not run. After Step 9.9 print how many rules were installed, generated and left alone. Steps 10 and 11 do not run.
-- **Description** — Step 1 onward in merge mode, through Step 11. The text of the prompt, when it has any, stands for the answer of Step 4: it is the project description, and Step 4 does not ask for it again.
+- **Description** — Step 1 onward in merge mode, through Step 11. A prompt that describes the project stands for the answer of Step 4, and Step 4 does not ask for it again; a prompt that only names the action ("refresh the description") is not a description, and Step 4 asks as usual.
 
 Every branch ends with its own report; the menu is not shown again in the same run.

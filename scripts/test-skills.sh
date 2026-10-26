@@ -7908,6 +7908,7 @@ done
 mn_has  MN-5 'The first of these that applies is the recommended one' "$MN_MENU_MODE"
 mn_has  MN-5 'when it adds the bridge order key and two bridges or more are installed' "$MN_MENU_MODE"
 mn_has  MN-5 'Steps 7 and 8 are not run' "$MN_MENU_MODE"
+mn_has  MN-5 'is not a description, and Step 4 asks as usual' "$MN_MENU_MODE"
 mn_has  MN-5 'the question tool of your agent (`AskUserQuestion`)' "$MN_MENU_MODE"
 MN_HITS="$({ grep -nE '(Agent|Skill|Bash)\(' "$MN_MENU_MODE" 2>/dev/null || true; })"
 MN_CHK=$((MN_CHK + 1)); [[ -z "$MN_HITS" ]] || MN_WHY+=" MN-5:call-form-in-menu-body"
@@ -7923,6 +7924,8 @@ mn_has   MN-7 'The returning-project menu is the one mode that may hand over ins
 mn_has   MN-7 'Widened for two menu branches' "$MN_SKILL"
 mn_has   MN-7 'The returning-project menu also runs outside this order' "$MN_SKILL"
 mn_has   MN-7 'asks nothing itself and parses **no arguments**' "$MN_SKILL"
+mn_has   MN-7 'the modes it selects ask their own questions' "$MN_SKILL"
+mn_lacks MN-7 'the only user interaction Step 0 leads to' "$MN_SKILL"
 mn_lacks MN-7 'performs **no user interaction**' "$MN_SKILL"
 # (MN-8) the trigger in the description
 MN_CHK=$((MN_CHK + 1)); printf '%s' "$MN_DESC" | grep -qF 'it offers the actions to choose from' || MN_WHY+=" MN-8:no-menu-trigger"
