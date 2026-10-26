@@ -1864,6 +1864,74 @@ await group('BR-15', async () => {
     report('BR-15', 'stamp checks ran', passed - before, []);
 });
 
+// ── BS: the search procedure of the executors (D2, D3, D6, D8) and what they report ──
+
+const DEV_PRINCIPLES = 'data/dev-principles.md';
+const sectionOf = (text, from, to) => {
+    const start = text.indexOf(from);
+    const end = text.indexOf(to, start + from.length);
+    return start < 0 ? '' : text.slice(start, end < 0 ? text.length : end);
+};
+
+await group('BS-1', async () => {
+    const d6 = sectionOf(readRepo(DEV_PRINCIPLES), '### D6. ', '### D7. ');
+    const violations = [];
+    const phrases = [
+        'from the narrow to the wide', 'the `catalog search` row', 'the `catalog tags` row', 'the `catalog tag` row', 'the `catalog groups` row', 'the `catalog group` row',
+        'a value that is not in the list answers with an empty result and no error', 'The whole catalog is never read.',
+        'INFO [bridge-search]', 'WARN [bridge-search]', 'Ask the bridge for the schema', 'always, whatever the documentation says', 'take the next bridge by D3',
+    ];
+    for (const phrase of phrases) if (!d6.includes(phrase)) violations.push(`D6: "${phrase}" is missing`);
+    const order = ['the `catalog search` row', 'the `catalog tags` row', 'the `catalog groups` row'].map((phrase) => d6.indexOf(phrase));
+    if (!(order[0] >= 0 && order[0] < order[1] && order[1] < order[2])) violations.push('D6: the steps are not in the order word, tags, groups');
+    report('BS-1', 'D6 searches the live catalog from the narrow to the wide, takes tag and group values from the listing and asks for the schema always', phrases.length + 1, violations);
+});
+
+await group('BS-2', async () => {
+    const text = readRepo(DEV_PRINCIPLES);
+    const d8 = text.slice(text.indexOf('### D8. '));
+    const violations = [];
+    const phrases = ['`FILES.md`', 'The version check', 'Docs: <bridge> - current', 'none collected', 'A copy older than the installed versions is **still used**',
+        'The section about the command you chose', 'its `context7` row', 'Only a reader granted that server reaches for it', 'Reference: trigger <1|2>'];
+    for (const phrase of phrases) if (!d8.includes(phrase)) violations.push(`D8: "${phrase}" is missing`);
+    const gone = ['INFO [reference]', 'table of contents', 'CATALOG', 'hint, never a guarantee', '`ready:`', '_' + 'engine'];
+    for (const phrase of gone) if (text.includes(phrase)) violations.push(`dev-principles.md still has "${phrase}"`);
+    report('BS-2', 'D8 checks the version once per session and reads the section about the chosen command; the catalog table of contents is gone from the file', phrases.length + gone.length, violations);
+});
+
+await group('BS-3', async () => {
+    const violations = [];
+    let scanned = 0;
+    const has = (rel, phrase, expected = true) => {
+        scanned++;
+        if (readRepo(rel).includes(phrase) !== expected) violations.push(`${rel}: "${phrase}" ${expected ? 'is missing' : 'must not be there'}`);
+    };
+    has('subagents/unikit-implement-worker.md', '- `search:` — the `INFO [bridge-search]` selection lines');
+    has('subagents/unikit-implement-coordinator.md', 'Bridge search:');
+    has('skills/unikit-implement/SKILL.md', 'D6 step 2');
+    has('skills/unikit-fix/SKILL.md', 'D6 step 2');
+    for (const rel of ['skills/unikit-implement/SKILL.md', 'skills/unikit-fix/SKILL.md', 'skills/unikit-verify/SKILL.md']) has(rel, 'from the narrow to the wide', false);
+    report('BS-3', 'the executors point at D6 for the chosen command, the worker and the coordinator report the selection lines, nobody restates the search order', scanned, violations);
+});
+
+await group('BS-4', async () => {
+    const { renderBridgesManifest } = await dist('core/bridges/manifest.js');
+    const { orderBridges } = await dist('core/bridges/selection.js');
+    const { discoverMcpServers } = await dist('core/mcp.js');
+    const discovered = await discoverMcpServers('unity');
+    const manifest = renderBridgesManifest({
+        engineId: 'unity',
+        bridges: orderBridges(discovered, ['unity-cli', 'unity-biome-mcp']).map(({ fileId, entry }) => ({ fileId, entry, hasRulesTree: true })),
+        unselected: [],
+        settingsFiles: ['.mcp.json'],
+    });
+    const printed = new Set([...manifest.matchAll(/^\| ([a-z][a-z0-9 ]*) \| /gm)].map((match) => match[1]));
+    const named = [...readRepo(DEV_PRINCIPLES).matchAll(/`([a-z][a-z0-9 ]*)` rows?\b/g)].map((match) => match[1]);
+    const violations = [...new Set(named)].filter((label) => !printed.has(label)).map((label) => `dev-principles.md names the row "${label}", BRIDGES.md prints no such row`);
+    if (named.length < 8) violations.push(`only ${named.length} row names were found in dev-principles.md, expected at least 8`);
+    report('BS-4', 'every row of BRIDGES.md that dev-principles.md names is printed', named.length, violations);
+});
+
 // (groups of later tasks are appended above this line, each under its own banner)
 
 console.log(`\nEngine bridge guards: ${passed} passed, ${failed} failed`);

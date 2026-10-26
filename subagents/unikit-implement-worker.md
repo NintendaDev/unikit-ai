@@ -116,6 +116,7 @@ Return a concise summary:
 - List of files modified
 - `manual_targets:` — editor targets NOT carried out, each as `[kind] container → target : action`; omit the field when there are none. The coordinator must not mark a phase complete on the strength of a task whose editor targets are still listed here
 - `bridges:` — the ids of the engine bridges your calls and read-backs went through, in the order used; omit the field when you made no bridge call
+- `search:` — the `INFO [bridge-search]` selection lines of your calls, one per target, exactly as you printed them; omit the field when you made no bridge call
 - `test_run_deferred:` — the coverage, or the run command, that you did not execute and are handing to the scope owner; omit the field when there is none. **Absent → the coordinator reads it as nothing deferred**, never as a run already done — the same explicit-degradation rule `editor_mode:` carries in the dispatch contract
 - `returned:` — tasks handed back unexecuted, one line each (`returned: <task id> — PR checkpoint belongs to the coordinator`, or `returned: <task id> — Measure/Hand-back belongs to the coordinator`); omitted when none
 - `docs_recommended: yes/no`
