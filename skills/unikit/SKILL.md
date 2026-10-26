@@ -11,6 +11,7 @@ description: >-
   up", "bootstrap the project". It also actualizes the config of a project already set up —
   say "update the config", "add missing settings", "actualize configuration", "fix my config".
   It also sets the order of the engine bridges — say "change the bridge order" or "make the CLI the main bridge".
+  On a set-up project it offers the actions to choose from.
 argument-hint: "[project description] (optional)"
 allowed-tools:
   - Read
@@ -53,10 +54,10 @@ read at the start of every command.
 
 This skill must be executed as a strict workflow, not as guidance.
 
-1. Steps are numbered 0-11; execute in order. Do not skip, merge, reorder, or compress steps unless the step explicitly says it may be skipped. **Carve-out for a mode declared in Step 0:** such a mode is entitled to finish with a STOP before Step 1, and Steps 1-11 then do not run for it at all.
+1. Steps are numbered 0-11; execute in order. Do not skip, merge, reorder, or compress steps unless the step explicitly says it may be skipped. **Carve-out for a mode declared in Step 0:** such a mode is entitled to finish with a STOP before Step 1, and Steps 1-11 then do not run for it at all. **The returning-project menu is the one mode that may hand over instead:** its **Description** branch runs Steps 1-11 in order and its **Rules** branch runs Steps 5, 6 and 9 and ends after Step 9.9; no other step is skipped or reordered inside a branch.
 2. Do not infer user answers from context when the workflow requires a question to the user.
 3. Do not substitute a recommendation, summary, or "seems fine" confirmation for a required question. A generic approval ("yes", "ok", "go ahead") only answers the immediately pending question — it does not retroactively authorize skipped selections or unanswered follow-ups.
-4. Do not create, edit, or install anything outside `.unikit/config.yaml` and `.unikit/system/LANGUAGE_RULES.md` before Step 4 is complete. After Step 4, every write must satisfy its own step's prerequisites (e.g., Step 9 rule installs require the missing-rules list from Step 9.3 and user confirmation from Step 9.4). **Narrowed for the config actualization mode, and the same for the bridge order mode:** the single writable artifact of either is `.unikit/config.yaml`, and `.unikit/system/LANGUAGE_RULES.md` is excluded from both explicitly — Step 3.1 is marked "Both bootstrap and merge mode" and must not be read as permission for them.
+4. Do not create, edit, or install anything outside `.unikit/config.yaml` and `.unikit/system/LANGUAGE_RULES.md` before Step 4 is complete. After Step 4, every write must satisfy its own step's prerequisites (e.g., Step 9 rule installs require the missing-rules list from Step 9.3 and user confirmation from Step 9.4). **Narrowed for the config actualization mode, and the same for the bridge order mode:** the single writable artifact of either is `.unikit/config.yaml`, and `.unikit/system/LANGUAGE_RULES.md` is excluded from both explicitly — Step 3.1 is marked "Both bootstrap and merge mode" and must not be read as permission for them. **Widened for two menu branches:** **Rules** writes `.unikit/memory/code/stack/` and **Environment** may install the engine package, each only after the confirmation its own text asks for (Step 9.4; `bridge-setup.md`) — they do not wait for Step 4, because they do not run it.
 5. If the environment prevents a required step (tool unavailable, file missing, subagent unreachable), stop and print `BLOCKED at Step N: <reason>`. Do not silently substitute an approximation. The one exception is the question tool of your agent (`AskUserQuestion`): its absence is not a block, the questions are then asked as `.unikit/system/user-questions.md` says.
 6. Every user-facing output of this skill is plain markdown — no HTML tags, in any step. Step 7 states the contract in full.
 
@@ -83,11 +84,11 @@ and use that model, no effort.
 
 ## Workflow
 
-**Fixed order — always.** Regardless of whether `/unikit` is invoked with or without arguments, the first three user-facing decisions are always language → git → write config. Only after `.unikit/config.yaml` exists on disk do we ask the user for a project description, load engine rules, scan, or do anything else. This guarantees that every subsequent prompt and artifact respects the user's language choice. **This fixed order describes the bootstrap flow only.** A mode declared in Step 0 stops before Step 1 and is therefore not governed by it — the Step 0 dispatch is reached before the first user-facing decision, and treating this preamble as a second gate in front of it is what makes a declared mode unreachable.
+**Fixed order — always.** Regardless of whether `/unikit` is invoked with or without arguments, the first three user-facing decisions are always language → git → write config. Only after `.unikit/config.yaml` exists on disk do we ask the user for a project description, load engine rules, scan, or do anything else. This guarantees that every subsequent prompt and artifact respects the user's language choice. **This fixed order describes the bootstrap flow only.** A mode declared in Step 0 stops before Step 1 and is therefore not governed by it — the Step 0 dispatch is reached before the first user-facing decision, and treating this preamble as a second gate in front of it is what makes a declared mode unreachable. The returning-project menu also runs outside this order: it reads `language.ui` from the existing config, and its **Rules** branch skips Steps 1-4 because language, git and the config already exist.
 
 ### Step 0: Load Existing Config (if any)
 
-Check whether `.unikit/config.yaml` already exists. This step performs **no user interaction** and parses **no arguments**. The one thing it reads besides the file is the **intent** of the prompt, and only to select the mode below: classifying intent picks a branch and never a value, so item 2 of `## Execution Contract` holds literally.
+Check whether `.unikit/config.yaml` already exists. The dispatch below asks nothing itself and parses **no arguments**; the modes it selects ask their own questions, and the menu of the returning-project branch, which lives in its own file, is the one that asks which of them to run. The one thing the dispatch reads besides the file is the **intent** of the prompt, and only to select the mode below: classifying intent picks a branch and never a value, so item 2 of `## Execution Contract` holds literally.
 
 - **If it exists** — Read it. Treat its values as the source of truth for `language.*`, `git.*`, `workflow.*`. Mark Steps 1 / 2 / 3 as "merge mode": prefer existing values, prompt only when a critical field is missing or empty.
 - **If it does not exist** — set "bootstrap mode": Steps 1 / 2 / 3 will collect values from the user / git and write a fresh `config.yaml`.
@@ -101,6 +102,8 @@ Check whether `.unikit/config.yaml` already exists. This step performs **no user
 There is no keyword and no argument for this mode; it is chosen by intent alone, which is why `argument-hint` does not mention it. If `.unikit/config.yaml` does **not** exist the mode never applies — there is nothing to actualize, and the ordinary bootstrap is the correct route.
 
 **Mode dispatch — bridge order.** If `.unikit/config.yaml` **exists** and the intent of the prompt is to set or change the order of the engine bridges (for example "change the bridge order", "make the CLI the main bridge", "use the MCP first"), load `{{skills_dir}}/{{self_name}}/references/mode-bridge-order.md` and follow it (it STOPs; Steps 1-11 do not run). On entering the mode print `INFO [config] bridge order mode - Steps 1-11 skipped`. As with the other mode there is no keyword and no argument; if `.unikit/config.yaml` does **not** exist the mode never applies.
+
+**Mode dispatch — returning project.** If `.unikit/config.yaml` **exists** and the intent of the prompt matches none of the two modes above, load `{{skills_dir}}/{{self_name}}/references/mode-menu.md` and follow it: it shows the state of the project and offers the actions to choose from, so the full bootstrap runs only when the user picks it. On entering the mode print `INFO [config] returning-project menu`. The text of the prompt is not parsed here; the menu keeps it as it is. As with the other modes there is no keyword and no argument; if `.unikit/config.yaml` does **not** exist the mode never applies.
 
 All unikit artifacts live under fixed default paths (`.unikit/DESCRIPTION.md`, `.unikit/ARCHITECTURE.md`, `.unikit/RULES.md`, `.unikit/memory/`, `.unikit/code/plans/`, etc.) — see `{{skills_dir}}/{{self_name}}/references/config-template.yaml` for the canonical `language` / `workflow` / `git` schema.
 
@@ -217,9 +220,9 @@ Install the centralized language rules file that all skills and subagents refere
 
 The file instructs skills to read `.unikit/config.yaml` at runtime for language values. No placeholder substitution is needed — the template is static.
 
-### Step 3.2: Bridge order (first setup)
+### Step 3.2: Bridge order
 
-Read `.unikit/system/engine-bridges/BRIDGES.md`. Two or more bridges listed → follow Phases 3-5 of `{{skills_dir}}/{{self_name}}/references/mode-bridge-order.md` and write the list into the freshly written config; fewer → skip silently (the template's empty list stands).
+Read `.unikit/system/engine-bridges/BRIDGES.md`. Two or more bridges listed **and** `engine_bridges.order` in `.unikit/config.yaml` empty or absent → carry out **Decide and write** of `{{skills_dir}}/{{self_name}}/references/mode-bridge-order.md` and write the list into the config, print the `INFO [config] bridge order: …` line of that file and go on to Step 4 (the report and the STOP of that file are not part of this call); a list that is not empty is an order already decided — leave it and do not ask again; fewer than two bridges → skip silently (the template's empty list stands).
 
 ---
 

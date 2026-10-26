@@ -11,11 +11,13 @@ is behaviourally harmless — every reader carries its own default — so what t
 is **discoverability of the knob**, not broken behaviour. Say so in the report rather than
 implying the project was misconfigured.
 
+When the returning-project menu (mode-menu.md) hands over to this mode it has already carried out Phases A and B: start at Phase C with the result it kept.
+
 ## Capability contract
 
 This mode **writes only `.unikit/config.yaml`**, and only through a targeted `Edit` —
 **never `Write`**, because a whole-file write would discard the user's own comments and
-ordering. Its tools are `Read`, `Edit` and the question tool of your agent (`AskUserQuestion`), and no others.
+ordering. Its tools are `Read`, `Edit` and the question tool of your agent (`AskUserQuestion`), and no others. `Read` also covers `.unikit/system/engine-bridges/BRIDGES.md`, which Phase F reads and never writes.
 
 It invokes no skill, spawns no subagent, and runs no shell command. It **writes nothing
 under `.unikit/system/**`** — `.unikit/system/LANGUAGE_RULES.md` is explicitly **not** written
@@ -50,6 +52,8 @@ already exists, so the value is on disk and no question is needed.
 Also collect the reverse direction: leaf keys present in the project file but absent from the
 template. They belong to bucket 5.
 
+Note one more fact for Phase F: whether `engine_bridges.order` — or the whole `engine_bridges` block — is **absent** from the project file.
+
 ## Phase B — Classify
 
 Assign every paired key to exactly one bucket. Write nothing and ask nothing in this phase.
@@ -71,7 +75,7 @@ Assign every paired key to exactly one bucket. Write nothing and ask nothing in 
    earlier releases — is left as it is and listed under skipped: its role keys are not appended, because
    a key cannot be a value and a map at once.
 
-   **Exception — `engine_bridges.order`.** An empty list there is the default order, a deliberate state and not a missing value: keep it, never fill it from the template, and report it as kept. An absent key is appended with its block and comment. A non-empty list is left as it is; changing it is the job of the bridge-order mode, not of this one.
+   **Exception — `engine_bridges.order`.** An empty list there means the default order: never fill it from the template, and report it as kept. An absent key is appended with its block and comment, and Phase F then asks the order when two bridges or more are installed. A non-empty list is left as it is; changing it is the job of the bridge-order mode, not of this one.
 4. **Present, value outside a declared domain** → ask. A domain is declared by exactly one
    thing: an inline `# a | b` comment standing beside the value on the same line. Nothing
    else declares one — an `Options:` or `Examples:` list inside a comment block is prose for
@@ -123,6 +127,8 @@ options are the same.
 Classification decides the **bucket**; it never decides the **value**. Item 2 of
 `## Execution Contract` holds literally here: do not infer an answer from context.
 
+Phase F asks one more question, the order of the bridges, and only there.
+
 ## Phase E — Write
 
 Apply only what Phase B classified as silent-append and what the user answered in Phase D.
@@ -138,10 +144,18 @@ Never rewrite a value that already sits inside its declared domain. A silent edi
 existing value is impossible in every bucket: bucket 1 only fills what is absent, and every
 change to something already present is the result of a question the user answered.
 
-## Phase F — Report, then STOP
+## Phase F — Bridge order
+
+Runs only when Phase A found the key `engine_bridges.order` **absent** (the whole `engine_bridges` block included — the key this run has just appended) **and** `.unikit/system/engine-bridges/BRIDGES.md` lists two bridges or more; a file that does not exist counts as no bridge. Read `BRIDGES.md`, then carry out **Decide and write** of `{{skills_dir}}/{{self_name}}/references/mode-bridge-order.md` against the file Phase E has just edited, and keep its `INFO [config] bridge order: …` line for Phase G.
+
+The key was already there → this phase asks nothing: an empty list is the default order and stays, a list that is not empty is not touched. When the list is empty and `BRIDGES.md` lists two bridges or more, Phase G gets one more line: the order is the default one (name it, from `default order:` in `BRIDGES.md`) and "change the bridge order" sets your own.
+
+## Phase G — Report, then STOP
 
 Print a final report in three sections — **added**, **changed**, **skipped** — then **STOP**.
 "Changed" can only ever contain keys the user was asked about.
+
+When Phase F ran, the order the user chose is part of this report, under **added** next to the key; there is no second report.
 
 Logging follows the repository's component-prefix style:
 
@@ -149,6 +163,7 @@ Logging follows the repository's component-prefix style:
 - `INFO [config]` — a key present in the project but absent from the template (bucket 5).
   This is an expected outcome and must not be logged as a warning.
 - `INFO [config]` — one line naming the two bucket-6 keys as untouched by invariant.
+- `INFO [config]` — Phase F: the order written, or, when the key was already there and two bridges or more are installed, the default order that stays.
 - `WARN [config]` — reserved for a real refusal: a value outside its declared domain that the
   user chose not to correct.
 

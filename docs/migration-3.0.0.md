@@ -30,8 +30,8 @@ Until a 2.x project has been updated, `unikit-ai rules sync` and `rules install`
 ## Steps for a Unity project
 
 1. Run `unikit-ai update` and commit the plan changes it made.
-2. To add the Unity CLI: install it, run `unikit-ai init` and tick **Unity CLI** in the group "Engine bridges". Then run `/unikit` - it checks the CLI and the package and offers `unity pipeline install`, which runs only after you confirm.
-3. With more than one bridge, `/unikit` asks the order the first time. Change it any time: say "make Biome the main bridge" to `/unikit`, or edit `engine_bridges.order` in `.unikit/config.yaml`. No `init`, no `update`, no reinstall.
+2. To add the Unity CLI: install it, run `unikit-ai init` and tick **Unity CLI** in the group "Engine bridges". Then run `/unikit` and pick the environment check from its returning-project menu - it checks the CLI and the package and offers `unity pipeline install`, which runs only after you confirm.
+3. With more than one bridge, `/unikit` asks the order the first time it adds the setting: ask it to "update the config" and it appends `engine_bridges.order` and asks the order in the same run. Change it any time: say "make Biome the main bridge" to `/unikit`, or edit `engine_bridges.order` in `.unikit/config.yaml`. No `init`, no `update`, no reinstall.
 4. Run `/unikit-bridge-docs`: it checks the copies of the documentation of every selected bridge, asks what to collect, and copies it into `.unikit/references/bridges/` with an `INDEX.md` and a `FILES.md` per bridge. A folder `bridges/_engine/` left by an earlier build is not used any more: delete it by hand.
 
 A bridge you install **after** `init` is registered by running `unikit-ai init` again and ticking it; `/unikit` tells you when it finds one on the machine that you did not select.

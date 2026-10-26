@@ -206,7 +206,7 @@ Where **test runs** are placed in a plan (`plan`), and how wide a run goes when 
 
 **`/unikit-verify` runs no tests of its own.** It checks the run the plan recorded against the current code; only `--strict` offers to run the full suite, when that record is missing or stale. See [Plan files](plan-files.md).
 
-Existing projects receive the key by either of the two paths in [How new keys reach an existing project](#how-new-keys-reach-an-existing-project) — `/unikit` merge mode, which offers it, or the config actualization mode, which appends a template literal silently. Until then the built-in defaults above apply, and nothing warns — a project without a config is a normal case.
+Existing projects receive the key by any of the three paths in [How new keys reach an existing project](#how-new-keys-reach-an-existing-project) — `/unikit` merge mode, which offers it, the config actualization mode, which appends a template literal silently, or the returning-project menu, which hands over to either of them. Until then the built-in defaults above apply, and nothing warns — a project without a config is a normal case.
 
 ### `git` section
 
@@ -233,7 +233,7 @@ engine_bridges:
 ```
 
 - `order` lists bridge ids - the file names without `.json`, as `BRIDGES.md` prints them. The agents use the installed bridges in this order, then the remaining installed ones in the default order printed in `BRIDGES.md` (the numbered table under `default order:`). An id that is not installed is skipped without a message. An empty list, or no key, means the default order.
-- It is written by `/unikit` - at the first setup when two or more bridges are selected, and later in its bridge-order mode ("make Biome the main bridge") - and you can edit it by hand. Changing it needs no `init` and no `update` and reinstalls no skill: the installer never reads it.
+- It is written by `/unikit`: at the first setup when two or more bridges are selected; by the config update, which asks the order in the same run when it adds the key to an existing project that has two bridges or more; and later in its bridge-order mode ("make Biome the main bridge"). You can also edit it by hand. Changing it needs no `init` and no `update` and reinstalls no skill: the installer never reads it.
 - An instruction in the session ("use only Biome for this task") beats this order for that session.
 
 ### `subagents` section
@@ -266,14 +266,15 @@ UniKit keeps no list of model names or effort levels. A value the runtime does n
 
 ### How new keys reach an existing project
 
-A key added to this template after your project was bootstrapped does not arrive on its own: `unikit-ai init` only prints a hint about the file and `unikit-ai update` never touches it. `.unikit/config.yaml` is written by the `/unikit` skill and by nothing else, so there are exactly **two** paths, and the difference between them is deliberate.
+A key added to this template after your project was bootstrapped does not arrive on its own: `unikit-ai init` only prints a hint about the file and `unikit-ai update` never touches it. `.unikit/config.yaml` is written by the `/unikit` skill and by nothing else, so there are exactly **three** paths, and the differences between them are deliberate.
 
 | Path | Entered by | What it does with a missing key |
 |------|-----------|--------------------------------|
-| merge mode | a full `/unikit` bootstrap run on a project that already has a config | names the missing keys and **offers** to append them |
-| config actualization mode | asking `/unikit` to update / actualize / repair the config on a project already set up | appends a template **literal** silently; **asks** only where the template carries a placeholder, or the current value falls outside a declared domain |
+| merge mode | a full `/unikit` bootstrap run on a project that already has a config (the **Description** branch of the menu) | names the missing keys and **offers** to append them |
+| config actualization mode | asking `/unikit` to update / actualize / repair the config on a project already set up | appends a template **literal** silently; **asks** only where the template carries a placeholder, or the current value falls outside a declared domain; and, when it has just added `engine_bridges.order` and two bridges or more are installed, asks their order |
+| returning-project menu | a plain `/unikit` on a project that already has a config | prints the state, offers the config update among its actions and hands over to it |
 
-Both derive the missing set the same way — by comparing `.unikit/config.yaml` against `skills/unikit/references/config-template.yaml` — so neither is more thorough than the other. The `subagents` block reaches an existing project the same way: the actualization mode appends it whole, with its comments. They differ only in whether they ask, and that difference follows from consent: a bootstrap run is not something you started in order to change configuration, so a question is appropriate there; the actualization mode is entered *because* you asked for exactly that, so re-asking about an obvious default is noise.
+All three derive the missing set the same way — by comparing `.unikit/config.yaml` against `skills/unikit/references/config-template.yaml` — so none is more thorough than the others. The `subagents` block reaches an existing project the same way: the actualization mode appends it whole, with its comments. They differ only in whether they ask, and that difference follows from consent: a bootstrap run is not something you started in order to change configuration, so a question is appropriate there; the actualization mode is entered *because* you asked for exactly that, so re-asking about an obvious default is noise.
 
 The actualization mode sorts every leaf key of the template into one of six buckets:
 
