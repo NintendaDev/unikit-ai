@@ -76,7 +76,7 @@ Relevant to the dev pipeline:
   `system/`: the project's own findings about that bridge, in the same area-keyed form, read by
   the same greps. `init` / `update` never rewrite them (only rename a file into `archive/` when
   its bridge leaves the selection, and back). Written by `/unikit-bridge-trap`, curated by `/unikit-bridge-audit`.
-- `.unikit/references/` — **not** a system asset and never rewritten by `init` / `update`: `bridges/<bridge>/` holds the documentation `/unikit-bridge-docs` collected for each selected bridge (word-for-word copies, an `INDEX.md` with the versions they were taken from and, for a command-line bridge, a `CATALOG.md` table of contents), `bridges/_engine/` the engine-level sources; `INDEX.md` and `user/` hold your own references (`/unikit-references`). Agents read a bridge's copy before the documentation library (`dev-principles.md` → **D8**).
+- `.unikit/references/` — **not** a system asset and never rewritten by `init` / `update`: `bridges/<bridge>/` holds the documentation `/unikit-bridge-docs` collected for each selected bridge (word-for-word copies, an `INDEX.md` with the sources, the versions they were taken from and the folders, and a `FILES.md` that lists every file with a caption); `INDEX.md` and `user/` hold your own references (`/unikit-references`). Agents search the live catalog of a bridge first and read its copy for the command they chose, before the documentation library (`dev-principles.md` → **D6**, **D8**).
 - `cli-contract.md`, `gate-result-contract.md`, `modules.yml`, `gamedesign/` — contracts read on
   demand by the skills that need them.
 - `ultra-plan-read.md` — the ultra plan bundle reader contract, read by `/unikit-implement`,

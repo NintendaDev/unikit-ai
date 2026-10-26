@@ -1653,6 +1653,23 @@ await group('BD-6', async () => {
     report('BD-6', 'every documentation pointer of the catalog can be consumed', scanned, violations);
 });
 
+await group('BD-7', async () => {
+    const violations = [];
+    // The names are built from parts so that this file does not name what it forbids.
+    const folder = new RegExp('(^|[^A-Za-z0-9])_' + 'engine\\b');
+    const snapshot = 'CATALOG' + '.md';
+    const roots = ['skills', 'subagents', 'data', 'src', PACKAGE_BRIDGES_DIR_NAME, 'scripts'];
+    const files = roots.flatMap((root) => filesBelow(path.join(ROOT, root)))
+        .filter((file) => /\.(md|ts|json|yaml|mjs|sh)$/.test(file) && !file.includes('/test-fixtures/') && !file.includes('/node_modules/'));
+    for (const file of files) {
+        readRepo(file).split('\n').forEach((line, index) => {
+            if (folder.test(line)) violations.push(`${file}:${index + 1}: names the engine-level documentation folder`);
+            if (line.includes(snapshot)) violations.push(`${file}:${index + 1}: names the catalog snapshot`);
+        });
+    }
+    report('BD-7', 'neither the engine-level documentation nor the catalog snapshot is named in skills, subagents, data, sources, cards or scripts', files.length, violations);
+});
+
 await group('UREF-1', async () => {
     const violations = [];
     let scanned = 0;
