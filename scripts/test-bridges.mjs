@@ -1734,13 +1734,14 @@ await group('C7-1', async () => {
     const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
     const check = (ok, message) => { scanned++; if (!ok) violations.push(message); };
     check(same(context7['allowed-tools'].skills['unikit-verify'], grant), 'unikit-verify gets the two Context7 tools');
+    check(same(context7['allowed-tools'].skills['unikit-execute'], grant), 'unikit-execute gets the two Context7 tools');
     check(same(context7['allowed-tools'].agents['unikit-implement-coordinator'], grant), 'the coordinator gets the two Context7 tools');
     check(same(context7['allowed-tools'].agents['unikit-implement-worker'], grant), 'the worker gets the two Context7 tools');
     check(context7['allowed-tools'].agents['unikit-review-sidecar'] === undefined, 'the review sidecar, a reader without network, gets none');
-    for (const rel of ['skills/unikit-verify/SKILL.md', 'subagents/unikit-implement-worker.md', 'subagents/unikit-implement-coordinator.md']) {
+    for (const rel of ['skills/unikit-verify/SKILL.md', 'skills/unikit-execute/SKILL.md', 'subagents/unikit-implement-worker.md', 'subagents/unikit-implement-coordinator.md']) {
         check(fs.existsSync(path.join(ROOT, rel)), `${rel} must exist to accept the grant`);
     }
-    report('C7-1', 'Context7 is granted to verify, the worker and the coordinator', scanned, violations);
+    report('C7-1', 'Context7 is granted to verify, execute, the worker and the coordinator', scanned, violations);
 });
 
 // ── RG: counters that used to be literals now follow the tree ────────────────

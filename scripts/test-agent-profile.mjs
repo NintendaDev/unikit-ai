@@ -566,7 +566,7 @@ await group('I', async () => {
             // to the install would show as the wrong prefix.
             const viaTool = agent.subagentProfile.skillCall === 'skilltool';
             const call = (skill, text) => (viaTool ? skillToolCall(skill, text) : readCall(agent.skillsDir, skill, text));
-            assertTrue(`I8 ${agent.id}: develop-agent calls the execute skill`, texts.implement.includes(call('unikit-execute', '<task details>')));
+            assertTrue(`I8 ${agent.id}: develop-agent calls the execute skill`, texts.implement.includes(call('unikit-execute', 'Delegated hand-off: <task details>')));
             assertTrue(`I8 ${agent.id}: docs-agent calls the docs skill`, texts.implement.includes(call('unikit-docs', '<context>')));
             assertTrue(`I8 ${agent.id}: the brainstorm delegation calls the explore skill`, texts.brainstorm.includes(call('unikit-gd-explore', FRAME)));
             assertTrue(`I8 ${agent.id}: its mirror in the delegation contract calls it the same way`, texts.contract.includes(call('unikit-gd-explore', FRAME)));

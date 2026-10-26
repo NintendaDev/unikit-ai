@@ -70,7 +70,7 @@ and use that model, no effort.
   ```
   Agent(
     {{agent_call_worker_quoted}}
-    prompt: "{{agent_skill_call:unikit-execute}} <fix details>",
+    prompt: "{{agent_skill_call:unikit-execute}} Delegated hand-off: <fix details>",
     description: "Apply fix"
   )
   ```

@@ -6716,10 +6716,10 @@ else
     EW_WHY+=" EW-1:boundary-marker-missing"
 fi
 # (EW-2) NEGATIVE — the executors no longer restate them.
-# All five readers of the lower half, not only the two that carried the full procedure: verify
+# All six readers of the lower half, not only the two that carried the full procedure: verify
 # and the worker held shortened retellings, and `candidate affordances` is the phrase both
 # retellings shared — D6 owns it now, so any executor that carries it is restating D6.
-for ew2_f in "$EM_IMPLEMENT_SKILL" "$EM_FIX_SKILL" "$UNIKIT_VERIFY_SKILL" \
+for ew2_f in "$EM_IMPLEMENT_SKILL" "$EM_FIX_SKILL" "$UNIKIT_VERIFY_SKILL" "$EM_EXECUTE_SKILL" \
              "$ROOT_DIR/subagents/unikit-implement-worker.md" "$ROOT_DIR/subagents/unikit-implement-coordinator.md"; do
     for ew2 in 'Candidates from the live catalog, by intent' 'Reference: trigger <1|2>' 'network dependency inside the editor lane' 'candidate affordances'; do
         grep -qF "$ew2" "$ew2_f" && EW_WHY+=" EW-2:restated:${ew2_f#"$ROOT_DIR"/}"
@@ -6729,7 +6729,8 @@ done
 EW3_S32="$(awk '/^\*\*3\.2: Implement the task\*\*/{f=1;next} /^\*\*3\.3/{f=0} f' "$EM_IMPLEMENT_SKILL")"
 printf '%s' "$EW3_S32" | grep -qF '→ **D6**' || EW_WHY+=" EW-3:implement-no-D6"
 grep -qF '→ **D6**' "$EM_FIX_SKILL" || EW_WHY+=" EW-3:fix-no-D6"
-for ew3_f in "$UNIKIT_VERIFY_SKILL" "$ROOT_DIR/subagents/unikit-implement-worker.md" "$ROOT_DIR/subagents/unikit-implement-coordinator.md"; do
+grep -qF '→ **D6**' "$EM_EXECUTE_SKILL" || EW_WHY+=" EW-3:execute-no-D6"
+for ew3_f in "$UNIKIT_VERIFY_SKILL" "$EM_EXECUTE_SKILL" "$ROOT_DIR/subagents/unikit-implement-worker.md" "$ROOT_DIR/subagents/unikit-implement-coordinator.md"; do
     grep -qF '**D7**' "$ew3_f" || EW_WHY+=" EW-3:no-D7:${ew3_f##*/}"
 done
 if [[ -z "$EW_WHY" ]]; then
@@ -13730,6 +13731,128 @@ if [[ -z "$SK_WHY" ]]; then
     pass "SK-1…SK-4 skill-to-skill calls: the recipe in ${#SK_FILES[@]} files, $SK_TARGET_N targets exist and are visible to the model, no retired tier wording, callers carry the Skill tool"
 else
     fail "SK-1…SK-4 skill-to-skill calls weakened:$SK_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# Part 7g7b: XE-1…XE-7 — /unikit-execute, the task skill that works with no plan
+# ─────────────────────────────────────────────
+# unikit-execute does one task from a description: no plan file, a card classified from the text, the bridges
+# in the order D3 gives, an end with a report and one question. EM, RT, LB, EXP-E, PRT-8, UQ, SK and EP reach
+# it by name or by its frontmatter, and EW-2 / EW-3 list it; these guards pin what no other family owns: its
+# rights (XE-1), the reads it shares with the plan executors (XE-2), the card that reads its vocabulary
+# instead of copying it (XE-3), the delegate marker and its three call sites (XE-4), the ban on plan files
+# and the list of skills it may invoke (XE-5), `direct` behind the plan executors' own gate (XE-6) and a
+# rename that leaves no trace (XE-7). Own accumulators XE_*; every grep inside $( … ) is wrapped in
+# { … || true; } — under `set -e` an empty match would abort the suite.
+echo -e "\n${BOLD}Part 7g7b: unikit-execute — the task skill with no plan (XE)${NC}"
+XE_WHY=""
+XE_CHK=0
+XE_SKILL="$ROOT_DIR/skills/unikit-execute/SKILL.md"
+XE_DIRECT="$ROOT_DIR/skills/unikit-execute/references/direct-mode.md"
+XE_IMPLEMENT="$ROOT_DIR/skills/unikit-implement/SKILL.md"
+xe_has() { # <reason key> <literal> <file>
+    XE_CHK=$((XE_CHK + 1))
+    grep -qF -- "$2" "$3" || XE_WHY+=" $1"
+}
+xe_lacks() { # <reason key> <literal> <file>
+    XE_CHK=$((XE_CHK + 1))
+    ! grep -qF -- "$2" "$3" || XE_WHY+=" $1"
+}
+
+# (XE-1) the skill and its rights: the three tools its flow needs, and no Agent — it launches nothing
+if [[ ! -s "$XE_SKILL" ]]; then
+    XE_WHY+=" XE-1:missing-skill"
+else
+    XE_HEAD="$(awk 'NR==1&&/^---/{f=1;next} f&&/^---/{exit} f' "$XE_SKILL")"
+    for xe_tool in '  - Bash(date *)' '  - Skill' '  - AskUserQuestion'; do
+        XE_CHK=$((XE_CHK + 1))
+        grep -qxF -- "$xe_tool" <<< "$XE_HEAD" || XE_WHY+=" XE-1:tool-missing(${xe_tool:4})"
+    done
+    XE_CHK=$((XE_CHK + 1))
+    ! grep -qxF -- '  - Agent' <<< "$XE_HEAD" || XE_WHY+=" XE-1:agent-granted"
+    XE_CHK=$((XE_CHK + 1))
+    grep -qxF -- 'name: unikit-execute' <<< "$XE_HEAD" || XE_WHY+=" XE-1:name"
+fi
+
+# (XE-2) what it shares with the plan executors, by one formulation each: the bridge order list is read from the
+# config at load (A10), the order is announced in one line, and the lower half of the principles waits for the
+# first call through a bridge
+XE_ORDER='Also take the bridge order list from `.unikit/config.yaml` (the one read of that file serves it); a missing or empty list means the default order `BRIDGES.md` states.'
+xe_has "XE-2:order-read(execute)" "$XE_ORDER" "$XE_SKILL"
+xe_has "XE-2:order-read(implement)" "$XE_ORDER" "$XE_IMPLEMENT"
+xe_has "XE-2:order-line" 'INFO [bridges] order: <a> > <b> (config|default|prompt)' "$XE_SKILL"
+xe_has "XE-2:lower-half-moment" '**Before the first call through a bridge**' "$XE_SKILL"
+
+# (XE-3) the card reads its vocabulary and does not copy it: A8 owns the kinds and the boundary, the planner's
+# grammar and ENGINE_RULES.md §1 and §3 own the engine's side — the six words are not listed in the skill
+xe_has "XE-3:a8" '(`dev-principles.md` → **A8**)' "$XE_SKILL"
+xe_has "XE-3:grammar" '*Editor task grammar*' "$XE_SKILL"
+xe_has "XE-3:engine-rules" 'ENGINE_RULES.md` — §1 and §3 only' "$XE_SKILL"
+xe_lacks "XE-3:kinds-copied" 'scene · ui · vfx · anim · asset · settings' "$XE_SKILL"
+xe_lacks "XE-3:kinds-copied-pipes" 'scene | ui | vfx | anim | asset | settings' "$XE_SKILL"
+
+# (XE-4) the delegate mode: one marker line, written in the three skills that start the skill through an alias,
+# read by the skill, and honoured by the worker that preloads it; and the four classes of the card
+XE_MARK='Delegated hand-off:'
+xe_has "XE-4:marker(execute)" "The arguments begin with the line \`$XE_MARK\`" "$XE_SKILL"
+XE_ALIAS_N=0
+for xe_pair in "implement:<task details>" "fix:<fix details>" "verify:<fix details>"; do
+    XE_ALIAS_N=$((XE_ALIAS_N + 1))
+    xe_has "XE-4:alias-marker(${xe_pair%%:*})" "prompt: \"{{agent_skill_call:unikit-execute}} $XE_MARK ${xe_pair#*:}\"," "$ROOT_DIR/skills/unikit-${xe_pair%%:*}/SKILL.md"
+done
+xe_has "XE-4:worker-rule" 'A preloaded `unikit-execute` is knowledge, not a start' "$ROOT_DIR/subagents/unikit-implement-worker.md"
+for xe_class in question code editor mixed; do
+    xe_has "XE-4:class($xe_class)" "- \`$xe_class\` — " "$XE_SKILL"
+done
+xe_has "XE-4:card" 'Card: <class>' "$XE_SKILL"
+
+# (XE-5) no plan, and the list of skills it may invoke: the existence probe is the only touch of a plan file, and
+# every skill it invokes — in SKILL.md and in its references — is one of the five it names
+xe_has "XE-5:plan-warn" 'WARN [execute] <path> exists but is ignored: no plan is used' "$XE_SKILL"
+xe_has "XE-5:no-plan-rule" 'are never read, created or edited — the only touch is the existence check of Step 2' "$XE_SKILL"
+xe_has "XE-5:invokable-list" 'The skills this skill invokes** are `unikit-commit`, `unikit-review`, `unikit-todo`, `unikit-docs` and `unikit-bridge-trap`, and no other' "$XE_SKILL"
+XE_ALLOWED=' unikit-commit unikit-review unikit-todo unikit-docs unikit-bridge-trap '
+XE_TARGETS=$( { grep -rhoE '[Ii]nvoke[sd]? `unikit-[a-z0-9-]+`' "$ROOT_DIR/skills/unikit-execute" --include='*.md' 2>/dev/null || true; } | sed -E 's/.*`(unikit-[a-z0-9-]+)`/\1/' | sort -u)
+XE_TARGET_N=0
+for xe_t in $XE_TARGETS; do
+    XE_TARGET_N=$((XE_TARGET_N + 1))
+    XE_CHK=$((XE_CHK + 1))
+    [[ "$XE_ALLOWED" == *" $xe_t "* ]] || XE_WHY+=" XE-5:invokes($xe_t)"
+done
+[[ "$XE_TARGET_N" -gt 0 ]] || XE_WHY+=" XE-5:no-call-site"
+
+# (XE-6) `direct` stands behind the gate the plan executors have, in the same formulations, and the skill only
+# points at the reference that holds it — read when `direct` was asked for, and never a default
+for xe_lit in 'a rollback point must exist before editing' 'Never use `direct` for a format §6 rates 🔴' \
+              '`HEAD` already is the rollback point: no commit is needed' 'no pre-edit commit — direct edit skipped' \
+              '**If that file is not there**, treat every format as 🔴: refuse `direct`'; do
+    xe_has "XE-6:implement-lacks(${xe_lit:0:26})" "$xe_lit" "$XE_IMPLEMENT"
+    xe_has "XE-6:reference-lacks(${xe_lit:0:26})" "$xe_lit" "$XE_DIRECT"
+done
+xe_has "XE-6:pointer" '{{skills_dir}}/{{self_name}}/references/direct-mode.md' "$XE_SKILL"
+xe_has "XE-6:never-default" '**`direct` is never a default** — it is irreversible.' "$XE_SKILL"
+xe_lacks "XE-6:gate-in-skill" 'a rollback point must exist before editing' "$XE_SKILL"
+
+# (XE-7) the old name of the skill is gone from every tracked text but the places that name it on purpose: the
+# rename table, its three tests and the migration note. The word is written in two halves so this file does not
+# match itself; an entry whose file no longer names it is stale and goes red, as in Part 7c.
+XE_OLD="dev""context"
+XE_ALLOW_OLD=("src/core/skill-renames.ts" "scripts/test-bridges.mjs" "scripts/test-update.sh" "scripts/test-extensions.sh" "docs/migration-3.0.0.md")
+XE_OLD_FILES=$( { grep -rIil -- "$XE_OLD" "$ROOT_DIR/skills" "$ROOT_DIR/subagents" "$ROOT_DIR/data" "$ROOT_DIR/docs" "$ROOT_DIR/src" "$ROOT_DIR/scripts" "$ROOT_DIR/engine-bridges" "$ROOT_DIR/mcp" "$ROOT_DIR/README.md" "$ROOT_DIR/AGENTS.md" 2>/dev/null || true; } | sed "s#^$ROOT_DIR/##" | sort)
+for xe_f in $XE_OLD_FILES; do
+    XE_CHK=$((XE_CHK + 1))
+    case " ${XE_ALLOW_OLD[*]} " in *" $xe_f "*) ;; *) XE_WHY+=" XE-7:old-name($xe_f)" ;; esac
+done
+for xe_a in "${XE_ALLOW_OLD[@]}"; do
+    XE_CHK=$((XE_CHK + 1))
+    grep -qi -- "$XE_OLD" "$ROOT_DIR/$xe_a" || XE_WHY+=" XE-7:allowlist-stale($xe_a)"
+done
+
+[[ "$XE_CHK" -gt 0 ]] || XE_WHY+=" XE-0:nothing-checked"
+if [[ -z "$XE_WHY" ]]; then
+    pass "XE-1…XE-7 unikit-execute: rights, shared reads, card, delegate marker at $XE_ALIAS_N call sites, no-plan ban, direct gate, rename with no trace ($XE_CHK checks, $XE_TARGET_N invoked skills)"
+else
+    fail "XE-1…XE-7 unikit-execute:$XE_WHY"
 fi
 
 # ─────────────────────────────────────────────

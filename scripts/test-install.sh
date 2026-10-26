@@ -3008,7 +3008,7 @@ cat > "$C7_DIR/.unikit.json" << 'EOF'
       "id": "claude",
       "skillsDir": ".claude/skills",
       "subagentsDir": ".claude/agents",
-      "installedSkills": ["unikit-verify", "unikit-implement"],
+      "installedSkills": ["unikit-verify", "unikit-implement", "unikit-execute"],
       "installedSubagents": ["unikit-implement-worker", "unikit-implement-coordinator", "unikit-review-sidecar"]
     }
   ],
@@ -3019,7 +3019,7 @@ cat > "$C7_DIR/.unikit.json" << 'EOF'
 EOF
 inject_fake_registry "$C7_DIR"
 run_update "$C7_DIR"
-C7_FILES=("$C7_DIR/.claude/agents/unikit-implement-worker.md" "$C7_DIR/.claude/agents/unikit-implement-coordinator.md" "$C7_DIR/.claude/skills/unikit-verify/SKILL.md")
+C7_FILES=("$C7_DIR/.claude/agents/unikit-implement-worker.md" "$C7_DIR/.claude/agents/unikit-implement-coordinator.md" "$C7_DIR/.claude/skills/unikit-verify/SKILL.md" "$C7_DIR/.claude/skills/unikit-execute/SKILL.md")
 for c7_file in "${C7_FILES[@]}"; do
   assert_exists "$c7_file" "context7: ${c7_file#$TMPDIR/} is installed"
   assert_contains "$c7_file" 'mcp__context7__resolve-library-id' "context7: ${c7_file##*/} may resolve a library"
@@ -3040,7 +3040,7 @@ run_update "$C7_DIR"
 for c7_file in "${C7_FILES[@]}"; do
   assert_not_contains "$c7_file" 'mcp__context7__' "context7 deselected: ${c7_file##*/} loses the grants"
 done
-echo "  ✓ context7: granted to verify, the worker and the coordinator, and taken back with the server"
+echo "  ✓ context7: granted to verify, execute, the worker and the coordinator, and taken back with the server"
 
 # ─────────────────────────────────────────────────────
 # Final sweep: agent-filter markers must not leak into any install

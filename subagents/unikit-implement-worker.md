@@ -36,6 +36,7 @@ IMPORTANT: You are a subagent — you cannot spawn child agents. All quality che
 - Never attempt nested delegation or agent-team behavior.
 - When injected skills mention `Agent(...)`, replace that with direct local tool use.
 - Do not create commits — the coordinator handles commits centrally.
+- A preloaded `unikit-execute` is knowledge, not a start: do not run its Step 0, its plan-file check, its questions or its Step 5. The task, its `Editor:` lines and the mode come from the coordinator; where this file and the skill differ this file wins — the reply to the coordinator stays in English and the mode rules of Workflow step 3 stay as written.
 - Respect `.unikit/DESCRIPTION.md`, `.unikit/ARCHITECTURE.md`, `.unikit/RULES.md`.
 
 ## Default Decisions
