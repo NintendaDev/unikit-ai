@@ -71,6 +71,8 @@ After `init` finishes, open your AI agent and run `/unikit`:
 - drives stack rule selection - for each detected framework it either pulls a pre-built rule from the registry or generates one on the fly via `/unikit-memory` (Context7 + web research)
 - checks the engine bridges (is the Unity CLI there, is the package in the project) and, with two bridges or more, asks which comes first; it then recommends `/unikit-bridge-docs` to collect their documentation, and never runs it itself
 
+On a project that already has a `.unikit/config.yaml`, `/unikit` opens a returning-project menu (update the config, set the bridge order, check the bridges, create rules for new frameworks, refresh the description) instead of running the setup again.
+
 From then on, the dynamic memory is ready and you can start building features:
 
 ```bash

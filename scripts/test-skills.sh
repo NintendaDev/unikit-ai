@@ -7933,6 +7933,25 @@ else
     [[ -n "$MN_HITS" ]] && echo "$MN_HITS" | head -5
 fi
 
+# MN-9: the surfaces that tell the user about the menu and the order question
+MN_WHY=""
+MN_CHK=0
+mn_has MN-9 'returning-project menu' "$ROOT_DIR/docs/skills.md"
+mn_has MN-9 'returning-project menu' "$ROOT_DIR/docs/configuration.md"
+mn_has MN-9 'returning-project menu' "$ROOT_DIR/docs/migration-3.0.0.md"
+mn_has MN-9 'returning-project menu' "$ROOT_DIR/docs/workflow.md"
+mn_has MN-9 'returning-project menu' "$ROOT_DIR/docs/getting-started.md"
+mn_has MN-9 'returning-project menu' "$ROOT_DIR/skills/unikit-help/references/scenarios.md"
+mn_has MN-9 'returning-project menu' "$ROOT_DIR/skills/unikit-help/references/skill-map.md"
+mn_has MN-9 'asks the order in the same run' "$ROOT_DIR/docs/configuration.md"
+mn_has MN-9 'asks the order in the same run' "$ROOT_DIR/docs/migration-3.0.0.md"
+mn_has MN-9 'exactly **three** paths' "$ROOT_DIR/docs/configuration.md"
+if [[ -z "$MN_WHY" && "$MN_CHK" -gt 0 ]]; then
+    pass "MN-9 the docs and the help name the returning-project menu and the order question ($MN_CHK checks)"
+else
+    fail "MN-9 menu documentation:$MN_WHY"
+fi
+
 # ─────────────────────────────────────────────
 # RCA: rule capture — ask, never write (RCA-1…RCA-19)
 # ─────────────────────────────────────────────
