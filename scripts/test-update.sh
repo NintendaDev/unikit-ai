@@ -1604,7 +1604,7 @@ echo "  ✓ engine-bridges: a pre-cutover profile is swept / overwritten on upda
 # both branches, which is why Leg 1 does not need its own re-run.
 assert_exists "$MCP_SHARD_DIR/INDEX.md" \
     "update delivers the selected bridge's rules tree in place of the swept shards"
-assert_contains "$MCP_SHARD_DIR/INDEX.md" '^bridge: unity-biome-mcp$' \
+assert_contains "$MCP_SHARD_DIR/INDEX.md" '^\| bridge \| unity-biome-mcp \|$' \
     "the delivered tree is stamped with the bridge it came from"
 
 # Leg 2 — the FRESH path. Nothing on disk, a populated selection: the tree is created.
@@ -2120,7 +2120,7 @@ NOTES_CLI_BRIDGES="$NOTES_CLI_DIR/.unikit/system/engine-bridges"
 NOTES_CLI_RULES="$NOTES_CLI_BRIDGES/fennara-godot-mcp"
 assert_exists "$NOTES_CLI_RULES/INDEX.md" \
     "the incoming bridge's own rules tree is delivered"
-assert_contains "$NOTES_CLI_RULES/INDEX.md" '^bridge: fennara-godot-mcp$' \
+assert_contains "$NOTES_CLI_RULES/INDEX.md" '^\| bridge \| fennara-godot-mcp \|$' \
     "the delivered tree is stamped with the bridge that replaced the previous one"
 assert_not_exists "$NOTES_CLI_BRIDGES/unity-biome-mcp" \
     "nothing of the outgoing bridge's tree survives the replacement"

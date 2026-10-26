@@ -79,8 +79,8 @@ Silently load — do not narrate:
    owns. Mandatory; without it, do not write.
 2. **`.unikit/system/engine-bridges/BRIDGES.md`** — which bridges the project has (a `—` in
    a plan row is resolved by it, see Step 5) — and the first lines of the
-   **`.unikit/system/engine-bridges/<bridge>/INDEX.md`** of each target bridge — the delivery
-   stamp (`bridge:`). File absent → there are no known exceptions for that bridge; that
+   **`.unikit/system/engine-bridges/<bridge>/INDEX.md`** of each target bridge — its title and
+   the stamp table under it (the `bridge` row). File absent → there are no known exceptions for that bridge; that
    restricts nothing and switches nothing to `⏸️ MANUAL`. Carry the bridge as unknown
    and say so once.
 3. **`.unikit/bridge-notes/<bridge>.md`** of each target bridge, if it exists — its header
@@ -265,7 +265,7 @@ form. If it cannot be expressed as a check, it does not belong in this file.
 
 Write `.unikit/bridge-notes/<bridge>.md` per `references/notes-format.md`:
 
-- **File absent** → create it with the full header (`bridge:` from the delivery stamp,
+- **File absent** → create it with the full header (`bridge:` from the `bridge` row of the stamp,
   `audited: never`), both section headings, and the accepted rows.
 - **File present** → append rows to both tables, allocating fresh ids. Do **not** touch
   the header: `bridge:` describes where the existing entries came from, and `audited:`

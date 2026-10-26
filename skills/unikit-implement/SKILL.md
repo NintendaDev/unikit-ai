@@ -279,7 +279,7 @@ Stack rules and rule topics are NOT loaded here — they are loaded lazily per-p
 
 **Engine-bridge rules (conditional, engine-neutral) — once per session, zero calls:**
 
-5. `.unikit/system/engine-bridges/BRIDGES.md` — the whole file (one short block per bridge) — and, for **each** bridge whose block names a rules tree, that tree's `.unikit/system/engine-bridges/<bridge>/INDEX.md`, **base section only**: the delivery stamp (`bridge:`) and every section **except** the `## Check` table, which is grepped per task, by area (Step 3.2). Also take the bridge order list from `.unikit/config.yaml` (the one read of that file serves it); a missing or empty list means the default order `BRIDGES.md` states.
+5. `.unikit/system/engine-bridges/BRIDGES.md` — the whole file (one short block per bridge) — and, for **each** bridge whose block names a rules tree, that tree's `.unikit/system/engine-bridges/<bridge>/INDEX.md`, **base section only**: the stamp under the title (the `bridge` row) and every section **except** the `## Check` table, which is grepped per task, by area (Step 3.2). Also take the bridge order list from `.unikit/config.yaml` (the one read of that file serves it); a missing or empty list means the default order `BRIDGES.md` states.
 6. For each bridge listed in `BRIDGES.md`: `.unikit/bridge-notes/<bridge>.md`, **header only** (`bridge:` / `audited:`) — this project's own accumulated findings, and they apply to that bridge only. Compare the header against the bridge the file is named for. On a mismatch print exactly one line and **apply the entries anyway**:
 
    ```

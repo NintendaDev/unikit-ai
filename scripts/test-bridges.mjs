@@ -480,8 +480,12 @@ await group('BR-3b', async () => {
             ['unity-biome-mcp/INDEX.md', 'coplay-unity-mcp/INDEX.md', 'BRIDGES.md'].map(rel => fs.existsSync(path.join(layer, rel))), [true, true, true]);
         const manifest = fs.readFileSync(path.join(layer, 'BRIDGES.md'), 'utf8');
         assertEq('BR-3b', 'BRIDGES.md carries the default order of the package as a numbered table', manifest.includes('\n| 1 | unity-biome-mcp | mcp |\n| 2 | coplay-unity-mcp | mcp |\n'), true);
-        assertEq('BR-3b', 'every delivered markdown file carries the stamp of its own bridge',
-            fs.readFileSync(path.join(layer, 'coplay-unity-mcp', 'INDEX.md'), 'utf8').includes('\nbridge: coplay-unity-mcp\n'), true);
+        const stampUnderHeading = (rel) => {
+            const lines = fs.readFileSync(path.join(layer, rel), 'utf8').split('\n');
+            return /^#{1,6} /.test(lines[0]) && lines.slice(1, 6).join('\n') === '\n| field | value |\n|---|---|\n| bridge | coplay-unity-mcp |\n';
+        };
+        assertEq('BR-3b', 'every delivered markdown file starts with its title and carries the stamp table of its own bridge under it',
+            ['coplay-unity-mcp/INDEX.md', 'coplay-unity-mcp/verification.md'].map(stampUnderHeading), [true, true]);
         assertEq('BR-3b', 'the previous set is read back from BRIDGES.md', await readPreviousBridgeSet(project), ['unity-biome-mcp', 'coplay-unity-mcp']);
 
         const snapshot = treeSnapshot(layer);
@@ -1778,6 +1782,41 @@ await group('BR-14', async () => {
         versionRow(renderBridgesManifest({ engineId: 'unity', bridges: [{ fileId: 'm', entry: { ...parsed({}).result, originDir: 'unity' }, hasRulesTree: false }], unselected: [], settingsFiles: ['.mcp.json'] })), '');
 
     report('BR-14', 'version probe checks ran', passed - before, []);
+});
+
+// ── BR-15: the stamp of a delivered rules file ───────────────────────────────
+
+await group('BR-15', async () => {
+    const { stampDeliveredMarkdown } = await dist('core/bridges/stamp.js');
+    const before = passed;
+    const table = '| field | value |\n|---|---|\n| bridge | b |\n';
+    const comments = (text) => (text.match(/^<!-- .* -->$/gm) ?? []).length;
+
+    const withTitle = stampDeliveredMarkdown('b', '# Title\n\nbody line\n');
+    assertEq('BR-15', 'the stamp table sits right under the first heading, the title stays first',
+        [withTitle.startsWith(`# Title\n\n${table}\n<!--`), withTitle.endsWith('\nbody line\n'), comments(withTitle)], [true, true, 3]);
+    assertEq('BR-15', 'the comment says where to fix the file', withTitle.includes('not here'), true);
+
+    const level2 = stampDeliveredMarkdown('b', '## Gate calibration\n\n| gate | reachable |\n|---|---|\n| a | yes |\n');
+    assertEq('BR-15', 'a file that starts with a level-2 heading is stamped under it, with one blank line before its own table',
+        [level2.startsWith(`## Gate calibration\n\n${table}\n<!--`), level2.includes('-->\n\n| gate | reachable |\n'), /\n\n\n/.test(level2)], [true, true, false]);
+
+    const noHeading = stampDeliveredMarkdown('b', 'only a sentence');
+    assertEq('BR-15', 'a file with no heading gets the stamp on top', [noHeading.startsWith(table), noHeading.endsWith('\n\nonly a sentence\n')], [true, true]);
+
+    const fenced = stampDeliveredMarkdown('b', '```bash\n# not a heading\n```\n\n# Real\n\nbody');
+    assertEq('BR-15', 'a hash line inside a fenced block is not the heading', fenced.startsWith('```bash\n# not a heading\n```\n\n# Real\n\n| field | value |'), true);
+
+    const headingOnly = stampDeliveredMarkdown('b', '# Title');
+    assertEq('BR-15', 'a heading alone: the stamp follows and the text ends in one newline',
+        [headingOnly.startsWith(`# Title\n\n${table}`), headingOnly.endsWith('-->\n') && !headingOnly.endsWith('\n\n')], [true, true]);
+
+    assertEq('BR-15', 'surrounding whitespace is trimmed and the result is stable',
+        [stampDeliveredMarkdown('b', '\n\n# T\n\nx\n\n\n') === stampDeliveredMarkdown('b', '# T\n\nx'), stampDeliveredMarkdown('b', '# T\n\nx') === stampDeliveredMarkdown('b', '# T\n\nx')], [true, true]);
+    assertEq('BR-15', 'the bridge id is the only thing that differs between two bridges',
+        stampDeliveredMarkdown('a-b', '# T\n\nx').replace('a-b', 'c-d'), stampDeliveredMarkdown('c-d', '# T\n\nx'));
+
+    report('BR-15', 'stamp checks ran', passed - before, []);
 });
 
 // (groups of later tasks are appended above this line, each under its own banner)

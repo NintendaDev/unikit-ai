@@ -204,7 +204,7 @@ Silently load the project knowledge base before any exploration — do not narra
 
    **If the file is absent** — a **normal path**, not an error (an engine whose planning vocabulary has not shipped yet): set `engine_rules_loaded = false`. Every step that writes an `Editor:` field, the `Editor tasks` setting or a confirmation line reads that flag (Step 5, Step 6, `mode-full.md`, `mode-fast.md`, `mode-add.md`). `add` mode runs this step too.
 
-6. **Read `.unikit/system/engine-bridges/BRIDGES.md`, and for each bridge whose block names a rules tree its `.unikit/system/engine-bridges/<bridge>/INDEX.md` — the base section only**: the delivery stamp plus every section **except** the `## Check` table — the exceptions that shape planning: where a commit boundary falls, what may never run in parallel, how the work splits into phases. Set `bridge_rules_loaded = true`.
+6. **Read `.unikit/system/engine-bridges/BRIDGES.md`, and for each bridge whose block names a rules tree its `.unikit/system/engine-bridges/<bridge>/INDEX.md` — the base section only**: the stamp under the title plus every section **except** the `## Check` table — the exceptions that shape planning: where a commit boundary falls, what may never run in parallel, how the work splits into phases. Set `bridge_rules_loaded = true`.
 
    **Do not read the `## Check` table** — it is the executors', grepped per task by area.
 

@@ -41,9 +41,8 @@ export const BRIDGE_NOTES_EXTENSION = '.md';
 /** What marks a delivered rules file as provenance-stamped: only markdown is stamped, the rest is copied as it is. */
 export const STAMPABLE_EXTENSION = '.md';
 
-/** Key of the stamp line naming the bridge a delivered file came from; the notes header carries the same key. */
-export const BRIDGE_STAMP_KEY = 'bridge:';
-export const BRIDGE_STAMP_LINE_PREFIX = `${BRIDGE_STAMP_KEY} `;
+/** The field of the stamp table naming the bridge a delivered file came from; the notes header carries a `bridge:` key of the same meaning. */
+export const BRIDGE_STAMP_FIELD = 'bridge';
 
 /** `<projectDir>/.unikit/system/engine-bridges` — BRIDGES.md and the rules tree of every selected bridge. */
 export function systemEngineBridgesDir(projectDir: string): string {

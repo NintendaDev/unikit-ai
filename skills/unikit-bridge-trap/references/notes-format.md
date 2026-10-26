@@ -78,7 +78,7 @@ disagree with the ids for no gain.
 | `bridge:` | trap, on creation | the file id of the bridge these entries were observed on |
 | `audited:` | audit only | date of the last curation pass; `never` on a fresh file |
 
-`bridge:` is compared against the file name it sits under and against the delivery stamp at the top of
+`bridge:` is compared against the file name it sits under and against the stamp table under the title of
 `.unikit/system/engine-bridges/<bridge>/INDEX.md`. **A mismatch is one WARN and nothing else** — the
 entries are *suspect*, and still applied. A stale check costs one call; dropping checks
 because the server moved costs the protection they existed for.

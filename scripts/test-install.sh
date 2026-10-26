@@ -2160,7 +2160,7 @@ assert_contains "$MCP_BRIDGES_MANIFEST" '^\| rules \| \.unikit/system/engine-bri
 assert_not_contains "$MCP_BRIDGES_MANIFEST" 'coplay' "BRIDGES.md lists only what the project selected"
 
 # The stamp: provenance of THIS copy, and nothing else.
-assert_contains "$MCP_RULES_INDEX" '^bridge: unity-biome-mcp$' \
+assert_contains "$MCP_RULES_INDEX" '^\| bridge \| unity-biome-mcp \|$' \
   "delivered rules file carries the bridge id it came from"
 assert_not_contains "$MCP_RULES_INDEX" '^server:' \
   "the 2.x stamp key is gone"
@@ -2762,8 +2762,8 @@ run_update "$TWO_BRIDGES_DIR"
 TWO_BRIDGES_BASE="$TWO_BRIDGES_DIR/.unikit/system/engine-bridges"
 assert_exists "$TWO_BRIDGES_BASE/unity-biome-mcp/INDEX.md" "two bridges: the first bridge's tree is delivered"
 assert_exists "$TWO_BRIDGES_BASE/coplay-unity-mcp/INDEX.md" "two bridges: the second bridge's tree is delivered"
-assert_contains "$TWO_BRIDGES_BASE/unity-biome-mcp/INDEX.md" '^bridge: unity-biome-mcp$' "two bridges: each tree carries its own bridge id (first)"
-assert_contains "$TWO_BRIDGES_BASE/coplay-unity-mcp/INDEX.md" '^bridge: coplay-unity-mcp$' "two bridges: each tree carries its own bridge id (second)"
+assert_contains "$TWO_BRIDGES_BASE/unity-biome-mcp/INDEX.md" '^\| bridge \| unity-biome-mcp \|$' "two bridges: each tree carries its own bridge id (first)"
+assert_contains "$TWO_BRIDGES_BASE/coplay-unity-mcp/INDEX.md" '^\| bridge \| coplay-unity-mcp \|$' "two bridges: each tree carries its own bridge id (second)"
 assert_contains "$TWO_BRIDGES_BASE/BRIDGES.md" '^\| 1 \| unity-biome-mcp \| mcp \|$' "two bridges: BRIDGES.md gives the package's default order (first)"
 assert_contains "$TWO_BRIDGES_BASE/BRIDGES.md" '^\| 2 \| coplay-unity-mcp \| mcp \|$' "two bridges: ...and the second"
 assert_contains "$TWO_BRIDGES_BASE/BRIDGES.md" '^## coplay-unity-mcp$' "two bridges: BRIDGES.md has a block for the second bridge"
@@ -2859,8 +2859,8 @@ fi
 assert_exists "$CLI_BRIDGE_BASE/unity-biome-mcp/INDEX.md" "cli bridge: the tree of the MCP bridge is delivered"
 assert_exists "$CLI_BRIDGE_BASE/unity-cli/INDEX.md" "cli bridge: the rules tree of the CLI is delivered"
 assert_exists "$CLI_BRIDGE_BASE/unity-cli/verification.md" "cli bridge: ...with its gate calibration"
-assert_contains "$CLI_BRIDGE_BASE/unity-cli/INDEX.md" '^bridge: unity-cli$' "cli bridge: the tree carries the stamp of its bridge (INDEX)"
-assert_contains "$CLI_BRIDGE_BASE/unity-cli/verification.md" '^bridge: unity-cli$' "cli bridge: ...and the calibration"
+assert_contains "$CLI_BRIDGE_BASE/unity-cli/INDEX.md" '^\| bridge \| unity-cli \|$' "cli bridge: the tree carries the stamp of its bridge (INDEX)"
+assert_contains "$CLI_BRIDGE_BASE/unity-cli/verification.md" '^\| bridge \| unity-cli \|$' "cli bridge: ...and the calibration"
 assert_contains "$CLI_BRIDGE_MANIFEST" '^\| rules \| \.unikit/system/engine-bridges/unity-cli/INDEX\.md \|$' "cli bridge: BRIDGES.md points to the tree"
 assert_contains "$CLI_BRIDGE_MANIFEST" '^\| verification \| \.unikit/system/engine-bridges/unity-cli/verification\.md \|$' "cli bridge: ...and to the calibration"
 assert_system_tree "$CLI_BRIDGE_DIR" yes "system tree matches the variable registry (CLI and Biome)"

@@ -19,49 +19,17 @@ import {
 } from '../../utils/fs.js';
 import { mcpSettingsFiles } from '../agents.js';
 import { MCP_RULES_INDEX_FILE, systemEngineMcpDir } from '../constants.js';
-import {
-  BRIDGES_MANIFEST_FILE, BRIDGE_STAMP_LINE_PREFIX, STAMPABLE_EXTENSION, systemEngineBridgesDir,
-} from '../constants-bridges.js';
+import { BRIDGES_MANIFEST_FILE, STAMPABLE_EXTENSION, systemEngineBridgesDir } from '../constants-bridges.js';
 import type { DiscoveredServers } from '../mcp.js';
 import { orderBridges } from '../bridges/selection.js';
 import { renderBridgesManifest } from '../bridges/manifest.js';
+import { stampDeliveredMarkdown } from '../bridges/stamp.js';
 import { logInfo, logWarn } from '../../utils/log.js';
 
 const LOG_COMPONENT = 'installEngineBridges';
 
 /** A block heading of BRIDGES.md that names a bridge: `## <bridge id>`. */
 const BRIDGE_HEADING_PATTERN = /^## ([a-z0-9][a-z0-9-]*)$/;
-
-/**
- * Provenance stamp prepended to every delivered markdown file.
- *
- * It records **where this copy came from**, and nothing else. It is deliberately not a statement about
- * the bridge: no tool names, no counters, no list of what is missing — those are the three genres the
- * rules architecture bans, and a header that ships into every project is the easiest place for them to
- * creep back in.
- *
- * The stamp is also the reference point for the notes header: skills compare the `bridge:` recorded
- * here against the one in `.unikit/bridge-notes/<bridge>.md` to tell a finding about this bridge from a
- * finding inherited from another one.
- *
- * It carries the bridge id alone. A `version:` line and a `delivered:` date used to sit here; the date
- * was the one field that changed on every run — each `update` produced a diff on every file of the
- * tree consisting of one date, and nothing read it. What the short stamp buys is worth stating: a
- * delivered file is byte-identical between runs for as long as the tree and the bridge are unchanged,
- * so an unexpected diff is a signal rather than noise to scroll past.
- */
-function renderBridgeRulesStamp(fileId: string): string {
-  return [
-    '<!-- Delivered by unikit-ai from the rules tree of an engine bridge selected for this project. -->',
-    '<!-- Fix it at the source (the package\'s `engine-bridges/<engine>/rules/<bridge>/`), not here: -->',
-    '<!-- every init / update rewrites this folder. -->',
-    '',
-    `${BRIDGE_STAMP_LINE_PREFIX}${fileId}`,
-    '',
-    '---',
-    '',
-  ].join('\n');
-}
 
 /** The engine bridges of the catalog that are not in the selection. */
 function unselectedBridgeIds(discovered: DiscoveredServers, selectedIds: string[]): string[] {
@@ -127,9 +95,7 @@ export async function installEngineBridges(
         continue;
       }
 
-      const stamped = relPath.endsWith(STAMPABLE_EXTENSION)
-        ? renderBridgeRulesStamp(fileId) + content.trim() + '\n'
-        : content;
+      const stamped = relPath.endsWith(STAMPABLE_EXTENSION) ? stampDeliveredMarkdown(fileId, content) : content;
 
       await writeTextFile(path.join(destRoot, relPath), stamped);
       wanted.add(relPath);

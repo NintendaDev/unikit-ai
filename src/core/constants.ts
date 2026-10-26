@@ -230,8 +230,8 @@ export const MCP_RECHECK_NOTES_ARCHIVE_PREFIX = 'MCP-RECHECK-NOTES.archive.';
  * in two places that were compared against each other: the delivery stamp at the top of
  * every file in `.unikit/system/engine-mcp/`, and the header of the project's
  * `.unikit/MCP-RECHECK-NOTES.md`. Both carried a FILE ID, so renaming a file id had to
- * rewrite both. Since 3.0.0 the key is `bridge:` (`BRIDGE_STAMP_KEY` in
- * `constants-bridges.ts`); the migration rewrites the old one in the moved notes.
+ * rewrite both. Since 3.0.0 the key is `bridge:` (the notes header; the stamp of a delivered
+ * file is a table row, `BRIDGE_STAMP_FIELD`); the migration rewrites the old one in the moved notes.
  * It is kept as a constant for that migration alone.
  */
 export const MCP_STAMP_SERVER_KEY = 'server:';
