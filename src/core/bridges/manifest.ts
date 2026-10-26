@@ -13,11 +13,10 @@ import type { McpServerEntry } from '../mcp.js';
 import { MCP_RULES_INDEX_FILE, SYSTEM_DIR_NAME, UNIKIT_DIR } from '../constants.js';
 import {
   BRIDGE_NOTES_DIR_NAME, BRIDGE_NOTES_EXTENSION, BRIDGE_REFERENCES_DIR, BRIDGE_VERIFICATION_FILE,
-  BRIDGE_ORDER_SEPARATOR, BRIDGES_MANIFEST_HEADER, ENGINE_BRIDGES_DIR_NAME, ENGINE_DOCS_HEADING, ENGINE_REFERENCES_DIR_NAME,
+  BRIDGE_ORDER_SEPARATOR, BRIDGES_MANIFEST_HEADER, ENGINE_BRIDGES_DIR_NAME,
   NOT_SELECTED_HEADING,
 } from '../constants-bridges.js';
 import { getBridgeAdapter } from './adapter.js';
-import type { DocsSource } from './types.js';
 
 export interface ManifestBridge {
   fileId: string;
@@ -30,8 +29,6 @@ export interface ManifestInput {
   engineId: string;
   /** Already in PACKAGE order (`orderBridges`). */
   bridges: ManifestBridge[];
-  engineDocSources: DocsSource[];
-  engineContext7: string[];
   /** Bridges of the catalog that the project did not select, in package order. */
   unselected: Array<{ fileId: string; entry: McpServerEntry }>;
 }
@@ -76,18 +73,6 @@ function bridgeBlock(bridge: ManifestBridge): string[] {
   return lines;
 }
 
-function engineBlock(input: ManifestInput): string[] {
-  if (input.engineDocSources.length === 0 && input.engineContext7.length === 0) return [];
-
-  const lines = [
-    `## ${ENGINE_DOCS_HEADING}`,
-    `- docs: ${posixPath(UNIKIT_DIR, BRIDGE_REFERENCES_DIR, ENGINE_REFERENCES_DIR_NAME)}/`,
-  ];
-  if (input.engineContext7.length > 0) lines.push(`- context7: ${input.engineContext7.join(', ')}`);
-  if (input.engineDocSources.length > 0) lines.push(DOCS_SOURCES_LABEL, ...jsonBlock(input.engineDocSources));
-  return lines;
-}
-
 /**
  * The bridges the project did not select that can be told apart on this machine by a probe. `/unikit`
  * runs the probe and, when the bridge answers, asks the user to re-run `init` and tick it (Q12).
@@ -115,8 +100,6 @@ export function renderBridgesManifest(input: ManifestInput): string {
   ];
   const notSelected = notSelectedBlock(input);
   if (notSelected.length > 0) sections.push(notSelected);
-  const engine = engineBlock(input);
-  if (engine.length > 0) sections.push(engine);
 
   return `${sections.map(section => section.join('\n')).join('\n\n')}\n`;
 }

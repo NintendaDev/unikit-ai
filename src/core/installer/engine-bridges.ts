@@ -17,15 +17,13 @@ import path from 'path';
 import {
   fileExists, listDirectories, listEntries, listFilesRecursive, readTextFile, removeDirectory, removeFile, writeTextFile,
 } from '../../utils/fs.js';
-import { getEngineConfig } from '../engines.js';
 import { MCP_RULES_INDEX_FILE, systemEngineMcpDir } from '../constants.js';
 import {
-  BRIDGES_MANIFEST_FILE, BRIDGE_STAMP_LINE_PREFIX, ENGINE_DOCS_HEADING, STAMPABLE_EXTENSION, systemEngineBridgesDir,
+  BRIDGES_MANIFEST_FILE, BRIDGE_STAMP_LINE_PREFIX, STAMPABLE_EXTENSION, systemEngineBridgesDir,
 } from '../constants-bridges.js';
 import type { DiscoveredServers } from '../mcp.js';
 import { orderBridges } from '../bridges/selection.js';
 import { renderBridgesManifest } from '../bridges/manifest.js';
-import type { DocsSource } from '../bridges/types.js';
 import { logInfo, logWarn } from '../../utils/log.js';
 
 const LOG_COMPONENT = 'installEngineBridges';
@@ -70,16 +68,6 @@ function unselectedBridgeIds(discovered: DiscoveredServers, selectedIds: string[
   return [...discovered].filter(([fileId, entry]) => entry.isEngine && !selected.has(fileId)).map(([fileId]) => fileId);
 }
 
-/** Engine-level documentation pointers; an engine the registry does not know has none. */
-function engineLevelDocs(engineId: string): { sources: DocsSource[]; context7: string[] } {
-  try {
-    const engine = getEngineConfig(engineId);
-    return { sources: engine.docSources, context7: engine.docContext7 };
-  } catch {
-    return { sources: [], context7: [] };
-  }
-}
-
 /** Remove every empty directory under `dir`, and `dir` itself when nothing is left in it. */
 async function pruneEmptyDirectories(dir: string): Promise<void> {
   for (const name of await listDirectories(dir)) {
@@ -104,7 +92,7 @@ export async function readPreviousBridgeSet(projectDir: string): Promise<string[
   const ids: string[] = [];
   for (const line of content.split(/\r?\n/)) {
     const match = BRIDGE_HEADING_PATTERN.exec(line);
-    if (match && match[1] !== ENGINE_DOCS_HEADING) ids.push(match[1]);
+    if (match) ids.push(match[1]);
   }
   return ids;
 }
@@ -159,12 +147,9 @@ export async function installEngineBridges(
   // BRIDGES.md is written for every selected bridge, with a tree or without one: it is the answer to
   // "is a bridge configured?" and the record `update` reads the previous set from.
   if (bridges.length > 0) {
-    const docs = engineLevelDocs(engineId);
     await writeTextFile(path.join(destRoot, BRIDGES_MANIFEST_FILE), renderBridgesManifest({
       engineId,
       bridges: bridges.map(bridge => ({ ...bridge, hasRulesTree: withTree.has(bridge.fileId) })),
-      engineDocSources: docs.sources,
-      engineContext7: docs.context7,
       unselected: orderBridges(discovered, unselectedBridgeIds(discovered, bridgeIds)),
     }));
     wanted.add(BRIDGES_MANIFEST_FILE);

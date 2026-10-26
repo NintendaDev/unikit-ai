@@ -86,7 +86,7 @@ export interface BridgeCli {
  *  - package: files inside a package installed in the project (`root` is a project-relative glob of the installed
  *    folder, `path` is relative to the folder it matches, `include`/`exclude` as for git);
  *  - git: a repository path with include/exclude globs relative to `path` (`ref` omitted = the default branch).
- * `into` is the folder under `.unikit/references/bridges/<id>/` (or `_engine/`) the copy lands in.
+ * `into` is the folder under `.unikit/references/bridges/<id>/` the copy lands in.
  */
 export type DocsSource =
   | { kind: 'command'; id: string; list: string; show: string; into: string }
