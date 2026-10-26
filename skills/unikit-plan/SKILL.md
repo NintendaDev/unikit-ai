@@ -478,7 +478,7 @@ An experiment plan skips this step (`references/experiment-plan.md`) even when `
 Whatever discovery this skill's frontmatter carries is read-only and is the whole of the planner's contact with the bridges. Per bridge listed, in the package order `BRIDGES.md` states (a plan never names a bridge, so the user's order does not matter here):
 
 - a bridge of kind mcp: the discovery names the frontmatter grants, once;
-- a bridge of kind cli: the whole live listing, once, by the `catalog list:` line of its block - one read-only call that gives the name, group and description of every command. The call fails (no editor answered) → its table of contents `.unikit/references/bridges/<bridge>/CATALOG.md`, read as a file. Neither → this bridge is **not read**; print once `INFO [plan] <bridge>: the editor did not answer and there is no catalog table of contents - run /unikit-bridge-docs with the editor open; this bridge is not read` and go on.
+- a bridge of kind cli: the whole live listing, once, by the `catalog list` row of its block - one read-only call that gives the name, group and description of every command. The call fails (no editor answered) → this bridge is **not read**; print once `INFO [plan] <bridge>: the editor did not answer; this bridge is not read` and go on.
 
 From the catalogs read, answer exactly two questions about their **union**:
 

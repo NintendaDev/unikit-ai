@@ -816,9 +816,13 @@ await group('BR-10d', async () => {
 
     scanned++;
     if (step.length === 0 || !plan.includes('### Step 4.6')) violations.push('SKILL.md: Step 4.6 is not found');
-    for (const anchor of ['A bridge that was not read makes the union incomplete', 'unknown is not no', '/unikit-bridge-docs', 'catalog list:']) {
+    for (const anchor of ['A bridge that was not read makes the union incomplete', 'unknown is not no', '`catalog list` row', 'this bridge is not read']) {
         scanned++;
         if (!step.includes(anchor)) violations.push(`Step 4.6: "${anchor}" is missing`);
+    }
+    for (const gone of ['CATALOG', '/unikit-bridge-docs']) {
+        scanned++;
+        if (step.includes(gone)) violations.push(`Step 4.6: still names "${gone}"`);
     }
     for (const forbidden of ['Bash(unity list', 'settings_file']) {
         scanned++;
