@@ -6,7 +6,7 @@
     <img src="https://img.shields.io/github/actions/workflow/status/NintendaDev/unikit-ai/tests.yml?branch=main&label=tests" alt="Tests" />
   </a>
   <a href="https://github.com/NintendaDev/unikit-ai/blob/main/docs/skills.md">
-    <img src="https://img.shields.io/badge/skills-39-8b5cf6" alt="Skills" />
+    <img src="https://img.shields.io/badge/skills-38-8b5cf6" alt="Skills" />
   </a>
   <a href="https://unikit.nintenda.dev/">
     <img src="https://img.shields.io/badge/official%20site-unikit.nintenda.dev-0ea5e9" alt="Official Site" />
@@ -231,7 +231,7 @@ UniKit AI works alongside any other AI framework - it uses its own config direct
 | [Agents](docs/agents.md)                        | Supported AI agents and their known limitations          |
 | [Best Practices](docs/best-practices.md)        | Practical tips for working with the agent                |
 | [Development Workflow](docs/workflow.md)        | Workflow diagram, skill pipeline, spec-driven approach   |
-| [Skills Reference](docs/skills.md)              | All 39 skills - 26 code-pipeline + 13 game-design        |
+| [Skills Reference](docs/skills.md)              | All 38 skills - 25 code-pipeline + 13 game-design        |
 | [Subagents](docs/subagents.md)                  | Coordinators, workers and sidecars                       |
 | [Plan Files](docs/plan-files.md)                | Plans, editor tasks, patches                             |
 | [Game-Design Module](docs/gamedesign.md)        | Game design authoring and genre profiles                 |

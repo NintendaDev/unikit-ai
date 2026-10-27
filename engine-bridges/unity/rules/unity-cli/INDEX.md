@@ -1,6 +1,6 @@
 # Unity CLI
 
-Reference for ordinary use - the collected documentation of this bridge (`/unikit-bridge-docs`) and Context7 `/websites/unity_en-us_unity-cli_unity-cli-reference` (the library its block in `BRIDGES.md` names).
+Reference for ordinary use - the rule of this bridge, when one is installed (the `guide` row of its block in `BRIDGES.md`), and Context7 `/websites/unity_en-us_unity-cli_unity-cli-reference` (the library its block in `BRIDGES.md` names).
 **This file is an amendment to it.** Take names and signatures from the live catalog, not from the reference and not from here.
 
 ## Access
@@ -60,4 +60,4 @@ Two reasons to ask for more:
 - an unfamiliar area - what approaches the authors propose (once per area per session);
 - a dead end - the schema is there, the capability is not.
 
-Read the collected documentation of this bridge first, then the documentation library its block in `BRIDGES.md` names, as `dev-principles` D8 says. What you take from either describes **intent, not behaviour** and carries the same evidence obligations. A reference nobody collected or configured is not a capability this bridge lacks.
+Read the rule of this bridge first, when one is installed, then the documentation library its block in `BRIDGES.md` names, as `dev-principles` D8 says. What you take from either describes **intent, not behaviour** and carries the same evidence obligations. A rule or a library nobody installed or configured is not a capability this bridge lacks.

@@ -7,7 +7,7 @@ import { getBridgeAdapter } from './bridges/adapter.js';
 import { getEngineConfig } from './engines.js';
 import { isRecord, parseMcpServerEntry } from './mcp-schema.js';
 import { getMcpWriter } from './mcp-writers/index.js';
-import type { BridgeCli, BridgeDetect, BridgeRequires, BridgeSetupLine, BridgeSettingsVersionProbe, DocsSource } from './bridges/types.js';
+import type { BridgeCli, BridgeDetect, BridgeRequires, BridgeSetupLine, BridgeSettingsVersionProbe } from './bridges/types.js';
 import { logInfo } from '../utils/log.js';
 
 /** What kind of bridge an entry is: an MCP server, or a command line. */
@@ -104,7 +104,7 @@ export interface McpServerEntry {
    * hand-written `instruction` prose, which restated vendor documentation and
    * went stale claim by claim.
    */
-  docs?: { context7?: string; repo?: string; sources?: DocsSource[] };
+  docs?: { context7?: string; repo?: string };
   /**
    * Absolute path to this server's rules tree (`INDEX.md` and whatever else it
    * grew) — the exceptions this server imposes, never a list of what it can do.

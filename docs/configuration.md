@@ -20,7 +20,7 @@ Main configuration file, created by `unikit-ai init`:
       "installedSkills": [
         "unikit", "unikit-architecture", "unikit-archive", "unikit-commit", "unikit-execute",
         "unikit-docs", "unikit-evolve", "unikit-explore", "unikit-fix", "unikit-help",
-        "unikit-implement", "unikit-improve", "unikit-bridge-audit", "unikit-bridge-docs",
+        "unikit-implement", "unikit-improve", "unikit-bridge-audit",
         "unikit-bridge-trap", "unikit-memory", "unikit-plan", "unikit-pr", "unikit-references",
         "unikit-review", "unikit-roadmap", "unikit-rules", "unikit-rules-registry",
         "unikit-skills-context", "unikit-todo", "unikit-verify"
@@ -335,7 +335,7 @@ On Windows in Git Bash, a scene-object path that begins with one slash (`/Player
 
 It ships a small rules tree: checks for behaviour that was measured on a live editor and that Unity's own documentation does not describe. A tree adds **checks**, never removes a right. See [Engine bridge rules trees](#engine-bridge-rules-trees).
 
-Documentation: `/unikit-bridge-docs` copies the built-in skill of the CLI and the documentation that ships inside the installed Pipeline package (its `Documentation~` folder and changelog, matching the installed version) into `.unikit/references/bridges/unity-cli/` and keeps an index of what it copied (`INDEX.md`, `FILES.md`). **Unity's own agent plugin:** see [Migrating to 3.0.0](migration-3.0.0.md#unitys-own-agent-plugin).
+**Unity's own agent plugin:** see [Migrating to 3.0.0](migration-3.0.0.md#unitys-own-agent-plugin).
 
 #### Unity Biome MCP (`order: 2`)
 
@@ -505,8 +505,7 @@ Every catalog JSON - under `mcp/universal/` or `engine-bridges/<engine>/` - decl
 | `setup[]` | Lines of preparation, printed in the `init` summary and in the bridge's block of `BRIDGES.md`: `by` is `human` or `agent-confirmed` (the agent runs it only after you confirm), `run` the line. |
 | `detect` | What the wizard may look at - without running anything - to pre-select the bridge: `binary` (found on `PATH`), `projectVersionFile` and `versionPattern` (a pattern with one capture group that picks the engine version out of it). |
 | `requires` | The floors below which the bridge is unavailable: `engineVersion`, `cli`, `package`. Printed as `floor:` in `BRIDGES.md`. |
-| `versionProbe` | For `kind: mcp`: where the installed version of the bridge is read - `{ "in": "args", "pattern": … }`, a regular expression with exactly one capture group applied to the `args` of the bridge's entry in each agent's MCP settings file. Printed as the `probe version` row of the block in `BRIDGES.md`; `/unikit-bridge-docs` and the executors use it to know which release the server runs. |
-| `docs.sources[]` | Pointers to documentation, not documents - `command` (a command that lists and shows files), `package` (files inside an installed package) or `git` (a repository path with include and exclude filters; its `ref` may be `v{version}`, the tag of the installed version of the bridge). `/unikit-bridge-docs` copies what they point to. |
+| `versionProbe` | For `kind: mcp`: where the installed version of the bridge is read - `{ "in": "args", "pattern": … }`, a regular expression with exactly one capture group applied to the `args` of the bridge's entry in each agent's MCP settings file. Printed as the `probe version` row of the block in `BRIDGES.md`; the executors use it to know which release the server runs. |
 | `configByPlatform` | Per-OS config variants keyed by `win32` / `darwin` / `linux`, for servers whose binary path differs per platform. |
 | `preselect` | `false` keeps the server unchecked in the wizard's checkbox list on a fresh install; absent means checked, as before. A re-run of `init` mirrors your previous choice either way. Universal servers only - an engine bridge is pre-selected by `order` (the first MCP bridge) and, for the Unity CLI, by detection, and `preselect` never sits on an `is_engine` entry. |
 
@@ -542,7 +541,7 @@ The remaining half went with the last consumer that read it. Once the version wa
 A catalog JSON may name the skills and subagents that receive its tools. For an MCP bridge the names are injected into the installed frontmatter as `mcp__<code>__<tool>` (or `mcp__<code>__*`) — the **vendor code**, which is what the running server publishes its tools under. For a bridge of kind `cli` the JSON lists **verbs** and the installer writes `Bash(<binary> <verb> *)` for each - and the same as `PowerShell(<binary> <verb> *)` when the card names that shell, because the two tools have separate permission rules. Injection is keyed on your **selection** (the set of bridges, not their order), so changing which bridges you use reinstalls all skills and subagents and clears the old entries; a server whose code changes while your selection stays put has its dead names removed too. The installer removes only entries it owns - those that start with `mcp__` or with `Bash(<binary> ` / `PowerShell(<binary> ` - and never an entry you wrote yourself, such as `Bash(git *)`.
 
 - **Executors get a wildcard.** `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-execute` and the implement coordinator / worker / review sidecar are granted `["*"]` rather than a list of names. A stored list is a second catalog that nothing keeps in sync: it goes stale silently, and then it removes a right the agent was supposed to have. The wildcard also removes the last reason for a tool name to be written down anywhere but the live catalog.
-- **A command-line bridge is granted verbs, not a wildcard.** The executors get `command`, `status`, `recompile`, `test` and `--version`; `/unikit-bridge-audit` gets `command`, `status` and `--version`; `/unikit-bridge-docs` gets `skill show` and `--version`; `/unikit` gets `--version`, `status` and `self-update --check`. Nothing that installs, closes, signs in or updates is granted to anyone - `unity pipeline install` is run by an agent only after you confirm it.
+- **A command-line bridge is granted verbs, not a wildcard.** The executors get `command`, `status`, `recompile`, `test` and `--version`; `/unikit-bridge-audit` gets `command`, `status` and `--version`; `/unikit` gets `--version`, `status` and `self-update --check`. Nothing that installs, closes, signs in or updates is granted to anyone - `unity pipeline install` is run by an agent only after you confirm it.
 - **The planner is the one exception**, and receives discovery names only — as few as the server needs to resolve a target. The discovery protocol is the single layer that does not rot, and a planner physically cannot mutate anything, so a narrow grant costs nothing and documents the boundary. A meta-tool that reports which parts of a catalog are switched on is **not** granted where its state field has been measured to lie.
 - **On the three Godot servers the planner receives nothing at all, and that is the rule above being applied rather than an oversight.** None of `fennara-godot-mcp.json`, `gdai-godot-mcp.json` or `coding-solo-godot-mcp.json` carries a `unikit-plan` key. Fennara's only discovery-shaped candidate is a self-report, and its tool listing was measured naming an affordance the protocol path then refuses to run — a state field that disagrees with what is callable. Granting it would hand the planner a catalog that lies in the direction that costs most: naming what does not work. The other two Godot servers offer no discovery-shaped tool at all, so there is nothing to grant. Since the format has no comments, the asymmetry with the servers that *do* grant the planner is recorded here:
 
@@ -709,7 +708,7 @@ After initialization (example for Claude Code):
 ```
 your-unity-project/
 ├── .claude/                      # Agent config dir
-│   ├── skills/                   # 26 code-pipeline skills (+ 13 unikit-gd-* if the Game Design group was selected)
+│   ├── skills/                   # 25 code-pipeline skills (+ 13 unikit-gd-* if the Game Design group was selected)
 │   │   ├── unikit/
 │   │   │   └── references/
 │   │   ├── unikit-architecture/
@@ -728,8 +727,6 @@ your-unity-project/
 │   │   ├── unikit-implement/
 │   │   ├── unikit-improve/
 │   │   ├── unikit-bridge-audit/
-│   │   ├── unikit-bridge-docs/
-│   │   │   └── references/
 │   │   ├── unikit-bridge-trap/
 │   │   │   └── references/
 │   │   ├── unikit-memory/
@@ -780,7 +777,7 @@ your-unity-project/
 │   │   │   └── genres/             # Only the profiles in .unikit.json genres.installed
 │   │   └── engine-bridges/        # BRIDGES.md and the rules tree of each selected bridge
 │   ├── bridge-notes/             # Your findings, one file per bridge - /unikit-bridge-trap writes, the installer only renames
-│   ├── references/               # bridges/ (/unikit-bridge-docs), user/ and INDEX.md (/unikit-references)
+│   ├── references/               # user/ and INDEX.md (/unikit-references)
 │   ├── memory/                   # Dynamic memory, partitioned per knowledge module
 │   │   ├── RULES_INDEX.md        # Auto-generated rule index
 │   │   ├── code/

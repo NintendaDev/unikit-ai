@@ -9,16 +9,14 @@ import path from 'path';
 import semver from 'semver';
 import type {
   BridgeCli, BridgeCliForms, BridgeDetect, BridgeFileProbe, BridgeRequires, BridgeSetupLine, BridgeSettingsVersionProbe,
-  BridgeShell, DocsSource,
+  BridgeShell,
 } from './types.js';
 import { logWarn } from '../../utils/log.js';
 
 const LOG_COMPONENT = 'parseMcpServerEntry';
 
 const SETUP_ACTORS: ReadonlySet<string> = new Set(['human', 'agent-confirmed']);
-const DOCS_SOURCE_KINDS: ReadonlySet<string> = new Set(['command', 'package', 'git']);
 const ENGINE_VERSION_PATTERN = /^\d+(\.\d+){0,2}$/;
-const HTTPS_PREFIX = 'https://';
 const PATH_SEPARATORS = /[\\/]/;
 const BINARY_FORBIDDEN = /[\\/\s]/;
 const FLAG_PREFIX = '--';
@@ -44,10 +42,6 @@ function isNonEmptyString(value: unknown): value is string {
 function isInsideRelativePath(value: unknown): value is string {
   if (!isNonEmptyString(value) || path.isAbsolute(value) || value.startsWith('/') || value.startsWith('\\')) return false;
   return !value.split(PATH_SEPARATORS).includes('..');
-}
-
-function isGlobList(value: unknown): value is string[] {
-  return Array.isArray(value) && value.length > 0 && value.every(isNonEmptyString);
 }
 
 /** `setup[]`: lines of preparation. A malformed item is dropped, the rest stay. */
@@ -145,66 +139,6 @@ function hasExactlyOneCaptureGroup(value: unknown): value is string {
   } catch {
     return false;
   }
-}
-
-/** One pointer, or `null` (the caller warns once for the item). */
-function parseDocsSource(item: unknown): DocsSource | null {
-  if (!isRecord(item) || typeof item.kind !== 'string' || !DOCS_SOURCE_KINDS.has(item.kind)) return null;
-  if (!isNonEmptyString(item.id) || !isInsideRelativePath(item.into)) return null;
-
-  const { id, into } = item;
-  if (item.kind === 'command') {
-    return isNonEmptyString(item.list) && isNonEmptyString(item.show)
-      ? { kind: 'command', id, list: item.list, show: item.show, into }
-      : null;
-  }
-
-  if (item.include !== undefined && !isGlobList(item.include)) return null;
-  if (item.exclude !== undefined && !isGlobList(item.exclude)) return null;
-  const filters = {
-    ...(item.include === undefined ? {} : { include: item.include as string[] }),
-    ...(item.exclude === undefined ? {} : { exclude: item.exclude as string[] }),
-  };
-
-  if (item.kind === 'package') {
-    return isInsideRelativePath(item.root) && isInsideRelativePath(item.path)
-      ? { kind: 'package', id, root: item.root, path: item.path, ...filters, into }
-      : null;
-  }
-
-  // git
-  if (!isNonEmptyString(item.repo) || !item.repo.startsWith(HTTPS_PREFIX)) return null;
-  if (item.ref !== undefined && !isNonEmptyString(item.ref)) return null;
-  if (item.path !== undefined && !isInsideRelativePath(item.path)) return null;
-  return {
-    kind: 'git', id, repo: item.repo,
-    ...(item.ref === undefined ? {} : { ref: item.ref as string }),
-    ...(item.path === undefined ? {} : { path: item.path as string }),
-    ...filters, into,
-  };
-}
-
-/**
- * `docs.sources[]`: pointers to documentation. An item that does not parse, repeats an `id` of the
- * array, or has an `into` that is not inside the references folder is dropped with a warning.
- */
-export function parseDocsSources(raw: unknown, fileName: string): DocsSource[] | undefined {
-  if (!Array.isArray(raw)) return undefined;
-
-  const sources: DocsSource[] = [];
-  const seenIds = new Set<string>();
-  for (const item of raw) {
-    const source = parseDocsSource(item);
-    if (source === null) {
-      logWarn(LOG_COMPONENT, `dropped malformed docs source in ${fileName}`);
-    } else if (seenIds.has(source.id)) {
-      logWarn(LOG_COMPONENT, `dropped docs source in ${fileName}: id "${source.id}" repeats`);
-    } else {
-      seenIds.add(source.id);
-      sources.push(source);
-    }
-  }
-  return sources.length > 0 ? sources : undefined;
 }
 
 /** A file probe (`file` + key `path`, optional `fallback` of the same shape), or `undefined` for a malformed one. */

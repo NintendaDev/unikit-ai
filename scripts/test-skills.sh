@@ -11694,7 +11694,7 @@ exp_ok "EXP-D:X5-03" 'edges: four inputs (`/unikit-gd-recon`' "$ROOT_DIR/docs/ga
 exp_ok "EXP-D:X5-04" '**The route of a checkpoint.**' "$ROOT_DIR/docs/gamedesign.md"
 exp_ok "EXP-D:X5-05" 'adds thirteen `unikit-gd-*` skills' "$ROOT_DIR/docs/skills.md"
 exp_ok "EXP-D:X5-06" '- the experiment record' "$ROOT_DIR/docs/skills.md"
-exp_ok "EXP-D:X5-07" '39 skills (26 code-pipeline + 13 game-design)' "$ROOT_DIR/docs/getting-started.md"
+exp_ok "EXP-D:X5-07" '38 skills (25 code-pipeline + 13 game-design)' "$ROOT_DIR/docs/getting-started.md"
 exp_ok "EXP-D:X5-08" '13 game-design skills, one dir each' "$ROOT_DIR/docs/configuration.md"
 exp_ok "EXP-D:X5-09" '**Experiments** - test a hypothesis about the game on real players' "$ROOT_DIR/README.md"
 exp_ok "EXP-D:X5-10" '**Experiment plan.**' "$ROOT_DIR/docs/workflow.md"

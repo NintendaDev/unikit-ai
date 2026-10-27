@@ -18,7 +18,7 @@
 import path from 'path';
 import { MCP_PLATFORM_KEYS, type McpPlatformKey } from './constants.js';
 import type { BridgeKind, McpAllowedTools, McpServerEntry } from './mcp.js';
-import { parseCli, parseDetect, parseDocsSources, parseRequires, parseSetup, parseVersionProbe } from './bridges/schema-fields.js';
+import { parseCli, parseDetect, parseRequires, parseSetup, parseVersionProbe } from './bridges/schema-fields.js';
 import type { BridgeCli } from './bridges/types.js';
 import { logInfo, logWarn } from '../utils/log.js';
 
@@ -65,12 +65,6 @@ function parseDocs(raw: unknown, fileName: string): McpServerEntry['docs'] | nul
   }
   if (typeof raw.repo === 'string' && raw.repo.length > 0) {
     docs.repo = raw.repo;
-  }
-  // `sources` rides on a block that already says something: pointers alone, with neither a Context7
-  // id nor a repository, are not a `docs` block and take the warning below.
-  const sources = parseDocsSources(raw.sources, fileName);
-  if (sources && (docs.context7 !== undefined || docs.repo !== undefined)) {
-    docs.sources = sources;
   }
 
   if (docs.context7 === undefined && docs.repo === undefined) {
@@ -261,7 +255,7 @@ export function parseMcpServerEntry(raw: unknown, dirPath: string, fileName: str
 
   logInfo(
     'parseMcpServerEntry',
-    `${fileName}: key=${entry.key} code=${entry.code} is_engine=${entry.isEngine} kind=${entry.kind} sources=${entry.docs?.sources?.length ?? 0}`,
+    `${fileName}: key=${entry.key} code=${entry.code} is_engine=${entry.isEngine} kind=${entry.kind}`,
   );
 
   return entry;

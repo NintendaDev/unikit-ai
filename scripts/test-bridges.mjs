@@ -22,7 +22,6 @@ const BRIDGES_DIR_ENV_VAR = 'UNIKIT_BRIDGES_DIR';
 const PACKAGE_BRIDGES_DIR_NAME = 'engine-bridges';
 const SEAM_TMP_PREFIX = 'br-s1-';
 const MIN_BRIDGE_FILES = 6;
-const MIN_BRIDGES_WITH_SOURCES = 4;
 
 // ── Harness ──────────────────────────────────────────────────────────────────
 
@@ -297,7 +296,7 @@ await group('BR-7a', async () => {
     report('BR-7a', 'config split checks ran', passed - before, []);
 });
 
-// ── BR-2: the entry fields every bridge shares, and the pointers to documentation ──
+// ── BR-2: the entry fields every bridge shares ──
 
 // Runs `fn` with console.warn captured; returns what it printed. The parsers warn instead of throwing.
 function captureWarnings(fn) {
@@ -329,7 +328,6 @@ await group('BR-2', async () => {
     const violations = [];
     const orderByDir = new Map();
     let files = 0;
-    let withSources = 0;
 
     for (const engineDir of fs.readdirSync(bridgesRoot)) {
         const dirPath = path.join(bridgesRoot, engineDir);
@@ -347,37 +345,17 @@ await group('BR-2', async () => {
             if (typeof entry.order === 'number' && seen.has(entry.order)) violations.push(`${rel}: order ${entry.order} is also ${seen.get(entry.order)}`);
             if (typeof entry.order === 'number') seen.set(entry.order, file);
             orderByDir.set(engineDir, seen);
-
-            const sources = entry.docs?.sources ?? [];
-            if (sources.length > 0) withSources++;
-            const ids = new Set();
-            const intos = new Set();
-            for (const source of sources) {
-                if (ids.has(source.id)) violations.push(`${rel}: docs source id "${source.id}" repeats`);
-                if (intos.has(source.into)) violations.push(`${rel}: docs source into "${source.into}" repeats`);
-                ids.add(source.id);
-                intos.add(source.into);
-                if (source.kind === 'git' && !source.repo.startsWith('https://')) violations.push(`${rel}: git source "${source.id}" is not https`);
-            }
         }
     }
-    if (withSources < MIN_BRIDGES_WITH_SOURCES) violations.push(`only ${withSources} bridge(s) carry docs.sources, expected at least ${MIN_BRIDGES_WITH_SOURCES}`);
-    report('BR-2', 'every bridge parses without a warning, has a unique numeric order and clean docs.sources', files, violations);
+    report('BR-2', 'every bridge parses without a warning and has a unique numeric order', files, violations);
 
     // The negative half: a malformed optional value is dropped with a warning, the entry survives.
     const base = { key: 'x', code: 'x', displayName: 'X', is_engine: true, config: { command: 'x' }, docs: { repo: 'https://example.test/x' } };
     const parsed = (patch) => captureWarnings(() => parseMcpServerEntry({ ...base, ...patch }, '.', 'x.json'));
 
-    const badSource = parsed({ docs: { ...base.docs, sources: [
-        { kind: 'git', repo: 'https://example.test/x', into: 'a' },
-        { kind: 'git', id: 'dup', repo: 'https://example.test/x', into: 'b' },
-        { kind: 'git', id: 'dup', repo: 'https://example.test/x', into: 'c' },
-        { kind: 'git', id: 'outside', repo: 'https://example.test/x', into: '../up' },
-        { kind: 'git', id: 'plain-http', repo: 'http://example.test/x', into: 'd' },
-    ] } });
-    assertEq('BR-2', 'a docs source without an id, a repeated id, an into outside the folder and a non-https repo are dropped',
-        badSource.result.docs.sources.map(source => source.id), ['dup']);
-    assertEq('BR-2', 'each dropped source is announced', badSource.lines.length, 4);
+    assertEq('BR-2', 'a docs.sources field of an older card is ignored without a warning',
+        [parsed({ docs: { ...base.docs, sources: [{ kind: 'git', id: 's', repo: 'https://example.test/x', into: 'a' }] } }).lines.length, parsed({ docs: { ...base.docs, sources: [] } }).result.docs],
+        [0, { repo: 'https://example.test/x' }]);
 
     const badSetup = parsed({ setup: [{ by: 'robot', run: 'x' }, { by: 'human', run: 'install it' }] });
     assertEq('BR-2', 'a setup line with an unknown actor is dropped, the good one stays', badSetup.result.setup, [{ by: 'human', run: 'install it' }]);
@@ -404,7 +382,7 @@ await group('BR-3', async () => {
             fileId: id,
             hasRulesTree: id === 'mcp-a',
             entry: id === 'mcp-a'
-                ? entry('mcp-a', { docs: { context7: '/x/a', repo: 'https://example.test/a', sources: [{ kind: 'git', id: 's', repo: 'https://example.test/a', into: 's' }] } })
+                ? entry('mcp-a', { docs: { context7: '/x/a', repo: 'https://example.test/a' } })
                 : entry('mcp-b', { setup: [{ by: 'human', run: 'install b' }, { by: 'agent-confirmed', run: 'configure b' }] }),
         })),
         unselected: [],
@@ -422,7 +400,9 @@ await group('BR-3', async () => {
     assertEq('BR-3', 'setup is a table that says who performs each line',
         text.includes('Setup:\n\n| who | what to do |\n|---|---|\n| human | install b |\n| agent, confirm first | configure b |\n'), true);
     assertEq('BR-3', 'the notes of a bridge are named after it', text.includes('| notes | .unikit/bridge-notes/mcp-a.md |\n'), true);
-    assertEq('BR-3', 'the docs sources are a JSON block under their label', text.includes('docs sources:\n```json\n['), true);
+    assertEq('BR-3', 'there is no docs row and no docs sources block', [text.includes('\n| docs | '), text.includes('docs sources')], [false, false]);
+    assertEq('BR-3', 'a block names the stack rule of its bridge',
+        text.includes('| guide | .unikit/memory/code/stack/mcp-a.md (the stack rule of this bridge, when it is installed) |\n'), true);
     assertEq('BR-3', 'the same input renders the same text', renderBridgesManifest(input(['mcp-a', 'mcp-b'])), text);
     assertEq('BR-3', 'no undefined or null leaks into the text', /undefined|\bnull\b/.test(text), false);
     assertEq('BR-3', 'a text ends in exactly one newline', text.endsWith('\n') && !text.endsWith('\n\n'), true);
@@ -767,7 +747,7 @@ const LADDER_ANCHORS = [
     'A marker and its delta come from one bridge',
     'A domain reload closes every bridge',
     'A bridge that does not answer stops itself, not the editor',
-    'A copy older than the installed versions is **still used**',
+    'A method it names is a candidate, not a fact',
 ];
 
 await group('BR-10b', async () => {
@@ -1433,7 +1413,7 @@ await group('BR-3c', async () => {
     assertEq('BR-3c', 'the blocks come in the package order', lines.filter(line => line.startsWith('## ')), ['## unity-cli', '## unity-biome-mcp', '## coplay-unity-mcp']);
     assertEq('BR-3c', 'the fields of the block, in the order the readers rely on', rows.map(row => row.slice(2, row.indexOf(' |'))),
         ['kind', 'call', 'catalog groups', 'catalog group', 'catalog tags', 'catalog tag', 'catalog search', 'catalog list', 'schema of one command', 'compile', 'status', 'ready',
-            'probe version', 'probe package', 'floor', 'available when', 'rules', 'verification', 'notes', 'docs', 'context7']);
+            'probe version', 'probe package', 'floor', 'available when', 'rules', 'verification', 'guide', 'notes', 'context7']);
     assertEq('BR-3c', 'the block points to the rules tree and the gate calibration of the bridge',
         [rows.includes('| rules | .unikit/system/engine-bridges/unity-cli/INDEX.md |'), rows.includes('| verification | .unikit/system/engine-bridges/unity-cli/verification.md |')], [true, true]);
     assertEq('BR-3c', 'the call form is printed as the card has it', rowOf(rows, 'call'), `| call | \`${card.cli.forms.call}\` |`);
@@ -1555,14 +1535,12 @@ await group('BR-2e', async () => {
     report('BR-2e', 'no skill, subagent, data file or rules tree names the binary of a command-line bridge', texts.length, violations);
 });
 
-// ── BD / UREF: the bridge-documentation button and the user references skill ──
+// ── UREF: the user references skill ──
 
-const BRIDGE_DOCS_SKILL = 'skills/unikit-bridge-docs';
 const REFERENCES_SKILL = 'skills/unikit-references';
-const SKILL_BYTE_CEILINGS = { [BRIDGE_DOCS_SKILL]: 12000, [REFERENCES_SKILL]: 9000 };
+const SKILL_BYTE_CEILINGS = { [REFERENCES_SKILL]: 9000 };
 const BOOTSTRAP_ANCHOR = '<!-- unikit:extension-point:bootstrap -->';
 const MAX_DESCRIPTION_BYTES = 1024;
-const BRIDGE_DOCS_REFERENCES = ['status.md', 'menu.md', 'sources.md', 'stamp-and-report.md'];
 
 const readRepo = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
 
@@ -1576,159 +1554,7 @@ function skillFrontmatter(rel) {
     return { name: /^name: (.*)$/m.exec(head)?.[1], description, tools, text };
 }
 
-const cliBinaries = () => {
-    const out = [];
-    for (const file of filesBelow(path.join(ROOT, PACKAGE_BRIDGES_DIR_NAME)).filter((rel) => rel.endsWith('.json') && !rel.includes('/rules/'))) {
-        const card = JSON.parse(readRepo(file));
-        if (card.kind === 'cli') out.push(card.cli.binary);
-    }
-    return out;
-};
-
 const skillFiles = (skillDir) => filesBelow(path.join(ROOT, skillDir)).filter((file) => file.endsWith('.md'));
-
-await group('BD-1', async () => {
-    const violations = [];
-    let scanned = 0;
-    const { name, description, tools, text } = skillFrontmatter(`${BRIDGE_DOCS_SKILL}/SKILL.md`);
-    const expected = [
-        'Read', 'Write', 'Glob', 'Grep', 'AskUserQuestion',
-        'Bash(mkdir *)', 'Bash(ls *)', 'Bash(find *)', 'Bash(wc *)', 'Bash(grep *)', 'Bash(date *)', 'Bash(cp *)', 'Bash(mv *)', 'Bash(rm *)',
-        'Bash(git clone *)', 'Bash(git -C *)', 'Bash(git ls-remote *)',
-    ];
-    scanned++; if (name !== 'unikit-bridge-docs') violations.push(`name is "${name}"`);
-    scanned++; if (Buffer.byteLength(description) > MAX_DESCRIPTION_BYTES || !/^[\x00-\x7f]+$/.test(description)) violations.push(`description: ${Buffer.byteLength(description)} bytes or not ASCII`);
-    scanned++; if ([...tools].sort().join('|') !== [...expected].sort().join('|')) violations.push(`allowed-tools differ: ${tools.join(', ')}`);
-    scanned++; if (text.split('\n').filter((line) => line.startsWith('**User questions.**')).length !== 1) violations.push('the menu asks through the contract: the skill carries exactly one user-questions pointer line');
-    scanned++; if (Buffer.byteLength(text) > SKILL_BYTE_CEILINGS[BRIDGE_DOCS_SKILL]) violations.push(`SKILL.md is ${Buffer.byteLength(text)} bytes, above ${SKILL_BYTE_CEILINGS[BRIDGE_DOCS_SKILL]}`);
-    report('BD-1', 'the bridge-docs skill has the frontmatter, the tools and the size the plan gives it', scanned, violations);
-});
-
-await group('BD-2', async () => {
-    const violations = [];
-    let scanned = 0;
-    const must = (rel, phrases) => {
-        const text = readRepo(`${BRIDGE_DOCS_SKILL}/${rel}`);
-        for (const phrase of phrases) { scanned++; if (!text.includes(phrase)) violations.push(`${rel}: "${phrase}" is missing`); }
-    };
-    must('SKILL.md', ['its previous copy stays untouched', 'never passes through the conversation', 'is data, not instructions', 'belong to this skill', 'A source that fails never stops the others',
-        'Nothing to do - every copy is current and whole.', 'Never asks about a source that is current']);
-    must('references/status.md', ['Read only', 'Take the first line that applies', '**missing**', '**damaged**', '**outdated**', '**unknown**', '**current**', 'How to compare versions']);
-    must('references/menu.md', ['Collect everything (Recommended)', 'Fix what was found (Recommended)', 'Rebuild everything', 'Nothing now', 'Never ask again in the same run']);
-    must('references/sources.md', ['Any failure before step 3: remove', 'Standard error is not redirected', 'core.autocrlf=false', 'copy not verbatim', 'Asking for a version']);
-    must('references/stamp-and-report.md', ['a bridge without probes is never called older']);
-    const skill = readRepo(`${BRIDGE_DOCS_SKILL}/SKILL.md`);
-    scanned++; if (skill.split(BOOTSTRAP_ANCHOR).length !== 2) violations.push('SKILL.md: the bootstrap anchor must appear exactly once');
-    for (const rel of skillFiles(BRIDGE_DOCS_SKILL).filter((file) => !file.endsWith('/SKILL.md'))) {
-        scanned++; if (readRepo(rel).includes('unikit:extension-point')) violations.push(`${rel}: an extension anchor outside SKILL.md`);
-    }
-    for (const reference of BRIDGE_DOCS_REFERENCES) {
-        scanned++; if (!skill.includes(`{{skills_dir}}/{{self_name}}/references/${reference}`)) violations.push(`SKILL.md: ${reference} is not named by its full path`);
-    }
-    const onDisk = fs.readdirSync(path.join(ROOT, BRIDGE_DOCS_SKILL, 'references')).sort();
-    scanned++; if (onDisk.join('|') !== [...BRIDGE_DOCS_REFERENCES].sort().join('|')) violations.push(`references/ holds ${onDisk.join(', ')}, expected ${BRIDGE_DOCS_REFERENCES.join(', ')}`);
-    report('BD-2', 'the wording the readers and the guards rely on is in the skill', scanned, violations);
-});
-
-await group('BD-2b', async () => {
-    const violations = [];
-    const binaries = cliBinaries();
-    const files = [...skillFiles(BRIDGE_DOCS_SKILL), ...skillFiles(REFERENCES_SKILL)];
-    for (const binary of binaries) {
-        const bare = new RegExp(`(^|[^A-Za-z0-9_-])${binary}([^A-Za-z0-9_-]|$)`);
-        for (const file of files) {
-            readRepo(file).split('\n').forEach((line, index) => { if (bare.test(line)) violations.push(`${file}:${index + 1}: names the binary "${binary}"`); });
-        }
-    }
-    if (binaries.length < 1) violations.push('no cli bridge in the catalog');
-    report('BD-2b', 'the skills that read the bridge documentation name no binary', files.length, violations);
-});
-
-await group('BD-3', async () => {
-    const { renderBridgesManifest } = await dist('core/bridges/manifest.js');
-    const { orderBridges } = await dist('core/bridges/selection.js');
-    const { discoverMcpServers } = await dist('core/mcp.js');
-    const discovered = await discoverMcpServers('unity');
-    const manifest = renderBridgesManifest({
-        engineId: 'unity',
-        bridges: orderBridges(discovered, ['unity-cli', 'unity-biome-mcp']).map(({ fileId, entry }) => ({ fileId, entry, hasRulesTree: true })),
-        unselected: [],
-        settingsFiles: ['.mcp.json'],
-    });
-    const skillText = skillFiles(BRIDGE_DOCS_SKILL).map(readRepo).join('\n');
-    const violations = [];
-    // What the producer prints (a row of the field table, a label line, the Setup table), and the name the consumer reads it by.
-    const row = (field) => `\n| ${field} | `;
-    const keys = [
-        [row('docs'), '`docs`'], [row('probe version'), '`probe version`'], [row('probe package'), '`probe package`'], [row('floor'), '`floor`'],
-        ['docs sources:\n```json', '`docs sources`'], ['Setup:\n\n| who | what to do |', '`setup`'],
-    ];
-    for (const [printed, named] of keys) {
-        if (!manifest.includes(printed)) violations.push(`BRIDGES.md does not print "${printed.trim()}"`);
-        if (!skillText.includes(named)) violations.push(`the skill does not read ${named}`);
-    }
-    // What BRIDGES.md no longer carries must not be read: the catalog part and the engine-level block are gone from both sides.
-    const gone = ['catalog groups', 'catalog group', 'Engine-level documentation'];
-    for (const phrase of gone) {
-        if (skillText.includes(phrase)) violations.push(`the skill still reads "${phrase}"`);
-    }
-    report('BD-3', 'every key the skill reads is printed in BRIDGES.md, and nothing the file no longer prints is read', keys.length + gone.length, violations);
-});
-
-await group('BD-4', async () => {
-    const violations = [];
-    let scanned = 0;
-    const need = (rel, phrases) => {
-        const text = readRepo(`${BRIDGE_DOCS_SKILL}/${rel}`);
-        for (const phrase of phrases) { scanned++; if (!text.includes(phrase)) violations.push(`${rel}: "${phrase}" is missing`); }
-    };
-    need('references/stamp-and-report.md', ['collected:', 'versions:', '## Sources', '## Folders', 'FILES.md', 'was -> is',
-        '| source | kind | stamp | files | bytes | state | folder |', '| path | bytes | caption |', '<!-- pointer ', '.unikit/references/bridges/<bridge id>/']);
-    need('references/status.md', ['| bridge | source | in the copy | now | state |']);
-    report('BD-4', 'the formats the readers parse are spelled in the skill', scanned, violations);
-});
-
-await group('BD-5', async () => {
-    const card = JSON.parse(readRepo('engine-bridges/unity/unity-cli.json'));
-    const verbs = card['allowed-tools'].skills['unikit-bridge-docs'] ?? [];
-    assertEq('BD-5', 'the button gets exactly the show and version verbs (it lists, probes and reads; it never calls a command or contacts the editor), and the skill exists',
-        [[...verbs].sort(), verbs.some((verb) => verb.startsWith('pipeline')), fs.existsSync(path.join(ROOT, BRIDGE_DOCS_SKILL, 'SKILL.md'))],
-        [['--version', 'skill show'], false, true]);
-});
-
-await group('BD-6', async () => {
-    const violations = [];
-    let scanned = 0;
-    for (const file of filesBelow(path.join(ROOT, PACKAGE_BRIDGES_DIR_NAME)).filter((rel) => rel.endsWith('.json') && !rel.includes('/rules/'))) {
-        for (const source of JSON.parse(readRepo(file)).docs?.sources ?? []) {
-            scanned++;
-            const where = `${file}: source "${source.id}"`;
-            if (source.kind === 'command' && !(String(source.show).includes('<file>') && String(source.list).length > 0)) violations.push(`${where}: a command source needs list and show with the slot <file>`);
-            if (source.kind === 'package' && (path.isAbsolute(source.root) || source.root.split('/').includes('..'))) violations.push(`${where}: the package root leaves the project`);
-            if (source.kind === 'git' && !String(source.repo).startsWith('https://')) violations.push(`${where}: a git source must be https`);
-            if (source.kind !== 'git' && JSON.stringify(source).includes('{version}')) violations.push(`${where}: {version} belongs to the ref of a git source`);
-        }
-    }
-    if (scanned < 7) violations.push(`only ${scanned} pointers were looked at, expected at least 7`);
-    report('BD-6', 'every documentation pointer of the catalog can be consumed', scanned, violations);
-});
-
-await group('BD-7', async () => {
-    const violations = [];
-    // The names are built from parts so that this file does not name what it forbids.
-    const folder = new RegExp('(^|[^A-Za-z0-9])_' + 'engine\\b');
-    const snapshot = 'CATALOG' + '.md';
-    const roots = ['skills', 'subagents', 'data', 'src', PACKAGE_BRIDGES_DIR_NAME, 'scripts'];
-    const files = roots.flatMap((root) => filesBelow(path.join(ROOT, root)))
-        .filter((file) => /\.(md|ts|json|yaml|mjs|sh)$/.test(file) && !file.includes('/test-fixtures/') && !file.includes('/node_modules/'));
-    for (const file of files) {
-        readRepo(file).split('\n').forEach((line, index) => {
-            if (folder.test(line)) violations.push(`${file}:${index + 1}: names the engine-level documentation folder`);
-            if (line.includes(snapshot)) violations.push(`${file}:${index + 1}: names the catalog snapshot`);
-        });
-    }
-    report('BD-7', 'neither the engine-level documentation nor the catalog snapshot is named in skills, subagents, data, sources, cards or scripts', files.length, violations);
-});
 
 await group('UREF-1', async () => {
     const violations = [];
@@ -1892,17 +1718,9 @@ await group('BR-14', async () => {
     const probePattern = new RegExp(biomeCard.versionProbe.pattern);
     assertEq('BR-14', 'the Biome pattern finds the pinned version and skips the placeholder',
         [probePattern.exec('git+https://github.com/german-krasnikov/unity-biome-mcp.git@v2.1.0#subdirectory=server')?.[1], probePattern.exec('git+https://x.git@v{{ VERSION }}#subdirectory=server')], ['2.1.0', null]);
-    const withToken = [];
-    for (const file of filesBelow(path.join(ROOT, PACKAGE_BRIDGES_DIR_NAME)).filter((rel) => rel.endsWith('.json') && !rel.includes('/rules/'))) {
-        const card = JSON.parse(readRepo(file));
-        for (const source of card.docs?.sources ?? []) {
-            if (String(source.ref ?? '').includes('{version}')) withToken.push([source.kind, Boolean(card.versionProbe || card.cli?.forms?.version)]);
-        }
-    }
-    assertEq('BR-14', 'a {version} token stands only in the ref of a git source of a bridge that can tell its version',
-        [withToken.length > 0, withToken.every(([kind, canTell]) => kind === 'git' && canTell)], [true, true]);
-    assertEq('BR-14', 'the Biome docs are taken by the version tag and leave out the generated quality reports',
-        [biomeCard.docs.sources.every(source => source.ref === 'v{version}'), biomeCard.docs.sources.find(source => source.id === 'docs').exclude.includes('quality/**')], [true, true]);
+    const token = '{' + 'version' + '}';
+    assertEq('BR-14', 'no card names the version of a bridge as a token of a documentation pointer any more',
+        filesBelow(path.join(ROOT, PACKAGE_BRIDGES_DIR_NAME)).filter((rel) => rel.endsWith('.json') && !rel.includes('/rules/')).filter((rel) => readRepo(rel).includes(token)), []);
 
     report('BR-14', 'version probe checks ran', passed - before, []);
 });
@@ -1969,12 +1787,13 @@ await group('SP-2', async () => {
     const text = readRepo(DEV_PRINCIPLES);
     const d8 = text.slice(text.indexOf('### D8. '));
     const violations = [];
-    const phrases = ['`FILES.md`', 'The version check', 'Docs: <bridge> - current', 'none collected', 'A copy older than the installed versions is **still used**',
-        'The section about the command you chose', 'its `context7` row', 'Only a reader granted that server reaches for it', 'Reference: trigger <1|2>'];
+    const phrases = ['Three sources, in this order', 'the `guide` row of its block', 'A method it names is a candidate, not a fact', 'The ordinary search of the method',
+        'its `context7` row', 'Only a reader granted that server reaches for it', 'Reference: trigger <1|2>'];
     for (const phrase of phrases) if (!d8.includes(phrase)) violations.push(`D8: "${phrase}" is missing`);
-    const gone = ['INFO [reference]', 'table of contents', 'CATALOG', 'hint, never a guarantee', '`ready:`', '_' + 'engine'];
+    const gone = ['`FILES.md`', 'The version check', 'Docs: <bridge>', 'none collected', 'collected documentation', 'collected copy', 'references/bridges', 'INFO [reference]',
+        'table of contents', 'CATALOG', 'hint, never a guarantee', '`ready:`', '_' + 'engine'];
     for (const phrase of gone) if (text.includes(phrase)) violations.push(`dev-principles.md still has "${phrase}"`);
-    report('SP-2', 'D8 checks the version once per session and reads the section about the chosen command; the catalog table of contents is gone from the file', phrases.length + gone.length, violations);
+    report('SP-2', 'D8 names the rule of the bridge, then the ordinary search, then the library; the collected copy is gone from the file', phrases.length + gone.length, violations);
 });
 
 await group('SP-3', async () => {
@@ -2008,6 +1827,29 @@ await group('SP-4', async () => {
     const violations = [...new Set(named)].filter((label) => !printed.has(label)).map((label) => `dev-principles.md names the row "${label}", BRIDGES.md prints no such row`);
     if (named.length < 8) violations.push(`only ${named.length} row names were found in dev-principles.md, expected at least 8`);
     report('SP-4', 'every row of BRIDGES.md that dev-principles.md names is printed', named.length, violations);
+});
+
+// ── NB: nothing of the retired documentation skill is left ──
+
+await group('NB-1', async () => {
+    // The names are built from parts so that this file does not name what it forbids.
+    const skill = 'unikit-bridge-' + 'docs';
+    const folder = 'references/' + 'bridges';
+    const allowFolder = new Set(['skills/unikit-references/SKILL.md', 'docs/skills.md', 'scripts/test-bridges.mjs']);
+    const roots = ['skills', 'subagents', 'data', 'src', PACKAGE_BRIDGES_DIR_NAME, 'scripts', 'docs'];
+    const files = [...roots.flatMap((root) => filesBelow(path.join(ROOT, root))), 'README.md', 'AGENTS.md']
+        .filter((file) => /\.(md|ts|json|yaml|mjs|sh)$/.test(file) && !file.includes('/test-fixtures/') && !file.includes('/node_modules/'));
+    const violations = [];
+    for (const file of files) {
+        const text = readRepo(file);
+        if (text.includes(skill) && file !== 'scripts/test-bridges.mjs') violations.push(`${file}: names the retired skill`);
+        if (text.includes(folder) && !allowFolder.has(file)) violations.push(`${file}: names the retired folder`);
+    }
+    for (const file of filesBelow(path.join(ROOT, PACKAGE_BRIDGES_DIR_NAME)).filter((rel) => rel.endsWith('.json') && !rel.includes('/rules/'))) {
+        if (JSON.parse(readRepo(file)).docs?.sources !== undefined) violations.push(`${file}: still carries docs.sources`);
+    }
+    assertEq('NB-1', 'the skill directory is gone', fs.existsSync(path.join(ROOT, 'skills', skill)), false);
+    report('NB-1', 'no text, card or code names the retired documentation skill or its folder', files.length, violations);
 });
 
 // (groups of later tasks are appended above this line, each under its own banner)

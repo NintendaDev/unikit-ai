@@ -2904,14 +2904,12 @@ fi
 echo "  ✓ engine-bridges: a CLI bridge is described in BRIDGES.md and registers nothing; order is no installed byte; the unselected CLI is offered with its probe"
 
 # ─────────────────────────────────────────────────────
-# Test 16: the bridge-docs and references skills are delivered with their grants, and Context7 reaches
-# the executors that read documentation
+# Test 16: the references skill is delivered with its grants, and Context7 reaches the executors that
+# read documentation
 # ─────────────────────────────────────────────────────
-# (a) /unikit-bridge-docs: its references folder, the grants of the CLI card and its own git grant;
-#     with the CLI deselected the CLI grants go and its own stay.
-# (b) /unikit-references: the question tool and curl; a Codex project gets the slash calls rewritten
+# (a) /unikit-references: the question tool and curl; a Codex project gets the slash calls rewritten
 #     in the reference files too.
-# (c) Context7 in worker, coordinator and verify, and removed again with the server.
+# (b) Context7 in worker, coordinator and verify, and removed again with the server.
 
 DOCS_SKILLS_DIR="$TMPDIR/test-docs-skills"
 mkdir -p "$DOCS_SKILLS_DIR"
@@ -2926,14 +2924,14 @@ cat > "$DOCS_SKILLS_DIR/.unikit.json" << 'EOF'
       "id": "claude",
       "skillsDir": ".claude/skills",
       "subagentsDir": ".claude/agents",
-      "installedSkills": ["unikit-bridge-docs", "unikit-references", "unikit-implement"],
+      "installedSkills": ["unikit-references", "unikit-implement"],
       "installedSubagents": []
     },
     {
       "id": "codex",
       "skillsDir": ".codex/skills",
       "subagentsDir": ".codex/agents",
-      "installedSkills": ["unikit-bridge-docs", "unikit-references"],
+      "installedSkills": ["unikit-references"],
       "installedSubagents": []
     }
   ],
@@ -2945,61 +2943,22 @@ EOF
 inject_fake_registry "$DOCS_SKILLS_DIR"
 run_update "$DOCS_SKILLS_DIR"
 
-DOCS_SKILL="$DOCS_SKILLS_DIR/.claude/skills/unikit-bridge-docs"
-for doc_file in SKILL.md references/status.md references/menu.md references/sources.md references/stamp-and-report.md; do
-  assert_exists "$DOCS_SKILL/$doc_file" "bridge docs: $doc_file is delivered"
-done
-assert_not_exists "$DOCS_SKILL/references/catalog.md" "bridge docs: the catalog part is gone, its reference file is not delivered"
-grep -qF 'Bash(git clone *)' "$DOCS_SKILL/SKILL.md" || { echo "Assertion failed: the button's own git grant is missing"; exit 1; }
-for grant in 'Bash(unity skill show *)' 'Bash(unity --version *)'; do
-  grep -qF "$grant" "$DOCS_SKILL/SKILL.md" || { echo "Assertion failed: the card's grant '$grant' did not reach the button"; exit 1; }
-done
-for denied in 'Bash(unity command *)' 'Bash(unity status *)'; do
-  if grep -qF "$denied" "$DOCS_SKILL/SKILL.md"; then
-    echo "Assertion failed: the button must not be granted '$denied' (it lists, probes and reads; it never calls a command or contacts the editor)"
-    exit 1
-  fi
-done
-if grep -qF 'pipeline' "$DOCS_SKILL/SKILL.md"; then
-  echo "Assertion failed: no pipeline verb may be granted to the button"; exit 1
-fi
-assert_not_contains "$DOCS_SKILL/SKILL.md" '\{\{(skills_dir|self_name)\}\}' "bridge docs: the path variables are substituted"
-assert_contains "$DOCS_SKILL/SKILL.md" '\.claude/skills/unikit-bridge-docs/references/sources\.md' "bridge docs: the reference is named by its installed path"
-for doc_ref in status menu stamp-and-report; do
-  assert_contains "$DOCS_SKILL/SKILL.md" "\\.claude/skills/unikit-bridge-docs/references/${doc_ref}\\.md" "bridge docs: the ${doc_ref} reference is named by its installed path"
-done
-assert_contains "$DOCS_SKILL/SKILL.md" 'AskUserQuestion' "bridge docs: the question tool is granted"
-assert_contains "$DOCS_SKILL/SKILL.md" '^\*\*User questions\.\*\* Right before your first question' "bridge docs: the user-questions pointer is carried"
-
 REFS_SKILL="$DOCS_SKILLS_DIR/.claude/skills/unikit-references"
 assert_exists "$REFS_SKILL/SKILL.md" "references: the skill is delivered"
 assert_exists "$REFS_SKILL/references/index-format.md" "references: the index format is delivered"
 assert_contains "$REFS_SKILL/SKILL.md" 'AskUserQuestion' "references: the question tool is granted"
 grep -qF 'Bash(curl *)' "$REFS_SKILL/SKILL.md" || { echo "Assertion failed: references: curl is not granted"; exit 1; }
 assert_not_contains "$REFS_SKILL/SKILL.md" 'unity' "references: the user-references skill names no engine tool"
+assert_contains "$REFS_SKILL/SKILL.md" '^\*\*User questions\.\*\* Right before your first question' "references: the user-questions pointer is carried"
 
 # A Codex project: the slash calls in the reference files are rewritten like the skill text is.
 CODEX_REFS="$DOCS_SKILLS_DIR/.codex/skills/unikit-references/references/index-format.md"
 assert_exists "$CODEX_REFS" "references (codex): the index format is delivered"
-assert_contains "$CODEX_REFS" '\$unikit-bridge-docs' "references (codex): /unikit-bridge-docs is written as \$unikit-bridge-docs in the reference file"
-assert_not_contains "$CODEX_REFS" '/unikit-bridge-docs' "references (codex): no slash call is left in the reference file"
-grep -qF 'Bash(unity skill show *)' "$DOCS_SKILLS_DIR/.codex/skills/unikit-bridge-docs/SKILL.md" || { echo "Assertion failed: codex: the CLI grants did not reach the button"; exit 1; }
+assert_contains "$CODEX_REFS" '\$unikit-references' "references (codex): /unikit-references is written as \$unikit-references in the reference file"
+assert_not_contains "$CODEX_REFS" '/unikit-references' "references (codex): no slash call is left in the reference file"
+echo "  ✓ references: delivered with its reference file, the question tool and curl are granted, Codex gets the slash calls rewritten"
 
-# The CLI deselected: its grants leave the button, its own stay.
-CONFIG="$DOCS_SKILLS_DIR/.unikit.json" node -e "
-    const fs=require('fs'); const f=process.env.CONFIG;
-    const c=JSON.parse(fs.readFileSync(f,'utf8'));
-    c.engineBridges = { selected: { 'unity-biome-mcp': 'unity-biome-mcp' } };
-    fs.writeFileSync(f, JSON.stringify(c,null,2));
-"
-run_update "$DOCS_SKILLS_DIR"
-if grep -qF 'Bash(unity' "$DOCS_SKILL/SKILL.md"; then
-  echo "Assertion failed: bridge docs: the CLI is deselected and its grants are still in the button"; exit 1
-fi
-grep -qF 'Bash(git clone *)' "$DOCS_SKILL/SKILL.md" || { echo "Assertion failed: the button lost its own git grant with the CLI"; exit 1; }
-echo "  ✓ bridge docs and references: delivered with their reference files, the card's grants come and go with the CLI, Codex gets the slash calls rewritten"
-
-# (c) Context7 for the executors
+# (b) Context7 for the executors
 C7_DIR="$TMPDIR/test-context7-executors"
 mkdir -p "$C7_DIR"
 cat > "$C7_DIR/.unikit.json" << 'EOF'

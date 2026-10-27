@@ -20,7 +20,7 @@ For the gate a step asks for, walk the bridges in the order `.unikit/system/dev-
 4. Do not substitute a cheaper **class of evidence** for a lifted gate (A2) and never report it as passed. Trying the same gate through the next bridge is not a substitution — it is the next route.
 
 ## Editor targets (Step 1)
-Verify each target by reading the editor state back. Prefer a bridge other than the one that wrote it: a second bridge is an independent detector (D3). The per-target checks come from `ENGINE_RULES.md`; steps 1-3 of D6 run per target on the bridge you read through. A target the bridge cannot read back although you hold the schema is the dead end of the library reference (`.unikit/system/dev-principles.md` → D8): the collected documentation first, then the library the bridge's block names; report it as D8 prescribes.
+Verify each target by reading the editor state back. Prefer a bridge other than the one that wrote it: a second bridge is an independent detector (D3). The per-target checks come from `ENGINE_RULES.md`; steps 1-3 of D6 run per target on the bridge you read through. A target the bridge cannot read back although you hold the schema is the dead end of the library reference (`.unikit/system/dev-principles.md` → D8): the rule of the bridge first, then the library the bridge's block names; report it as D8 prescribes.
 
 ## The report
 One line per gate names the bridge that closed it: `Compilation: ✅ <bridge> · ⏭️ no engine bridge available · gate lifted - <observation>`. The `unikit-gate-result` block keeps its shape; a lifted or unavailable gate stays a warning, as before.

@@ -80,7 +80,6 @@ Keep it to one question + one follow-up. Never fan out into a questionnaire.
 | "share my rules across projects" | registry | `/unikit-rules-registry create\|update\|sync` | local folder registry? |
 | "the bridge said ok but nothing changed" / "the server lied" | record a bridge finding | `/unikit-bridge-trap [finding]`; curate later with `/unikit-bridge-audit` | is the observation already in this session? |
 | "are these bridge findings still true" / "the server was updated" | curate bridge findings | `/unikit-bridge-audit [id\|stamp\|replay\|retire\|upstream]` | replay needs a live editor |
-| "collect the bridge docs" / "the CLI was updated" / "refresh the bridge documentation" | refresh the collected bridge documentation | `/unikit-bridge-docs [bridge id\|bridge id/source id] [force]` | is there a network (vendor repositories are downloaded)? |
 | "add this document as a reference" / "save this link for the agents" | keep your own references | `/unikit-references add <path or address>` | a file, a folder or a page? |
 | "write the docs" / "update the README" | project documentation | `/unikit-docs` | code docs or GDD export (`/unikit-gd-docs`)? |
 | "keep a task list" / "what was I doing" | task checklist | `/unikit-todo` | — |

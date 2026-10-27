@@ -65,7 +65,7 @@ await group('R', async () => {
     console.log(`  R: ${keys.length} registry target(s) scanned`);
 
     assertTrue('R1 the registry is not empty', keys.length > 0, 'registry has no skill targets');
-    assertEq('R1 the registry lists 37 skills', keys.length, 37);
+    assertEq('R1 the registry lists 36 skills', keys.length, 36);
     assertTrue(
         'R1 every skill offers exactly the point "bootstrap"',
         keys.every(key => JSON.stringify(registry.skills[key]) === '["bootstrap"]'),
