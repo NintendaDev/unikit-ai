@@ -46,6 +46,10 @@
         "resolve-library-id",
         "query-docs"
       ],
+      "unikit-execute": [
+        "resolve-library-id",
+        "query-docs"
+      ],
       "unikit-verify": [
         "resolve-library-id",
         "query-docs"

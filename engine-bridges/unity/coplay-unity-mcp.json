@@ -24,7 +24,7 @@
     },
     "skills": {
       "unikit-plan": ["find_gameobjects"],
-      "unikit-devcontext": ["*"],
+      "unikit-execute": ["*"],
       "unikit-implement": ["*"],
       "unikit-fix": ["*"],
       "unikit-verify": ["*"],

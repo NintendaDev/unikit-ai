@@ -20,7 +20,7 @@
       "unikit-review-sidecar": ["*"]
     },
     "skills": {
-      "unikit-devcontext": ["*"],
+      "unikit-execute": ["*"],
       "unikit-implement": ["*"],
       "unikit-fix": ["*"],
       "unikit-verify": ["*"],

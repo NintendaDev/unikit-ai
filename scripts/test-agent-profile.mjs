@@ -293,13 +293,13 @@ await group('K', async () => {
 
     assertEq(
         'K2 claude: the Skill tool phrase, arguments in full',
-        processTemplate('prompt: "{{agent_skill_call:unikit-devcontext}} <task details>",', claude),
-        'prompt: "Call the Skill tool with skill "unikit-devcontext" and pass the text after the colon as its args, in full and unchanged. Then follow the skill. Text: <task details>",',
+        processTemplate('prompt: "{{agent_skill_call:unikit-execute}} <task details>",', claude),
+        'prompt: "Call the Skill tool with skill "unikit-execute" and pass the text after the colon as its args, in full and unchanged. Then follow the skill. Text: <task details>",',
     );
     assertEq(
         'K2 codex: the Read phrase with its own skills dir',
-        processTemplate('prompt: "{{agent_skill_call:unikit-devcontext}} <task details>",', codex),
-        `prompt: "Read .codex/skills/unikit-devcontext/SKILL.md ${READ_TAIL} <task details>",`,
+        processTemplate('prompt: "{{agent_skill_call:unikit-execute}} <task details>",', codex),
+        `prompt: "Read .codex/skills/unikit-execute/SKILL.md ${READ_TAIL} <task details>",`,
     );
 
     assertEq(
@@ -566,7 +566,7 @@ await group('I', async () => {
             // to the install would show as the wrong prefix.
             const viaTool = agent.subagentProfile.skillCall === 'skilltool';
             const call = (skill, text) => (viaTool ? skillToolCall(skill, text) : readCall(agent.skillsDir, skill, text));
-            assertTrue(`I8 ${agent.id}: develop-agent calls the devcontext skill`, texts.implement.includes(call('unikit-devcontext', '<task details>')));
+            assertTrue(`I8 ${agent.id}: develop-agent calls the execute skill`, texts.implement.includes(call('unikit-execute', 'Delegated hand-off: <task details>')));
             assertTrue(`I8 ${agent.id}: docs-agent calls the docs skill`, texts.implement.includes(call('unikit-docs', '<context>')));
             assertTrue(`I8 ${agent.id}: the brainstorm delegation calls the explore skill`, texts.brainstorm.includes(call('unikit-gd-explore', FRAME)));
             assertTrue(`I8 ${agent.id}: its mirror in the delegation contract calls it the same way`, texts.contract.includes(call('unikit-gd-explore', FRAME)));
@@ -578,7 +578,7 @@ await group('I', async () => {
             assertTrue(
                 `I8 ${agent.id}: the other form is absent from the call sites`,
                 viaTool
-                    ? !texts.implement.includes(`Read ${agent.skillsDir}/unikit-devcontext/SKILL.md in full before you do anything else`)
+                    ? !texts.implement.includes(`Read ${agent.skillsDir}/unikit-execute/SKILL.md in full before you do anything else`)
                     : !texts.implement.includes('Call the Skill tool with skill'),
             );
 

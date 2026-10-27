@@ -3,7 +3,7 @@
 Read by `/unikit-implement`, `unikit-implement-coordinator`, `unikit-implement-worker`,
 `/unikit-verify`, `/unikit-pr`, `/unikit-improve`, `unikit-plan-polisher`, `unikit-plan-coordinator`,
 `/unikit-review`, `unikit-review-sidecar`, `unikit-architecture-sidecar`, `/unikit-fix`,
-`/unikit-devcontext` and `/unikit-commit`. Each reads this file only at its own point — its pointer
+`/unikit-execute` and `/unikit-commit`. Each reads this file only at its own point — its pointer
 names that point — and only the section of its role, plus the common sections that section names.
 Every service line this contract defines carries the tag `[prototype]`.
 
@@ -22,7 +22,7 @@ and is then kept or thrown away; nothing in this contract turns it into producti
 ## Trigger and fallback
 
 - **Trigger.** The manifest has `## Experiment Context`. A role with no manifest of its own
-  (review, fix, devcontext, the sidecars) triggers by hand-off: the session was started from such a
+  (review, fix, execute, the sidecars) triggers by hand-off: the session was started from such a
   plan, or the prompt it received carries the note
   `Prototype plan: read the section for your role in .unikit/system/prototype-profile.md.`
   followed by the plan's `Branch:`, `Base:` and settings.
@@ -133,7 +133,7 @@ These stay in force for a prototype plan:
 ## Role: quality and the rest
 
 `/unikit-review`, `unikit-review-sidecar`, `unikit-architecture-sidecar`, `/unikit-fix`,
-`/unikit-devcontext`, `/unikit-commit`.
+`/unikit-execute`, `/unikit-commit`.
 
 - **Review and the review sidecar:** report bugs, regressions, data-integrity risks, broken explicit
   constraints and an unreadable interface. Do not report a missing abstraction, missing
@@ -144,7 +144,7 @@ These stay in force for a prototype plan:
 - **`/unikit-fix`:** a fix inside a prototype plan follows `## Softened`; `TODO.md` is not ticked
   (Step 7.3); a regression test (Step 5) is suggested only when the plan says `Testing: yes`. The
   prompt of a `develop-agent` it launches carries the same note as the coordinator's workers do.
-- **`/unikit-devcontext`:** applies `## Softened` and skips the documentation-update and TODO parts
+- **`/unikit-execute`:** applies `## Softened` and skips the documentation-update and TODO parts
   of the conventions it reads.
 - **`/unikit-commit`:** skips the roadmap-alignment suggestion of its context check; its architecture
   check reports only a breach of a prohibition written in `.unikit/ARCHITECTURE.md` or

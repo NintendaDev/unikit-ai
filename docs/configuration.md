@@ -18,7 +18,7 @@ Main configuration file, created by `unikit-ai init`:
       "skillsDir": ".claude/skills",
       "subagentsDir": ".claude/agents",
       "installedSkills": [
-        "unikit", "unikit-architecture", "unikit-archive", "unikit-commit", "unikit-devcontext",
+        "unikit", "unikit-architecture", "unikit-archive", "unikit-commit", "unikit-execute",
         "unikit-docs", "unikit-evolve", "unikit-explore", "unikit-fix", "unikit-help",
         "unikit-implement", "unikit-improve", "unikit-bridge-audit", "unikit-bridge-docs",
         "unikit-bridge-trap", "unikit-memory", "unikit-plan", "unikit-pr", "unikit-references",
@@ -460,7 +460,7 @@ UniKit AI copies the **rules tree** of every selected bridge that ships one into
 
 | File | Read by |
 |------|---------|
-| `INDEX.md`, base section (everything except the `## Check` table) | `/unikit-plan`, `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-devcontext`, `unikit-implement-worker` — once, at Bootstrap |
+| `INDEX.md`, base section (everything except the `## Check` table) | `/unikit-plan`, `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-execute`, `unikit-implement-worker` — once, at Bootstrap |
 | `INDEX.md`, the `## Check` table | `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `unikit-implement-worker` — grepped per editor task, by the task's own area plus the cross-cutting ones |
 | `INDEX.md`, the delivery stamp and the access section | `/unikit-bridge-audit`, `/unikit-bridge-trap` — the stamp (the `bridge` row of the table under the title) names the bridge the tree belongs to; the access section says how a project-relative asset path is written for this engine |
 | `verification.md` | `/unikit-verify` and no other skill — per-gate calibration: which observation closes which gate |
@@ -541,7 +541,7 @@ The remaining half went with the last consumer that read it. Once the version wa
 
 A catalog JSON may name the skills and subagents that receive its tools. For an MCP bridge the names are injected into the installed frontmatter as `mcp__<code>__<tool>` (or `mcp__<code>__*`) — the **vendor code**, which is what the running server publishes its tools under. For a bridge of kind `cli` the JSON lists **verbs** and the installer writes `Bash(<binary> <verb> *)` for each - and the same as `PowerShell(<binary> <verb> *)` when the card names that shell, because the two tools have separate permission rules. Injection is keyed on your **selection** (the set of bridges, not their order), so changing which bridges you use reinstalls all skills and subagents and clears the old entries; a server whose code changes while your selection stays put has its dead names removed too. The installer removes only entries it owns - those that start with `mcp__` or with `Bash(<binary> ` / `PowerShell(<binary> ` - and never an entry you wrote yourself, such as `Bash(git *)`.
 
-- **Executors get a wildcard.** `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-devcontext` and the implement coordinator / worker / review sidecar are granted `["*"]` rather than a list of names. A stored list is a second catalog that nothing keeps in sync: it goes stale silently, and then it removes a right the agent was supposed to have. The wildcard also removes the last reason for a tool name to be written down anywhere but the live catalog.
+- **Executors get a wildcard.** `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-execute` and the implement coordinator / worker / review sidecar are granted `["*"]` rather than a list of names. A stored list is a second catalog that nothing keeps in sync: it goes stale silently, and then it removes a right the agent was supposed to have. The wildcard also removes the last reason for a tool name to be written down anywhere but the live catalog.
 - **A command-line bridge is granted verbs, not a wildcard.** The executors get `command`, `status`, `recompile`, `test` and `--version`; `/unikit-bridge-audit` gets `command`, `status` and `--version`; `/unikit-bridge-docs` gets `skill show` and `--version`; `/unikit` gets `--version`, `status` and `self-update --check`. Nothing that installs, closes, signs in or updates is granted to anyone - `unity pipeline install` is run by an agent only after you confirm it.
 - **The planner is the one exception**, and receives discovery names only — as few as the server needs to resolve a target. The discovery protocol is the single layer that does not rot, and a planner physically cannot mutate anything, so a narrow grant costs nothing and documents the boundary. A meta-tool that reports which parts of a catalog are switched on is **not** granted where its state field has been measured to lie.
 - **On the three Godot servers the planner receives nothing at all, and that is the rule above being applied rather than an oversight.** None of `fennara-godot-mcp.json`, `gdai-godot-mcp.json` or `coding-solo-godot-mcp.json` carries a `unikit-plan` key. Fennara's only discovery-shaped candidate is a self-report, and its tool listing was measured naming an affordance the protocol path then refuses to run — a state field that disagrees with what is callable. Granting it would hand the planner a catalog that lies in the direction that costs most: naming what does not work. The other two Godot servers offer no discovery-shaped tool at all, so there is nothing to grant. Since the format has no comments, the asymmetry with the servers that *do* grant the planner is recorded here:
@@ -633,7 +633,7 @@ It ships a rules tree: a handful of calls silently drop an argument or report su
 
 Provides up-to-date documentation for any library. It is a hosted HTTP endpoint: nothing is installed and no local process is spawned. Used by `/unikit` and `/unikit-architecture` during setup, by `/unikit-explore` while researching, and by `/unikit-memory` to enrich dynamic memory.
 
-`/unikit-implement`, `/unikit-fix`, `/unikit-verify` and the implement worker and coordinator are granted it (with `unikit-architecture`, `unikit-explore`, `unikit-memory` and `unikit`). The executors read the documentation collected for the bridge for the command they chose (`dev-principles.md` → D6 step 2) and may reach for the library by the library-reference procedure (`dev-principles.md` → D8) only on **two triggers**: an unfamiliar area (what approaches the authors propose — once per area per session), and a dead end (the schema is there, the capability is not). Never routinely at Bootstrap: it is a network dependency inside the editor lane, it costs 2-4k tokens per query, and it makes two runs of the same plan diverge. Whatever comes back describes **intent, not behaviour**, so it carries the same evidence obligations as anything else — with heightened attention, because it has been caught presenting a structurally broken path as an exemplary one. `/unikit-verify` uses it for the dead end only: whatever comes back is advice, never the evidence that closes a gate.
+`/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-execute` and the implement worker and coordinator are granted it (with `unikit-architecture`, `unikit-explore`, `unikit-memory` and `unikit`). The executors read the documentation collected for the bridge for the command they chose (`dev-principles.md` → D6 step 2) and may reach for the library by the library-reference procedure (`dev-principles.md` → D8) only on **two triggers**: an unfamiliar area (what approaches the authors propose — once per area per session), and a dead end (the schema is there, the capability is not). Never routinely at Bootstrap: it is a network dependency inside the editor lane, it costs 2-4k tokens per query, and it makes two runs of the same plan diverge. Whatever comes back describes **intent, not behaviour**, so it carries the same evidence obligations as anything else — with heightened attention, because it has been caught presenting a structurally broken path as an exemplary one. `/unikit-verify` uses it for the dead end only: whatever comes back is advice, never the evidence that closes a gate.
 
 The server is optional in the wizard. Declining it does not disable anything — it removes one fallback, and the route ladder in the development principles continues from there.
 
@@ -715,7 +715,7 @@ your-unity-project/
 │   │   ├── unikit-architecture/
 │   │   ├── unikit-archive/
 │   │   ├── unikit-commit/
-│   │   ├── unikit-devcontext/
+│   │   ├── unikit-execute/
 │   │   ├── unikit-docs/
 │   │   │   ├── references/
 │   │   │   └── templates/
@@ -764,7 +764,7 @@ your-unity-project/
 │   │   ├── plan-boundaries.md     # Where a plan, a module and a push start and end - read by verify, implement, commit, pr
 │   │   ├── merge-analysis.md      # How to read a merge before it happens - read by explore and plan when asked to merge a branch
 │   │   ├── balance-handback.md    # The balance hand-back report contract - read by plan, implement, verify and unikit-gd-balance
-│   │   ├── prototype-profile.md   # How a plan built from experiment cards is executed - read by implement, verify, pr, improve, review, fix, devcontext, commit and their subagents
+│   │   ├── prototype-profile.md   # How a plan built from experiment cards is executed - read by implement, verify, pr, improve, review, fix, execute, commit and their subagents
 │   │   ├── subagent-arguments.md  # How the model and the effort of a subagent launch are settled - read by every skill that can launch a subagent and by the two coordinators
 │   │   ├── subagent-roles.md      # Which role (reader, validator, executor) each subagent launch has - read with subagent-arguments.md
 │   │   ├── user-questions.md      # How a skill asks you a question and waits for the answer - read before the first question by every skill and agent file that can ask you one

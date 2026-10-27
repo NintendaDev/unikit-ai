@@ -96,7 +96,7 @@ For per-skill details, read the corresponding `skills/unikit-<name>/SKILL.md`.
        /unikit-commit  /unikit-review  /unikit-verify  /unikit-docs
 ```
 
-Pipeline skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-improve`) load `dev-principles.md` once at Bootstrap and operate inline — they no longer delegate to `/unikit-devcontext` per task. `develop-agent` is reserved for true parallel scopes or deep-dive single tasks.
+Pipeline skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-improve`) load `dev-principles.md` once at Bootstrap and operate inline — they no longer delegate to `/unikit-execute` per task. `develop-agent` is reserved for true parallel scopes or deep-dive single tasks.
 
 ## Update mechanism
 

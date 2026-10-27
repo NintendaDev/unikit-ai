@@ -67,7 +67,7 @@ and use that model, no effort.
   ```
   Agent(
     {{agent_call_worker_quoted}}
-    prompt: "{{agent_skill_call:unikit-devcontext}} <task details>",
+    prompt: "{{agent_skill_call:unikit-execute}} Delegated hand-off: <task details>",
     description: "Implement <task>"
   )
   ```
@@ -378,18 +378,18 @@ Dependencies: {met/unmet}
 
 **3.2: Implement the task**
 
-This skill writes sequential tasks itself, with `Read/Edit/Write/Bash` and the rules already loaded in Step 1.5 + Step 3.0. Do NOT invoke `/unikit-devcontext` via `Skill(...)`.
+This skill writes sequential tasks itself, with `Read/Edit/Write/Bash` and the rules already loaded in Step 1.5 + Step 3.0. Do NOT invoke `/unikit-execute` via `Skill(...)`.
 
 Choose execution mode:
 - **Sequential within phase** (default for tasks that depend on each other or share files) → inline implementation. The skill writes code itself.
-- **Independent across phases** (per the manifest's `## Dependency Graph`, e.g. Phase 3 and Phase 4 can run in parallel) → spawn `develop-agent` (Agent + the `unikit-devcontext` skill) per independent scope. Use ONLY for true parallelism.
+- **Independent across phases** (per the manifest's `## Dependency Graph`, e.g. Phase 3 and Phase 4 can run in parallel) → spawn `develop-agent` (Agent + the `unikit-execute` skill) per independent scope. Use ONLY for true parallelism.
 - **Deep-dive single task** (requires extensive codebase exploration that would bloat parent context) → spawn `develop-agent` to isolate the exploration.
 
 When implementing inline, use the rules from Bootstrap + Phase Rules Refresh, the principles from `dev-principles.md`, the task description from the manifest's `## Checklist`, and the technical context from its `## Technical Context`.
 
 **In an ultra bundle the checklist line is a pointer, not the specification.** The task's specification is its `## Task N.M:` section in the phase file — `### Intent` through `### Verification` — and the manifest's `## Technical Context` supplies only the cross-phase part.
 
-**Fallback:** If `Agent` tool is unavailable, do NOT invoke `/unikit-devcontext` inline (rules and dev-principles are already loaded in Step 1.5 / Step 3.0). Instead, degrade parallel scopes to sequential and continue the inline implementation cycle for ALL tasks. Each phase still triggers Step 3.0 Phase Rules Refresh.
+**Fallback:** If `Agent` tool is unavailable, do NOT invoke `/unikit-execute` inline (rules and dev-principles are already loaded in Step 1.5 / Step 3.0). Instead, degrade parallel scopes to sequential and continue the inline implementation cycle for ALL tasks. Each phase still triggers Step 3.0 Phase Rules Refresh.
 
 **Tasks carrying an `Editor:` line** target the editor's serialized state, not source files. Handle each `Editor:` line — `[kind] <container> → <target> : <action>` — by the `Editor tasks` mode parsed in Step 1:
 

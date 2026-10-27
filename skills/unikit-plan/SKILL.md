@@ -419,7 +419,7 @@ Foci: (1) **architecture & affected modules** — the files and modules related 
 
 After the tasks return, synthesize: files to create/modify, patterns to follow, dependencies, risks.
 
-Code analysis in this skill is read-only: never `/unikit-devcontext`, never a code-writing delegate.
+Code analysis in this skill is read-only: never `/unikit-execute`, never a code-writing delegate.
 
 #### Phase B: Technical Deep-Dive (Explore agent)
 

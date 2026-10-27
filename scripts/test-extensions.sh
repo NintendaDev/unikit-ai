@@ -459,6 +459,58 @@ else
   exit 1
 fi
 
+# ──────────────────────────────────────────────
+# Test 10c: an injection aimed at the old name unikit-devcontext lands in unikit-execute
+# ──────────────────────────────────────────────
+# unikit-devcontext became unikit-execute. An extension that injects at its `bootstrap` point under the old
+# name keeps working: the manifest is read under the new name (one warning asks the author to update it),
+# the registry knows the point for the new name, and the anchor is found in the renamed skill.
+
+EXEC_EXT_DIR="$TMPDIR/ext-names-renamed-execute"
+mkdir -p "$EXEC_EXT_DIR"
+cat > "$EXEC_EXT_DIR/extension.json" << 'EOF'
+{
+  "name": "ext-old-execute",
+  "version": "1.0.0",
+  "injections": [
+    { "target": "unikit-devcontext", "targetType": "skill", "point": "bootstrap", "id": "note", "file": "inject.md" }
+  ]
+}
+EOF
+printf 'EXT_NOTE_FOR_THE_EXECUTE_SKILL\n' > "$EXEC_EXT_DIR/inject.md"
+
+EXEC_EXT_PROJECT="$TMPDIR/test-ext-old-execute-project"
+mkdir -p "$EXEC_EXT_PROJECT"
+cat > "$EXEC_EXT_PROJECT/.unikit.json" << 'EOF'
+{
+  "version": "3.0.0",
+  "language": "en",
+  "engine": "unity",
+  "engineBridges": {"selected": {}},
+  "mcp": { "servers": {} },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit", "unikit-execute"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": { "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } } }
+}
+EOF
+inject_fake_registry "$EXEC_EXT_PROJECT"
+(cd "$EXEC_EXT_PROJECT" && node "$ROOT_DIR/dist/cli/index.js" update > /dev/null 2>&1)
+
+EXEC_EXT_OUT="$TMPDIR/ext-old-execute-add.log"
+(cd "$EXEC_EXT_PROJECT" && node "$ROOT_DIR/dist/cli/index.js" extension add "$EXEC_EXT_DIR" > "$EXEC_EXT_OUT" 2>&1)
+
+assert_contains "$EXEC_EXT_OUT" 'names the renamed skill "unikit-devcontext"' "renamed execute: the injection target is announced so the author updates the manifest"
+assert_contains "$EXEC_EXT_PROJECT/.claude/skills/unikit-execute/SKILL.md" 'EXT_NOTE_FOR_THE_EXECUTE_SKILL' "renamed execute: the injection found its anchor in the renamed skill"
+assert_not_exists "$EXEC_EXT_PROJECT/.claude/skills/unikit-devcontext" "renamed execute: nothing was installed under the old name"
+echo "  ✓ renamed execute: an injection aimed at the old name lands in the renamed skill"
+
 # ─────────────────────────────────────────────────────
 # Test 11: MCP servers from extension
 # ─────────────────────────────────────────────────────

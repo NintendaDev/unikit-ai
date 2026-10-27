@@ -623,6 +623,22 @@ await group('BR-9', async () => {
     assertEq('BR-9', 'reading the same manifest again does not announce it again',
         captureWarnings(() => renames.renameManifestSkillNames(manifest, 'br9-label')).lines.length, 0);
 
+    assertEq('BR-9', 'unikit-devcontext is read as unikit-execute and the new name stays as it is',
+        [renames.renamedTo('unikit-devcontext'), renames.renamedTo('unikit-execute')],
+        ['unikit-execute', undefined]);
+    assertEq('BR-9', 'a list that holds both names of that skill keeps one, in place',
+        renames.renameSkillNames(['unikit', 'unikit-devcontext', 'unikit-execute']),
+        ['unikit', 'unikit-execute']);
+    const execManifest = {
+        replaces: { 'skills/exec': 'unikit-devcontext' },
+        injections: [{ target: 'unikit-devcontext', targetType: 'skill', file: 'a.md' }],
+    };
+    const execRun = captureWarnings(() => renames.renameManifestSkillNames(execManifest, 'br9-exec'));
+    assertEq('BR-9', 'a manifest of the old name is read under the new one',
+        [execRun.result.replaces, execRun.result.injections.map(injection => injection.target)],
+        [{ 'skills/exec': 'unikit-execute' }, ['unikit-execute']]);
+    assertEq('BR-9', 'the old name is announced once for that manifest', execRun.lines.length, 1);
+
     report('BR-9', 'skill rename checks ran', passed - before, []);
 });
 
@@ -1718,13 +1734,14 @@ await group('C7-1', async () => {
     const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
     const check = (ok, message) => { scanned++; if (!ok) violations.push(message); };
     check(same(context7['allowed-tools'].skills['unikit-verify'], grant), 'unikit-verify gets the two Context7 tools');
+    check(same(context7['allowed-tools'].skills['unikit-execute'], grant), 'unikit-execute gets the two Context7 tools');
     check(same(context7['allowed-tools'].agents['unikit-implement-coordinator'], grant), 'the coordinator gets the two Context7 tools');
     check(same(context7['allowed-tools'].agents['unikit-implement-worker'], grant), 'the worker gets the two Context7 tools');
     check(context7['allowed-tools'].agents['unikit-review-sidecar'] === undefined, 'the review sidecar, a reader without network, gets none');
-    for (const rel of ['skills/unikit-verify/SKILL.md', 'subagents/unikit-implement-worker.md', 'subagents/unikit-implement-coordinator.md']) {
+    for (const rel of ['skills/unikit-verify/SKILL.md', 'skills/unikit-execute/SKILL.md', 'subagents/unikit-implement-worker.md', 'subagents/unikit-implement-coordinator.md']) {
         check(fs.existsSync(path.join(ROOT, rel)), `${rel} must exist to accept the grant`);
     }
-    report('C7-1', 'Context7 is granted to verify, the worker and the coordinator', scanned, violations);
+    report('C7-1', 'Context7 is granted to verify, execute, the worker and the coordinator', scanned, violations);
 });
 
 // ── RG: counters that used to be literals now follow the tree ────────────────

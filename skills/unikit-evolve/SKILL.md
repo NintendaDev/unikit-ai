@@ -48,7 +48,7 @@ user picks → coding rules to RULES.md, workflow rules to skill-context
 ```
 
 **Two rule destinations:**
-- **RULES.md** — coding conventions: HOW to write code (patterns, naming, null-checks, async, serialization). These reach `unikit-devcontext` via RULES.md → `/unikit-memory` → memory/.
+- **RULES.md** — coding conventions: HOW to write code (patterns, naming, null-checks, async, serialization). These reach `unikit-execute` via RULES.md → `/unikit-memory` → memory/.
 - **skill-context** — workflow overrides: HOW a skill should behave (delegation strategy, commit frequency, compilation checks, parallelism). These go to `.unikit/skill-context/<skill>/SKILL.md` and are read by the target skill directly.
 
 Rule migration from RULES.md to core/stack rule files is handled by `/unikit-memory migrate-rules`.
@@ -185,7 +185,7 @@ Each prevention point must be classified:
 Classification heuristic:
 - If the prevention point says "code MUST do X", "always use pattern Y", "never call Z" — it's `code`
 - If the prevention point says "skill should check X before Y", "run compilation after each file", "delegate to agent instead of inline" — it's `workflow:<skill>`
-- When in doubt, default to `code` — it reaches devcontext through RULES.md → memory/ and applies broadly
+- When in doubt, default to `code` — it reaches execute through RULES.md → memory/ and applies broadly
 
 ### Step 4: Filter — Remove Already Covered
 

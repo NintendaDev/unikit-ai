@@ -557,5 +557,5 @@ bash scripts/test-exit-codes.sh           # Matrix guard (reads the other files)
 ## See Also
 
 - [Configuration](configuration.md) - full `.unikit.json` schema and project config surface
-- [Dynamic Memory](dynamic-memory.md) - how pipeline skills Bootstrap installed rules, and how `/unikit-devcontext` and `/unikit-memory` consume them at runtime
+- [Dynamic Memory](dynamic-memory.md) - how pipeline skills Bootstrap installed rules, and how `/unikit-execute` and `/unikit-memory` consume them at runtime
 - [Extensions](extensions.md) - the sibling mechanism for shipping skill/subagent content outside the npm package

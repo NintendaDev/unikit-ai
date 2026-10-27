@@ -1,6 +1,6 @@
 # Engine Development Principles
 
-This file is the canonical source of {{engine_name}} development principles. Installed by `unikit-ai init` / `unikit-ai update` into `.unikit/system/dev-principles.md` with `{{engine_*}}` vars substituted. Loaded by `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-improve`, `/unikit-devcontext`, `/unikit-bridge-audit`, and by the `unikit-implement-coordinator` and `unikit-implement-worker` agents.
+This file is the canonical source of {{engine_name}} development principles. Installed by `unikit-ai init` / `unikit-ai update` into `.unikit/system/dev-principles.md` with `{{engine_*}}` vars substituted. Loaded by `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-improve`, `/unikit-execute`, `/unikit-bridge-audit`, and by the `unikit-implement-coordinator` and `unikit-implement-worker` agents.
 
 **How to read it.** Everything **above** the LAZY-READ BOUNDARY marker is read on **every** Bootstrap — a reader finds the marker's line and reads the file only up to it. Everything **below** it is read **once per session**: at plan load when the plan's checklist carries an `Editor:` line, and otherwise at the first task that touches editor state — unconditionally, never gated on which rules happen to be installed.
 
@@ -122,10 +122,10 @@ The absence of a rules file is not a restriction.
 | file | who reads it | how |
 |---|---|---|
 | `.unikit/system/engine-bridges/<bridge>/INDEX.md` — the base section | everyone using an engine bridge | in full, once, at Bootstrap |
-| `.unikit/system/engine-bridges/<bridge>/INDEX.md` — the check table | implement · fix · devcontext · verify | by grep: your `kind`'s area plus every cross-cutting area |
+| `.unikit/system/engine-bridges/<bridge>/INDEX.md` — the check table | implement · fix · execute · verify | by grep: your `kind`'s area plus every cross-cutting area |
 | `.unikit/system/engine-bridges/<bridge>/verification.md` | `/unikit-verify` **only** | in full |
-| `.unikit/bridge-notes/<bridge>.md` | implement · fix · devcontext · verify | by grep, the same areas |
-| `.unikit/config.yaml` — the bridge order list | implement · fix · devcontext · verify · plan | with the rest of the config, once at Bootstrap |
+| `.unikit/bridge-notes/<bridge>.md` | implement · fix · execute · verify | by grep, the same areas |
+| `.unikit/config.yaml` — the bridge order list | implement · fix · execute · verify · plan | with the rest of the config, once at Bootstrap |
 
 A file that is absent is skipped: its reader prints one line and keeps every right it had — see A9.
 

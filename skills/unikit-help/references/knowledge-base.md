@@ -57,7 +57,7 @@ time**. Editing these by hand is pointless. The user does not curate them; the C
 Relevant to the dev pipeline:
 
 - `dev-principles.md` — the canonical engine development principles + workflow. Read on Bootstrap
-  by `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-improve`, `/unikit-devcontext`,
+  by `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-improve`, `/unikit-execute`,
   `/unikit-bridge-audit`, and the `unikit-implement-coordinator` and `unikit-implement-worker` agents.
 - `engine-bridges/BRIDGES.md` and `engine-bridges/<bridge>/{INDEX,verification}.md` — `BRIDGES.md` lists the **engine bridges the project actually selected**
   (the package's default order and one block per bridge); next to it, **one rules tree per
@@ -65,7 +65,7 @@ Relevant to the dev pipeline:
   **exceptions, not capabilities**: no tool names, no inventory of what the server cannot do —
   only checks to perform. `INDEX.md` carries a base section (read in full, once, at Bootstrap by
   everyone using an engine bridge) plus a check table keyed by **area**, which implement / fix /
-  devcontext / verify read by grep — their own work kind's area, plus every cross-cutting area.
+  execute / verify read by grep — their own work kind's area, plus every cross-cutting area.
   `verification.md` is read by `/unikit-verify` **only**, and calibrates which gates are
   reachable; **GATE LIFTED** is a runtime verdict verify reaches by trying and producing the
   evidence of absence — it is never pre-written into the file. Changing the selection or the engine
@@ -96,7 +96,7 @@ Relevant to the dev pipeline:
 - `prototype-profile.md` — how a plan built from experiment cards or another experiment source is executed (what stays
   mandatory, what is softened, what is switched off, the branch check), read by `/unikit-implement`,
   `/unikit-verify`, `/unikit-pr`, `/unikit-improve`, `/unikit-review`, `/unikit-fix`,
-  `/unikit-devcontext`, `/unikit-commit` and their subagents, only when the plan has `## Experiment Context`.
+  `/unikit-execute`, `/unikit-commit` and their subagents, only when the plan has `## Experiment Context`.
 - `subagent-arguments.md` — how the model and the effort of a subagent are settled (your word in the
   request or earlier in the session, then the config key of the launch's role, then the built-in value),
   read by the skills that launch a subagent, and by the two coordinators, before their first launch.
