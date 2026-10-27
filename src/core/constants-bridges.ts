@@ -2,7 +2,7 @@
 // Part 7i ceiling, and an `export *` back from here would be a cycle and a TDZ error (the same trap as SV-1c).
 
 import path from 'path';
-import { UNIKIT_DIR, systemDir } from './constants.js';
+import { CODE_MODULE_ID, MEMORY_DIR_NAME, UNIKIT_DIR, systemDir } from './constants.js';
 
 /** Subdirectory of the package `mcp/` catalog that holds the universal MCP servers (Context7, GitHub). */
 export const UNIVERSAL_MCP_DIR_NAME = 'universal';
@@ -54,6 +54,30 @@ export const NOT_SELECTED_HEADING = 'Not selected';
 
 /** The tier of the registry rule that carries a bridge's approach and traps; its id is the bridge's file id. */
 export const BRIDGE_RULE_TIER = 'stack';
+
+/** Log tag of the install and removal of the registry rule of a bridge. */
+export const BRIDGE_RULES_LOG_COMPONENT = 'bridge-rules';
+
+/** Why the rule of a dropped bridge stays: the words of the message the user reads. */
+export const BRIDGE_RULE_KEPT_REASONS = {
+  local: 'it is your own rule',
+  modified: 'it was edited after it was installed',
+  untracked: 'the project holds no record of where it came from',
+} as const;
+
+/** The words of the lines `init` and `update` print about the rule of a bridge; the id and the reason are added by the printer. */
+export const BRIDGE_RULE_REPORT = {
+  installed: 'Installed the rule of the bridge',
+  removed: 'Removed the rule of the dropped bridge',
+  kept: 'Kept the rule',
+  keptOf: 'of the dropped bridge',
+  failed: 'Could not install the rule of the bridge',
+} as const;
+
+/** The project-relative path of the registry rule of a bridge as people read it in a message. */
+export function bridgeRuleDisplayPath(bridgeId: string): string {
+  return [UNIKIT_DIR, MEMORY_DIR_NAME, CODE_MODULE_ID, BRIDGE_RULE_TIER, `${bridgeId}.md`].join('/');
+}
 
 /** The one file of a bridge's rules tree that the verify skill reads for the gate calibration. */
 export const BRIDGE_VERIFICATION_FILE = 'verification.md';

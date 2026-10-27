@@ -12599,6 +12599,26 @@ else
     echo "$BO_OUTPUT" | sed 's/^/      /'
 fi
 
+# Part 7e7: the rule of a bridge arrives and leaves with the bridge (family BRL)
+# ─────────────────────────────────────────────
+# Parse of the reference list, install, the file that is never overwritten, the record init carries over,
+# the removal of an unchanged registry rule only, a failing registry and the call sites
+# (scripts/test-bridge-rules.mjs). The registry is a fixture; every project is a temporary directory.
+echo -e "\n${BOLD}Part 7e7: bridge rules (BRL-*)${NC}"
+
+set +e
+BRL_OUTPUT=$(node "$ROOT_DIR/scripts/test-bridge-rules.mjs" 2>&1)
+BRL_EXIT=$?
+set -e
+
+if [[ $BRL_EXIT -eq 0 ]]; then
+    pass "Bridge rule guards"
+    echo "$BRL_OUTPUT" | tail -1 | sed 's/^/    /'
+else
+    fail "Bridge rule guards"
+    echo "$BRL_OUTPUT" | sed 's/^/      /'
+fi
+
 # (BR-8a) The 2.x layout is gone from every text the package ships. Step 1: no literal path of the
 # single-server rules folder under .unikit/system/ in skills/, subagents/ or data/. SV-5 forbids an
 # unknown path under .unikit/system/ already; this names the reason and counts what it looked at.

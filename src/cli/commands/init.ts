@@ -22,6 +22,8 @@ import { getMcpEnvLines } from '../../core/mcp-env.js';
 import { installEngineBridges } from '../../core/installer/engine-bridges.js';
 import { swapBridgeNotes } from '../../core/installer/bridge-notes.js';
 import { syncBridgeOrder } from '../../core/installer/bridge-order.js';
+import { syncBridgeRules } from '../../core/installer/bridge-rules.js';
+import { createRegistry } from '../../core/registry/index.js';
 import { getAgentConfig } from '../../core/agents.js';
 import { collectExtensionSkillNames, removeAgentSetup } from '../../core/installer/agent-removal.js';
 import { getAgentOnboarding } from '../../core/transformer.js';
@@ -29,6 +31,7 @@ import { runProjectMemoryMigrations } from '../../core/memory-migrations/index.j
 import { reinstallExtensionAssets } from '../../core/extension-ops.js';
 import { applyExtensionInjections } from '../../core/extension-injections.js';
 import { printInjectionReport } from './injection-report.js';
+import { printBridgeRulesReport } from './bridge-rules-report.js';
 import { logInfo } from '../../utils/log.js';
 
 export async function initCommand(): Promise<void> {
@@ -271,6 +274,17 @@ export async function initCommand(): Promise<void> {
       answers.engineBridges,
       catalogBridgeIds(discoveredServers),
     );
+
+    // The rule of each selected bridge arrives with the bridge and leaves with it. `init` resets the rule state in `config` (the files stay on
+    // disk), so the previous state comes from `existingConfig` and a record of a rule that is still wanted is carried over.
+    const bridgeRules = await syncBridgeRules({
+      projectDir, config, registry: createRegistry(config.rulesRegistry, engineId), engineId,
+      previousBridgeIds: existingConfig ? Object.keys(existingConfig.engineBridges.selected) : null,
+      currentBridgeIds: answers.engineBridges,
+      previousRules: existingConfig?.rules.installed ?? null,
+      regenerateIndex: 'disk',
+    });
+    printBridgeRulesReport(bridgeRules);
 
     await saveConfig(projectDir, config);
 

@@ -3266,5 +3266,92 @@ CONFIG="$BORDER_DIR/.unikit.json" node -e "
 assert_not_exists "$BORDER_FILE" "bridge order: with no bridge selected the order file is removed"
 echo "  ✓ bridge order: created in package order, settled runs change nothing, a hand edit is kept, no bridge removes the file"
 
+
+# ─────────────────────────────────────────────
+# Test 39: the rule of a bridge arrives with the bridge and leaves with it
+# ─────────────────────────────────────────────
+# The registry is a fixture with a stack rule per bridge (the Biome one carries two reference files). Installed
+# on the first update, left alone afterwards, kept when it was edited, removed when it was not, and brought back
+# when the user deleted it while the bridge is still selected.
+
+BRULE_DIR="$TMPDIR/update-bridge-rule"
+mkdir -p "$BRULE_DIR"
+cat > "$BRULE_DIR/.unikit.json" << 'EOF'
+{
+  "version": "3.0.0",
+  "engine": "unity",
+  "mcp": { "servers": {} },
+  "engineBridges": { "selected": { "unity-biome-mcp": "unity-biome-mcp", "unity-cli": "unity" } },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit-references"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": { "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } } }
+}
+EOF
+inject_fake_registry "$BRULE_DIR" bridge-rules
+BRULE_STACK="$BRULE_DIR/.unikit/memory/code/stack"
+BRULE_BIO="$BRULE_STACK/unity-biome-mcp.md"
+BRULE_CLI="$BRULE_STACK/unity-cli.md"
+BRULE_INDEX="$BRULE_DIR/.unikit/memory/code/RULES_INDEX.md"
+brule_update() { (cd "$BRULE_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/update-bridge-rule-$1.log" 2>&1); }
+brule_select() {  # <fileId=code ...>: the engine bridges of the project
+    CONFIG="$BRULE_DIR/.unikit.json" SELECTED="$1" node -e "
+        const fs=require('fs'); const f=process.env.CONFIG;
+        const c=JSON.parse(fs.readFileSync(f,'utf8'));
+        c.engineBridges = { selected: JSON.parse(process.env.SELECTED) };
+        fs.writeFileSync(f, JSON.stringify(c,null,2));
+    "
+}
+
+brule_update 1
+assert_exists "$BRULE_BIO" "bridge rule: the first update installs the rule of the Biome bridge"
+assert_exists "$BRULE_CLI" "bridge rule: ...and the rule of the CLI bridge"
+assert_exists "$BRULE_STACK/references/unity-biome-mcp-notes.md" "bridge rule: ...with its reference files"
+assert_exists "$BRULE_STACK/references/unity-biome-mcp-batch.md" "bridge rule: ...both of them"
+assert_contains "$BRULE_INDEX" 'unity-biome-mcp' "bridge rule: RULES_INDEX.md lists the installed rule"
+BRULE_SOURCE=$(CONFIG="$BRULE_DIR/.unikit.json" node -e "
+    const c=JSON.parse(require('fs').readFileSync(process.env.CONFIG,'utf8'));
+    const e=c.rules.installed.modules.code.stack.find(x=>x.name==='unity-biome-mcp');
+    process.stdout.write(e ? e.source + ':' + (e.installed_hash ? 'hash' : 'nohash') : 'none');
+")
+if [[ "$BRULE_SOURCE" != "registry:hash" ]]; then
+  echo "Assertion failed: bridge rule: the state should hold the Biome rule as a registry rule with its hash, got: $BRULE_SOURCE"
+  exit 1
+fi
+
+BRULE_SHA=$(sha_of "$BRULE_BIO")
+BRULE_CFG_SHA=$(sha_of "$BRULE_DIR/.unikit.json")
+brule_update 2
+assert_same_sha "$BRULE_BIO" "$BRULE_SHA" "bridge rule: a settled project leaves the rule byte-identical"
+assert_same_sha "$BRULE_DIR/.unikit.json" "$BRULE_CFG_SHA" "bridge rule: ...and the config"
+
+# Edited by the user, then the bridge is dropped: the rule stays.
+echo "A line the user added." >> "$BRULE_BIO"
+BRULE_EDITED_SHA=$(sha_of "$BRULE_BIO")
+brule_select '{ "unity-cli": "unity" }'
+brule_update 3
+assert_exists "$BRULE_BIO" "bridge rule: an edited rule stays when its bridge is dropped"
+assert_same_sha "$BRULE_BIO" "$BRULE_EDITED_SHA" "bridge rule: ...unchanged"
+
+# The CLI is dropped instead, Biome is back: the unchanged CLI rule goes, the Biome file stays as it is.
+brule_select '{ "unity-biome-mcp": "unity-biome-mcp" }'
+brule_update 4
+assert_not_exists "$BRULE_CLI" "bridge rule: an unchanged registry rule goes with its bridge"
+assert_exists "$BRULE_BIO" "bridge rule: the rule of the bridge that stays is still there"
+assert_same_sha "$BRULE_BIO" "$BRULE_EDITED_SHA" "bridge rule: ...and not overwritten"
+
+# Deleted by hand while the bridge is selected: it comes back.
+rm -f "$BRULE_BIO"
+brule_update 5
+assert_exists "$BRULE_BIO" "bridge rule: a deleted rule of a selected bridge comes back"
+assert_not_contains "$BRULE_BIO" 'A line the user added' "bridge rule: ...from the registry, not from the edited copy"
+echo "  ✓ bridge rule: installed with its references, left alone when settled, kept when edited, removed when unchanged, back when deleted"
+
 echo ""
 echo "update smoke tests passed"

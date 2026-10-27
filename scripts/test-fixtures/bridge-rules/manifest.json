@@ -1,0 +1,55 @@
+{
+  "schema": 2,
+  "generated": "2026-10-27T00:00:00.000Z",
+  "modules": {
+    "code": {
+      "engines": {
+        "unity": {
+          "core": [
+            {
+              "id": "code-style",
+              "description": "Minimal core rule of the bridge-rules fixture - synthetic content, no real guidance",
+              "version": "1.0.0",
+              "always": true
+            }
+          ],
+          "stack": [
+            {
+              "id": "unity-biome-mcp",
+              "description": "Fixture rule of a bridge, with two reference files",
+              "version": "1.0.0",
+              "always": false,
+              "references": [
+                "unity-biome-mcp-notes.md",
+                "unity-biome-mcp-batch.md"
+              ]
+            },
+            {
+              "id": "unity-cli",
+              "description": "Fixture rule of a bridge, no references",
+              "version": "1.0.0",
+              "always": false
+            }
+          ]
+        },
+        "godot": {
+          "core": [
+            {
+              "id": "code-style",
+              "description": "Godot core rule of the bridge-rules fixture - synthetic content",
+              "version": "1.0.0",
+              "always": true
+            }
+          ],
+          "stack": []
+        }
+      }
+    },
+    "gamedesign": {
+      "tiers": {
+        "core": [],
+        "library": []
+      }
+    }
+  }
+}
