@@ -26,7 +26,7 @@ Then narrow with **at most one** follow-up:
   - yes, but the ask is about the config itself ("update the config", "add missing settings")
     → `/unikit` again — Step 0 dispatches to config actualization, not to a re-bootstrap
   - yes, and the ask is about the setup itself ("I added a library", "what can I do here", "check the engine CLI")
-    → `/unikit` — on a project already set up it shows the returning-project menu (update the config · bridge order · bridges' environment · rules for new frameworks · refresh the description), not a re-bootstrap
+    → `/unikit` — on a project already set up it shows the returning-project menu (update the config · bridges' environment · rules for new frameworks · refresh the description), not a re-bootstrap
 - **2 Code** → "Plan/implement a feature · test existing code · fix a bug?"
   - feature → `/unikit-explore` (if direction unclear) → `/unikit-plan` → `/unikit-implement`
   - test    → `/unikit-verify` (vs plan) and/or the test phase in `/unikit-implement`
@@ -51,8 +51,8 @@ Keep it to one question + one follow-up. Never fan out into a questionnaire.
 |--------------------------|--------------------|-------|--------------------|
 | "where do I start", "I'm new" | onboard | `.unikit/config.yaml` present? no→`/unikit`; yes→ask idea/GDD | framework installed? |
 | "update the config", "add missing settings", "actualize configuration", "fix my config" | actualize config | `/unikit` — Step 0 dispatches to config actualization (Steps 1-11 do not run) | — |
-| "change the bridge order" / "make the CLI the main bridge" | set the order of the engine bridges | `/unikit` (bridge order mode), or edit the bridge order list in `.unikit/config.yaml` | do the bridges exist? (`BRIDGES.md`) |
-| "I added a library, make rules for it" / "check the engine CLI" / "what can /unikit do here" | act on a project that is already set up | `/unikit` — the returning-project menu: update the config · bridge order · bridges' environment · rules for new frameworks · refresh the description | is `.unikit/config.yaml` there? |
+| "change the bridge order" / "make the CLI the main bridge" | set the order of the engine bridges | edit the list in `.unikit/bridges.yaml` (kept in step with the bridges by `unikit-ai init` and `update`) | do the bridges exist? (`BRIDGES.md`) |
+| "I added a library, make rules for it" / "check the engine CLI" / "what can /unikit do here" | act on a project that is already set up | `/unikit` — the returning-project menu: update the config · bridges' environment · rules for new frameworks · refresh the description | is `.unikit/config.yaml` there? |
 | "how do I start coding" | begin a feature | have a plan? yes→`/unikit-implement`; no→`/unikit-plan` (a small task: `/unikit-execute`) | is there a plan / research? |
 | "how do I plan a feature" | plan | `/unikit-plan [fast\|full\|ultra] <feature>` | fast vs full vs ultra (throwaway / real / delegated to a smaller model) |
 | "the plan looks rough / wrong" | refine plan | `/unikit-improve` (run 1-3x) | — |

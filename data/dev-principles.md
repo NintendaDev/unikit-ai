@@ -125,7 +125,8 @@ The absence of a rules file is not a restriction.
 | `.unikit/system/engine-bridges/<bridge>/INDEX.md` — the check table | implement · fix · execute · verify | by grep: your `kind`'s area plus every cross-cutting area |
 | `.unikit/system/engine-bridges/<bridge>/verification.md` | `/unikit-verify` **only** | in full |
 | `.unikit/bridge-notes/<bridge>.md` | implement · fix · execute · verify | by grep, the same areas |
-| `.unikit/config.yaml` — the bridge order list | implement · fix · execute · verify · plan | with the rest of the config, once at Bootstrap |
+| `.unikit/bridges.yaml` — the bridge order | implement · fix · execute · verify · plan | in full, once, with `BRIDGES.md` |
+| `.unikit/bridge-routing.md` — the routing rules, when the file exists | implement · fix · execute · verify · plan | in full, once, with `BRIDGES.md` |
 
 A file that is absent is skipped: its reader prints one line and keeps every right it had — see A9.
 
@@ -220,7 +221,7 @@ Ask the live catalog of **each bridge in play** once per session — for a bridg
 
 For every check, take the route in this order and stop at the first that yields evidence of the class the claim needs (A2).
 
-**The order of the bridges.** Bridges are tried in the order the user set in the bridge order list of `.unikit/config.yaml`, restricted to the bridges `BRIDGES.md` lists; the listed bridges that list does not name follow in the default order `BRIDGES.md` states. A name in the list that `BRIDGES.md` does not list is skipped silently. No list, or an empty one, means the default order. An instruction from the user in this session ("only the second bridge", "leave the CLI out") beats the order.
+**The order of the bridges.** Bridges are tried in the order of `.unikit/bridges.yaml`, restricted to the bridges `BRIDGES.md` lists; the listed bridges that file does not name follow in the default order `BRIDGES.md` states. A name in the file that `BRIDGES.md` does not list is skipped silently. No file means the default order. Before that order is applied, the routing rules of `.unikit/bridge-routing.md` narrow or reorder the bridges for one case: take the rows whose `area` is the area of your step (the `kind` of the `Editor:` line, or the name of the gate) or `*`, keep those whose `when` describes your situation (an empty `when` means the whole area), and let the strongest row decide alone — a row with a `when` beats an area-wide row of the same area, a `*` row is the weakest, rows are never combined. `only` restricts the candidates, on both rungs below, to the bridges the row lists and nothing else is tried; `first` puts them first and the rest follow in the order; `never` removes them on both rungs. Two fitting rows of the same strength with different rules are reported, not guessed. No routing file, or no fitting row, means no routing rule. An instruction from the user in this session ("only the second bridge", "leave the CLI out") beats the routing rows and the order.
 
 1. **A dedicated route, bridge by bridge.** In the live catalog of each bridge, in that order, an affordance whose answer closes the claim class (A2) — chosen by the evidence class it gives, never by a name that looks right. The first bridge that has one wins; a dedicated route in the second bridge beats a code snippet in the first.
 2. **Engine code, bridge by bridge.** Only when no bridge has a dedicated route: executing engine code through the first bridge that offers it (D2, last row). A snippet has no schema and no read-back of its own, so the claim is closed by a separate read-back.

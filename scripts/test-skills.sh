@@ -7816,28 +7816,21 @@ if [[ -z "$MC_WHY" ]]; then
     grep -qF 'is left as it is and listed under skipped' "$MC_MODE_CONFIG" \
         || MC_WHY+=" MC-7:scalar-parent-not-named"
 
-    # The bridge order mode is the second mode declared in Step 0: it gets the same five checks (trigger in the
-    # description, dispatch inside Step 0 with its STOP, the contract surfaces, a capability-bounded body) and one more —
-    # the bridge settings exception of the actualization mode, which keeps an empty order list from being refilled.
-    MC_MODE_BRIDGE="$ROOT_DIR/skills/unikit/references/mode-bridge-order.md"
-    if [[ -s "$MC_MODE_BRIDGE" ]]; then
-        printf '%s' "$MC_DESC" | grep -qF 'change the bridge order' \
-            || MC_WHY+=" MC-1:no-bridge-order-trigger"
-        printf '%s' "$MC_STEP0" | grep -qF 'references/mode-bridge-order.md' \
-            || MC_WHY+=" MC-3:bridge-order-dispatch-outside-step-0"
-        grep -qF 'the same for the bridge order mode' "$TC_UNIKIT_SKILL" \
-            || MC_WHY+=" MC-4:item-4-not-narrowed-for-bridge-order"
-        grep -qF 'writes only `.unikit/config.yaml`' "$MC_MODE_BRIDGE" \
-            || MC_WHY+=" MC-5:bridge-order-no-capability-anchor"
-        grep -qF 'never `Write`' "$MC_MODE_BRIDGE" \
-            || MC_WHY+=" MC-5:bridge-order-no-write-prohibition"
-        MC6B_HITS="$({ grep -nE '(Agent|Skill|Bash)\(' "$MC_MODE_BRIDGE" 2>/dev/null || true; })"
-        [[ -n "$MC6B_HITS" ]] && MC_WHY+=" MC-6:call-form-in-bridge-order-body"
-        grep -qF '**Exception — `engine_bridges.order`.**' "$MC_MODE_CONFIG" \
-            || MC_WHY+=" MC-7:bridge-order-exception-not-named"
-    else
-        MC_WHY+=" MC-2:bridge-order-body-missing"
-    fi
+    # The bridge order left /unikit: the installer keeps `.unikit/bridges.yaml`, so the skill has no bridge order mode —
+    # no trigger in the description, no dispatch in Step 0, no narrowing of item 4, no body, no exception in the
+    # actualization mode. Item 4 is narrowed for the actualization mode alone.
+    [[ ! -e "$ROOT_DIR/skills/unikit/references/mode-bridge-order.md" ]] \
+        || MC_WHY+=" MC-2:bridge-order-body-still-there"
+    ! printf '%s' "$MC_DESC" | grep -qF 'change the bridge order' \
+        || MC_WHY+=" MC-1:bridge-order-trigger-still-there"
+    ! printf '%s' "$MC_STEP0" | grep -qF 'mode-bridge-order' \
+        || MC_WHY+=" MC-3:bridge-order-dispatch-still-there"
+    ! grep -qF 'the same for the bridge order mode' "$TC_UNIKIT_SKILL" \
+        || MC_WHY+=" MC-4:item-4-still-narrowed-for-bridge-order"
+    grep -qF '**Narrowed for the config actualization mode:**' "$TC_UNIKIT_SKILL" \
+        || MC_WHY+=" MC-4:item-4-not-narrowed-for-actualization"
+    ! grep -qF 'engine_bridges' "$MC_MODE_CONFIG" \
+        || MC_WHY+=" MC-7:bridge-order-exception-still-there"
 fi
 if [[ -z "$MC_WHY" ]]; then
     pass "MC-1…MC-7 /unikit config actualization mode — triggered in the description, dispatched inside Step 0, three contract carve-outs, capability-bounded body"
@@ -7849,11 +7842,10 @@ fi
 # ─────────────────────────────────────────────
 # MN: /unikit on a project that is already set up (MN-1…MN-9)
 # ─────────────────────────────────────────────
-# MN-1…MN-4: the bridge order reaches the end of the config update and is not asked twice.
+# MN-1…MN-4: the bridge order left /unikit — the installer keeps `.unikit/bridges.yaml`, nothing of it is asked or kept in the skill.
 MN_DIR="$ROOT_DIR/skills/unikit"
 MN_SKILL="$MN_DIR/SKILL.md"
 MN_CONFIG_MODE="$MN_DIR/references/mode-config.md"
-MN_ORDER_MODE="$MN_DIR/references/mode-bridge-order.md"
 MN_MENU_MODE="$MN_DIR/references/mode-menu.md"
 MN_WHY=""
 MN_CHK=0
@@ -7872,40 +7864,27 @@ mn_once() {  # <id> <literal> <file>: exactly one line holds the literal
     local n; n="$({ grep -cF "$2" "$3" 2>/dev/null || true; })"
     [[ "$n" == "1" ]] || MN_WHY+=" $1:count($n)(${2:0:30})"
 }
-MN_STEP32="$(awk '/^### Step 3.2/{f=1;next} f&&/^---$/{exit} f' "$MN_SKILL")"
-if [[ -z "$MN_STEP32" ]]; then MN_WHY+=" MN-3:step-3.2-window-empty"; fi
-# (MN-1) the chain in the actualization mode
-mn_has  MN-1 'Runs only when Phase A found the key `engine_bridges.order` **absent**' "$MN_CONFIG_MODE"
-mn_has  MN-1 '## Phase F — Bridge order' "$MN_CONFIG_MODE"
-mn_has  MN-1 '## Phase G — Report, then STOP' "$MN_CONFIG_MODE"
-mn_lacks MN-1 '## Phase F — Report, then STOP' "$MN_CONFIG_MODE"
-mn_once MN-1 '**Exception — `engine_bridges.order`.**' "$MN_CONFIG_MODE"
-mn_lacks MN-1 'a deliberate state and not a missing value' "$MN_CONFIG_MODE"
-mn_has  MN-1 'it has already carried out Phases A and B' "$MN_CONFIG_MODE"
-# (MN-2) the shared block is called by its name; no caller counts phases
-mn_once MN-2 '3. **Decide and write.**' "$MN_ORDER_MODE"
-mn_has  MN-2 'Decide and write' "$MN_CONFIG_MODE"
-for mn_f in "$MN_SKILL" "$MN_CONFIG_MODE" "$MN_ORDER_MODE" "$MN_MENU_MODE"; do
-    [[ -e "$mn_f" ]] || continue
+MN_TEMPLATE="$MN_DIR/references/config-template.yaml"
+# (MN-1) no trace of the config-side order in the skill, the modes and the template
+for mn_f in "$MN_SKILL" "$MN_CONFIG_MODE" "$MN_MENU_MODE" "$MN_TEMPLATE"; do
+    mn_lacks MN-1 'engine_bridges' "$mn_f"
+    mn_lacks MN-1 'Decide and write' "$mn_f"
+done
+mn_lacks MN-1 '### Step 3.2' "$MN_SKILL"
+mn_lacks MN-1 'bridge order' "$MN_SKILL"
+MN_CHK=$((MN_CHK + 1)); [[ ! -e "$MN_DIR/references/mode-bridge-order.md" ]] || MN_WHY+=" MN-1:mode-bridge-order-still-there"
+# (MN-2) the config mode ends with its report phase right after the write phase
+mn_has   MN-2 '## Phase F — Report, then STOP' "$MN_CONFIG_MODE"
+mn_lacks MN-2 '## Phase G' "$MN_CONFIG_MODE"
+mn_lacks MN-2 '## Phase F — Bridge order' "$MN_CONFIG_MODE"
+mn_has   MN-2 'it has already carried out Phases A and B' "$MN_CONFIG_MODE"
+for mn_f in "$MN_SKILL" "$MN_CONFIG_MODE" "$MN_MENU_MODE"; do
     mn_lacks MN-2 'Phases 3-5' "$mn_f"
 done
-if [[ -n "$MN_STEP32" ]]; then
-    MN_CHK=$((MN_CHK + 1))
-    printf '%s' "$MN_STEP32" | grep -qF 'carry out **Decide and write**' || MN_WHY+=" MN-2:step-3.2-calls-by-number"
-fi
-# (MN-3) Step 3.2 asks only an undecided order
-if [[ -n "$MN_STEP32" ]]; then
-    MN_CHK=$((MN_CHK + 2))
-    printf '%s' "$MN_STEP32" | grep -qF 'a list that is not empty is an order already decided' || MN_WHY+=" MN-3:no-decided-clause"
-    printf '%s' "$MN_STEP32" | grep -qF 'empty or absent' || MN_WHY+=" MN-3:no-empty-condition"
-fi
-# (MN-4) the block writes the complete order and a caller does not run its report
-mn_has MN-4 'Always write the complete order' "$MN_ORDER_MODE"
-mn_has MN-4 'does not run this phase' "$MN_ORDER_MODE"
 if [[ -z "$MN_WHY" && "$MN_CHK" -gt 0 ]]; then
-    pass "MN-1…MN-4 the bridge order is asked in the same run that adds the key, by a shared block, and never asked twice ($MN_CHK checks)"
+    pass "MN-1…MN-2 the bridge order is not asked anywhere in /unikit and the config mode ends with Phase F ($MN_CHK checks)"
 else
-    fail "MN-1…MN-4 bridge order chain:$MN_WHY"
+    fail "MN-1…MN-2 bridge order left /unikit:$MN_WHY"
 fi
 
 # MN-5…MN-8: the returning-project menu
@@ -7913,14 +7892,14 @@ MN_WHY=""
 MN_CHK=0
 MN_STEP0="$(awk '/^### Step 0: Load Existing Config/{f=1;next} f&&/^---$/{exit} f' "$MN_SKILL")"
 MN_DESC="$(awk '/^description:/{f=1;print;next} f&&/^[a-zA-Z][a-zA-Z0-9_-]*:/{exit} f' "$MN_SKILL")"
-# (MN-5) the body: capability, plain markdown, the five actions, the recommendation rule
+# (MN-5) the body: capability, plain markdown, the four actions plus finishing the setup, the recommendation rule
 mn_has  MN-5 'It writes nothing itself' "$MN_MENU_MODE"
 mn_has  MN-5 'Plain markdown only' "$MN_MENU_MODE"
-for mn_a in '**Config**' '**Order**' '**Environment**' '**Rules**' '**Description**' '**Finish the setup**'; do
+for mn_a in '**Config**' '**Environment**' '**Rules**' '**Description**' '**Finish the setup**'; do
     mn_has MN-5 "$mn_a" "$MN_MENU_MODE"
 done
+mn_lacks MN-5 '**Order**' "$MN_MENU_MODE"
 mn_has  MN-5 'The first of these that applies is the recommended one' "$MN_MENU_MODE"
-mn_has  MN-5 'when it adds the bridge order key and two bridges or more are installed' "$MN_MENU_MODE"
 mn_has  MN-5 'Steps 7 and 8 are not run' "$MN_MENU_MODE"
 mn_has  MN-5 'is not a description, and Step 4 asks as usual' "$MN_MENU_MODE"
 mn_has  MN-5 'the question tool of your agent (`AskUserQuestion`)' "$MN_MENU_MODE"
@@ -7932,7 +7911,7 @@ MN_CHK=$((MN_CHK + 1)); [[ -z "$MN_HTML" ]] || MN_WHY+=" MN-5:html-in-menu-body"
 MN_CHK=$((MN_CHK + 3))
 [[ -n "$MN_STEP0" ]] || MN_WHY+=" MN-6:step-0-window-empty"
 printf '%s' "$MN_STEP0" | grep -qF 'references/mode-menu.md' || MN_WHY+=" MN-6:dispatch-outside-step-0"
-printf '%s' "$MN_STEP0" | grep -qF 'matches none of the two modes above' || MN_WHY+=" MN-6:no-fallback-condition"
+printf '%s' "$MN_STEP0" | grep -qF 'is not to actualize the configuration' || MN_WHY+=" MN-6:no-fallback-condition"
 # (MN-7) the four contract clauses, and the retired absolute sentence
 mn_has   MN-7 'The returning-project menu is the one mode that may hand over instead' "$MN_SKILL"
 mn_has   MN-7 'Widened for two menu branches' "$MN_SKILL"
@@ -7944,13 +7923,13 @@ mn_lacks MN-7 'performs **no user interaction**' "$MN_SKILL"
 # (MN-8) the trigger in the description
 MN_CHK=$((MN_CHK + 1)); printf '%s' "$MN_DESC" | grep -qF 'it offers the actions to choose from' || MN_WHY+=" MN-8:no-menu-trigger"
 if [[ -z "$MN_WHY" && "$MN_CHK" -gt 0 ]]; then
-    pass "MN-5…MN-8 returning-project menu — five actions, dispatched inside Step 0, four contract clauses, triggered in the description ($MN_CHK checks)"
+    pass "MN-5…MN-8 returning-project menu — four actions, dispatched inside Step 0, four contract clauses, triggered in the description ($MN_CHK checks)"
 else
     fail "MN-5…MN-8 returning-project menu:$MN_WHY"
     [[ -n "$MN_HITS" ]] && echo "$MN_HITS" | head -5
 fi
 
-# MN-9: the surfaces that tell the user about the menu and the order question
+# MN-9: the surfaces that tell the user about the menu
 MN_WHY=""
 MN_CHK=0
 mn_has MN-9 'returning-project menu' "$ROOT_DIR/docs/skills.md"
@@ -7960,11 +7939,9 @@ mn_has MN-9 'returning-project menu' "$ROOT_DIR/docs/workflow.md"
 mn_has MN-9 'returning-project menu' "$ROOT_DIR/docs/getting-started.md"
 mn_has MN-9 'returning-project menu' "$ROOT_DIR/skills/unikit-help/references/scenarios.md"
 mn_has MN-9 'returning-project menu' "$ROOT_DIR/skills/unikit-help/references/skill-map.md"
-mn_has MN-9 'asks the order in the same run' "$ROOT_DIR/docs/configuration.md"
-mn_has MN-9 'asks the order in the same run' "$ROOT_DIR/docs/migration-3.0.0.md"
 mn_has MN-9 'exactly **three** paths' "$ROOT_DIR/docs/configuration.md"
 if [[ -z "$MN_WHY" && "$MN_CHK" -gt 0 ]]; then
-    pass "MN-9 the docs and the help name the returning-project menu and the order question ($MN_CHK checks)"
+    pass "MN-9 the docs and the help name the returning-project menu ($MN_CHK checks)"
 else
     fail "MN-9 menu documentation:$MN_WHY"
 fi
@@ -9749,7 +9726,8 @@ if [[ -z "$BX_WHY" ]]; then
     # 53200 -> 53600: the branch match gained the 380-byte rule that finds an experiment plan by its own record (EXP-K1)
     # 53600 -> 53900: the 3.0.0 layout (a block per bridge in the Bootstrap); lowered again when the routing prose moves to a reference
     # 53900 -> 54200 for the 3.0.0 findings table, then 54200 -> 53650: the console check moved into references/console-check.md
-    bx_max "BM-6:implement-skill-size" 53650 "$UNIKIT_IMPLEMENT_SKILL"
+    # 53650 -> 53720: the bridge order moved from the config to .unikit/bridges.yaml and the routing file joined it in one Bootstrap sentence (XE-2)
+    bx_max "BM-6:implement-skill-size" 53720 "$UNIKIT_IMPLEMENT_SKILL"
     # (BC-4) a measurement the user skipped is a skipped row, not a blocker
     bx_has "BC-4:skipped-measure-is-a-blocker" '⏭️ SKIPPED' "$BC_REF"
     # (BC-5) a name stated in ## Not measured is accounted for — a measurement the user skipped is not a blocker
@@ -13807,13 +13785,13 @@ else
     grep -qxF -- 'name: unikit-execute' <<< "$XE_HEAD" || XE_WHY+=" XE-1:name"
 fi
 
-# (XE-2) what it shares with the plan executors, by one formulation each: the bridge order list is read from the
-# config at load (A10), the order is announced in one line, and the lower half of the principles waits for the
-# first call through a bridge
-XE_ORDER='Also take the bridge order list from `.unikit/config.yaml` (the one read of that file serves it); a missing or empty list means the default order `BRIDGES.md` states.'
+# (XE-2) what it shares with the plan executors, by one formulation each: the bridge order and the routing rules are
+# read from their files at load (A10), the order is announced in one line, and the lower half of the principles waits
+# for the first call through a bridge
+XE_ORDER='Also read `.unikit/bridges.yaml` (the bridge order) and, when it exists, `.unikit/bridge-routing.md` (the routing rules); a missing order file means the default order `BRIDGES.md` states, a missing routing file means no routing rules.'
 xe_has "XE-2:order-read(execute)" "$XE_ORDER" "$XE_SKILL"
 xe_has "XE-2:order-read(implement)" "$XE_ORDER" "$XE_IMPLEMENT"
-xe_has "XE-2:order-line" 'INFO [bridges] order: <a> > <b> (config|default|prompt)' "$XE_SKILL"
+xe_has "XE-2:order-line" 'INFO [bridges] order: <a> > <b> (file|default|prompt)' "$XE_SKILL"
 xe_has "XE-2:lower-half-moment" '**Before the first call through a bridge**' "$XE_SKILL"
 
 # (XE-3) the card reads its vocabulary and does not copy it: A8 owns the kinds and the boundary, the planner's

@@ -854,9 +854,9 @@ await group('BR-10d', async () => {
     report('BR-10d', 'the planner reads the union of the bridge catalogs and treats an unread bridge as unknown', scanned, violations);
 });
 
-// ── BR-11: the bridge order key in the config template, and the exception that keeps it ──
+// ── BR-11: the bridge order is not in the config template any more ──
 
-const TEMPLATE_BANNER = `# ${'='.repeat(77)}`;
+const DEV_PRINCIPLES_PATH = 'data/dev-principles.md';
 
 await group('BR-11', async () => {
     const read = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
@@ -865,22 +865,12 @@ await group('BR-11', async () => {
     const violations = [];
     let scanned = 0;
 
-    scanned++;
-    const at = template.indexOf('# Engine Bridge Settings');
-    if (at < 0) violations.push('config-template.yaml: no Engine Bridge Settings block');
-    else if (template.slice(at - TEMPLATE_BANNER.length - 1, at) !== `${TEMPLATE_BANNER}\n`) violations.push('config-template.yaml: the block has no banner in the style of the others');
-    scanned++;
-    if (!/^engine_bridges:\n {2}order: \[\]$/m.test(template)) violations.push('config-template.yaml: no `engine_bridges:` with an empty `order: []`');
-    scanned++;
-    if (template.includes('{{')  && /engine_bridges:[\s\S]{0,40}\{\{/.test(template)) violations.push('config-template.yaml: the order value is a placeholder, it must be a literal');
-    scanned++;
-    if (!modeConfig.includes('**Exception — `engine_bridges.order`.**')) violations.push('mode-config.md: the empty-order exception of bucket 3 is missing');
-    scanned++;
-    if (!modeConfig.includes('Runs only when Phase A found the key `engine_bridges.order` **absent**')) violations.push('mode-config.md: the bridge-order phase of the actualization mode is missing');
-    scanned++;
-    if (!read('skills/unikit/references/mode-bridge-order.md').includes('**Decide and write.**')) violations.push('mode-bridge-order.md: the reusable block is missing');
+    scanned++; if (template.includes('engine_bridges') || template.includes('Engine Bridge Settings')) violations.push('config-template.yaml: the bridge order block is still there');
+    scanned++; if (modeConfig.includes('engine_bridges')) violations.push('mode-config.md: still names engine_bridges');
+    scanned++; if (fs.existsSync(path.join(ROOT, 'skills/unikit/references/mode-bridge-order.md'))) violations.push('mode-bridge-order.md is still there');
+    scanned++; if (!read(DEV_PRINCIPLES_PATH).includes('Bridges are tried in the order of `.unikit/bridges.yaml`')) violations.push('dev-principles.md: D3 does not name the order file');
 
-    report('BR-11', 'the order key is a literal in the template, the actualization mode keeps its empty state and asks the order when it adds the key', scanned, violations);
+    report('BR-11', 'the bridge order is in .unikit/bridges.yaml, in no config template, mode or skill', scanned, violations);
 });
 
 // ── BR-13: the settings file of an agent is still a template variable, although no base text asks for it ──

@@ -33,7 +33,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   dispatched in Step 0: it appends template literals silently, asks about placeholders and
   out-of-domain values, never touches `language.rules` / `language.technical_terms`, and
   stops before the bootstrap steps, so nothing else about the project is re-run.
-  Also sets the order of the engine bridges and checks their environment.
+  Also checks the environment of the engine bridges.
   On a project already set up it opens with a returning-project menu of those actions instead of repeating the bootstrap.
 - **In:** optional project description (a sentence, or a path to a design doc). Needs the
   installer to have run first (engine chosen).
