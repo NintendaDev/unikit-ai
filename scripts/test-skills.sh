@@ -7582,10 +7582,23 @@ if [[ -z "$TW_WHY" ]]; then
     tw_has "TW-15:repeat-line-unlinked"  'One scope, one launch'                                   "$tw15_line"
     tw_has "TW-15:search-looks-like-launch" 'no suite is started while it repeats'                 "$(cat "$TC_TESTRUNS")"
     tw_has "TW-15:fix-unlinked"          'One scope, one launch'                                   "$(cat "$EM_FIX_SKILL")"
+    # (TW-16) a result that names a part still going is not green: a bridge can answer a run with a
+    # success flag while one of its parts was only started in the background (measured 2026-10-27).
+    # The run is over when every part has reported, and the one-run line names its own exception.
+    tw_has "TW-16:part-going-is-green"   'part of the run is still going'                          "$TW_SEC"
+    tw_has "TW-16:parts-not-all-reported" 'the run is over when every part has reported'           "$TW_SEC"
+    tw_has "TW-16:one-run-no-exception"  'except where the bridge cannot run the scope in one'     "$TW_SEC"
+    # (TW-17) the only case in which a run is more than one launch: the bridge cannot do the scope
+    # in one, so the scope splits along the bridge's own boundary and each part is launched once.
+    # The narrower check stays forbidden (TW-14) and the suites are still not started one after
+    # another (TW-3); both are pinned above and must survive the new paragraph.
+    tw_has "TW-17:no-split-paragraph"    'splits it along its own boundary'                        "$TW_SEC"
+    tw_has "TW-17:part-launched-twice"   'each part is launched once'                              "$TW_SEC"
+    tw_has "TW-17:split-not-the-only-case" 'This is the only case in which a run is more than one launch' "$TW_SEC"
     (( tw_chk > 0 )) || TW_WHY+=" TW-13:no-anchor-checked"
 fi
 if [[ -z "$TW_WHY" ]]; then
-    pass "TW-1…TW-15 run width: every test by default, affected runs and their threshold are keys, one launch, zero tests is not green, the final run reused on an unchanged tree, fix reads the same section; one content-aware, index-independent tree hash, carried over the executor's commits; tests written before the phase's run; one scope closed before its single launch, a repeat after red is one launch of the whole scope (${tw_chk:-0} new anchors)"
+    pass "TW-1…TW-17 run width: every test by default, affected runs and their threshold are keys, one launch, zero tests is not green, the final run reused on an unchanged tree, fix reads the same section; one content-aware, index-independent tree hash, carried over the executor's commits; tests written before the phase's run; one scope closed before its single launch, a repeat after red is one launch of the whole scope; a part still going is not green, a bridge that cannot run the scope in one launch splits it along its own boundary (${tw_chk:-0} new anchors)"
 else
     fail "TW run-width contract:$TW_WHY"
 fi

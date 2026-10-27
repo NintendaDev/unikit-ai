@@ -1030,6 +1030,48 @@ await group('GV-4', async () => {
     report('GV-4', 'bridge-gates.md lists the same seven gate names, in the same order, as the vocabulary', 1, violations);
 });
 
+// ── UT: the Unity CLI tree keeps what the measurements of the test calls added (2026-10-27) ──
+//
+// A test run through this bridge ends in ways that look alike in a table and are not: a play mode part started
+// in the background under a success flag, a synchronous run lost to a timeout whose result is kept nowhere, a
+// default output that keeps one summary line. The tree says so in capability words (no command names). The word
+// `tests` is not one of the 12 areas of a Check row (ED-14, RT-7), so the two rows are filed under `transport`.
+
+const UNITY_CLI_TREE = 'engine-bridges/unity/rules/unity-cli';
+const UT_TESTS_ROW_PHRASES = ['half result', 'started in the background', 'kept nowhere'];
+const UT_CHECK_ROWS = [
+    { id: 'transport-2', area: 'transport', phrases: ['in the background', 'keeps no result'] },
+    { id: 'transport-3', area: 'transport', phrases: ['summary line', 'a part started in the background'] },
+];
+
+await group('UT-1', async () => {
+    const file = `${UNITY_CLI_TREE}/verification.md`;
+    const violations = [];
+    const rows = fs.readFileSync(path.join(ROOT, file), 'utf8').split('\n').filter((line) => line.startsWith('| tests |'));
+    if (rows.length !== 1) violations.push(`${file}: ${rows.length} rows start with "| tests |", expected exactly one`);
+    else {
+        for (const phrase of UT_TESTS_ROW_PHRASES) {
+            if (!rows[0].includes(phrase)) violations.push(`${file}: the tests row lost "${phrase}"`);
+        }
+    }
+    report('UT-1', 'the tests row of the Unity CLI calibration says that a part in the background is a half result and that a timed-out synchronous answer is kept nowhere', 1, violations);
+});
+
+await group('UT-2', async () => {
+    const file = `${UNITY_CLI_TREE}/INDEX.md`;
+    const violations = [];
+    const rows = fs.readFileSync(path.join(ROOT, file), 'utf8').split('\n').map(tableCells).filter((cells) => cells !== null);
+    for (const wanted of UT_CHECK_ROWS) {
+        const row = rows.find((cells) => cells[0] === wanted.id);
+        if (row === undefined) { violations.push(`${file}: no Check row ${wanted.id}`); continue; }
+        if (row[1] !== wanted.area) violations.push(`${file}: ${wanted.id} is filed under "${row[1]}", expected "${wanted.area}"`);
+        for (const phrase of wanted.phrases) {
+            if (!(row[2] ?? '').includes(phrase)) violations.push(`${file}: ${wanted.id} lost "${phrase}"`);
+        }
+    }
+    report('UT-2', 'the Unity CLI Check table keeps the rows for a timed-out test call and for reading a test answer whole', UT_CHECK_ROWS.length, violations);
+});
+
 // ── BR-2b: the cli kind stays inside the points of the adapter ───────────────
 //
 // The readiness criterion of the cli adapter is mechanical (ADR-0004): it changes the five points
@@ -1126,7 +1168,7 @@ await group('BR-2d', async () => {
 // later edit from walking back to the documented shape.
 
 const UNITY_CLI_CARD = 'engine-bridges/unity/unity-cli.json';
-const MIN_CARD_CHECKS = 14;
+const MIN_CARD_CHECKS = 17;
 
 await group('BR-2c', async () => {
     const { parseMcpServerEntry } = await dist('core/mcp-schema.js');
@@ -1167,6 +1209,12 @@ await group('BR-2c', async () => {
     check(cli.forms.tags !== undefined && cli.forms.tags.endsWith('--tags') && cli.forms.tag !== undefined && cli.forms.tag.endsWith('--tag <tag>'), 'tags lists with --tags, and tag takes the tag last');
     check(!cli.forms.tags?.includes('--detail') && !cli.forms.tag?.includes('--detail'), 'neither the tags form nor the tag form asks for a detail level');
     check((cli.notes ?? []).some(note => note.includes('answers with an empty result')), 'a note says that a tag or a group that is not in the listing answers empty, without an error');
+    // 2026-10-27, measured on a live editor: a call that names no --format answers one summary line, and the
+    // text of a refusal or of a failed test is only in the ndjson answer; right after a compile the status
+    // forms can answer STATUS_BLOCKED_BY_DIALOG for the reload dialog of the editor itself.
+    check(cli.forms.call?.includes('--format ndjson') === true, 'the call form asks for ndjson (the default table keeps one summary line)');
+    check((cli.notes ?? []).some(note => note.includes('names no --format')), 'a note says why the call form carries --format ndjson');
+    check((cli.notes ?? []).some(note => note.includes('STATUS_BLOCKED_BY_DIALOG') && note.includes('ready form')), 'a note says that STATUS_BLOCKED_BY_DIALOG after a compile is answered by the ready form again');
     check(scanned >= MIN_CARD_CHECKS, `only ${scanned} checks ran, expected at least ${MIN_CARD_CHECKS}`);
 
     report('BR-2c', 'the Unity CLI card keeps the measured forms', scanned, violations);
