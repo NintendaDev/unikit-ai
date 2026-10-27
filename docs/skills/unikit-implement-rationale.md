@@ -63,6 +63,10 @@ explore save pipeline, on the same criterion — see
   valve, the filter — and a repeat after red recomputes it once over all the changed files. When
   the dependent modules cannot be determined with confidence, one wide run costs less than two
   narrow ones.
+- **A run that a bridge cannot do in one launch is one launch per part, and a part still going
+  is not green.** The boundary is the bridge's, not this file's; the scope is still closed whole
+  first, each part is launched once, and a repeat after red repeats the same launches. A success
+  flag on an answer that names a part running in the background is half a result.
 - **The safety valve is a key, default 30 % of the suites.** A filter that names most of the
   project costs more than one full run, and assembling it is the more error-prone half. The
   skill says the threshold is assigned, not measured, so the next reader does not take it for a

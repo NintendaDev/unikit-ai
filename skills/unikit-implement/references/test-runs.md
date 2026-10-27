@@ -129,7 +129,7 @@ Neither key is recorded into the plan: they set the cost of executing a checkpoi
 
 ### One run
 
-Whatever the width, a run is **one** launch.
+Whatever the width, a run is **one** launch — except where the bridge cannot run the scope in one (`### One scope, one launch`, last paragraph).
 
 - The suites that remain are started in **one** run whose filter names every one of them. Take the filter parameter from the live schema of the call on the engine bridge; how a server spells a list of suites is the server's business, not this file's.
 - When that call cannot name every remaining suite in one filter — it takes a single name, or one of the suites has nothing the filter can address — run every test in the project instead, also in one launch.
@@ -149,8 +149,12 @@ Then launch. Forbidden: a trial run to see what is red or what exists; growing t
 
 **A repeat after red is one launch of the whole scope.** For `phase N` / `phases N-M` and for the run after `/unikit-fix`, recompute the scope once over all the files changed so far, the fix included, and launch once; for `plan` it is every test in the project again; for `task N.M` the scope stays the fixtures and classes of that task's `### Tests`. A narrower check of the fixed test before the repeat is forbidden — the repeat is the check.
 
+**A bridge that cannot run the scope in one launch splits it along its own boundary.** Its calibration, or the answer of its call, says where the boundary lies — two kinds of tests that cannot go in one call, a part that can only be started in the background. The scope is still closed whole before the first launch; then each part is launched once, and the run is over when every part has reported (`### What counts as green`). A repeat after red is the same launches again, one per part, over the scope recomputed once, and the narrower check stays forbidden. This is the only case in which a run is more than one launch.
+
 ### What counts as green
 
 A run is green only when its result is **readable** — passed and failed counts — and **the number of tests run is above zero**. `passed 0/0`, a result without counts, a timeout and a run that never started are not green: the filter matched nothing, discovery had not finished, or the run did not happen. In `/unikit-implement` that is a Step 3.3 blocker; in `/unikit-fix` it is a failed test check — except a run of every test in the project that reports zero tests: the project has no tests yet, and `/unikit-fix` notes `Test run: no tests in the project` instead of failing.
+
+A result that says **part of the run is still going** — a part the bridge started in the background and answered with a success flag — is not green either: the run is over when every part has reported, and a success flag of the call does not say so. Read such a part from the status the bridge keeps for the run (its calibration names where), and judge the run by all the parts together.
 
 **Verbose.** Once, when the settings are first read: `INFO [testing] runs=<full|affected> · full-run threshold <n>% (<config|default>)` — the threshold part only for `affected`. Before each run: `INFO [testing] run <coverage>: <n> test suite(s) in one run`, or `INFO [testing] run <coverage>: every test` for a run of every test. `INFO [testing] safety valve: <n>/<total> ≥ <threshold>% — full run` when it fires; `INFO [testing] <case> — full run` on a degenerate case, the case named — `no module graph`, `no affected test suite`; `INFO [testing] filter cannot name every suite — full run` when the one-run rule widens the run.
