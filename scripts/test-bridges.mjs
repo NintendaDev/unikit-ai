@@ -1538,7 +1538,8 @@ await group('BR-2e', async () => {
 // ── UREF: the user references skill ──
 
 const REFERENCES_SKILL = 'skills/unikit-references';
-const SKILL_BYTE_CEILINGS = { [REFERENCES_SKILL]: 9000 };
+const BRIDGE_ROUTE_SKILL = 'skills/unikit-bridge-route';
+const SKILL_BYTE_CEILINGS = { [REFERENCES_SKILL]: 9000, [BRIDGE_ROUTE_SKILL]: 9000 };
 const BOOTSTRAP_ANCHOR = '<!-- unikit:extension-point:bootstrap -->';
 const MAX_DESCRIPTION_BYTES = 1024;
 
@@ -1588,6 +1589,97 @@ await group('UREF-4', async () => {
     const skill = readRepo(`${REFERENCES_SKILL}/SKILL.md`);
     const others = skillFiles(REFERENCES_SKILL).filter((file) => !file.endsWith('/SKILL.md')).filter((file) => readRepo(file).includes('unikit:extension-point'));
     assertEq('UREF-4', 'the bootstrap anchor stands once in SKILL.md and nowhere in references/', [skill.split(BOOTSTRAP_ANCHOR).length - 1, others], [1, []]);
+});
+
+// ── BRT: the routing skill and the file it keeps ──
+
+const ROUTE_FORMAT = `${BRIDGE_ROUTE_SKILL}/references/format.md`;
+const ROUTING_FILE_PATH = '.unikit/bridge-routing.md';
+
+await group('BRT-1', async () => {
+    const violations = [];
+    let scanned = 0;
+    const { name, description, tools, text } = skillFrontmatter(`${BRIDGE_ROUTE_SKILL}/SKILL.md`);
+    scanned++; if (name !== 'unikit-bridge-route') violations.push(`name is "${name}"`);
+    scanned++; if (Buffer.byteLength(description) > MAX_DESCRIPTION_BYTES || !/^[\x00-\x7f]+$/.test(description)) violations.push('description too long or not ASCII');
+    scanned++; if ([...tools].sort().join('|') !== ['Read', 'Write', 'Edit', 'Glob', 'Grep', 'AskUserQuestion'].sort().join('|')) violations.push(`allowed-tools differ (no shell, no subagent, no skill): ${tools.join(', ')}`);
+    const pointers = text.split('\n').filter((line) => line.startsWith('**User questions.**'));
+    scanned++; if (pointers.length !== 1 || text.indexOf(pointers[0]) > text.indexOf('\n## ')) violations.push('the user-questions pointer must be one line above the first "## " heading');
+    scanned++; if (Buffer.byteLength(text) > SKILL_BYTE_CEILINGS[BRIDGE_ROUTE_SKILL]) violations.push(`SKILL.md is ${Buffer.byteLength(text)} bytes, above ${SKILL_BYTE_CEILINGS[BRIDGE_ROUTE_SKILL]}`);
+    const others = skillFiles(BRIDGE_ROUTE_SKILL).filter((file) => !file.endsWith('/SKILL.md')).filter((file) => readRepo(file).includes('unikit:extension-point'));
+    scanned++; if (text.split(BOOTSTRAP_ANCHOR).length - 1 !== 1 || others.length > 0) violations.push('the bootstrap anchor must stand once in SKILL.md and nowhere in references/');
+    const onDisk = fs.readdirSync(path.join(ROOT, BRIDGE_ROUTE_SKILL, 'references')).sort();
+    scanned++; if (onDisk.join('|') !== 'format.md') violations.push(`references/ holds ${onDisk.join(', ')}, expected format.md`);
+    scanned++; if (!text.includes('{{skills_dir}}/{{self_name}}/references/format.md')) violations.push('SKILL.md: format.md is not named by its full path');
+    report('BRT-1', 'the routing skill has the frontmatter, the tools, the question pointer, the anchor and the size the plan gives it', scanned, violations);
+});
+
+await group('BRT-2', async () => {
+    const violations = [];
+    let scanned = 0;
+    const skill = readRepo(`${BRIDGE_ROUTE_SKILL}/SKILL.md`);
+    const body = skill.slice(skill.indexOf('\n---', 4));
+    for (const phrase of ['This skill makes zero calls to any bridge.', 'writes only `.unikit/bridge-routing.md`', 'it does not interpret them', 'never `Write`', 'no file means no routing rules']) {
+        scanned++; if (!skill.includes(phrase)) violations.push(`SKILL.md: "${phrase}" is missing`);
+    }
+    for (const call of ['Bash(', 'Agent(', 'Skill(']) {
+        scanned++; if (body.includes(call)) violations.push(`SKILL.md: the body holds the call form ${call}`);
+    }
+    const format = readRepo(ROUTE_FORMAT);
+    for (const phrase of ['| area | when | rule | bridges | why |', '`only`, `first` or `never`', 'Optional: no file means no routing rules']) {
+        scanned++; if (!format.includes(phrase)) violations.push(`format.md: "${phrase}" is missing`);
+    }
+    report('BRT-2', 'the wording the readers and the guards rely on is in the skill and its format', scanned, violations);
+});
+
+await group('BRT-3', async () => {
+    const violations = [];
+    let scanned = 0;
+    const kindLine = /^kind ∈ ([^\n(]+?)\s*\(default/m.exec(readRepo('skills/unikit-plan/references/TASK-FORMAT.md'))?.[1];
+    const kinds = (kindLine ?? '').split('|').map((word) => word.trim()).filter(Boolean);
+    const gateLine = /uses the same seven names: `([^`]+)`/.exec(readRepo('skills/unikit-verify/references/bridge-gates.md'))?.[1];
+    const gates = (gateLine ?? '').split('·').map((word) => word.trim()).filter(Boolean);
+    scanned++; if (kinds.length !== 6) violations.push(`the editor kinds were read as ${kinds.length} words (${kinds.join(', ')}), expected 6`);
+    scanned++; if (gates.length !== 7) violations.push(`the gate names were read as ${gates.length} words (${gates.join(', ')}), expected 7`);
+    const skill = readRepo(`${BRIDGE_ROUTE_SKILL}/SKILL.md`);
+    const format = readRepo(ROUTE_FORMAT);
+    for (const [label, text] of [['SKILL.md', skill], ['format.md', format]]) {
+        scanned++; if (kinds.length > 0 && text.includes(kinds.join(' | '))) violations.push(`${label}: copies the list of editor kinds`);
+        scanned++; if (gates.length > 0 && text.includes(gates.join(' · '))) violations.push(`${label}: copies the list of gate names`);
+        scanned++; if (kinds.length > 0 && kinds.filter((word) => new RegExp(`\\b${word}\\b`).test(text)).length >= 4) violations.push(`${label}: names four or more editor kinds`);
+    }
+    for (const source of ['{{skills_dir}}/unikit-plan/references/TASK-FORMAT.md', '{{skills_dir}}/unikit-verify/references/bridge-gates.md']) {
+        scanned++; if (!skill.includes(source)) violations.push(`SKILL.md does not name its source of area words: ${source}`);
+    }
+    report('BRT-3', 'the words of the area column are read from the planner and the verifier, never copied into the skill', scanned, violations);
+});
+
+await group('BRT-4', async () => {
+    const { renderBridgesManifest } = await dist('core/bridges/manifest.js');
+    const { BRIDGE_ROUTING_FILE } = await dist('core/constants-bridges.js');
+    const manifest = renderBridgesManifest({ engineId: 'unity', bridges: [], unselected: [] });
+    const skill = readRepo(`${BRIDGE_ROUTE_SKILL}/SKILL.md`);
+    const format = readRepo(ROUTE_FORMAT);
+    assertEq('BRT-4', 'BRIDGES.md points at the routing file, the skill and its format name the same path, and the constant is the file name',
+        [manifest.includes(`\nrouting: ${ROUTING_FILE_PATH} - `), skill.includes(ROUTING_FILE_PATH), format.includes(ROUTING_FILE_PATH), BRIDGE_ROUTING_FILE], [true, true, true, 'bridge-routing.md']);
+});
+
+await group('BRT-5', async () => {
+    const violations = [];
+    let scanned = 0;
+    const d3 = /\*\*The order of the bridges\.\*\*[^\n]*/.exec(readRepo('data/dev-principles.md'))?.[0] ?? '';
+    const format = readRepo(ROUTE_FORMAT);
+    scanned++; if (d3 === '') violations.push('dev-principles.md: the paragraph "The order of the bridges" is missing');
+    for (const phrase of [ROUTING_FILE_PATH, '`only`', '`first`', '`never`', 'a row with a `when` beats an area-wide row']) {
+        scanned++; if (!d3.includes(phrase)) violations.push(`D3: "${phrase}" is missing`);
+    }
+    scanned++; if (!format.includes('`only`, `first` or `never`')) violations.push('format.md does not define the three rule words');
+    const header = /^\| (area \| when \| rule \| bridges \| why) \|$/m.exec(format)?.[1].split(' | ') ?? [];
+    scanned++; if (header.length !== 5) violations.push(`format.md: the table header was read as ${header.length} columns, expected 5`);
+    for (const column of ['area', 'when']) {
+        scanned++; if (!header.includes(column) || !d3.includes(`\`${column}\``)) violations.push(`the column "${column}" is not named by both the format and D3`);
+    }
+    report('BRT-5', 'D3 and the routing format say the same about the columns and the three rules', scanned, violations);
 });
 
 // ── C7: Context7 reaches the executors that read documentation ───────────────

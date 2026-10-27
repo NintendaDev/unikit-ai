@@ -2907,6 +2907,7 @@ echo "  ✓ engine-bridges: a CLI bridge is described in BRIDGES.md and register
 # Test 16: the references skill is delivered with its grants, and Context7 reaches the executors that
 # read documentation
 # ─────────────────────────────────────────────────────
+# (a0) /unikit-bridge-route: its format reference and no grant beyond the question tool.
 # (a) /unikit-references: the question tool and curl; a Codex project gets the slash calls rewritten
 #     in the reference files too.
 # (b) Context7 in worker, coordinator and verify, and removed again with the server.
@@ -2924,14 +2925,14 @@ cat > "$DOCS_SKILLS_DIR/.unikit.json" << 'EOF'
       "id": "claude",
       "skillsDir": ".claude/skills",
       "subagentsDir": ".claude/agents",
-      "installedSkills": ["unikit-references", "unikit-implement"],
+      "installedSkills": ["unikit-bridge-route", "unikit-references", "unikit-implement"],
       "installedSubagents": []
     },
     {
       "id": "codex",
       "skillsDir": ".codex/skills",
       "subagentsDir": ".codex/agents",
-      "installedSkills": ["unikit-references"],
+      "installedSkills": ["unikit-bridge-route", "unikit-references"],
       "installedSubagents": []
     }
   ],
@@ -2942,6 +2943,23 @@ cat > "$DOCS_SKILLS_DIR/.unikit.json" << 'EOF'
 EOF
 inject_fake_registry "$DOCS_SKILLS_DIR"
 run_update "$DOCS_SKILLS_DIR"
+
+# (a0) /unikit-bridge-route: its format reference, the question tool and no grant beyond it; a Codex project
+# gets the slash call in the reference file rewritten.
+ROUTE_SKILL="$DOCS_SKILLS_DIR/.claude/skills/unikit-bridge-route"
+assert_exists "$ROUTE_SKILL/SKILL.md" "bridge route: the skill is delivered"
+assert_exists "$ROUTE_SKILL/references/format.md" "bridge route: the routing file format is delivered"
+assert_not_contains "$ROUTE_SKILL/SKILL.md" '\{\{(skills_dir|self_name)\}\}' "bridge route: the path variables are substituted"
+assert_contains "$ROUTE_SKILL/SKILL.md" '\.claude/skills/unikit-bridge-route/references/format\.md' "bridge route: the reference is named by its installed path"
+assert_contains "$ROUTE_SKILL/SKILL.md" 'AskUserQuestion' "bridge route: the question tool is granted"
+assert_contains "$ROUTE_SKILL/SKILL.md" '^\*\*User questions\.\*\* Right before your first question' "bridge route: the user-questions pointer is carried"
+if grep -qE '^  - (Bash|Agent|Skill)' "$ROUTE_SKILL/SKILL.md"; then
+  echo "Assertion failed: bridge route must be granted no shell, subagent or skill"; exit 1
+fi
+CODEX_ROUTE_FORMAT="$DOCS_SKILLS_DIR/.codex/skills/unikit-bridge-route/references/format.md"
+assert_exists "$CODEX_ROUTE_FORMAT" "bridge route (codex): the routing file format is delivered"
+assert_contains "$CODEX_ROUTE_FORMAT" '\$unikit-bridge-route' "bridge route (codex): /unikit-bridge-route is written as \$unikit-bridge-route in the reference file"
+assert_not_contains "$CODEX_ROUTE_FORMAT" '/unikit-bridge-route' "bridge route (codex): no slash call is left in the reference file"
 
 REFS_SKILL="$DOCS_SKILLS_DIR/.claude/skills/unikit-references"
 assert_exists "$REFS_SKILL/SKILL.md" "references: the skill is delivered"
@@ -2956,7 +2974,7 @@ CODEX_REFS="$DOCS_SKILLS_DIR/.codex/skills/unikit-references/references/index-fo
 assert_exists "$CODEX_REFS" "references (codex): the index format is delivered"
 assert_contains "$CODEX_REFS" '\$unikit-references' "references (codex): /unikit-references is written as \$unikit-references in the reference file"
 assert_not_contains "$CODEX_REFS" '/unikit-references' "references (codex): no slash call is left in the reference file"
-echo "  ✓ references: delivered with its reference file, the question tool and curl are granted, Codex gets the slash calls rewritten"
+echo "  ✓ bridge route and references: delivered with their reference files and no grant beyond the question tool (curl for references), Codex gets the slash call rewritten"
 
 # (b) Context7 for the executors
 C7_DIR="$TMPDIR/test-context7-executors"

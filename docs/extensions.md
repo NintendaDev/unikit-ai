@@ -544,6 +544,7 @@ Every skill below offers one point, `bootstrap`, at the end of its context-loadi
 | `unikit-architecture` | `bootstrap` | Step 1 (Load Existing Context) | - |
 | `unikit-archive` | `bootstrap` | Step 0 (Context) | - |
 | `unikit-bridge-audit` | `bootstrap` | Bootstrap | There is no notes file for the bridge in `.unikit/bridge-notes/` |
+| `unikit-bridge-route` | `bootstrap` | Bootstrap | - |
 | `unikit-bridge-trap` | `bootstrap` | Bootstrap | - |
 | `unikit-commit` | `bootstrap` | Item 3 of the main list (Context Check), indented as part of the item | - |
 | `unikit-docs` | `bootstrap` | Step 0 (Load Project Context) | - |

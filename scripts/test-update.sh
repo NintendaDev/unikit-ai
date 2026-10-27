@@ -3156,10 +3156,10 @@ echo "  ✓ cli grants: per shell, narrow, absent for the trap skill, idempotent
 
 
 # ─────────────────────────────────────────────
-# Test 37: the references skill is a hash-tracked skill — a tampered file and a missing reference
+# Test 37: the references and routing skills are hash-tracked skills — a tampered file and a missing reference
 # file are both restored by update, and a settled project changes nothing
 # ─────────────────────────────────────────────
-# The skill ships a references folder, which the non-flat copy delivers whole. A hand edit of the
+# Both skills ship a references folder, which the non-flat copy delivers whole. A hand edit of the
 # SKILL.md and a deleted reference file are the two ways an installed copy drifts; neither may survive.
 
 DOCSTAMP_DIR="$TMPDIR/update-docs-skills-tamper"
@@ -3175,7 +3175,7 @@ cat > "$DOCSTAMP_DIR/.unikit.json" << 'EOF'
       "id": "claude",
       "skillsDir": ".claude/skills",
       "subagentsDir": ".claude/agents",
-      "installedSkills": ["unikit-references"],
+      "installedSkills": ["unikit-bridge-route", "unikit-references"],
       "installedSubagents": []
     }
   ],
@@ -3189,21 +3189,33 @@ DOCSTAMP_SKILL="$DOCSTAMP_DIR/.claude/skills/unikit-references/SKILL.md"
 DOCSTAMP_FORMAT="$DOCSTAMP_DIR/.claude/skills/unikit-references/references/index-format.md"
 assert_exists "$DOCSTAMP_SKILL" "references skill: the skill is installed on the first update"
 assert_exists "$DOCSTAMP_FORMAT" "references skill: the index format is installed on the first update"
+DOCSTAMP_ROUTE="$DOCSTAMP_DIR/.claude/skills/unikit-bridge-route/SKILL.md"
+DOCSTAMP_ROUTE_FORMAT="$DOCSTAMP_DIR/.claude/skills/unikit-bridge-route/references/format.md"
+assert_exists "$DOCSTAMP_ROUTE" "bridge route skill: the skill is installed on the first update"
+assert_exists "$DOCSTAMP_ROUTE_FORMAT" "bridge route skill: the routing file format is installed on the first update"
 
 echo "<!-- tampered -->" >> "$DOCSTAMP_SKILL"
 rm -f "$DOCSTAMP_FORMAT"
+echo "<!-- tampered -->" >> "$DOCSTAMP_ROUTE"
+rm -f "$DOCSTAMP_ROUTE_FORMAT"
 (cd "$DOCSTAMP_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/update-docs-skills-2.log" 2>&1)
 assert_not_contains "$DOCSTAMP_SKILL" 'tampered' "references skill: a tampered SKILL.md is reinstalled"
 assert_exists "$DOCSTAMP_FORMAT" "references skill: a deleted reference file is back"
+assert_not_contains "$DOCSTAMP_ROUTE" 'tampered' "bridge route skill: a tampered SKILL.md is reinstalled"
+assert_exists "$DOCSTAMP_ROUTE_FORMAT" "bridge route skill: a deleted reference file is back"
 
 DOCSTAMP_SKILL_SHA=$(sha_of "$DOCSTAMP_SKILL")
 DOCSTAMP_FORMAT_SHA=$(sha_of "$DOCSTAMP_FORMAT")
+DOCSTAMP_ROUTE_SHA=$(sha_of "$DOCSTAMP_ROUTE")
+DOCSTAMP_ROUTE_FORMAT_SHA=$(sha_of "$DOCSTAMP_ROUTE_FORMAT")
 DOCSTAMP_CFG_SHA=$(sha_of "$DOCSTAMP_DIR/.unikit.json")
 (cd "$DOCSTAMP_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/update-docs-skills-3.log" 2>&1)
 assert_same_sha "$DOCSTAMP_SKILL" "$DOCSTAMP_SKILL_SHA" "references skill: a settled project leaves SKILL.md byte-identical"
 assert_same_sha "$DOCSTAMP_FORMAT" "$DOCSTAMP_FORMAT_SHA" "references skill: ...and the reference file"
+assert_same_sha "$DOCSTAMP_ROUTE" "$DOCSTAMP_ROUTE_SHA" "bridge route skill: a settled project leaves SKILL.md byte-identical"
+assert_same_sha "$DOCSTAMP_ROUTE_FORMAT" "$DOCSTAMP_ROUTE_FORMAT_SHA" "bridge route skill: ...and the reference file"
 assert_same_sha "$DOCSTAMP_DIR/.unikit.json" "$DOCSTAMP_CFG_SHA" "references skill: ...and the config"
-echo "  ✓ references skill: tamper and a missing reference file are recovered, a settled project is untouched"
+echo "  ✓ references and bridge route skills: tamper and a missing reference file are recovered, a settled project is untouched"
 
 
 # ─────────────────────────────────────────────

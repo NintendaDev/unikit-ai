@@ -556,6 +556,18 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   confirmation is the whole gate. Works only inside a `UNIKIT_AUDIT_<runid>` sandbox and never
   saves the scene.
 
+### unikit-bridge-route
+- **Purpose:** Writes the routing rules of the engine bridges into `.unikit/bridge-routing.md`: a row says that a
+  kind of work (an `area` such as a kind of editor task or a gate, narrowed by `when` in your own words) goes only
+  through some bridges, goes through them first, or never goes through them. It asks in your words, shows the table
+  before it writes, and checks only that the bridge ids are installed. On request it also moves a bridge in
+  `.unikit/bridges.yaml`.
+- **When:** "run the tests only through this bridge", "never use that bridge for UI work", "try this bridge first
+  for scenes", "show my bridge routes", "put that bridge first".
+- **In:** the rule in your words, `list`, `remove <row>`, or nothing (it shows the table and asks).
+- **Out:** `.unikit/bridge-routing.md` (and, on request, the `order:` list of `.unikit/bridges.yaml`).
+- **Optional.** No file means no routing rules. It makes no bridge call and needs no editor.
+
 ### unikit-references
 - **Purpose:** Your own reference material for the agents: a local file or folder is copied word for word, a
   plain text or Markdown address is downloaded as a copy, any other page is recorded as a link with a note on

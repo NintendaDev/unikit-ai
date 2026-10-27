@@ -51,7 +51,8 @@ Keep it to one question + one follow-up. Never fan out into a questionnaire.
 |--------------------------|--------------------|-------|--------------------|
 | "where do I start", "I'm new" | onboard | `.unikit/config.yaml` present? no→`/unikit`; yes→ask idea/GDD | framework installed? |
 | "update the config", "add missing settings", "actualize configuration", "fix my config" | actualize config | `/unikit` — Step 0 dispatches to config actualization (Steps 1-11 do not run) | — |
-| "change the bridge order" / "make the CLI the main bridge" | set the order of the engine bridges | edit the list in `.unikit/bridges.yaml` (kept in step with the bridges by `unikit-ai init` and `update`) | do the bridges exist? (`BRIDGES.md`) |
+| "change the bridge order" / "make the CLI the main bridge" | set the order of the engine bridges | edit the list in `.unikit/bridges.yaml`, or ask `/unikit-bridge-route` ("put that bridge first") | do the bridges exist? (`BRIDGES.md`) |
+| "run the tests only through this bridge" / "never use that bridge for UI work" | route a kind of work to chosen bridges | `/unikit-bridge-route [the rule in your words]` | which bridges are installed? (`BRIDGES.md`) |
 | "I added a library, make rules for it" / "check the engine CLI" / "what can /unikit do here" | act on a project that is already set up | `/unikit` — the returning-project menu: update the config · bridges' environment · rules for new frameworks · refresh the description | is `.unikit/config.yaml` there? |
 | "how do I start coding" | begin a feature | have a plan? yes→`/unikit-implement`; no→`/unikit-plan` (a small task: `/unikit-execute`) | is there a plan / research? |
 | "how do I plan a feature" | plan | `/unikit-plan [fast\|full\|ultra] <feature>` | fast vs full vs ultra (throwaway / real / delegated to a smaller model) |

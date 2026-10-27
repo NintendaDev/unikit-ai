@@ -20,7 +20,7 @@ Main configuration file, created by `unikit-ai init`:
       "installedSkills": [
         "unikit", "unikit-architecture", "unikit-archive", "unikit-commit", "unikit-execute",
         "unikit-docs", "unikit-evolve", "unikit-explore", "unikit-fix", "unikit-help",
-        "unikit-implement", "unikit-improve", "unikit-bridge-audit",
+        "unikit-implement", "unikit-improve", "unikit-bridge-audit", "unikit-bridge-route",
         "unikit-bridge-trap", "unikit-memory", "unikit-plan", "unikit-pr", "unikit-references",
         "unikit-review", "unikit-roadmap", "unikit-rules", "unikit-rules-registry",
         "unikit-skills-context", "unikit-todo", "unikit-verify"
@@ -708,7 +708,7 @@ After initialization (example for Claude Code):
 ```
 your-unity-project/
 ├── .claude/                      # Agent config dir
-│   ├── skills/                   # 25 code-pipeline skills (+ 13 unikit-gd-* if the Game Design group was selected)
+│   ├── skills/                   # 26 code-pipeline skills (+ 13 unikit-gd-* if the Game Design group was selected)
 │   │   ├── unikit/
 │   │   │   └── references/
 │   │   ├── unikit-architecture/
@@ -727,6 +727,8 @@ your-unity-project/
 │   │   ├── unikit-implement/
 │   │   ├── unikit-improve/
 │   │   ├── unikit-bridge-audit/
+│   │   ├── unikit-bridge-route/
+│   │   │   └── references/
 │   │   ├── unikit-bridge-trap/
 │   │   │   └── references/
 │   │   ├── unikit-memory/

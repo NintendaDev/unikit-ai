@@ -12,6 +12,9 @@
     "unikit-bridge-audit": [
       "bootstrap"
     ],
+    "unikit-bridge-route": [
+      "bootstrap"
+    ],
     "unikit-bridge-trap": [
       "bootstrap"
     ],
