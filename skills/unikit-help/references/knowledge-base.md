@@ -72,6 +72,9 @@ Relevant to the dev pipeline:
   replaces the trees (stale files are deleted, and so is the 2.x `engine-mcp/` folder). Not every
   bridge ships a tree, and a missing file changes nothing: no known exceptions is not the same as
   no capabilities, so nothing is disabled and nothing becomes manual.
+- `.unikit/bridges.yaml` — the order of the bridges, kept by `init`/`update` (an order you edited is kept);
+  `.unikit/bridge-routing.md` — optional routing rules (`/unikit-bridge-route`); the stack rule whose id
+  is the bridge's id comes with the bridge and leaves with it (`init`/`update`). Neither file is a system asset.
 - `.unikit/bridge-notes/<bridge>.md` — **not** a system asset, and deliberately outside
   `system/`: the project's own findings about that bridge, in the same area-keyed form, read by
   the same greps. `init` / `update` never rewrite them (only rename a file into `archive/` when

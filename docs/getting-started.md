@@ -69,8 +69,8 @@ After `init` finishes, open your AI agent and run `/unikit`:
 - generates `.unikit/DESCRIPTION.md`, `.unikit/ARCHITECTURE.md`, `AGENTS.md`, and `.unikit/config.yaml`
 - calls `unikit-ai rules install defaults` to bootstrap rules for every module whose skills are installed
 - drives stack rule selection - for each detected framework it either pulls a pre-built rule from the registry or generates one on the fly via `/unikit-memory` (Context7 + web research)
-- checks the engine bridges (is the Unity CLI there, is the package in the project) and, with two bridges or more, asks which comes first
-On a project that already has a `.unikit/config.yaml`, `/unikit` opens a returning-project menu (update the config, set the bridge order, check the bridges, create rules for new frameworks, refresh the description) instead of running the setup again.
+- checks the engine bridges (is the Unity CLI there, is the package in the project)
+On a project that already has a `.unikit/config.yaml`, `/unikit` opens a returning-project menu (update the config, check the bridges, create rules for new frameworks, refresh the description) instead of running the setup again.
 
 From then on, the dynamic memory is ready and you can start building features:
 

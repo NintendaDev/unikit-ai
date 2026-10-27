@@ -89,7 +89,7 @@ Two shapes worth calling out:
 |-------|-------------|
 | `version` | Package version at time of install |
 | `engine` | Game engine identifier (`unity`, `godot`, `godot-net`, `unreal-engine-5`) |
-| `engineBridges.selected` | The selected engine bridges as `key → code` (an MCP-kind bridge: the vendor code it is registered under; a CLI-kind bridge: its binary). It is a **set**: any number of bridges. The **order** is not stored here - see [`engine_bridges`](#engine_bridges-section). A 2.x config kept the engine servers inside `mcp.servers`; `unikit-ai update` splits them - see [Migrating to 3.0.0](migration-3.0.0.md). |
+| `engineBridges.selected` | The selected engine bridges as `key → code` (an MCP-kind bridge: the vendor code it is registered under; a CLI-kind bridge: its binary). It is a **set**: any number of bridges. The **order** is not stored here - see [Bridge order, routing and the rule of a bridge](#bridge-order-routing-and-the-rule-of-a-bridge). A 2.x config kept the engine servers inside `mcp.servers`; `unikit-ai update` splits them - see [Migrating to 3.0.0](migration-3.0.0.md). |
 | `rulesRegistry` | Rules registry URL or local path. Defaults to the official `NintendaDev/unikit-ai-rules` URL. See [Rules Registry](rules-registry.md) for details. |
 | `mcp.servers` | Globally selected **universal** MCP servers (Context7, GitHub) as `key → code`. The **key** is the server's file id — the name of its JSON file under `mcp/universal/`, an internal identity that is never written anywhere else. The **value** is the vendor code UniKit registered that server under in the agent's settings file (`mcpServers.<code>`), stored per project because it is the only record of what was actually written. Configs written before 2.0.0 carry a bare `string[]` of file ids here and are converted on the next `unikit-ai init` / `unikit-ai update`. |
 | `agents` | Array of installed agent configurations |
@@ -140,9 +140,6 @@ git:
   pull_requests:
     checkpoints: false
     max_level: create   # remind | create | merge
-
-engine_bridges:
-  order: []   # bridge ids, the most preferred first; [] = the default order of the package
 
 subagents:
   model:
@@ -225,16 +222,34 @@ Existing projects receive the key by any of the three paths in [How new keys rea
 
 **Plans are always sliced into modules**, whatever these keys say: a module is one or more consecutive phases after whose merge the base branch is whole. The keys only decide whether a module ends with a PR checkpoint task — see [Plan files → Modules](plan-files.md#modules--pieces-the-base-branch-can-take-whole).
 
-### `engine_bridges` section
+### Bridge order, routing and the rule of a bridge
+
+Three things decide how the agents use the engine bridges you selected. None of them is in `.unikit/config.yaml`.
+
+**`.unikit/bridges.yaml` - the order.** `unikit-ai init` and `unikit-ai update` create it and keep it in step with the selected bridges:
 
 ```yaml
-engine_bridges:
-  order: []   # bridge ids, the most preferred first; [] = the default order of the package
+# Engine bridges, most preferred first. Agents try them in this order.
+# Reorder the list by hand if you want another order: unikit-ai init and update then keep it,
+# dropping a bridge you removed and appending a new one at the end.
+# Delete this file to go back to the package order.
+order:
+  - unity-cli
+  - unity-biome-mcp
 ```
 
-- `order` lists bridge ids - the file names without `.json`, as `BRIDGES.md` prints them. The agents use the installed bridges in this order, then the remaining installed ones in the default order printed in `BRIDGES.md` (the numbered table under `default order:`). An id that is not installed is skipped without a message. An empty list, or no key, means the default order.
-- It is written by `/unikit`: at the first setup when two or more bridges are selected; by the config update, which asks the order in the same run when it adds the key to an existing project that has two bridges or more; and later in its bridge-order mode ("make Biome the main bridge"). You can also edit it by hand. Changing it needs no `init` and no `update` and reinstalls no skill: the installer never reads it.
-- An instruction in the session ("use only Biome for this task") beats this order for that session.
+The first run writes the **package order** (the `order` field of each bridge card). After that the installer asks one question of the file: is the list the one it would have written for the bridges it knew last time?
+
+| The file is... | A bridge is added | A bridge is dropped |
+|----------------|-------------------|---------------------|
+| as the installer wrote it | the new bridge is placed where its package order says | it leaves the list, the others stay in package order |
+| edited by you (any other order) | the new bridge goes to the end | it leaves the list, your order stays |
+
+A file without an `order:` list is left as it is, with a warning, and the agents use the default order printed in `BRIDGES.md`. With no bridge selected the file is removed. Delete the file to return to the package order. Editing it changes no installed byte: `update` reinstalls nothing and `BRIDGES.md` only points at the file.
+
+**`.unikit/bridge-routing.md` - routing rules (optional).** A table of rows `area | when | rule | bridges | why`: `area` is a word the planner and the verifier already use (a kind of editor task or a gate) or `*`, `when` is the case in your own words, `rule` is `only` (only those bridges, no fallback), `first` (those first, the others follow) or `never` (left out), `bridges` are ids as `BRIDGES.md` prints them. The strongest fitting row decides: a row with a `when` beats an area-wide row, a `*` row is the weakest, rows are never combined. Write it with [`/unikit-bridge-route`](skills.md#unikit-bridge-route-the-rule-in-your-words--list--remove-row---route-a-kind-of-work-to-chosen-bridges) or by hand; no file means no routing rules. An instruction in your request beats a row.
+
+**The rule of a bridge.** `init` and `update` install the registry's stack rule whose id is the bridge's id (`unity-biome-mcp`, `unity-cli`, …) into `.unikit/memory/code/stack/`, with its `references/`, for every selected bridge that has one and that the project does not have yet. A bridge you drop takes its rule with it - but only a rule that came from the registry and was not edited; your own rule, or one you changed, stays, and the command says why. A rule you delete by hand while the bridge is selected comes back at the next `update`; deselect the bridge to be rid of it. A bridge with no rule in the registry works without one: the agents use the ordinary search of the method (the word, the tags and the groups of a command-line bridge; the tool list of an MCP bridge). Each bridge block in `BRIDGES.md` names the place of its rule in the `guide` row.
 
 ### `subagents` section
 
@@ -271,7 +286,7 @@ A key added to this template after your project was bootstrapped does not arrive
 | Path | Entered by | What it does with a missing key |
 |------|-----------|--------------------------------|
 | merge mode | a full `/unikit` bootstrap run on a project that already has a config (the **Description** branch of the menu) | names the missing keys and **offers** to append them |
-| config actualization mode | asking `/unikit` to update / actualize / repair the config on a project already set up | appends a template **literal** silently; **asks** only where the template carries a placeholder, or the current value falls outside a declared domain; and, when it has just added `engine_bridges.order` and two bridges or more are installed, asks their order |
+| config actualization mode | asking `/unikit` to update / actualize / repair the config on a project already set up | appends a template **literal** silently; **asks** only where the template carries a placeholder, or the current value falls outside a declared domain |
 | returning-project menu | a plain `/unikit` on a project that already has a config | prints the state, offers the config update among its actions and hands over to it |
 
 All three derive the missing set the same way — by comparing `.unikit/config.yaml` against `skills/unikit/references/config-template.yaml` — so none is more thorough than the others. The `subagents` block reaches an existing project the same way: the actualization mode appends it whole, with its comments. They differ only in whether they ask, and that difference follows from consent: a bootstrap run is not something you started in order to change configuration, so a question is appropriate there; the actualization mode is entered *because* you asked for exactly that, so re-asking about an obvious default is noise.
@@ -304,7 +319,7 @@ Every server carries two names, and keeping them apart is what the rest of this 
 
 Before 2.0.0 there was only `key`, and the engine alternatives of one engine were made to share it — which meant UniKit registered Unity Biome under the name `UnityMCP` while the server itself registers as `unity-biome-mcp`. The two entries coexisted in `.mcp.json`, and the grants followed the one nobody was talking to.
 
-**Engine bridges of one engine are not alternatives** - tick any number of them. The group is the engine's own catalog directory (`engine-bridges/unity/`, `engine-bridges/godot/`, …); `godot` and `godot-net` share `engine-bridges/godot/`, so they share the group. Where more than one is selected, the order decides which is used first: a check that has no route on one bridge is tried on the next (see [`engine_bridges`](#engine_bridges-section)).
+**Engine bridges of one engine are not alternatives** - tick any number of them. The group is the engine's own catalog directory (`engine-bridges/unity/`, `engine-bridges/godot/`, …); `godot` and `godot-net` share `engine-bridges/godot/`, so they share the group. Where more than one is selected, the order decides which is used first: a check that has no route on one bridge is tried on the next (see [Bridge order, routing and the rule of a bridge](#bridge-order-routing-and-the-rule-of-a-bridge)).
 
 | Server | `key` (file id) | `code` (settings key, grant prefix) |
 |--------|-----------------|-------------------------------------|
@@ -321,7 +336,7 @@ Each code is the one its vendor uses, so an entry UniKit writes and an entry the
 
 ### Unity
 
-Three engine bridges are offered here, in the order of their `order` field - the **default order** that `BRIDGES.md` prints and that your own `engine_bridges.order` overrides. On a fresh install the wizard checks the first MCP bridge (**Unity Biome**), and the Unity CLI as well when it finds `unity` on your `PATH`.
+Three engine bridges are offered here, in the order of their `order` field - the **default order** that `BRIDGES.md` prints and that your own `.unikit/bridges.yaml` overrides. On a fresh install the wizard checks the first MCP bridge (**Unity Biome**), and the Unity CLI as well when it finds `unity` on your `PATH`.
 
 #### Unity CLI (`order: 1`, kind `cli`)
 
@@ -499,7 +514,7 @@ Every catalog JSON - under `mcp/universal/` or `engine-bridges/<engine>/` - decl
 |-------|---------|
 | `docs` | `{ context7, repo }` — where the server documents *itself*. `repo` generates the single install line printed in the `init` summary (`<displayName> — setup and requirements: <url>`) and is **required** when `is_engine: true`. `context7` is the library id the rules tree names as the server's reference. |
 | `rules` | Directory holding this bridge's rules tree, resolved relative to the JSON's own directory (`"rules/<bridge>/"`, under `engine-bridges/<engine>/rules/`). Delivered to `.unikit/system/engine-bridges/<bridge>/` — see [Engine bridge rules trees](#engine-bridge-rules-trees). Absent is a normal state, not a degraded one. |
-| `order` | The **default order** of the bridges of one engine - the `is_engine` entries of a single `engine-bridges/<engine>/` directory (ascending, 1-based; **required** for a bridge, unique within the directory). It is printed as the numbered table under `default order:` in `BRIDGES.md` and presents the wizard's list; it does **not** affect the order servers are written into a settings file, and your own order (`engine_bridges.order`) overrides it for the agents. |
+| `order` | The **default order** of the bridges of one engine - the `is_engine` entries of a single `engine-bridges/<engine>/` directory (ascending, 1-based; **required** for a bridge, unique within the directory). It is printed as the numbered table under `default order:` in `BRIDGES.md` and presents the wizard's list; it does **not** affect the order servers are written into a settings file, and your own order (`.unikit/bridges.yaml`) overrides it for the agents. |
 | `kind` | `mcp` (the default; an MCP server the agent's client talks to) or `cli` (a command line the agent runs). |
 | `cli` | For `kind: cli`, instead of `config`: `binary` (searched on `PATH`, the head of every grant), `projectFlag` (the option that names the project, in every form but the version probe), `shells` (the tools the grants are written for: `Bash`, `PowerShell`), `forms` (the command lines: `call`, `groups`, `group`, `tags`, `tag`, `search`, `list`, `schema`, `compile`, `status`, `ready`, `version`), `probes.package` (a project file to read for the installed package version) and `notes`. |
 | `setup[]` | Lines of preparation, printed in the `init` summary and in the bridge's block of `BRIDGES.md`: `by` is `human` or `agent-confirmed` (the agent runs it only after you confirm), `run` the line. |
@@ -592,7 +607,7 @@ On a re-init the wizard mirrors what `.unikit.json` already records:
 - **Both checkbox groups** (universal servers, and the engine bridges) pre-check what you had installed. There is no radio group and no `Skip`: a bridge is ticked or not.
 - A bridge you install **after** `init` is registered by running `init` again and ticking it. `/unikit` tells you when it finds one on the machine that you did not select.
 
-The package order (`order`) and the detection of the Unity CLI therefore decide the defaults only on a **fresh** install; your own order lives in `.unikit/config.yaml` ([`engine_bridges`](#engine_bridges-section)).
+The package order (`order`) and the detection of the Unity CLI therefore decide the defaults only on a **fresh** install; your own order lives in `.unikit/bridges.yaml` ([order, routing and rules](#bridge-order-routing-and-the-rule-of-a-bridge)).
 
 Changing your selection reinstalls all skills and subagents: the **set** of selected servers and bridges (not their order) is part of their source hash, which is how stale `mcp__<code>__*` and `Bash(<binary> …)` entries get cleared from the installed frontmatter. The hash covers both halves of every `mcp.servers` and `engineBridges.selected` entry, so a server whose vendor code changes while your selection stays the same still triggers the reinstall.
 
@@ -753,6 +768,8 @@ your-unity-project/
 │       └── unikit-architecture-sidecar.md    # 8 subagent files (sidecars, coordinators, workers)
 ├── .unikit/                      # UniKit AI working directory
 │   ├── config.yaml               # User-editable config (language, workflow, git)
+│   ├── bridges.yaml              # The order of the engine bridges - kept by init and update, yours to reorder
+│   ├── bridge-routing.md         # Optional routing rules per case - /unikit-bridge-route or by hand
 │   ├── system/                   # Flat-rewritten on every init/update - never hand-edit
 │   │   ├── cli-contract.md        # CLI exit codes + command contract, for the skills to read
 │   │   ├── dev-principles.md      # Engine principles (the one asset with {{engine_*}} substituted)
