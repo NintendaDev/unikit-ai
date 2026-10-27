@@ -426,7 +426,9 @@ await group('BR-3', async () => {
     assertEq('BR-3', 'the same input renders the same text', renderBridgesManifest(input(['mcp-a', 'mcp-b'])), text);
     assertEq('BR-3', 'no undefined or null leaks into the text', /undefined|\bnull\b/.test(text), false);
     assertEq('BR-3', 'a text ends in exactly one newline', text.endsWith('\n') && !text.endsWith('\n\n'), true);
-    assertEq('BR-3', 'the user order is described, not stored', text.includes('user order: the list under engine_bridges.order in .unikit/config.yaml'), true);
+    assertEq('BR-3', 'the order file is pointed at, not stored', text.includes('\norder: .unikit/bridges.yaml - '), true);
+    assertEq('BR-3', 'the routing file is pointed at, not stored', text.includes('\nrouting: .unikit/bridge-routing.md - '), true);
+    assertEq('BR-3', 'the retired config key is no longer mentioned', text.includes('engine_bridges'), false);
     assertEq('BR-3', 'a pipe in a value cannot end its cell',
         renderBridgesManifest({ ...input(['mcp-a']), bridges: [{ fileId: 'mcp-a', hasRulesTree: false, entry: entry('mcp-a', { setup: [{ by: 'human', run: 'a | b' }] }) }] }).includes('| human | a \\| b |\n'), true);
     assertEq('BR-3', 'three bridges are numbered 1 to 3',
@@ -1392,8 +1394,8 @@ await group('BR-D', async () => {
             [both[2].includes('<project-root>'), both[2].includes(high)], [false, true]);
         assertEq('BR-D6', 'a folder that is not an engine project gets the placeholder for the user to fill',
             summary.getBridgeSetupLines(discovered, ['unity-cli'], bin)[2].includes('<your engine project root>'), true);
-        assertEq('BR-D6', 'two bridges end with the package order and where to set one\'s own',
-            both.at(-1), 'Order: unity-cli > unity-biome-mcp (package default). Set your own with /unikit or in .unikit/config.yaml (engine_bridges.order).');
+        assertEq('BR-D6', 'two bridges end with the package order and where to edit it',
+            both.at(-1), 'Order: unity-cli > unity-biome-mcp (package default). Edit the list in .unikit/bridges.yaml to change it.');
         assertEq('BR-D6', 'one bridge prints no order line', summary.getBridgeSetupLines(discovered, ['unity-cli'], high).some(line => line.startsWith('Order:')), false);
         assertEq('BR-D6', 'nothing selected prints nothing', summary.getBridgeSetupLines(discovered, [], high), []);
     } finally {

@@ -35,7 +35,7 @@ export interface WizardAnswers {
   selectedSkills: string[];
   /** Universal MCP servers only; the engine's bridges are in {@link WizardAnswers.engineBridges}. */
   mcpServers: string[];
-  /** Engine bridges (file ids), any number; the order between them is set later, in `.unikit/config.yaml`. */
+  /** Engine bridges (file ids), any number; the order between them is kept in `.unikit/bridges.yaml`. */
   engineBridges: string[];
   rulesRegistry: string;
 }
@@ -335,8 +335,8 @@ export async function runWizard(
   //
   // Two groups of checkboxes, split by `is_engine`: the universal servers (Context7, GitHub) and the
   // bridges of the engine. A project takes any number of bridges, so there is no radio and no Skip;
-  // the order between them is not asked here -- it lives in `.unikit/config.yaml`
-  // (`engine_bridges.order`) and the installer never reads it. The catalog folder an entry came from
+  // the order between them is not asked here -- it lives in `.unikit/bridges.yaml`, which init and
+  // update keep in step with the selection. The catalog folder an entry came from
   // no longer groups anything: the bridges of one engine are one group by construction.
   const discoveredServers = await discoverMcpServers(engine);
   const mcpServers: string[] = [];
@@ -402,7 +402,7 @@ export async function runWizard(
           // The label is the ENGINE's display name, assigned rather than derived: `engine` is the id
           // the user just picked, the one name in play they already know. The package folder
           // ("engine-bridges/unity") is a layout detail and stays out of the prompt.
-          message: `Engine bridges for "${getEngineConfig(engine).displayName}" (pick any number; the order is set later in .unikit/config.yaml):`,
+          message: `Engine bridges for "${getEngineConfig(engine).displayName}" (pick any number; the order is kept in .unikit/bridges.yaml):`,
           choices: sortMcpChoices(bridges).map(entry => ({
             name: detected.has(entry.fileId) ? `${entry.displayName}${DETECTED_LABEL_SUFFIX}` : entry.displayName,
             value: entry.fileId,

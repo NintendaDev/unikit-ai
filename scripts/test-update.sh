@@ -3205,5 +3205,66 @@ assert_same_sha "$DOCSTAMP_FORMAT" "$DOCSTAMP_FORMAT_SHA" "docs skills: ...and t
 assert_same_sha "$DOCSTAMP_DIR/.unikit.json" "$DOCSTAMP_CFG_SHA" "docs skills: ...and the config"
 echo "  ✓ docs skills: tamper and a missing reference file are recovered, a settled project is untouched"
 
+
+# ─────────────────────────────────────────────
+# Test 38: the order file of the bridges is kept by update, with no skill in between
+# ─────────────────────────────────────────────
+# Created in package order, left byte-identical when nothing changed, kept as the user edited it, and
+# removed when no bridge is selected any more.
+
+BORDER_DIR="$TMPDIR/update-bridge-order"
+mkdir -p "$BORDER_DIR"
+cat > "$BORDER_DIR/.unikit.json" << 'EOF'
+{
+  "version": "3.0.0",
+  "engine": "unity",
+  "mcp": { "servers": {} },
+  "engineBridges": { "selected": { "unity-cli": "unity", "unity-biome-mcp": "unity-biome-mcp" } },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit-references"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": { "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } } }
+}
+EOF
+inject_fake_registry "$BORDER_DIR"
+BORDER_FILE="$BORDER_DIR/.unikit/bridges.yaml"
+(cd "$BORDER_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/update-bridge-order-1.log" 2>&1)
+assert_exists "$BORDER_FILE" "bridge order: the first update creates the order file"
+assert_contains "$BORDER_FILE" '^order:$' "bridge order: ...as a list under the order key"
+assert_contains "$BORDER_FILE" '^  - unity-cli$' "bridge order: ...the CLI is in it"
+assert_contains "$BORDER_FILE" '^  - unity-biome-mcp$' "bridge order: ...and so is Biome"
+BORDER_CLI_LINE=$(grep -n '^  - unity-cli$' "$BORDER_FILE" | cut -d: -f1)
+BORDER_BIO_LINE=$(grep -n '^  - unity-biome-mcp$' "$BORDER_FILE" | cut -d: -f1)
+if [[ "$BORDER_CLI_LINE" -ge "$BORDER_BIO_LINE" ]]; then
+  echo "Assertion failed: bridge order: the CLI (weight 1) should come before Biome (weight 2) in a new order file"
+  cat "$BORDER_FILE"
+  exit 1
+fi
+
+BORDER_SHA=$(sha_of "$BORDER_FILE")
+(cd "$BORDER_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/update-bridge-order-2.log" 2>&1)
+assert_same_sha "$BORDER_FILE" "$BORDER_SHA" "bridge order: a second update leaves the order file byte-identical"
+
+printf 'order:\n  - unity-biome-mcp\n  - unity-cli\n' > "$BORDER_FILE"
+BORDER_EDITED_SHA=$(sha_of "$BORDER_FILE")
+(cd "$BORDER_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/update-bridge-order-3.log" 2>&1)
+assert_same_sha "$BORDER_FILE" "$BORDER_EDITED_SHA" "bridge order: an order edited by hand is kept by update"
+
+CONFIG="$BORDER_DIR/.unikit.json" node -e "
+    const fs=require('fs'); const f=process.env.CONFIG;
+    const c=JSON.parse(fs.readFileSync(f,'utf8'));
+    c.engineBridges = { selected: {} };
+    fs.writeFileSync(f, JSON.stringify(c,null,2));
+"
+(cd "$BORDER_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/update-bridge-order-4.log" 2>&1)
+assert_not_exists "$BORDER_FILE" "bridge order: with no bridge selected the order file is removed"
+echo "  ✓ bridge order: created in package order, settled runs change nothing, a hand edit is kept, no bridge removes the file"
+
 echo ""
 echo "update smoke tests passed"

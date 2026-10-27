@@ -4,8 +4,8 @@
 // and `engineBridges.selected` (engine bridges), both `fileId → vendor code`. Everything that
 // hashes or reconciles the selection takes the pair as one value, and everything that needs "the
 // code of the MCP bridge" derives it here, from the catalog and the SET of bridges — never from
-// the user's order (`.unikit/config.yaml`, `engine_bridges.order`), which the installer does not
-// read: a reorder must not change an installed byte (NFR-1).
+// the user's order (`.unikit/bridges.yaml`), which the installer keeps in step with the set but never
+// lets into a hash: a reorder must not change an installed byte (NFR-1).
 //
 // Replaces the persisted scalar `engineMcpKey`, which `init` (first in the order of the answer) and
 // `update` (lowest `order`) computed differently. One function now serves every path.

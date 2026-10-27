@@ -22,6 +22,7 @@ import { catalogBridgeIds, selectionOf } from '../../core/bridges/selection.js';
 import { reconcileMcpSettings } from '../../core/mcp-reconcile.js';
 import { installEngineBridges, readPreviousBridgeSet } from '../../core/installer/engine-bridges.js';
 import { swapBridgeNotes } from '../../core/installer/bridge-notes.js';
+import { syncBridgeOrder } from '../../core/installer/bridge-order.js';
 import { getAgentConfig } from '../../core/agents.js';
 import { exitOnSharedSkillsDir } from '../guards.js';
 import { fileExists } from '../../utils/fs.js';
@@ -339,6 +340,9 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
 
     // Refresh BRIDGES.md and the rules trees (orphan-deletes a dropped bridge's tree and the 2.x folder)
     await installEngineBridges(projectDir, engineId, discoveredServers, Object.keys(config.engineBridges.selected), config.agents.map(agent => agent.id));
+
+    // The order file follows the same selection; `previousBridges` is the set from the BRIDGES.md read above, before it was rewritten.
+    await syncBridgeOrder(projectDir, discoveredServers, previousBridges, Object.keys(config.engineBridges.selected));
 
     // Update engine development principles (shared system file, plain rewrite)
     await installDevPrinciples(projectDir, engineId, mcpBridgeCode);

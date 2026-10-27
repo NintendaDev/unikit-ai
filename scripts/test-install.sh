@@ -2868,16 +2868,19 @@ assert_contains "$CLI_BRIDGE_MANIFEST" '^\| rules \| \.unikit/system/engine-brid
 assert_contains "$CLI_BRIDGE_MANIFEST" '^\| verification \| \.unikit/system/engine-bridges/unity-cli/verification\.md \|$' "cli bridge: ...and to the calibration"
 assert_system_tree "$CLI_BRIDGE_DIR" yes "system tree matches the variable registry (CLI and Biome)"
 
-# Order lives in .unikit/config.yaml and in no installed byte: writing it reinstalls nothing and leaves
-# BRIDGES.md byte-identical. A change of the SET is the opposite: it reinstalls.
+# init writes the order file in package order, with no skill in between. Order lives in .unikit/bridges.yaml and
+# in no installed byte: editing it reinstalls nothing and leaves BRIDGES.md byte-identical. A change of the SET
+# is the opposite: it reinstalls.
+assert_exists "$CLI_BRIDGE_DIR/.unikit/bridges.yaml" "cli bridge: the order file is created"
+assert_contains "$CLI_BRIDGE_DIR/.unikit/bridges.yaml" '^  - unity-cli$' "cli bridge: ...with the CLI in it (package order)"
 CLI_BRIDGE_SKILL="$CLI_BRIDGE_DIR/.claude/skills/unikit-implement/SKILL.md"
 CLI_BRIDGE_SKILL_SHA=$(sha_of "$CLI_BRIDGE_SKILL")
 CLI_BRIDGE_MANIFEST_SHA=$(sha_of "$CLI_BRIDGE_MANIFEST")
-mkdir -p "$CLI_BRIDGE_DIR/.unikit"
-printf 'engine_bridges:\n  order: [unity-biome-mcp, unity-cli]\n' > "$CLI_BRIDGE_DIR/.unikit/config.yaml"
+printf 'order:\n  - unity-biome-mcp\n  - unity-cli\n' > "$CLI_BRIDGE_DIR/.unikit/bridges.yaml"
 run_update "$CLI_BRIDGE_DIR"
 assert_same_sha "$CLI_BRIDGE_SKILL" "$CLI_BRIDGE_SKILL_SHA" "cli bridge: a user order reinstalls no skill"
 assert_same_sha "$CLI_BRIDGE_MANIFEST" "$CLI_BRIDGE_MANIFEST_SHA" "cli bridge: ...and does not touch BRIDGES.md"
+assert_contains "$CLI_BRIDGE_DIR/.unikit/bridges.yaml" '^  - unity-biome-mcp$' "cli bridge: a hand-edited order survives an update"
 
 # Only Biome selected: the CLI moves to the section of what was not selected, with its probe, and
 # the skill (whose source hash took the set) loses the CLI's grants.
@@ -2892,6 +2895,8 @@ assert_contains "$CLI_BRIDGE_MANIFEST" '^## Not selected$' "cli bridge: a bridge
 assert_contains "$CLI_BRIDGE_MANIFEST" '^\| unity-cli \| .* \| `unity --version` \|$' "cli bridge: ...with the probe that tells whether it is installed here"
 assert_not_contains "$CLI_BRIDGE_MANIFEST" '^## unity-cli$' "cli bridge: ...and no block of its own"
 assert_contains "$CLI_BRIDGE_MANIFEST" '^\| 1 \| unity-biome-mcp \| mcp \|$' "cli bridge: the default order follows the selection"
+assert_not_contains "$CLI_BRIDGE_DIR/.unikit/bridges.yaml" 'unity-cli' "cli bridge: a dropped bridge leaves the hand-edited order file"
+assert_contains "$CLI_BRIDGE_DIR/.unikit/bridges.yaml" '^  - unity-biome-mcp$' "cli bridge: ...and the one that stays is kept"
 if [[ "$(sha_of "$CLI_BRIDGE_SKILL")" == "$CLI_BRIDGE_SKILL_SHA" ]]; then
   echo "Assertion failed: changing the set of bridges should reinstall the executor skill (its grants changed)"
   exit 1

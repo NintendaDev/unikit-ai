@@ -31,8 +31,9 @@ export interface McpConfig {
 
 /**
  * Engine bridges the project selected: `fileId → vendor code`, the same shape as `mcp.servers`.
- * Only the SET lives here. The user's order is in `.unikit/config.yaml` (`engine_bridges.order`),
- * which the installer never reads, so a reorder reinstalls nothing and cannot reach the skill hash.
+ * Only the SET lives here. The user's order is in `.unikit/bridges.yaml`, which the installer
+ * keeps in step with the set but never lets into a hash, so a reorder reinstalls nothing and
+ * cannot reach the skill hash.
  */
 export interface EngineBridgesConfig {
   selected: Record<string, string>;

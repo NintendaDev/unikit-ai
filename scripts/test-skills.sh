@@ -12601,6 +12601,26 @@ else
     echo "$BRIDGES_OUTPUT" | sed 's/^/      /'
 fi
 
+# Part 7e6: the bridge order file (family BO)
+# ─────────────────────────────────────────────
+# `.unikit/bridges.yaml`: parse, render, the decision table, the installer on the real catalog and the call
+# sites (scripts/test-bridge-order.mjs). Pure logic on the compiled build; every project it touches is a
+# temporary directory.
+echo -e "\n${BOLD}Part 7e6: bridge order file (BO-*)${NC}"
+
+set +e
+BO_OUTPUT=$(node "$ROOT_DIR/scripts/test-bridge-order.mjs" 2>&1)
+BO_EXIT=$?
+set -e
+
+if [[ $BO_EXIT -eq 0 ]]; then
+    pass "Bridge order file guards"
+    echo "$BO_OUTPUT" | tail -1 | sed 's/^/    /'
+else
+    fail "Bridge order file guards"
+    echo "$BO_OUTPUT" | sed 's/^/      /'
+fi
+
 # (BR-8a) The 2.x layout is gone from every text the package ships. Step 1: no literal path of the
 # single-server rules folder under .unikit/system/ in skills/, subagents/ or data/. SV-5 forbids an
 # unknown path under .unikit/system/ already; this names the reason and counts what it looked at.

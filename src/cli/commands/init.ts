@@ -21,6 +21,7 @@ import { reconcileMcpSettings } from '../../core/mcp-reconcile.js';
 import { getMcpEnvLines } from '../../core/mcp-env.js';
 import { installEngineBridges } from '../../core/installer/engine-bridges.js';
 import { swapBridgeNotes } from '../../core/installer/bridge-notes.js';
+import { syncBridgeOrder } from '../../core/installer/bridge-order.js';
 import { getAgentConfig } from '../../core/agents.js';
 import { collectExtensionSkillNames, removeAgentSetup } from '../../core/installer/agent-removal.js';
 import { getAgentOnboarding } from '../../core/transformer.js';
@@ -308,6 +309,10 @@ export async function initCommand(): Promise<void> {
 
     // Deliver BRIDGES.md and the rules tree of every selected bridge (sweeps the 2.x engine-mcp folder)
     await installEngineBridges(projectDir, engineId, discoveredServers, answers.engineBridges, installedAgents.map(agent => agent.id));
+
+    // Keep the order file in step with the selection: the previous set is the one in `existingConfig` (the config write above has
+    // already replaced it on disk); an order the user edited by hand is kept, a dropped bridge leaves it, a new one is appended.
+    await syncBridgeOrder(projectDir, discoveredServers, existingConfig ? Object.keys(existingConfig.engineBridges.selected) : null, answers.engineBridges);
 
     // Install engine development principles (shared system file)
     await installDevPrinciples(projectDir, engineId, mcpBridgeCode);
