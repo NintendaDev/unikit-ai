@@ -43,6 +43,8 @@ Creating a script file through the bridge starts an import and a domain reload b
 | asset-1 | asset | markup or style text written to a file is valid: a broken file is accepted as a success, and its parse error shows only in the console |
 | visual-1 | visual | a screenshot written to a save path landed inside the assets folder and was imported there - the documented project-relative path is not the project root |
 | transport-1 | transport | after a package change that waited for its result, a broken connection is not evidence of failure: the package may be in, so its state was read |
+| transport-2 | transport | after a test call ended in a timeout, the run was not started again as it was: it goes on in the editor to its end, keeps no result and holds the lane until then - wait for the lane, then start it in the background and read its status |
+| transport-3 | transport | the answer of a test run was read whole: the default output keeps a summary line only, and a run with a part started in the background (play mode) has not ended until that part reported through the status of the run |
 
 ## Irreversible
 
