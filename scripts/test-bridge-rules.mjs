@@ -283,6 +283,14 @@ await group('BRL-6', async () => {
         failedRun.lines.map((line) => [line.id, line.status, line.reason]).sort(), [[BIO, 'failed', 'registry unreachable'], [CLI, 'failed', 'registry unreachable']]);
     assertEq('BRL-6', '...and leaves no partial record or file', [entriesOf(config).length, fs.existsSync(stackDir(project))], [0, false]);
 
+    const throwing = { fetchModuleManifest: async () => { throw new Error('transport exploded'); } };
+    const exploded = await syncBridgeRules({
+        projectDir: project, config: newConfig(), registry: throwing, engineId: 'unity',
+        previousBridgeIds: null, currentBridgeIds: [BIO], previousRules: null, regenerateIndex: 'disk',
+    });
+    assertEq('BRL-6', 'a registry that throws is reported as unreachable, never rethrown',
+        exploded.lines.map((line) => [line.id, line.status, line.reason]), [[BIO, 'failed', 'registry unreachable']]);
+
     calls = 0;
     const idle = await syncBridgeRules({
         projectDir: project, config: newConfig(), registry: unreachable, engineId: 'unity',

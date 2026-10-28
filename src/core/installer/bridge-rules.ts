@@ -158,8 +158,8 @@ async function classifyWanted(input: BridgeRulesInput, id: string, report: Bridg
 async function installWantedRules(input: BridgeRulesInput, ids: string[], report: BridgeRulesReport): Promise<void> {
   const codeModule = getModule(CODE_MODULE_ID);
   if (!codeModule || ids.length === 0) return;
-  const catalog = await resolveModuleCatalog(input.registry, codeModule, input.engineId);
-  if (!catalog.reachable) {
+  const catalog = await resolveModuleCatalog(input.registry, codeModule, input.engineId).catch(() => null);
+  if (catalog === null || !catalog.reachable) {
     logWarn(BRIDGE_RULES_LOG_COMPONENT, 'rules registry unreachable: the rules of the bridges are not installed this time');
     for (const id of ids) report.lines.push({ id, status: 'failed', reason: REGISTRY_UNREACHABLE });
     return;
@@ -227,7 +227,11 @@ export async function syncBridgeRules(input: BridgeRulesInput): Promise<BridgeRu
   await installWantedRules(input, wanted, report);
 
   if (input.regenerateIndex === 'disk' && (report.stateChanged || report.lines.some(line => line.status === 'installed' || line.status === 'removed'))) {
-    await generateRulesIndex(input.projectDir, codeModule, {}, await loadRequiredByMap(), {});
+    try {
+      await generateRulesIndex(input.projectDir, codeModule, {}, await loadRequiredByMap(), {});
+    } catch (error) {
+      logWarn(BRIDGE_RULES_LOG_COMPONENT, `could not rebuild RULES_INDEX.md: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
   return report;
 }
