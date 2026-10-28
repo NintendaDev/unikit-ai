@@ -385,7 +385,9 @@ guard('ART-10', 'verify and the ownership contract: table check, suggestions, gr
   for (const n of ['3.2', '3.3', '3.4', '3.5', '3.6', '3.7', '3.9']) t.ok(new RegExp(`^#{2,4} ${n.replace('.', '\\.')}[ :]`, 'm').test(verify), `verify keeps the step ${n}`);
   t.ok(Buffer.byteLength(verify, 'utf8') <= 70000, 'verify SKILL.md stays under the 70000-byte ceiling');
   t.has(contract, '## Architecture growth sign', 'the contract has the growth sign');
-  t.has(contract, 'is longer than 300 lines', 'the contract holds the number');
+  t.has(contract, '(a) the root has no `## Topics` table and no `flat` marker and is longer than 300 lines;', 'the contract holds the number for a root without topics');
+  t.has(contract, '(b) a topic file is longer than 300 lines;', 'the contract holds the number for a topic file');
+  t.has(contract, '(c) a row of the table lists a missing file, or a file in `.unikit/architecture/` has no row.', 'the contract holds the table-against-files mismatch');
   t.has(contract, 'Suggest `/unikit-architecture optimise` when:', 'the sign suggests optimise');
   t.has(contract, 'The result is a suggestion in 3.6, never a write', 'the sign never writes');
   t.has(contract, '`.unikit/ARCHITECTURE.md` and the topic files in `.unikit/architecture/`', 'the matrix names the topic files');
@@ -524,9 +526,22 @@ guard('RMI-4', 'unikit-rules: the surface and the help files', (t) => {
   t.ok(description.length > 0 && description.length <= MAX_DESCRIPTION, `description fits ${MAX_DESCRIPTION} characters (${description.length})`);
   t.ok(!CYRILLIC_RE.test(description), 'description has English triggers only');
   t.has(description, 'by keyword or in plain words', 'description says both ways');
-  for (const rel of ['skills/unikit-help/references/skill-map.md', 'skills/unikit-help/references/knowledge-base.md']) {
-    t.has(read(rel).replace(/\s+/g, ' '), 'started by a request in plain words; the keyword stays the exact form', `${rel} says both ways`);
+  for (const rel of ['skills/unikit-help/references/skill-map.md', 'skills/unikit-help/references/knowledge-base.md', 'docs/skills.md', 'docs/dynamic-memory.md']) {
+    t.has(read(rel).replace(/\s+/g, ' '), 'started by a request in plain words', `${rel} says both ways`);
+    t.has(read(rel).replace(/\s+/g, ' '), 'the keyword stays the exact form', `${rel} keeps the keyword exact`);
   }
+});
+
+// ── ART-14 ──────────────────────────────────────────────────────────────────
+
+const DOC_PAGES = ['dynamic-memory', 'skills', 'workflow', 'subagents', 'plan-files', 'configuration', 'getting-started', 'gamedesign'];
+
+guard('ART-14', 'docs: eight pages name the topic directory, the marker is documented', (t) => {
+  for (const page of DOC_PAGES) t.has(read(`docs/${page}.md`), '.unikit/architecture/', `docs/${page}.md names the topic directory`);
+  t.has(read('docs/dynamic-memory.md'), '<!-- unikit:architecture-layout flat -->', 'dynamic-memory documents the flat marker');
+  t.has(read('docs/dynamic-memory.md'), '## Architecture topics', 'dynamic-memory has the section on architecture topics');
+  t.has(read('docs/gamedesign.md').replace(/\s+/g, ' '), 'a fixed set of paths', 'gamedesign documents the fixed set of paths');
+  t.seen(0);
 });
 
 // ── Report ──────────────────────────────────────────────────────────────────

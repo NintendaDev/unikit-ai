@@ -300,9 +300,9 @@ One rule per line, one directive per rule. When this file has a `## Topics` tabl
 
 - **No fixed set of topics.** The agent names the topics and writes each `Load when` in the words your tasks use. When it is unsure, a rule stays common: a common rule costs tokens, while a rule in a topic that did not load is silently not applied.
 - **Loading works like stack rules.** Skills that work in phases (`/unikit-plan`, `/unikit-implement`, the implement worker and coordinator) read only the root at Bootstrap and load the matching topic files at the start of each phase, as a delta. `/unikit-verify` and `/unikit-review` always read the root and load the topics that match the changed files; other skills load the topics that match their work. The protocol is written once, in `RULES_INDEX.md` → Step 1, which `unikit-ai update` regenerates.
-- **Priority.** The root and its topic files are one override level, above `ARCHITECTURE.md` and the knowledge base. Inside a topic's area, a topic rule wins over a common rule it contradicts.
+- **Priority.** The root and its topic files are one override level, above `ARCHITECTURE.md` (and its topic files) and the knowledge base. Inside a topic's area, a topic rule wins over a common rule it contradicts.
 - **Old projects keep working.** A `RULES.md` without the table is read whole, exactly as before. When `/unikit-rules` meets such a file and finds rules worth splitting, it offers the reorganization after its report: **Apply**, **Keep the flat format** (a `<!-- unikit:rules-layout flat -->` marker is written and the offer never returns), or **Not now**. `/unikit-rules compact` makes the same offer first.
-- **`/unikit-rules optimise`** runs the reorganization on request - also on a file you once kept flat, and to regroup existing topics. It previews where every rule goes, checks that no rule is lost, and deletes none.
+- **`/unikit-rules optimise`** runs the reorganization on request - also on a file you once kept flat, and to regroup existing topics. It previews where every rule goes, checks that no rule is lost, and deletes none. Each of the three maintenance modes (`compact`, `optimise`, `prune`) is also started by a request in plain words ("split the rules into topics", "shorten RULES.md"); the keyword stays the exact form. A directive about the code that merely contains such a word is still a rule.
 - **`/unikit-rules prune`** lists rules that can go - duplicates, rules the knowledge base already covers, lines that are not rules, references to things that no longer exist - each with its evidence; **Delete everything proposed** removes them in one answer, **Choose by id** only the ids you type. Rules that contradict each other are resolved rather than deleted, in their own question: keep the side that is right, or merge the two into one corrected rule. A rule that is only partly outdated is never deleted - it is listed for you to fix.
 
 ### Stage 2: Auto-extraction from Patches
@@ -376,6 +376,48 @@ The same migration runs for the `gamedesign` module (`/unikit-memory migrate-rul
                            │ memory/code/     │
                            └──────────────────┘
 ```
+
+## Architecture topics
+
+`.unikit/ARCHITECTURE.md` grows the same way `RULES.md` does, and a file read whole at every Bootstrap and in every sub-agent prompt gets expensive. `/unikit-architecture` can therefore split it like the rules: the **root** keeps what every task needs - the module map, the global dependency rules, the common patterns - and **topic files** in `.unikit/architecture/` keep one area each, listed by a `## Topics` table in the root:
+
+```markdown
+# Architecture: Layered Architecture
+
+> This file is the root: when it has a `## Topics` table, its sections apply to every task, and a topic file in `.unikit/architecture/` applies when the work matches its "Load when" — check again when the work moves to a new phase or area, and when unsure, load it.
+
+## Project
+## Tech Stack
+...
+
+## Topics
+
+| Topic | Load when |
+|-------|-----------|
+| [Save system](architecture/save-system.md) | saving and loading, save data, save migrations |
+| [Rendering](architecture/rendering.md) | render passes, the `Render/` folder |
+
+## Detailed Rules
+```
+
+- **Cut by area, not by kind of text.** A topic holds everything one area needs - its edges and prohibitions, its contracts, the narrative of its mechanisms - because a task names an area. A prohibition that touches more than one area stays in the root; when unsure, the root. The section names of the template (`Tech Stack`, `Folder Structure`, `Dependency Rules`) stay in the root, so tools that read them by name keep working.
+- **No fixed set of topics.** The agent names the topics and writes each `Load when` in the words your tasks use. The documents are always English, like the rest of the architecture documentation.
+- **Reading follows the kind of work.** The protocol is written once, in `RULES_INDEX.md` → Step 1, and each reader carries a short clause of its own:
+
+  | Reader | The root | The topic files |
+  |--------|----------|-----------------|
+  | `/unikit-plan`, `/unikit-implement`, `/unikit-execute`, the implement worker and coordinator, the plan polisher | at Bootstrap | at the start of each phase (per task in `/unikit-execute`), as a delta; the sub-agents of the planner get the paths, not "read the file" |
+  | `/unikit-verify`, `/unikit-review`, `/unikit-commit`, `/unikit-fix`, the two sidecars, the `+check` validator | always | those whose `Load when` matches a changed file |
+  | `/unikit-improve` | at Bootstrap | by the phases of the plan under review |
+  | `/unikit-explore`, `/unikit-gd-review` | always | by the subject of the work; more when the work moves to another area |
+  | `/unikit-docs` | always | all of them |
+  | `/unikit-roadmap`, the scope of a commit | always | none |
+
+- **Writing has one owner for structure.** After a phase `/unikit-implement` and `/unikit-execute` add a delta as one table row or one list line in an existing place - the topic whose `Load when` matches, else the fitting root section. A decision or an explanation of a mechanism is only suggested (`INFO [architecture] update suggested`). A new topic, a moved block or a split comes only from `/unikit-architecture`.
+- **Three modes, by keyword or in plain words.** `generate` (no file yet), `update [text]` (rescan and add what is missing - nothing already written is removed; the text after `update` is a block to record word for word, which is how `/unikit-rules prune` hands over a line describing how the code is built) and `optimise` (split into a root and topics). A request such as "the architecture file is too big" or "record: module A does not depend on B" picks the mode too; the keyword stays the exact form.
+- **Old projects keep working.** A file without the table is read whole, exactly as before. After an `update` report on such a file the skill offers the layout when it found topics: **Apply**, **Keep the flat format** (a `<!-- unikit:architecture-layout flat -->` marker is written and the offer never returns), or **Not now**.
+- **`/unikit-architecture optimise`** reorganizes on request - also on a file you once kept flat, and to regroup existing topics. It previews the layout as an outline, checks that every block lands exactly once and word for word, and deletes none; a bundled Node script does the counting and the move.
+- **Growth is noticed, not forced.** `/unikit-verify` suggests `optimise` when a root with neither table nor marker passes 300 lines, a topic passes 300 lines, or the table and the files disagree. It never writes.
 
 ## See Also
 

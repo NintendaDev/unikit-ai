@@ -56,7 +56,6 @@ const USAGE = `Usage: node architecture-layout.mjs <command> [--root <project di
   parse               inventory of ${ROOT_FILE} and its topic files
   apply [--dry-run]   check and write the plan in ${PLAN_FILE} (--dry-run: outline only)
   discard             delete ${PLAN_FILE}`;
-
 class UsageError extends Error {}
 
 // ── READING ────────────────────────────────────────────────────────────────────────────────
@@ -367,15 +366,19 @@ function render(checked, inv) {
 }
 
 // Re-scans every rendered file: its items must be exactly the items assigned to it, word for word.
-function proveRendered(files, checked) {
-  const problems = [];
+function proveRendered(files, checked, inv) {
+  const [problems, together] = [[], []];
   for (const [rel, lines] of files) {
     const key = rel === ROOT_FILE ? ROOT : path.basename(rel, '.md');
     const expected = checked.dest.get(key).map(textOf).sort();
     const got = scanFile(toLines(lines), rel === ROOT_FILE ? ROOT : 'topic', rel).items.map(textOf).sort();
+    together.push(...got);
     const bad = got.findIndex((text, n) => text !== expected[n]);
     if (got.length !== expected.length || bad >= 0) problems.push(`${rel}: expected ${expected.length} items, re-reading the output gives ${got.length}${bad >= 0 ? ` (first difference: "${(got[bad] ?? '').split('\n')[0].slice(0, PEEK)}")` : ''}`);
   }
+  const source = inv.items.map(textOf).sort();
+  together.sort();
+  if (together.length !== source.length || together.some((text, n) => text !== source[n])) problems.push(`all written files hold ${together.length} items, the source has ${source.length}`);
   return problems;
 }
 
@@ -439,7 +442,7 @@ function apply(root, dryRun) {
     return EXIT.INVALID;
   }
   const files = render(checked, inv);
-  const problems = proveRendered(files, checked);
+  const problems = proveRendered(files, checked, inv);
   if (problems.length) {
     console.log(`WARN [architecture] optimise: ${checked.total} items before, the output does not match — file unchanged\n${problems.map((e) => `  - ${e}`).join('\n')}`);
     return EXIT.INVALID;

@@ -77,7 +77,7 @@ Run once per project. Sets up context files that all workflow skills depend on. 
                         └──────────────────┘
 ```
 
-`ARCHITECTURE.md` is **not** written by `/unikit` itself — `/unikit` delegates to `/unikit-architecture` as its own mandatory final step, so the setup summary can honestly list the file alongside the others. `/unikit-architecture` is also runnable standalone later, to refresh the guidelines after the architecture has moved.
+`ARCHITECTURE.md` is **not** written by `/unikit` itself — `/unikit` delegates to `/unikit-architecture` as its own mandatory final step, so the setup summary can honestly list the file alongside the others. `/unikit-architecture` is also runnable standalone later, to refresh the guidelines after the architecture has moved - on a project that already has the file it runs in its `update` mode (it adds what is missing and removes nothing), and a file that has grown can be split into a root and topic files in `.unikit/architecture/` with `/unikit-architecture optimise`.
 
 ## Development Workflow
 
@@ -233,7 +233,7 @@ Ownership is command-scoped to avoid conflicting writers:
 | Command | Primary artifact ownership | Notes |
 |---------|--------------------------|-------|
 | `/unikit` | `.unikit/DESCRIPTION.md`, `AGENTS.md` | Invokes `/unikit-architecture` + rule generation |
-| `/unikit-architecture` | `.unikit/ARCHITECTURE.md` | Architecture guidelines |
+| `/unikit-architecture` | `.unikit/ARCHITECTURE.md` (root) and `.unikit/architecture/*.md` (topic files) | Architecture guidelines |
 | `/unikit-roadmap` | `.unikit/ROADMAP.md` | Milestone tracking |
 | `/unikit-rules` | `.unikit/RULES.md` + `.unikit/rules/*.md` | Append rules; `optimise` reorganizes, `prune` deletes only what you select |
 | `/unikit-plan` | `.unikit/code/plans/*/PLAN.md` + `phase-NN-*.md` | `/unikit-improve` refines |
@@ -273,7 +273,7 @@ Creates `.unikit/ROADMAP.md` - a strategic checklist of major milestones (not gr
 /unikit-explore real-time-multiplayer-sync   # the slug of the first example → continues it
 ```
 
-Thinking-partner mode for exploring ideas, constraints, and trade-offs without implementing code. Reads project context (DESCRIPTION.md, ARCHITECTURE.md, RULES.md) and the full knowledge base at startup. Saves results to `.unikit/code/researches/<slug>/` with a single `RESEARCH.md` manifest:
+Thinking-partner mode for exploring ideas, constraints, and trade-offs without implementing code. Reads project context (DESCRIPTION.md, the ARCHITECTURE.md root and the topic files its subject matches, RULES.md) and the full knowledge base at startup. Saves results to `.unikit/code/researches/<slug>/` with a single `RESEARCH.md` manifest:
 
 - `RESEARCH.md` - the whole research in one file: a header carrying `Created:` / `Updated:` / `Status:` / `Lifecycle:`, an `## Active Summary` between two markers (the declared input for planning), the measured `## Findings`, and an append-only `## Sessions` log
 - `SOURCE.md` - the original prompts, agent questions and user answers that drove the research, quoted verbatim rather than summarised; kept separate because it is a log that grows on its own
@@ -356,7 +356,7 @@ Plan resolution priority: `@<path>` argument, feature name match, then (with no 
 /unikit-implement @.unikit/code/plans/core-loop            # Explicit plan path
 ```
 
-Resolves the plan, reads its manifest and then the project's skill-context rules. Bootstraps rules and engine principles once (`.unikit/system/dev-principles.md` + core rules) and executes tasks inline with `Read/Edit/Write/Bash`, marking progress in real time. Spawns the `develop-agent` alias only for true parallel scopes or deep-dive single tasks. Falls back to FIX_PLAN.md only when no feature plan exists - then it redirects to `/unikit-fix`. Supports selective execution by phase, task numbers, or feature name.
+Resolves the plan, reads its manifest and then the project's skill-context rules. Bootstraps rules and engine principles once (`.unikit/system/dev-principles.md` + core rules, the roots of `RULES.md` and `ARCHITECTURE.md`) and loads the topic files of both - `.unikit/rules/` and `.unikit/architecture/` - whose `Load when` matches the phase, at the start of each phase; executes tasks inline with `Read/Edit/Write/Bash`, marking progress in real time. Spawns the `develop-agent` alias only for true parallel scopes or deep-dive single tasks. Falls back to FIX_PLAN.md only when no feature plan exists - then it redirects to `/unikit-fix`. Supports selective execution by phase, task numbers, or feature name.
 
 Tasks carrying an `Editor:` line target the editor's serialized state rather than source files, and `Editor tasks` decides how they run: `engine-bridge` through the engine bridges (chosen silently when `BRIDGES.md` lists one; which bridge is used first is the order in `.unikit/bridges.yaml` and the rules in `.unikit/bridge-routing.md`), `manual` — nothing is touched, the task is marked `⏸️ MANUAL` and you get the exact instruction, or `direct` — the serialized file is edited as text once there is a git commit to return to. See [Editor tasks](plan-files.md#editor-tasks).
 
@@ -469,7 +469,7 @@ Goes through every task in the plan and verifies the code actually implements it
 - Engine-specific checks from the skill's `ENGINE_RULES.md` (on Unity: `.meta` file pairing, asmdef boundaries)
 - Leftover TODOs/FIXMEs
 - Plan-vs-code drift
-- DESCRIPTION.md/ARCHITECTURE.md sync
+- DESCRIPTION.md/ARCHITECTURE.md sync (the root and the topic files that match the changed files; the topic table against `.unikit/architecture/`; growth of the file is reported as a suggestion to run `/unikit-architecture optimise`)
 - Context gates (architecture, rules, roadmap alignment)
 
 When the plan cited a design system's acceptance criteria and all of them are met, stamps `implemented_version` back into `GD-IDS.yaml` - the one sanctioned code -> design write, checked against the AC snapshotted in the plan rather than the live GDD.
@@ -489,7 +489,7 @@ Creates conventional commits with engine-aware safety checks. Analyzes staged ch
 - Binary assets and secrets
 - Engine-ignored directories, read from the project's own `.gitignore` (on Unity: `Library`, `Temp`, `Logs`)
 
-Runs read-only context gates against ARCHITECTURE.md and RULES.md. Writes the message for the team rather than as a report of the session: the subject names what changed for the game, a body appears only when the subject cannot carry the point, and at most three lines of technical detail follow it. The plan is linked by a `Plan: <folder>` trailer instead of phase and task numbers. Suggests commit splitting for unrelated staged changes and never lets unstaged edits into a split commit. Offers to push after commit. Conventional prefix is always in English; subject and body use `language.artifacts`.
+Runs read-only context gates against ARCHITECTURE.md (the root and the topic files that match the staged files) and RULES.md. Writes the message for the team rather than as a report of the session: the subject names what changed for the game, a body appears only when the subject cannot carry the point, and at most three lines of technical detail follow it. The plan is linked by a `Plan: <folder>` trailer instead of phase and task numbers. Suggests commit splitting for unrelated staged changes and never lets unstaged edits into a split commit. Offers to push after commit. Conventional prefix is always in English; subject and body use `language.artifacts`.
 
 While a merge is in progress it never splits the commit — not even a split the caller passes — because the reset a split begins with would drop the merge and leave the merge commit with one parent.
 

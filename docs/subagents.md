@@ -86,7 +86,7 @@ Dependency-aware plan execution.
 
 - Reads the plan manifest, builds the phase dependency graph, groups independent phases into layers
 - With `Testing: yes` and two or more test-checkpoint tasks in its scope, asks once before the first layer whether to merge their test runs (the same question as `/unikit-implement`; no answer in a non-interactive run → runs as written)
-- **Single ready phase** → executes tasks directly inside the coordinator (no worker overhead). Bootstraps principles + rules (`dev-principles.md`, `RULES.md`, `RULES_INDEX.md`, core rules) before the phase, then writes code inline
+- **Single ready phase** → executes tasks directly inside the coordinator (no worker overhead). Bootstraps principles + rules (`dev-principles.md`, `RULES.md`, the `ARCHITECTURE.md` root, `RULES_INDEX.md`, core rules) before the phase and loads the topic files of both roots (`.unikit/rules/`, `.unikit/architecture/`) that match the phase, then writes code inline. A worker loads the same topic files by its own phase
 - **Multiple independent phases** → dispatches one `unikit-implement-worker` per phase (up to 3 in parallel per layer)
 - Never hands a `Measure:` or a `Hand-back:` task of a balance plan to a worker - it carries them out itself, in its own session, after the worker has returned the phase's other tasks
 - After each layer: launches background sidecars (review, architecture, commit, docs), merges material findings, hands commit checkpoints to the `unikit-commit` skill (it never writes a commit message itself), advances to the next layer
@@ -146,8 +146,8 @@ Sidecars share the same shape: read-only tools (`Read`, `Glob`, `Grep`), `backgr
 
 | Sidecar | Purpose | Rules loaded |
 |---------|---------|--------------|
-| `unikit-review-sidecar` | Surfaces correctness, regression, and performance risks in the diff - only material findings, no cosmetic nits | `ARCHITECTURE.md`, `RULES.md` (+ topic files matching the changed files), core rules, relevant stack rules |
-| `unikit-architecture-sidecar` | Checks module boundaries and dependency directions | `ARCHITECTURE.md`, `RULES.md` (+ topic files matching the changed files), core rules, stack rules matching the task |
+| `unikit-review-sidecar` | Surfaces correctness, regression, and performance risks in the diff - only material findings, no cosmetic nits | `ARCHITECTURE.md` and `RULES.md` (+ their topic files in `.unikit/architecture/` and `.unikit/rules/` matching the changed files), core rules, relevant stack rules |
+| `unikit-architecture-sidecar` | Checks module boundaries and dependency directions | `ARCHITECTURE.md` and `RULES.md` (+ their topic files in `.unikit/architecture/` and `.unikit/rules/` matching the changed files), core rules, stack rules matching the task |
 | `unikit-commit-sidecar` | Assesses commit readiness, the split into groups and the files to leave out, from the files the coordinator passes - writes no commit message and never touches git state | `RULES.md` (+ topic files matching the files passed) |
 | `unikit-docs-sidecar` | Classifies documentation drift as `no_action` / `safe_update_existing` / `needs_new_docs` / `needs_user_choice` | `RULES.md` (+ topic files), `RULES_INDEX.md`, core and matching stack rules, skill-context for `unikit-docs` |
 
@@ -197,7 +197,7 @@ The evidence behind the two forms: the explicit Skill-tool phrase made the subag
 
 A skill that launches a subagent never names a type, a model or a Codex argument itself: the call head comes from `{{agent_call_reader}}`, `{{agent_call_worker}}` or `{{agent_call_worker_quoted}}` (the quoted spelling is historic - older call blocks wrote the worker type in quotes, and the text of typed agents stays byte-identical to what it was).
 
-Every skill that delegates to a skill uses this one call: `develop-agent` and `docs-agent`, `/unikit` (step 9.8 generates stack rules through `unikit-memory`, step 10 writes `ARCHITECTURE.md` through `unikit-architecture`) and the market validation in `/unikit-gd-brainstorm` (through `unikit-gd-explore`, with the same call mirrored in that skill's delegation contract).
+Every skill that delegates to a skill uses this one call: `develop-agent` and `docs-agent`, `/unikit` (step 9.8 generates stack rules through `unikit-memory`, step 10 generates or updates `ARCHITECTURE.md` through `unikit-architecture`) and the market validation in `/unikit-gd-brainstorm` (through `unikit-gd-explore`, with the same call mirrored in that skill's delegation contract).
 
 ### How a skill calls another skill in the same session
 
