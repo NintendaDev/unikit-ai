@@ -5,7 +5,7 @@
 // the file itself uses — a key `order:` over a block or flow list, comments — because the installer
 // has no YAML library and anything it does not understand must stay untouched, never be rewritten.
 
-import { BRIDGE_ORDER_HEADER, BRIDGE_ORDER_ID_PATTERN, BRIDGE_ORDER_KEY } from '../constants-bridges.js';
+import { BRIDGE_ORDER_HEADER, BRIDGE_ID_PATTERN, BRIDGE_ORDER_KEY } from '../constants-bridges.js';
 
 /** What the installer found on disk: nothing, a file it cannot read, or a parsed list. */
 export type OrderFileState =
@@ -37,7 +37,7 @@ function unquote(value: string): string {
 
 function parseFlowList(rest: string): string[] | null {
   const items = rest.slice(1, -1).split(',').map(item => unquote(item.trim())).filter(item => item !== '');
-  return items.every(id => BRIDGE_ORDER_ID_PATTERN.test(id)) ? items : null;
+  return items.every(id => BRIDGE_ID_PATTERN.test(id)) ? items : null;
 }
 
 /** The ids of an order file in file order (the first of a repeated id wins), or `null` when the text is not a list this module reads. */
@@ -65,7 +65,7 @@ export function parseBridgeOrder(text: string): string[] | null {
     const item = BLOCK_ITEM.exec(body);
     if (!item) return null;
     const id = unquote(item[1].trim());
-    if (!BRIDGE_ORDER_ID_PATTERN.test(id)) return null;
+    if (!BRIDGE_ID_PATTERN.test(id)) return null;
     order.push(id);
   }
   return order === null ? null : [...new Set(order)];

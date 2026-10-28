@@ -14,7 +14,7 @@ import { getModuleTier } from '../config.js';
 import type { InstalledRuleEntry, RulesInstallation, UniKitConfig } from '../config.js';
 import { CODE_MODULE_ID, REFERENCES_DIR_NAME, moduleTierDir } from '../constants.js';
 import {
-  BRIDGE_ORDER_ID_PATTERN, BRIDGE_RULE_KEPT_REASONS, BRIDGE_RULE_TIER, BRIDGE_RULES_LOG_COMPONENT,
+  BRIDGE_ID_PATTERN, BRIDGE_RULE_KEPT_REASONS, BRIDGE_RULE_TIER, BRIDGE_RULES_LOG_COMPONENT,
 } from '../constants-bridges.js';
 import { getModule } from '../modules.js';
 import type { ChainedRegistry } from '../registry/index.js';
@@ -101,11 +101,22 @@ async function referencesOfOtherRules(projectDir: string, exceptId: string): Pro
   return shared;
 }
 
-/** A rule with no `**References**` header: the files of its folder that carry the id as a prefix, as `installOneRule` names them. */
+/**
+ * A rule with no `**References**` header: the files of its folder that carry the id as a prefix, as `installOneRule` names them.
+ * A file that carries the prefix of another installed rule whose id extends this one (`a` and `a-extras`) is that rule's, not ours.
+ */
 async function prefixedReferences(projectDir: string, id: string): Promise<string[]> {
   const prefix = id.toLowerCase();
+  const longerIds = (await listFiles(stackDir(projectDir)))
+    .filter(name => name.endsWith(RULE_FILE_EXTENSION))
+    .map(name => name.slice(0, -RULE_FILE_EXTENSION.length).toLowerCase())
+    .filter(other => other.startsWith(`${prefix}-`));
   const names = await listFiles(path.join(stackDir(projectDir), REFERENCES_DIR_NAME));
-  return names.filter(name => name.toLowerCase().startsWith(`${prefix}-`) || name.toLowerCase() === `${prefix}${RULE_FILE_EXTENSION}`);
+  return names.filter(name => {
+    const lower = name.toLowerCase();
+    const ours = lower.startsWith(`${prefix}-`) || lower === `${prefix}${RULE_FILE_EXTENSION}`;
+    return ours && !longerIds.some(other => lower.startsWith(`${other}-`));
+  });
 }
 
 async function removeBridgeRule(input: BridgeRulesInput, id: string, report: BridgeRulesReport): Promise<void> {
@@ -201,7 +212,7 @@ export async function syncBridgeRules(input: BridgeRulesInput): Promise<BridgeRu
   if (input.currentBridgeIds.length === 0 && dropped.length === 0) return report;
 
   const usable = (id: string): boolean => {
-    if (BRIDGE_ORDER_ID_PATTERN.test(id)) return true;
+    if (BRIDGE_ID_PATTERN.test(id)) return true;
     report.lines.push({ id, status: 'failed', reason: NOT_A_BRIDGE_ID });
     return false;
   };

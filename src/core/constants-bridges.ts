@@ -30,8 +30,8 @@ export const BRIDGE_ROUTING_FILE = 'bridge-routing.md';
 /** The one key of the order file: a list of bridge ids under it. */
 export const BRIDGE_ORDER_KEY = 'order';
 
-/** What an id in the order file may look like: a catalog file id, never a path or a sentence. */
-export const BRIDGE_ORDER_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+/** What a bridge id may look like (the order file, the rule of a bridge): a catalog file id, never a path or a sentence. */
+export const BRIDGE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
 /** The comment lines the installer writes above the list; a hand edit of the list is kept, the header is rewritten with it. */
 export const BRIDGE_ORDER_HEADER: readonly string[] = [

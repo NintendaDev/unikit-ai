@@ -9641,7 +9641,8 @@ if [[ -z "$BX_WHY" ]]; then
     # 65400 -> 65800: the branch match gained the 380-byte rule that finds an experiment plan by its own record (EXP-K1)
     # 65800 -> 66100: the 3.0.0 layout (a block per bridge in the Bootstrap); lowered again when the routing prose moves to a reference
     # 66100 -> 66300 for the 3.0.0 findings table, then 66300 -> 65830: the gate procedure moved into references/bridge-gates.md
-    bx_max "BC-1:skill-size" 65830 "$UNIKIT_VERIFY_SKILL"
+    # 65830 -> 65950: the Bootstrap reads the order file and the routing file in one sentence (XE-2), as implement and execute do
+    bx_max "BC-1:skill-size" 65950 "$UNIKIT_VERIFY_SKILL"
 
     # (BC-2) verify's branch: headings, the two level sentences, and the one place of suggested_next
     BX_CHK=$((BX_CHK + 1))
@@ -13811,6 +13812,8 @@ fi
 XE_ORDER='Also read `.unikit/bridges.yaml` (the bridge order) and, when it exists, `.unikit/bridge-routing.md` (the routing rules); a missing order file means the default order `BRIDGES.md` states, a missing routing file means no routing rules.'
 xe_has "XE-2:order-read(execute)" "$XE_ORDER" "$XE_SKILL"
 xe_has "XE-2:order-read(implement)" "$XE_ORDER" "$XE_IMPLEMENT"
+xe_has "XE-2:order-read(fix)" "$XE_ORDER" "$ROOT_DIR/skills/unikit-fix/SKILL.md"
+xe_has "XE-2:order-read(verify)" "$XE_ORDER" "$ROOT_DIR/skills/unikit-verify/SKILL.md"
 xe_has "XE-2:order-line" 'INFO [bridges] order: <a> > <b> (file|default|prompt)' "$XE_SKILL"
 xe_has "XE-2:lower-half-moment" '**Before the first call through a bridge**' "$XE_SKILL"
 

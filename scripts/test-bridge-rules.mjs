@@ -235,6 +235,16 @@ await group('BRL-4', async () => {
         [fs.existsSync(refFile(prefixed.project, 'unity-biome-mcp-extra.md')), fs.existsSync(refFile(prefixed.project, BIO_REFERENCES[0]))], [false, false]);
     assertEq('BRL-4', '...and a file with another name stays', fs.existsSync(refFile(prefixed.project, 'unrelated-file.md')), true);
 
+    const sibling = await installedProject(); keep(sibling.project);
+    const plainRule = 'A rule with no references header.\n';
+    fs.writeFileSync(ruleFile(sibling.project, BIO), plainRule);
+    entriesOf(sibling.config).find((entry) => entry.name === BIO).installed_hash = computeContentHash(plainRule);
+    fs.writeFileSync(ruleFile(sibling.project, `${BIO}-extras`), 'A sibling rule, also with no references header.\n');
+    fs.writeFileSync(refFile(sibling.project, `${BIO}-extras-guide.md`), 'reference of the sibling\n');
+    await dropBio(sibling.project, sibling.config);
+    assertEq('BRL-4', 'with no header a file of a sibling rule whose id extends the dropped one stays, the dropped rule\'s own go',
+        [fs.existsSync(refFile(sibling.project, `${BIO}-extras-guide.md`)), BIO_REFERENCES.some((name) => fs.existsSync(refFile(sibling.project, name)))], [true, false]);
+
     const gone = await installedProject(); keep(gone.project);
     fs.rmSync(ruleFile(gone.project, BIO));
     const noFile = await dropBio(gone.project, gone.config);
