@@ -62,6 +62,7 @@ child_start install     bash "$SCRIPT_DIR/test-install.sh"
 child_start migrations  bash "$SCRIPT_DIR/test-migrations.sh"
 child_start extsel      bash "$SCRIPT_DIR/test-extension-selection.sh"
 child_start layout      bash "$SCRIPT_DIR/test-rules-layout.sh"
+child_start architecture-layout bash "$SCRIPT_DIR/test-architecture-layout.sh"
 child_start planbundle  bash "$SCRIPT_DIR/test-plan-bundle.sh"
 child_start genres      bash "$SCRIPT_DIR/test-genres.sh"
 child_start skillgroups bash "$SCRIPT_DIR/test-skill-groups.sh"
@@ -12620,6 +12621,26 @@ else
     echo "$BRL_OUTPUT" | sed 's/^/      /'
 fi
 
+# Part 7e8: architecture topics (family ART) and the request-driven modes of unikit-rules (family RMI)
+# ─────────────────────────────────────────────
+# The root and its topic files, the modes of unikit-architecture, every reader's way of loading the topics, the
+# growth sign of verify, the one-way border of the design review, the pointers and the docs
+# (scripts/test-architecture-topics.mjs). Pure fs over the sources; the helper itself is Part 13e.
+echo -e "\n${BOLD}Part 7e8: architecture topics (ART-*, RMI-*)${NC}"
+
+set +e
+ART_OUTPUT=$(node "$ROOT_DIR/scripts/test-architecture-topics.mjs" 2>&1)
+ART_EXIT=$?
+set -e
+
+if [[ $ART_EXIT -eq 0 ]]; then
+    pass "Architecture topic guards"
+    echo "$ART_OUTPUT" | tail -1 | sed 's/^/    /'
+else
+    fail "Architecture topic guards"
+    echo "$ART_OUTPUT" | sed 's/^/      /'
+fi
+
 # (BR-8a) The 2.x layout is gone from every text the package ships. Step 1: no literal path of the
 # single-server rules folder under .unikit/system/ in skills/, subagents/ or data/. SV-5 forbids an
 # unknown path under .unikit/system/ already; this names the reason and counts what it looked at.
@@ -14604,6 +14625,18 @@ if [[ $CHILD_EXIT -eq 0 ]]; then
     pass "plan-bundle helper tests passed"
 else
     fail "plan-bundle helper tests failed"
+fi
+
+# ─────────────────────────────────────────────
+# Part 13e: architecture-layout.mjs — the architecture optimise helper, run for real on fixture projects
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 13e: architecture-layout helper tests (TAL-1…TAL-14)${NC}"
+child_wait architecture-layout
+printf '%s\n' "$CHILD_OUTPUT"
+if [[ $CHILD_EXIT -eq 0 ]]; then
+    pass "architecture-layout helper tests passed"
+else
+    fail "architecture-layout helper tests failed"
 fi
 
 # ─────────────────────────────────────────────
