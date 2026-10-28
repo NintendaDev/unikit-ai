@@ -22,6 +22,8 @@ import { catalogBridgeIds, selectionOf } from '../../core/bridges/selection.js';
 import { reconcileMcpSettings } from '../../core/mcp-reconcile.js';
 import { installEngineBridges, readPreviousBridgeSet } from '../../core/installer/engine-bridges.js';
 import { swapBridgeNotes } from '../../core/installer/bridge-notes.js';
+import { syncBridgeOrder } from '../../core/installer/bridge-order.js';
+import { syncBridgeRules } from '../../core/installer/bridge-rules.js';
 import { getAgentConfig } from '../../core/agents.js';
 import { exitOnSharedSkillsDir } from '../guards.js';
 import { fileExists } from '../../utils/fs.js';
@@ -39,6 +41,7 @@ import {
 } from './update-helpers.js';
 import { recomputeSelection } from './update-bridges.js';
 import { printInjectionReport } from './injection-report.js';
+import { printBridgeRulesReport } from './bridge-rules-report.js';
 import { buildNewItemsChooser, formatPendingNotice } from './extension-selection-ui.js';
 
 interface UpdateCommandOptions {
@@ -289,6 +292,17 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     // (version equal), and Phase 3 regenerates the index including them.
     await bootstrapNewSkillModuleRules(projectDir, config, registry, engineId, installNewSkills);
 
+    // The rule of each selected bridge arrives with the bridge and leaves with it. The previous set is read here, before installEngineBridges
+    // rewrites BRIDGES.md; the index is rebuilt by Phase 3 of the sync right below.
+    const bridgeRules = await syncBridgeRules({
+      projectDir, config, registry, engineId,
+      previousBridgeIds: await readPreviousBridgeSet(projectDir),
+      currentBridgeIds: Object.keys(config.engineBridges.selected),
+      previousRules: config.rules.installed,
+      regenerateIndex: 'none',
+    });
+    printBridgeRulesReport(bridgeRules);
+
     const syncResult = await syncAllModules(projectDir, engineId, config, registry, {
       replace: force,
       prune: force,
@@ -339,6 +353,9 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
 
     // Refresh BRIDGES.md and the rules trees (orphan-deletes a dropped bridge's tree and the 2.x folder)
     await installEngineBridges(projectDir, engineId, discoveredServers, Object.keys(config.engineBridges.selected), config.agents.map(agent => agent.id));
+
+    // The order file follows the same selection; `previousBridges` is the set from the BRIDGES.md read above, before it was rewritten.
+    await syncBridgeOrder(projectDir, discoveredServers, previousBridges, Object.keys(config.engineBridges.selected));
 
     // Update engine development principles (shared system file, plain rewrite)
     await installDevPrinciples(projectDir, engineId, mcpBridgeCode);

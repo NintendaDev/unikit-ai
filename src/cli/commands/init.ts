@@ -21,6 +21,9 @@ import { reconcileMcpSettings } from '../../core/mcp-reconcile.js';
 import { getMcpEnvLines } from '../../core/mcp-env.js';
 import { installEngineBridges } from '../../core/installer/engine-bridges.js';
 import { swapBridgeNotes } from '../../core/installer/bridge-notes.js';
+import { syncBridgeOrder } from '../../core/installer/bridge-order.js';
+import { syncBridgeRules } from '../../core/installer/bridge-rules.js';
+import { createRegistry } from '../../core/registry/index.js';
 import { getAgentConfig } from '../../core/agents.js';
 import { collectExtensionSkillNames, removeAgentSetup } from '../../core/installer/agent-removal.js';
 import { getAgentOnboarding } from '../../core/transformer.js';
@@ -28,6 +31,7 @@ import { runProjectMemoryMigrations } from '../../core/memory-migrations/index.j
 import { reinstallExtensionAssets } from '../../core/extension-ops.js';
 import { applyExtensionInjections } from '../../core/extension-injections.js';
 import { printInjectionReport } from './injection-report.js';
+import { printBridgeRulesReport } from './bridge-rules-report.js';
 import { logInfo } from '../../utils/log.js';
 
 export async function initCommand(): Promise<void> {
@@ -271,6 +275,17 @@ export async function initCommand(): Promise<void> {
       catalogBridgeIds(discoveredServers),
     );
 
+    // The rule of each selected bridge arrives with the bridge and leaves with it. `init` resets the rule state in `config` (the files stay on
+    // disk), so the previous state comes from `existingConfig` and a record of a rule that is still wanted is carried over.
+    const bridgeRules = await syncBridgeRules({
+      projectDir, config, registry: createRegistry(config.rulesRegistry, engineId), engineId,
+      previousBridgeIds: existingConfig ? Object.keys(existingConfig.engineBridges.selected) : null,
+      currentBridgeIds: answers.engineBridges,
+      previousRules: existingConfig?.rules.installed ?? null,
+      regenerateIndex: 'disk',
+    });
+    printBridgeRulesReport(bridgeRules);
+
     await saveConfig(projectDir, config);
 
     console.log(chalk.green('✓ Configuration saved to .unikit.json'));
@@ -308,6 +323,10 @@ export async function initCommand(): Promise<void> {
 
     // Deliver BRIDGES.md and the rules tree of every selected bridge (sweeps the 2.x engine-mcp folder)
     await installEngineBridges(projectDir, engineId, discoveredServers, answers.engineBridges, installedAgents.map(agent => agent.id));
+
+    // Keep the order file in step with the selection: the previous set is the one in `existingConfig` (the config write above has
+    // already replaced it on disk); an order the user edited by hand is kept, a dropped bridge leaves it, a new one is appended.
+    await syncBridgeOrder(projectDir, discoveredServers, existingConfig ? Object.keys(existingConfig.engineBridges.selected) : null, answers.engineBridges);
 
     // Install engine development principles (shared system file)
     await installDevPrinciples(projectDir, engineId, mcpBridgeCode);

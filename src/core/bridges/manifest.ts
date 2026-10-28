@@ -9,13 +9,14 @@
 // while nothing changed.
 //
 // It carries NOTHING the user chose beyond the set: the order the user picked lives in
-// `.unikit/config.yaml` (`engine_bridges.order`), which the installer never reads. Putting it here
-// would put it into an installed text, and a reorder would then have to reinstall.
+// `.unikit/bridges.yaml`, and the routing rules in `.unikit/bridge-routing.md`; this file only points
+// at them. Putting either here would put it into an installed text, and a reorder would then have to
+// reinstall.
 
 import type { McpServerEntry } from '../mcp.js';
-import { MCP_RULES_INDEX_FILE, SYSTEM_DIR_NAME, UNIKIT_DIR } from '../constants.js';
+import { CODE_MODULE_ID, MCP_RULES_INDEX_FILE, MEMORY_DIR_NAME, SYSTEM_DIR_NAME, UNIKIT_DIR } from '../constants.js';
 import {
-  BRIDGE_NOTES_DIR_NAME, BRIDGE_NOTES_EXTENSION, BRIDGE_REFERENCES_DIR, BRIDGE_VERIFICATION_FILE,
+  BRIDGE_NOTES_DIR_NAME, BRIDGE_NOTES_EXTENSION, BRIDGE_ORDER_FILE, BRIDGE_ROUTING_FILE, BRIDGE_RULE_TIER, BRIDGE_VERIFICATION_FILE,
   BRIDGES_MANIFEST_HEADER, ENGINE_BRIDGES_DIR_NAME, NOT_SELECTED_HEADING,
 } from '../constants-bridges.js';
 import { getBridgeAdapter } from './adapter.js';
@@ -39,11 +40,10 @@ export interface ManifestInput {
 }
 
 const NO_RULES = 'none';
-const DOCS_SOURCES_LABEL = 'docs sources:';
+const GUIDE_ROW_NOTE = '(the stack rule of this bridge, when it is installed)';
 const NOTES_LABEL = 'Notes:';
 const SETUP_LABEL = 'Setup:';
 const DEFAULT_ORDER_LABEL = 'default order:';
-const USER_ORDER_LINE = 'user order: the list under engine_bridges.order in .unikit/config.yaml (ids from the blocks below); a missing or empty list means the default order';
 const FIELD_TABLE_HEADER = ['field', 'value'];
 const ORDER_TABLE_HEADER = ['#', 'bridge', 'kind'];
 const SETUP_TABLE_HEADER = ['who', 'what to do'];
@@ -56,9 +56,9 @@ function posixPath(...segments: string[]): string {
   return segments.join('/');
 }
 
-function jsonBlock(value: unknown): string[] {
-  return ['```json', JSON.stringify(value, null, 2), '```'];
-}
+/** Static text: it does not depend on what the order file holds or whether the routing file exists (NFR-1). */
+const ORDER_POINTER_LINE = `order: ${posixPath(UNIKIT_DIR, BRIDGE_ORDER_FILE)} - kept by unikit-ai init and update (edit the list to reorder); a missing file means the default order above`;
+const ROUTING_POINTER_LINE = `routing: ${posixPath(UNIKIT_DIR, BRIDGE_ROUTING_FILE)} - optional rules per case, written by /unikit-bridge-route; a missing file means no routing rules`;
 
 /** One table cell: a pipe would end it and a line break would end the row. */
 function cell(text: string): string {
@@ -89,8 +89,8 @@ function bridgeBlock(bridge: ManifestBridge, settingsFiles: string[]): string[] 
     ...parts.rows,
     ['rules', hasRulesTree ? posixPath(treeDir, MCP_RULES_INDEX_FILE) : NO_RULES],
     ['verification', hasRulesTree ? posixPath(treeDir, BRIDGE_VERIFICATION_FILE) : NO_RULES],
+    ['guide', `${posixPath(UNIKIT_DIR, MEMORY_DIR_NAME, CODE_MODULE_ID, BRIDGE_RULE_TIER, `${fileId}.md`)} ${GUIDE_ROW_NOTE}`],
     ['notes', posixPath(UNIKIT_DIR, BRIDGE_NOTES_DIR_NAME, `${fileId}${BRIDGE_NOTES_EXTENSION}`)],
-    ['docs', `${posixPath(UNIKIT_DIR, BRIDGE_REFERENCES_DIR, fileId)}/`],
     ...(entry.docs?.context7 ? [['context7', entry.docs.context7]] : []),
   ];
 
@@ -98,9 +98,6 @@ function bridgeBlock(bridge: ManifestBridge, settingsFiles: string[]): string[] 
   if (parts.notes.length > 0) lines.push('', NOTES_LABEL, ...parts.notes.map(note => `- ${note}`));
   const setup = setupRows(entry);
   if (setup.length > 0) lines.push('', SETUP_LABEL, '', ...table(SETUP_TABLE_HEADER, setup));
-  if (entry.docs?.sources && entry.docs.sources.length > 0) {
-    lines.push('', DOCS_SOURCES_LABEL, ...jsonBlock(entry.docs.sources));
-  }
   return lines;
 }
 
@@ -129,7 +126,9 @@ export function renderBridgesManifest(input: ManifestInput): string {
       '',
       ...table(ORDER_TABLE_HEADER, input.bridges.map((bridge, index) => [String(index + 1), bridge.fileId, bridge.entry.kind])),
       '',
-      USER_ORDER_LINE,
+      ORDER_POINTER_LINE,
+      '',
+      ROUTING_POINTER_LINE,
     ],
     ...input.bridges.map(bridge => bridgeBlock(bridge, settingsFiles)),
   ];

@@ -7,11 +7,7 @@
   "displayName": "Unity CLI (Unity 6000.0+, needs the com.unity.pipeline package)",
   "docs": {
     "context7": "/websites/unity_en-us_unity-cli_unity-cli-reference",
-    "repo": "https://docs.unity.com/en-us/unity-cli",
-    "sources": [
-      { "kind": "command", "id": "cli-skill", "list": "unity skill show --list", "show": "unity skill show --path <file>", "into": "cli-skill" },
-      { "kind": "package", "id": "pipeline-docs", "root": "Library/PackageCache/com.unity.pipeline@*", "path": ".", "include": ["Documentation~/**/*.md", "CHANGELOG.md"], "into": "pipeline-docs" }
-    ]
+    "repo": "https://docs.unity.com/en-us/unity-cli"
   },
   "rules": "rules/unity-cli/",
   "requires": { "engineVersion": "6000.0", "cli": "1.0.0-beta.14", "package": "0.9.1-exp.1" },
@@ -73,7 +69,6 @@
       "unikit-verify": ["command", "status", "recompile", "test", "--version"],
       "unikit-plan": ["list"],
       "unikit-bridge-audit": ["command", "status", "--version"],
-      "unikit-bridge-docs": ["skill show", "--version"],
       "unikit": ["--version", "status", "self-update --check"]
     }
   }

@@ -94,17 +94,3 @@ export interface BridgeCli {
   /** one-line cautions printed under the block in BRIDGES.md */
   notes?: string[];
 }
-
-/**
- * A POINTER to documentation, not a document. Three kinds:
- *  - command: a command the bridge itself ships (`list` prints the files, `show` prints one, `<file>` is the slot);
- *  - package: files inside a package installed in the project (`root` is a project-relative glob of the installed
- *    folder, `path` is relative to the folder it matches, `include`/`exclude` as for git);
- *  - git: a repository path with include/exclude globs relative to `path` (`ref` omitted = the default branch).
- * `into` is the folder under `.unikit/references/bridges/<id>/` the copy lands in. The `ref` of a git pointer may
- * hold `{version}`, which stands for the installed version of the bridge (the number its `probe version` row yields).
- */
-export type DocsSource =
-  | { kind: 'command'; id: string; list: string; show: string; into: string }
-  | { kind: 'package'; id: string; root: string; path: string; include?: string[]; exclude?: string[]; into: string }
-  | { kind: 'git'; id: string; repo: string; ref?: string; path?: string; include?: string[]; exclude?: string[]; into: string };

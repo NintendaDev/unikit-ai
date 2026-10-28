@@ -3156,7 +3156,7 @@ echo "  ✓ cli grants: per shell, narrow, absent for the trap skill, idempotent
 
 
 # ─────────────────────────────────────────────
-# Test 37: bridge-docs and references are hash-tracked skills — a tampered file and a missing reference
+# Test 37: the references and routing skills are hash-tracked skills — a tampered file and a missing reference
 # file are both restored by update, and a settled project changes nothing
 # ─────────────────────────────────────────────
 # Both skills ship a references folder, which the non-flat copy delivers whole. A hand edit of the
@@ -3175,7 +3175,7 @@ cat > "$DOCSTAMP_DIR/.unikit.json" << 'EOF'
       "id": "claude",
       "skillsDir": ".claude/skills",
       "subagentsDir": ".claude/agents",
-      "installedSkills": ["unikit-bridge-docs", "unikit-references"],
+      "installedSkills": ["unikit-bridge-route", "unikit-references"],
       "installedSubagents": []
     }
   ],
@@ -3185,25 +3185,185 @@ EOF
 inject_fake_registry "$DOCSTAMP_DIR"
 (cd "$DOCSTAMP_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/update-docs-skills-1.log" 2>&1)
 
-DOCSTAMP_SKILL="$DOCSTAMP_DIR/.claude/skills/unikit-bridge-docs/SKILL.md"
+DOCSTAMP_SKILL="$DOCSTAMP_DIR/.claude/skills/unikit-references/SKILL.md"
 DOCSTAMP_FORMAT="$DOCSTAMP_DIR/.claude/skills/unikit-references/references/index-format.md"
-assert_exists "$DOCSTAMP_SKILL" "docs skills: the button is installed on the first update"
-assert_exists "$DOCSTAMP_FORMAT" "docs skills: the index format is installed on the first update"
+assert_exists "$DOCSTAMP_SKILL" "references skill: the skill is installed on the first update"
+assert_exists "$DOCSTAMP_FORMAT" "references skill: the index format is installed on the first update"
+DOCSTAMP_ROUTE="$DOCSTAMP_DIR/.claude/skills/unikit-bridge-route/SKILL.md"
+DOCSTAMP_ROUTE_FORMAT="$DOCSTAMP_DIR/.claude/skills/unikit-bridge-route/references/format.md"
+assert_exists "$DOCSTAMP_ROUTE" "bridge route skill: the skill is installed on the first update"
+assert_exists "$DOCSTAMP_ROUTE_FORMAT" "bridge route skill: the routing file format is installed on the first update"
 
 echo "<!-- tampered -->" >> "$DOCSTAMP_SKILL"
 rm -f "$DOCSTAMP_FORMAT"
+echo "<!-- tampered -->" >> "$DOCSTAMP_ROUTE"
+rm -f "$DOCSTAMP_ROUTE_FORMAT"
 (cd "$DOCSTAMP_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/update-docs-skills-2.log" 2>&1)
-assert_not_contains "$DOCSTAMP_SKILL" 'tampered' "docs skills: a tampered SKILL.md is reinstalled"
-assert_exists "$DOCSTAMP_FORMAT" "docs skills: a deleted reference file is back"
+assert_not_contains "$DOCSTAMP_SKILL" 'tampered' "references skill: a tampered SKILL.md is reinstalled"
+assert_exists "$DOCSTAMP_FORMAT" "references skill: a deleted reference file is back"
+assert_not_contains "$DOCSTAMP_ROUTE" 'tampered' "bridge route skill: a tampered SKILL.md is reinstalled"
+assert_exists "$DOCSTAMP_ROUTE_FORMAT" "bridge route skill: a deleted reference file is back"
 
 DOCSTAMP_SKILL_SHA=$(sha_of "$DOCSTAMP_SKILL")
 DOCSTAMP_FORMAT_SHA=$(sha_of "$DOCSTAMP_FORMAT")
+DOCSTAMP_ROUTE_SHA=$(sha_of "$DOCSTAMP_ROUTE")
+DOCSTAMP_ROUTE_FORMAT_SHA=$(sha_of "$DOCSTAMP_ROUTE_FORMAT")
 DOCSTAMP_CFG_SHA=$(sha_of "$DOCSTAMP_DIR/.unikit.json")
 (cd "$DOCSTAMP_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/update-docs-skills-3.log" 2>&1)
-assert_same_sha "$DOCSTAMP_SKILL" "$DOCSTAMP_SKILL_SHA" "docs skills: a settled project leaves the button byte-identical"
-assert_same_sha "$DOCSTAMP_FORMAT" "$DOCSTAMP_FORMAT_SHA" "docs skills: ...and the reference file"
-assert_same_sha "$DOCSTAMP_DIR/.unikit.json" "$DOCSTAMP_CFG_SHA" "docs skills: ...and the config"
-echo "  ✓ docs skills: tamper and a missing reference file are recovered, a settled project is untouched"
+assert_same_sha "$DOCSTAMP_SKILL" "$DOCSTAMP_SKILL_SHA" "references skill: a settled project leaves SKILL.md byte-identical"
+assert_same_sha "$DOCSTAMP_FORMAT" "$DOCSTAMP_FORMAT_SHA" "references skill: ...and the reference file"
+assert_same_sha "$DOCSTAMP_ROUTE" "$DOCSTAMP_ROUTE_SHA" "bridge route skill: a settled project leaves SKILL.md byte-identical"
+assert_same_sha "$DOCSTAMP_ROUTE_FORMAT" "$DOCSTAMP_ROUTE_FORMAT_SHA" "bridge route skill: ...and the reference file"
+assert_same_sha "$DOCSTAMP_DIR/.unikit.json" "$DOCSTAMP_CFG_SHA" "references skill: ...and the config"
+echo "  ✓ references and bridge route skills: tamper and a missing reference file are recovered, a settled project is untouched"
+
+
+# ─────────────────────────────────────────────
+# Test 38: the order file of the bridges is kept by update, with no skill in between
+# ─────────────────────────────────────────────
+# Created in package order, left byte-identical when nothing changed, kept as the user edited it, and
+# removed when no bridge is selected any more.
+
+BORDER_DIR="$TMPDIR/update-bridge-order"
+mkdir -p "$BORDER_DIR"
+cat > "$BORDER_DIR/.unikit.json" << 'EOF'
+{
+  "version": "3.0.0",
+  "engine": "unity",
+  "mcp": { "servers": {} },
+  "engineBridges": { "selected": { "unity-cli": "unity", "unity-biome-mcp": "unity-biome-mcp" } },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit-references"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": { "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } } }
+}
+EOF
+inject_fake_registry "$BORDER_DIR"
+BORDER_FILE="$BORDER_DIR/.unikit/bridges.yaml"
+(cd "$BORDER_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/update-bridge-order-1.log" 2>&1)
+assert_exists "$BORDER_FILE" "bridge order: the first update creates the order file"
+assert_contains "$BORDER_FILE" '^order:$' "bridge order: ...as a list under the order key"
+assert_contains "$BORDER_FILE" '^  - unity-cli$' "bridge order: ...the CLI is in it"
+assert_contains "$BORDER_FILE" '^  - unity-biome-mcp$' "bridge order: ...and so is Biome"
+BORDER_CLI_LINE=$(grep -n '^  - unity-cli$' "$BORDER_FILE" | cut -d: -f1)
+BORDER_BIO_LINE=$(grep -n '^  - unity-biome-mcp$' "$BORDER_FILE" | cut -d: -f1)
+if [[ "$BORDER_CLI_LINE" -ge "$BORDER_BIO_LINE" ]]; then
+  echo "Assertion failed: bridge order: the CLI (weight 1) should come before Biome (weight 2) in a new order file"
+  cat "$BORDER_FILE"
+  exit 1
+fi
+
+BORDER_SHA=$(sha_of "$BORDER_FILE")
+(cd "$BORDER_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/update-bridge-order-2.log" 2>&1)
+assert_same_sha "$BORDER_FILE" "$BORDER_SHA" "bridge order: a second update leaves the order file byte-identical"
+
+printf 'order:\n  - unity-biome-mcp\n  - unity-cli\n' > "$BORDER_FILE"
+BORDER_EDITED_SHA=$(sha_of "$BORDER_FILE")
+(cd "$BORDER_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/update-bridge-order-3.log" 2>&1)
+assert_same_sha "$BORDER_FILE" "$BORDER_EDITED_SHA" "bridge order: an order edited by hand is kept by update"
+
+CONFIG="$BORDER_DIR/.unikit.json" node -e "
+    const fs=require('fs'); const f=process.env.CONFIG;
+    const c=JSON.parse(fs.readFileSync(f,'utf8'));
+    c.engineBridges = { selected: {} };
+    fs.writeFileSync(f, JSON.stringify(c,null,2));
+"
+(cd "$BORDER_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/update-bridge-order-4.log" 2>&1)
+assert_not_exists "$BORDER_FILE" "bridge order: with no bridge selected the order file is removed"
+echo "  ✓ bridge order: created in package order, settled runs change nothing, a hand edit is kept, no bridge removes the file"
+
+
+# ─────────────────────────────────────────────
+# Test 39: the rule of a bridge arrives with the bridge and leaves with it
+# ─────────────────────────────────────────────
+# The registry is a fixture with a stack rule per bridge (the Biome one carries two reference files). Installed
+# on the first update, left alone afterwards, kept when it was edited, removed when it was not, and brought back
+# when the user deleted it while the bridge is still selected.
+
+BRULE_DIR="$TMPDIR/update-bridge-rule"
+mkdir -p "$BRULE_DIR"
+cat > "$BRULE_DIR/.unikit.json" << 'EOF'
+{
+  "version": "3.0.0",
+  "engine": "unity",
+  "mcp": { "servers": {} },
+  "engineBridges": { "selected": { "unity-biome-mcp": "unity-biome-mcp", "unity-cli": "unity" } },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit-references"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": { "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } } }
+}
+EOF
+inject_fake_registry "$BRULE_DIR" bridge-rules
+BRULE_STACK="$BRULE_DIR/.unikit/memory/code/stack"
+BRULE_BIO="$BRULE_STACK/unity-biome-mcp.md"
+BRULE_CLI="$BRULE_STACK/unity-cli.md"
+BRULE_INDEX="$BRULE_DIR/.unikit/memory/code/RULES_INDEX.md"
+brule_update() { (cd "$BRULE_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/update-bridge-rule-$1.log" 2>&1); }
+brule_select() {  # <fileId=code ...>: the engine bridges of the project
+    CONFIG="$BRULE_DIR/.unikit.json" SELECTED="$1" node -e "
+        const fs=require('fs'); const f=process.env.CONFIG;
+        const c=JSON.parse(fs.readFileSync(f,'utf8'));
+        c.engineBridges = { selected: JSON.parse(process.env.SELECTED) };
+        fs.writeFileSync(f, JSON.stringify(c,null,2));
+    "
+}
+
+brule_update 1
+assert_exists "$BRULE_BIO" "bridge rule: the first update installs the rule of the Biome bridge"
+assert_exists "$BRULE_CLI" "bridge rule: ...and the rule of the CLI bridge"
+assert_exists "$BRULE_STACK/references/unity-biome-mcp-notes.md" "bridge rule: ...with its reference files"
+assert_exists "$BRULE_STACK/references/unity-biome-mcp-batch.md" "bridge rule: ...both of them"
+assert_contains "$BRULE_INDEX" 'unity-biome-mcp' "bridge rule: RULES_INDEX.md lists the installed rule"
+BRULE_SOURCE=$(CONFIG="$BRULE_DIR/.unikit.json" node -e "
+    const c=JSON.parse(require('fs').readFileSync(process.env.CONFIG,'utf8'));
+    const e=c.rules.installed.modules.code.stack.find(x=>x.name==='unity-biome-mcp');
+    process.stdout.write(e ? e.source + ':' + (e.installed_hash ? 'hash' : 'nohash') : 'none');
+")
+if [[ "$BRULE_SOURCE" != "registry:hash" ]]; then
+  echo "Assertion failed: bridge rule: the state should hold the Biome rule as a registry rule with its hash, got: $BRULE_SOURCE"
+  exit 1
+fi
+
+BRULE_SHA=$(sha_of "$BRULE_BIO")
+BRULE_CFG_SHA=$(sha_of "$BRULE_DIR/.unikit.json")
+brule_update 2
+assert_same_sha "$BRULE_BIO" "$BRULE_SHA" "bridge rule: a settled project leaves the rule byte-identical"
+assert_same_sha "$BRULE_DIR/.unikit.json" "$BRULE_CFG_SHA" "bridge rule: ...and the config"
+
+# Edited by the user, then the bridge is dropped: the rule stays.
+echo "A line the user added." >> "$BRULE_BIO"
+BRULE_EDITED_SHA=$(sha_of "$BRULE_BIO")
+brule_select '{ "unity-cli": "unity" }'
+brule_update 3
+assert_exists "$BRULE_BIO" "bridge rule: an edited rule stays when its bridge is dropped"
+assert_same_sha "$BRULE_BIO" "$BRULE_EDITED_SHA" "bridge rule: ...unchanged"
+
+# The CLI is dropped instead, Biome is back: the unchanged CLI rule goes, the Biome file stays as it is.
+brule_select '{ "unity-biome-mcp": "unity-biome-mcp" }'
+brule_update 4
+assert_not_exists "$BRULE_CLI" "bridge rule: an unchanged registry rule goes with its bridge"
+assert_exists "$BRULE_BIO" "bridge rule: the rule of the bridge that stays is still there"
+assert_same_sha "$BRULE_BIO" "$BRULE_EDITED_SHA" "bridge rule: ...and not overwritten"
+
+# Deleted by hand while the bridge is selected: it comes back.
+rm -f "$BRULE_BIO"
+brule_update 5
+assert_exists "$BRULE_BIO" "bridge rule: a deleted rule of a selected bridge comes back"
+assert_not_contains "$BRULE_BIO" 'A line the user added' "bridge rule: ...from the registry, not from the edited copy"
+echo "  ✓ bridge rule: installed with its references, left alone when settled, kept when edited, removed when unchanged, back when deleted"
 
 echo ""
 echo "update smoke tests passed"

@@ -33,7 +33,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   dispatched in Step 0: it appends template literals silently, asks about placeholders and
   out-of-domain values, never touches `language.rules` / `language.technical_terms`, and
   stops before the bootstrap steps, so nothing else about the project is re-run.
-  Also sets the order of the engine bridges and checks their environment.
+  Also checks the environment of the engine bridges.
   On a project already set up it opens with a returning-project menu of those actions instead of repeating the bootstrap.
 - **In:** optional project description (a sentence, or a path to a design doc). Needs the
   installer to have run first (engine chosen).
@@ -556,18 +556,17 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   confirmation is the whole gate. Works only inside a `UNIKIT_AUDIT_<runid>` sandbox and never
   saves the scene.
 
-### unikit-bridge-docs
-- **Purpose:** One button for the technical documentation of the selected engine bridges. It first checks which
-  copies are current and whole (a table of states) and does nothing when all of them are; otherwise it asks what
-  to collect, then copies, word for word, what each bridge points to (what its command or installed package ships,
-  vendor docs and skill folders from a repository) into `.unikit/references/bridges/`, stamps every copy with
-  the versions it was taken from and writes an index by folder and by file.
-- **When:** after installing or updating a bridge, its package or its plugin; "collect the bridge docs", "the CLI
-  was updated"; or when an agent says the collected documentation is older than the installed versions.
-- **In:** nothing, a bridge id, `<bridge id>/<source id>`, and the word `force` (rebuild without the check).
-- **Out:** `.unikit/references/bridges/<bridge>/` (copies, `INDEX.md`, `FILES.md`) and a report table.
-- **Optional.** Needs the network for vendor repositories; never starts the editor. Agents search the live
-  catalog of the bridge first and read the copy for the command they chose.
+### unikit-bridge-route
+- **Purpose:** Writes the routing rules of the engine bridges into `.unikit/bridge-routing.md`: a row says that a
+  kind of work (an `area` such as a kind of editor task or a gate, narrowed by `when` in your own words) goes only
+  through some bridges, goes through them first, or never goes through them. It asks in your words, shows the table
+  before it writes, and checks only that the bridge ids are installed. On request it also moves a bridge in
+  `.unikit/bridges.yaml`.
+- **When:** "run the tests only through this bridge", "never use that bridge for UI work", "try this bridge first
+  for scenes", "show my bridge routes", "put that bridge first".
+- **In:** the rule in your words, `list`, `remove <row>`, or nothing (it shows the table and asks).
+- **Out:** `.unikit/bridge-routing.md` (and, on request, the `order:` list of `.unikit/bridges.yaml`).
+- **Optional.** No file means no routing rules. It makes no bridge call and needs no editor.
 
 ### unikit-references
 - **Purpose:** Your own reference material for the agents: a local file or folder is copied word for word, a
@@ -576,8 +575,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **When:** "add this document as a reference", "save this link for the agents", "what references do we have".
 - **In:** `add <path or address> [--name <name>]`, `list`, `show <name>`, `refresh <name>`, `delete <name>`.
 - **Out:** `.unikit/references/INDEX.md` and `.unikit/references/user/<name>/`.
-- **Optional.** The documentation of the engine bridges is not kept here - that is `/unikit-bridge-docs`.
-  To make agents read an entry, name it in the request or point to it from a project rule (`/unikit-rules`).
+- **Optional.** To make agents read an entry, name it in the request or point to it from a project rule (`/unikit-rules`).
 
 ### unikit-help
 - **Purpose:** This navigator. Diagnoses what the user is trying to do and points to the right skill

@@ -18,7 +18,7 @@ const ACTOR_LABELS: Record<'human' | 'agent-confirmed', string> = {
 };
 const PROJECT_ROOT_SLOT = '<project-root>';
 const UNKNOWN_PROJECT_ROOT = '<your engine project root>';
-const ORDER_HINT = 'Set your own with /unikit or in .unikit/config.yaml (engine_bridges.order).';
+const ORDER_HINT = 'Edit the list in .unikit/bridges.yaml to change it.';
 
 /** `CLI >= 1.0.0-beta.14; package >= 0.9.1-exp.1; engine >= 6000.0` from the floors the card sets, or `null`. */
 function floorText(entry: McpServerEntry): string | null {

@@ -358,7 +358,7 @@ Plan resolution priority: `@<path>` argument, feature name match, then (with no 
 
 Resolves the plan, reads its manifest and then the project's skill-context rules. Bootstraps rules and engine principles once (`.unikit/system/dev-principles.md` + core rules) and executes tasks inline with `Read/Edit/Write/Bash`, marking progress in real time. Spawns the `develop-agent` alias only for true parallel scopes or deep-dive single tasks. Falls back to FIX_PLAN.md only when no feature plan exists - then it redirects to `/unikit-fix`. Supports selective execution by phase, task numbers, or feature name.
 
-Tasks carrying an `Editor:` line target the editor's serialized state rather than source files, and `Editor tasks` decides how they run: `engine-bridge` through the engine bridges (chosen silently when `BRIDGES.md` lists one; which bridge is used first is your setting, `engine_bridges.order`), `manual` — nothing is touched, the task is marked `⏸️ MANUAL` and you get the exact instruction, or `direct` — the serialized file is edited as text once there is a git commit to return to. See [Editor tasks](plan-files.md#editor-tasks).
+Tasks carrying an `Editor:` line target the editor's serialized state rather than source files, and `Editor tasks` decides how they run: `engine-bridge` through the engine bridges (chosen silently when `BRIDGES.md` lists one; which bridge is used first is the order in `.unikit/bridges.yaml` and the rules in `.unikit/bridge-routing.md`), `manual` — nothing is touched, the task is marked `⏸️ MANUAL` and you get the exact instruction, or `direct` — the serialized file is edited as text once there is a git commit to return to. See [Editor tasks](plan-files.md#editor-tasks).
 
 After phase completion:
 

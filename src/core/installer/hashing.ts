@@ -184,9 +184,9 @@ export async function hashInstalledSubagent(filePath: string): Promise<string | 
  *
  * Sorting is mandatory: the maps come out of the wizard in answer order, which
  * is not deterministic. The order the USER chose for the bridges
- * (`.unikit/config.yaml`, `engine_bridges.order`) is not an input at all: the
- * installer never reads it, so a reorder cannot reach this hash and reinstalls
- * nothing.
+ * (`.unikit/bridges.yaml`) is not an input at all: the installer keeps that
+ * file in step with the set but never lets it into a hash, so a reorder cannot
+ * reach this hash and reinstalls nothing.
  *
  * Both halves of each entry are hashed (`key=code`, not `key` alone). The code
  * is what gets substituted into a skill's text and injected as its `mcp__<code>`

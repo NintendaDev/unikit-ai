@@ -25,15 +25,15 @@ Until a 2.x project has been updated, `unikit-ai rules sync` and `rules install`
 ## What it does not do
 
 - It does not install the Unity CLI or the `com.unity.pipeline` package. `init` prints the setup lines; `/unikit` checks the environment at the end of setup and asks before it runs `unity pipeline install`.
-- It does not install the two new skills, `/unikit-bridge-docs` and `/unikit-references`. Answer "yes" to the new-skills question of `update`, run `unikit-ai update --install-new`, or tick them in `init` (group Tools).
-- It does not choose an order. A migrated project has one bridge, so the default order is that bridge. The setting `engine_bridges.order` (see [Configuration](configuration.md#engine_bridges-section)) is added to your `.unikit/config.yaml` by `/unikit` in its config-update mode.
+- It does not install the new skill `/unikit-references`. Answer "yes" to the new-skills question of `update`, run `unikit-ai update --install-new`, or tick it in `init` (group Tools).
+- It does not ask the order of the bridges. `unikit-ai update` creates `.unikit/bridges.yaml` in the package order and keeps it in step with the bridges you select; see [Configuration](configuration.md#bridge-order-routing-and-the-rule-of-a-bridge).
 
 ## Steps for a Unity project
 
 1. Run `unikit-ai update` and commit the plan changes it made.
 2. To add the Unity CLI: install it, run `unikit-ai init` and tick **Unity CLI** in the group "Engine bridges". Then run `/unikit` and pick the environment check from its returning-project menu - it checks the CLI and the package and offers `unity pipeline install`, which runs only after you confirm.
-3. With more than one bridge, `/unikit` asks the order the first time it adds the setting: ask it to "update the config" and it appends `engine_bridges.order` and asks the order in the same run. Change it any time: say "make Biome the main bridge" to `/unikit`, or edit `engine_bridges.order` in `.unikit/config.yaml`. No `init`, no `update`, no reinstall.
-4. Run `/unikit-bridge-docs`: it checks the copies of the documentation of every selected bridge, asks what to collect, and copies it into `.unikit/references/bridges/` with an `INDEX.md` and a `FILES.md` per bridge. A folder `bridges/_engine/` left by an earlier build is not used any more: delete it by hand.
+3. To change the order, edit the list in `.unikit/bridges.yaml` (an order you edited is kept by `init` and `update`: a new bridge goes to the end, a dropped one leaves the list), or ask `/unikit-bridge-route` ("put Biome first"). To send one kind of work through chosen bridges, ask `/unikit-bridge-route`. No `init`, no `update`, no reinstall.
+4. A bridge that has a rule in the registry gets it with the next `init` or `update`: `.unikit/memory/code/stack/<bridge>.md` and its `references/`. Dropping the bridge removes the rule if you did not edit it.
 
 A bridge you install **after** `init` is registered by running `unikit-ai init` again and ticking it; `/unikit` tells you when it finds one on the machine that you did not select.
 

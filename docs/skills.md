@@ -34,12 +34,11 @@ Scans your game project and sets up AI context:
 - Scans the real tech stack from **engine-specific** sources - the scan list is not hardcoded, it comes from the installed `references/ENGINE_RULES.md` (package manifest, plugin directories, third-party asset folders, project settings). Your own project code is deliberately excluded: on Unity, `Assets/Modules/*/` is *not* treated as a framework
 - Bootstraps `.unikit/config.yaml` - the user-editable source of truth for language, git, and workflow
 - **Also actualizes an existing config.** On a project that is already set up, ask to "update the config", "add missing settings" or "fix my config" and Step 0 dispatches to a config actualization mode instead of bootstrapping: it compares the file against the current template, appends template literals silently, asks about placeholders and out-of-domain values, reports keys it does not recognise without deleting them, and never touches `language.rules` / `language.technical_terms`. Steps 1-11 do not run - see [Configuration](configuration.md#how-new-keys-reach-an-existing-project)
-- **Offers a menu on a project that is already set up.** When `.unikit/config.yaml` exists and your request names neither the config update nor the bridge order, Step 0 opens a returning-project menu instead of repeating the setup: it prints what the project looks like and offers the actions that fit - update the config, set the bridge order, check the bridges' environment, create rules for new frameworks, refresh the description - and runs only the one you pick. The full bootstrap is the last of them. See [Configuration](configuration.md#how-new-keys-reach-an-existing-project)
+- **Offers a menu on a project that is already set up.** When `.unikit/config.yaml` exists and your request does not ask for the config update, Step 0 opens a returning-project menu instead of repeating the setup: it prints what the project looks like and offers the actions that fit - update the config, check the bridges' environment, create rules for new frameworks, refresh the description - and runs only the one you pick. The full bootstrap is the last of them. See [Configuration](configuration.md#how-new-keys-reach-an-existing-project)
 - Generates `.unikit/DESCRIPTION.md` (project specification) and `AGENTS.md`
 - Bootstraps the knowledge base under `.unikit/memory/` via the rules registry - the `code` module always, plus the `gamedesign` design library when its skills are installed
 - Invokes `/unikit-architecture` for architecture guidelines
-- At the end of setup checks the engine bridges - for the Unity CLI whether it is installed and the Pipeline package is in the project - and offers `unity pipeline install` only after you confirm. It recommends `/unikit-bridge-docs` and never runs it
-- With two bridges or more it asks their order once - at the first setup, or in the same run in which the config update adds the key to an older project - and writes `engine_bridges.order` into the config; later, "make Biome the main bridge" changes it in a narrow order mode - no `init`, no `update`
+- At the end of setup checks the engine bridges - for the Unity CLI whether it is installed and the Pipeline package is in the project - and offers `unity pipeline install` only after you confirm.
 - **Does NOT implement** - only sets up context
 
 ### `/unikit-architecture` - architecture analysis
@@ -294,7 +293,7 @@ Reviews code against the project's rule hierarchy. Four modes:
 
 `/unikit-implement` without a plan: it carries out **one small task from a description**, the way `/unikit-implement` carries out a plan task, and it reads, creates and ticks no plan file. An existing `.unikit/code/PLAN.md`, `.unikit/code/FIX_PLAN.md` or the plan folder of the current branch is named in one `WARN [execute]` line and otherwise ignored.
 
-- **Bootstraps once** - `dev-principles.md` above its lazy-read boundary, `RULES.md`, the core rules, `BRIDGES.md`, the base part of each bridge's `INDEX.md`, the bridge order from `.unikit/config.yaml`, and `.unikit/skill-context/unikit-execute/SKILL.md`
+- **Bootstraps once** - `dev-principles.md` above its lazy-read boundary, `RULES.md`, the core rules, `BRIDGES.md`, the base part of each bridge's `INDEX.md`, the bridge order from `.unikit/bridges.yaml` and the routing rules from `.unikit/bridge-routing.md` when it exists, and `.unikit/skill-context/unikit-execute/SKILL.md`
 - **Reads the text into a card** and prints it once: the class (`question`, `code`, `editor` or `mixed`), the files to write, and one `Editor: [kind] <container> → <target> : <action>` line per editor change - the planner's own grammar, so the same procedures run as for a plan task. The kinds and the "serialized state" boundary come from the development principles, the engine's part from the `ENGINE_RULES.md` that `unikit-plan` installs. A pure question is answered in a few lines and the run stops
 - **Works in the order** code → compilation (the console read through the first bridge that can) → editor changes through the bridges in your order (live catalog, schema, check lines, read-back) → read-back. The mode is `engine-bridge` when `BRIDGES.md` lists a bridge and `manual` otherwise; `direct` only with `--editor=direct` or plain words asking for it, and only behind a rollback point
 - **Ends** with one report (changed files, editor lines with the bridge and the value read back, manual targets, compilation, tests, findings) and one question: review first (`/unikit-review`, then `/unikit-commit`) or commit now. It stages only the files of the run
@@ -639,24 +638,23 @@ unikit-ai genres install <id|alias…>  # selectively install profile(s)
 - Deletes only what it created in this run. Leftovers from an aborted earlier run are recognisable by their `<runid>` and swept only under a separate confirmation
 - A **project** tool, not a release tool: it never edits the packaged rules tree (`init`/`update` rewrite it), it prints a PR diff instead
 
-### `/unikit-bridge-docs [bridge id | bridge id/source id] [force]` - collect the bridge documentation
+### `/unikit-bridge-route [the rule in your words | list | remove <row>]` - route a kind of work to chosen bridges
 
 ```
-/unikit-bridge-docs                           # a table of the state of every copy, then a question when something needs collecting
-/unikit-bridge-docs unity-cli                 # one bridge: collects what is outdated, damaged or missing, asks nothing
-/unikit-bridge-docs unity-cli/pipeline-docs   # one source of one bridge
-/unikit-bridge-docs force                     # rebuild everything, without the check
+/unikit-bridge-route run the tests only through bridge-a
+/unikit-bridge-route never use bridge-c for UI work
+/unikit-bridge-route list
+/unikit-bridge-route put bridge-b first
 ```
-- One button for everything technical. It reads the documentation pointers from `BRIDGES.md` and first checks every copy: **current** (the stamp of the installed version, the pointer of the card, the number of files and bytes all match), **outdated**, **damaged**, **missing**, or **unknown** (no network, no tool, no version in the settings). A table says which. When every copy is current the run downloads and writes nothing and says so; otherwise it asks once what to do (collect everything · only what this machine has · choose bridges · nothing) and copies the files word for word into `.unikit/references/bridges/<bridge>/`, with a line `[n/N]` before every step.
-- Every bridge folder gets an `INDEX.md` (the sources with their stamps and sizes, the folders with a description of each) and a `FILES.md` (every file with its size and a caption, searched for a word). Both are rewritten after every finished source, so an interrupted run continues where it stopped; the paths in them start at the project root.
-- What a bridge's own command or installed package ships is copied from the machine; the rest (vendor docs, skill folders) is downloaded from the repositories the pointers name, at the tag of the installed version when the bridge pins one (Unity Biome MCP). A source that cannot be collected keeps its previous copy. The report is a table `bridge · source · was -> is · result`, including "not found at the pointer" when a vendor moved a file.
-- Agents search the live catalog of the bridge first (a word, then the tags, then the groups) and read the copy only for the command they chose, when its version matches the installed one. A copy older than the installed versions is still used; the agent says so once per session and suggests running this skill again.
-- Writes only under `.unikit/references/bridges/`. Needs the network for downloads; it never starts the editor and never changes anything through a bridge.
+- Writes the rows of `.unikit/bridge-routing.md`: `area | when | rule | bridges | why`. It asks in your own words, picks the `area` word from the vocabulary the planner and the verifier already use (or `*`), asks which of `only`, `first` and `never` you mean, offers the installed bridges as options, shows the whole table and writes only after you agree.
+- Checks only that the bridge ids are installed (`BRIDGES.md`); it does not judge the `when` text. Two rows of the same area and `when` with different rules are never written.
+- "Put that bridge first" moves a bridge in the `order:` list of `.unikit/bridges.yaml` with one edit; the comment lines at the top of the file stay.
+- Makes no bridge call, runs no command and needs no editor. How the agents use the rows is described in [Configuration](configuration.md#bridge-order-routing-and-the-rule-of-a-bridge).
 
 ### `/unikit-references [add <path|url> | list | show <name> | refresh <name> | delete <name>]` - your own references
 
 - Keeps your own reference material for the agents in `.unikit/references/` with an index: a local file or folder is copied word for word, a plain text or Markdown address is downloaded as a copy, any other page is recorded as a link with a note on when to read it. Nothing is summarised or rewritten.
-- It never touches `.unikit/references/bridges/` - the documentation of the engine bridges is `/unikit-bridge-docs`.
+- It never touches a `.unikit/references/bridges/` folder left by an earlier build.
 - To make agents use an entry, name it in your request or point to it from a project rule (`/unikit-rules`).
 
 ---

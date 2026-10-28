@@ -158,7 +158,7 @@ canonical intent list and the full routing table live in
 | Archive finished plans / clean up the plan list | `/unikit-archive` (then `/unikit-commit` the move) | skill-map.md |
 | Open / describe / merge a PR | `/unikit-pr` | skill-map.md |
 | An engine bridge reported success but nothing changed | `/unikit-bridge-trap` (record the finding) → `/unikit-bridge-audit` (curate later) | skill-map.md |
-| Collect or refresh the documentation of the engine bridges | `/unikit-bridge-docs` | skill-map.md |
+| Say which bridge a kind of work goes through, or never goes through | `/unikit-bridge-route` | skill-map.md |
 | Keep my own documents or links for the agents | `/unikit-references` | skill-map.md |
 | Add a rule / learn from a book or article | `/unikit-rules`, `/unikit-memory` | knowledge-base.md |
 | Share/publish rules across projects | `/unikit-rules-registry`, `unikit-ai rules ...` | knowledge-base.md |

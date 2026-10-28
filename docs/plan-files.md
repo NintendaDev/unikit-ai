@@ -452,7 +452,7 @@ The naming of `<container>` and `<target>` is engine-specific and comes from the
 
 `Editor tasks` decides how the editor work is actually carried out:
 
-- **`engine-bridge`** — through the engine bridges, in the order the project sets (`engine_bridges.order` in `.unikit/config.yaml`). Chosen **silently** when `BRIDGES.md` lists at least one bridge; you are not asked. A plan that says `mcp` (2.x) is read as `engine-bridge`.
+- **`engine-bridge`** — through the engine bridges, in the order the project sets (`.unikit/bridges.yaml`). Chosen **silently** when `BRIDGES.md` lists at least one bridge; you are not asked. A plan that says `mcp` (2.x) is read as `engine-bridge`.
 - **`manual`** — nothing is touched. The task is marked `⏸️ MANUAL` and you get the exact instruction in `[kind] container → target : action` form. `/unikit-verify` reports these but never treats them as blockers.
 - **`direct`** — the serialized file is edited as text. Offered **only** where the engine's format tolerates it, and `/unikit-implement` always makes sure there is a commit to return to first. On Unreal Engine 5 the format tolerates it nowhere except `Config/Default*.ini` — every level and asset is binary — so `direct` is effectively an `.ini`-only route there.
 

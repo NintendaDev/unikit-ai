@@ -1,9 +1,9 @@
 # The index of your references
 
-`.unikit/references/INDEX.md` is kept by `/unikit-references`. It lists your own entries only; the folder `bridges/` is written by `/unikit-bridge-docs` and is not listed.
+`.unikit/references/INDEX.md` is kept by `/unikit-references`. It lists your own entries only; a folder `bridges/` left by an earlier build is not listed.
 
 ```
-<!-- Kept by /unikit-references. The collected documentation of the engine bridges lives in bridges/ and is written by /unikit-bridge-docs - it is not listed here. -->
+<!-- Kept by /unikit-references. A bridges/ folder left by an earlier build is not listed here. -->
 # References
 
 Your own reference material. An agent reads an entry when you name it or when a project rule points to it.

@@ -9,5 +9,3 @@ For each bridge block, in the file's order:
 4. No probe rows → nothing to check; print the rows of the `Setup:` table once if the bridge has any.
 
 Then the section `Not selected` of `BRIDGES.md`, if it exists: for each row of its table run the command in the `probe` column. It answers → print `A bridge you did not select is available on this machine: <name>. Run unikit-ai init and tick it to register it.` (a late registration goes through init — there is no other command).
-
-Last, for each bridge with `docs sources` and no `.unikit/references/bridges/<bridge>/INDEX.md`: recommend `/unikit-bridge-docs` in one line. Never run it from here.

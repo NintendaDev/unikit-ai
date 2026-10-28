@@ -6,8 +6,8 @@ description: >-
   as a copy, any other page is recorded as a link with a one-line note on when to read it. Nothing
   is summarised or rewritten. Use for "add this document as a reference", "save this link for the
   agents", "what references do we have", "remove that reference", "refresh the reference". Only
-  your own sources: the documentation of the engine bridges is collected by /unikit-bridge-docs
-  and never listed here.
+  your own sources; the folder .unikit/references/bridges/ of an earlier build is never touched
+  or listed.
 argument-hint: "[add <path|url> [--name <name>] | list | show <name> | refresh <name> | delete <name>]  (writes .unikit/references/)"
 allowed-tools:
   - Read
@@ -34,7 +34,7 @@ metadata:
 
 # References — your own reference material for the agents
 
-Documents, folders and links that the agents of this project should be able to look up, kept as they are and listed in one index. This skill is for **your** sources only: the documentation of the engine bridges is collected by `/unikit-bridge-docs` into `.unikit/references/bridges/`, and this skill never touches that folder.
+Documents, folders and links that the agents of this project should be able to look up, kept as they are and listed in one index. This skill is for **your** sources only; it never touches a `.unikit/references/bridges/` folder left by an earlier build.
 
 **User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
 
