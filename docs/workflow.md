@@ -201,7 +201,7 @@ While the plan has PR checkpoints a run never pushes: the branch reaches the rem
 | `/unikit-review` | Code review against rules | No | Review report |
 | `/unikit-commit` | Conventional commits with engine-aware checks | No | Git commit |
 | `/unikit-pr` | Open or update the branch's pull request (GitHub MCP), or print its text | No | Pull request |
-| `/unikit-archive` | Move a finished folder plan out of the active list | No | `.unikit/code/archive/plans/<folder>/` |
+| `/unikit-archive` | Move a finished folder plan or a research out of the active list | No | `.unikit/code/archive/plans/<folder>/`, `.unikit/code/archive/researches/<slug>/` |
 | `/unikit-evolve` | Distill accumulated patches into rules and skill overrides | No | `RULES.md`, `.unikit/skill-context/`, `.unikit/evolutions/` |
 | `/unikit-todo` | Lightweight task tracking | No | `.unikit/TODO.md` |
 
@@ -493,14 +493,17 @@ Runs read-only context gates against ARCHITECTURE.md (the root and the topic fil
 
 While a merge is in progress it never splits the commit — not even a split the caller passes — because the reset a split begins with would drop the merge and leave the merge commit with one parent.
 
-### `/unikit-archive [list | --all | <plan-folder>]` - archive finished plans
+### `/unikit-archive [plans | researches [<slug> | --all | restore [<slug>]] | list | --all | <plan-folder>]` - archive finished plans and researches
 
 ```
 /unikit-archive
 /unikit-archive inventory-system
+/unikit-archive researches
 ```
 
 A folder plan is never deleted, so `.unikit/code/plans/` keeps growing and every finished plan stays in the "latest plan" choice. `/unikit-archive` moves a plan whose checklist is fully `[x]` (or, if you explicitly choose it, an unfinished one, marked as such in its manifest) to `.unikit/code/archive/plans/<folder>/` - with `git mv` when the folder is tracked, plain `mv` otherwise - and adds an `Archived:` line to its manifest. Engine bridge findings nobody transferred and rule candidates nobody proposed do not block it: it shows them and asks whether to handle them first or archive anyway. It never commits. `/unikit-implement` names it once the whole plan is done.
+
+Researches pile up the same way, and `researches/INDEX.md` lists every one of them. Run with no arguments, `/unikit-archive` first asks what to archive - plans, researches or both. For researches it shows the ones no unfinished plan links, moves the chosen ones to `.unikit/code/archive/researches/<slug>/` with an `Archived:` line in `RESEARCH.md`, and re-renders the index so `/unikit-plan` stops offering them; `researches restore` brings one back. A plan that links an archived research needs no change: the link is the folder name, and the readers find the folder in the archive when it is not in `researches/`.
 
 ---
 
