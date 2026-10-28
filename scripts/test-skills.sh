@@ -4460,7 +4460,7 @@ fi
 # The entry is pinned to the marker `(a pre-merge plan)` on that same line, not
 # to the file — exempting the whole file would re-open the 27 occurrences the
 # merge removed from it.
-# The second site is skills/unikit-archive/SKILL.md Step 2: a completed plan is never
+# The second site is skills/unikit-archive/references/plans.md Step 2: a completed plan is never
 # migrated, so the archive must still recognise the legacy task file to classify it — the
 # same load-bearing reason, on one line, under the same marker.
 PL2_ALLOW='(a pre-merge plan)'
@@ -9373,8 +9373,14 @@ fi
 # predicate (every mark other than x is unfinished — the coordinator writes [~] and [!]),
 # the follow-up question that replaced both stops, the move rule measured in ADR-0001 and the scope.
 # AR-10…AR-13 pin the readers outside the skill that had to learn about the archive.
+# The skill's plan protocol is in references/plans.md (AR_PLANS); SKILL.md is the router.
 # Anchored on formulations, never on headings.
 AR_SKILL="$ROOT_DIR/skills/unikit-archive/SKILL.md"
+# The plan protocol (scope, classification, the modes' steps, rules) lives in references/plans.md
+# and SKILL.md is the router: what the skill says FIRST (frontmatter, language, step 0, the mode
+# table and its announcements) is read from AR_SKILL, what a plan run DOES from AR_PLANS. A
+# negative check travels with the text it forbids — left on the router it would stay green and blind.
+AR_PLANS="$ROOT_DIR/skills/unikit-archive/references/plans.md"
 AR_DESIGN_CTX="$ROOT_DIR/skills/unikit-plan/references/design-context.md"
 AR_PLAN_SKILL="$ROOT_DIR/skills/unikit-plan/SKILL.md"
 AR_POLISHER="$ROOT_DIR/subagents/unikit-plan-polisher.md"
@@ -9382,51 +9388,51 @@ AR_IMPLEMENT="$ROOT_DIR/skills/unikit-implement/SKILL.md"
 AR_EXPLORE="$ROOT_DIR/skills/unikit-explore/SKILL.md"
 AR_ULTRA_FMT="$ROOT_DIR/skills/unikit-explore/references/ULTRA-RESEARCH-FORMAT.md"
 AR_WHY=""
-for f in "$AR_SKILL" "$AR_DESIGN_CTX" "$AR_PLAN_SKILL" "$AR_POLISHER" "$AR_IMPLEMENT" "$AR_EXPLORE" "$AR_ULTRA_FMT"; do
+for f in "$AR_SKILL" "$AR_PLANS" "$AR_DESIGN_CTX" "$AR_PLAN_SKILL" "$AR_POLISHER" "$AR_IMPLEMENT" "$AR_EXPLORE" "$AR_ULTRA_FMT"; do
     [[ -s "$f" ]] || AR_WHY+=" missing:${f#"$ROOT_DIR"/}"
 done
 if [[ -z "$AR_WHY" ]]; then
     # (AR-1) the modes.
     grep -qF 'argument-hint: "[list | --all | <plan-folder>]"' "$AR_SKILL" || AR_WHY+=" AR-1:no-mode-hint"
-    grep -qF 'is confirmed before anything moves' "$AR_SKILL" || AR_WHY+=" AR-1:substring-match-unconfirmed"
+    grep -qF 'is confirmed before anything moves' "$AR_PLANS" || AR_WHY+=" AR-1:substring-match-unconfirmed"
     # (AR-2) completion: every non-x mark is unfinished; a phase status line is not a task;
     # a plan with no tasks is never archived.
-    grep -qF 'Any other mark is unfinished' "$AR_SKILL" || AR_WHY+=" AR-2:only-open-boxes-count"
-    grep -qF 'is not a checkbox line' "$AR_SKILL" || AR_WHY+=" AR-2:status-line-counted"
-    grep -qF 'An empty plan is not archived' "$AR_SKILL" || AR_WHY+=" AR-2:empty-plan-archivable"
+    grep -qF 'Any other mark is unfinished' "$AR_PLANS" || AR_WHY+=" AR-2:only-open-boxes-count"
+    grep -qF 'is not a checkbox line' "$AR_PLANS" || AR_WHY+=" AR-2:status-line-counted"
+    grep -qF 'An empty plan is not archived' "$AR_PLANS" || AR_WHY+=" AR-2:empty-plan-archivable"
     # (AR-3) the findings check is keyed on the trap's own back-reference, never on a date:
     # audited: is moved only by an audit, so a date rule could not be cleared by running the trap.
     # It asks and never stops: the user may not want the findings kept, and a stop left no way
     # to archive such a plan from the interactive or --all mode at all.
-    grep -qF '`<folder>/<task file name>#F<n>`' "$AR_SKILL" || AR_WHY+=" AR-3:no-back-reference-key"
-    grep -qF 'a question, never a stop' "$AR_SKILL" || AR_WHY+=" AR-3:findings-block"
-    grep -qF 'stop: <k> MCP findings not transferred' "$AR_SKILL" && AR_WHY+=" AR-3:findings-stop-returned"
-    grep -qF '2. Archive anyway' "$AR_SKILL" || AR_WHY+=" AR-3:no-archive-anyway"
-    grep -qF 'a declined row leaves no back-reference' "$AR_SKILL" || AR_WHY+=" AR-3:override-unexplained"
+    grep -qF '`<folder>/<task file name>#F<n>`' "$AR_PLANS" || AR_WHY+=" AR-3:no-back-reference-key"
+    grep -qF 'a question, never a stop' "$AR_PLANS" || AR_WHY+=" AR-3:findings-block"
+    grep -qF 'stop: <k> MCP findings not transferred' "$AR_PLANS" && AR_WHY+=" AR-3:findings-stop-returned"
+    grep -qF '2. Archive anyway' "$AR_PLANS" || AR_WHY+=" AR-3:no-archive-anyway"
+    grep -qF 'a declined row leaves no back-reference' "$AR_PLANS" || AR_WHY+=" AR-3:override-unexplained"
     # A transferred finding can lose its back-reference legitimately: the installer parks the notes
     # of a bridge that leaves the selection, and /unikit-bridge-audit removes a retired note with its from: (review finding).
-    grep -qF '.unikit/bridge-notes/archive/*.md' "$AR_SKILL" || AR_WHY+=" AR-3:parked-notes-unread"
-    grep -qF 'removes a note it retires together with its back-reference' "$AR_SKILL" || AR_WHY+=" AR-3:retire-unexplained"
+    grep -qF '.unikit/bridge-notes/archive/*.md' "$AR_PLANS" || AR_WHY+=" AR-3:parked-notes-unread"
+    grep -qF 'removes a note it retires together with its back-reference' "$AR_PLANS" || AR_WHY+=" AR-3:retire-unexplained"
     # (AR-4) an open rule candidate is a follow-up like a finding — it asks, never stops — and
     # the question names the skill that actually flips an open candidate.
-    grep -qF 'has the status `open`' "$AR_SKILL" || AR_WHY+=" AR-4:open-candidate-unchecked"
-    grep -qF '/unikit-verify <folder>' "$AR_SKILL" || AR_WHY+=" AR-4:wrong-or-no-command"
-    grep -qF 'stop: <k> open rule candidates' "$AR_SKILL" && AR_WHY+=" AR-4:candidate-stop-returned"
+    grep -qF 'has the status `open`' "$AR_PLANS" || AR_WHY+=" AR-4:open-candidate-unchecked"
+    grep -qF '/unikit-verify <folder>' "$AR_PLANS" || AR_WHY+=" AR-4:wrong-or-no-command"
+    grep -qF 'stop: <k> open rule candidates' "$AR_PLANS" && AR_WHY+=" AR-4:candidate-stop-returned"
     # (AR-5) git mv only for a tracked folder in an enabled git work tree — measured, not assumed.
-    grep -qF '`git.enabled` is not `false`' "$AR_SKILL" || AR_WHY+=" AR-5:ignores-git-enabled"
-    grep -qF 'git rev-parse --is-inside-work-tree' "$AR_SKILL" || AR_WHY+=" AR-5:no-work-tree-check"
-    grep -qF 'git ls-files -- .unikit/code/plans/<folder>' "$AR_SKILL" || AR_WHY+=" AR-5:no-tracked-check"
-    grep -qF 'fatal: source directory is empty' "$AR_SKILL" || AR_WHY+=" AR-5:reason-lost"
-    grep -qF 'Never retry with the other command' "$AR_SKILL" || AR_WHY+=" AR-5:silent-fallback"
+    grep -qF '`git.enabled` is not `false`' "$AR_PLANS" || AR_WHY+=" AR-5:ignores-git-enabled"
+    grep -qF 'git rev-parse --is-inside-work-tree' "$AR_PLANS" || AR_WHY+=" AR-5:no-work-tree-check"
+    grep -qF 'git ls-files -- .unikit/code/plans/<folder>' "$AR_PLANS" || AR_WHY+=" AR-5:no-tracked-check"
+    grep -qF 'fatal: source directory is empty' "$AR_PLANS" || AR_WHY+=" AR-5:reason-lost"
+    grep -qF 'Never retry with the other command' "$AR_PLANS" || AR_WHY+=" AR-5:silent-fallback"
     # (AR-6) no overwrite, no rename, no commit, no staging; one label line.
-    grep -qF 'Never overwrite, never rename' "$AR_SKILL" || AR_WHY+=" AR-6:may-overwrite"
-    grep -qF 'Never commit or push' "$AR_SKILL" || AR_WHY+=" AR-6:may-commit"
-    grep -qF 'git commit' "$AR_SKILL" && AR_WHY+=" AR-6:commits"
-    grep -qF 'git add' "$AR_SKILL" && AR_WHY+=" AR-6:stages"
-    grep -qF '`Archived: <today>`' "$AR_SKILL" || AR_WHY+=" AR-6:no-label"
+    grep -qF 'Never overwrite, never rename' "$AR_PLANS" || AR_WHY+=" AR-6:may-overwrite"
+    grep -qF 'Never commit or push' "$AR_PLANS" || AR_WHY+=" AR-6:may-commit"
+    grep -qF 'git commit' "$AR_PLANS" && AR_WHY+=" AR-6:commits"
+    grep -qF 'git add' "$AR_PLANS" && AR_WHY+=" AR-6:stages"
+    grep -qF '`Archived: <today>`' "$AR_PLANS" || AR_WHY+=" AR-6:no-label"
     # (AR-7) the scope: fast and fix plans, researches and patches are never archived.
-    grep -qF '**Never touched:**' "$AR_SKILL" || AR_WHY+=" AR-7:no-exclusion-list"
-    grep -qF '`.unikit/code/FIX_PLAN.md`' "$AR_SKILL" || AR_WHY+=" AR-7:fix-plan-unmentioned"
+    grep -qF '**Never touched:**' "$AR_PLANS" || AR_WHY+=" AR-7:no-exclusion-list"
+    grep -qF '`.unikit/code/FIX_PLAN.md`' "$AR_PLANS" || AR_WHY+=" AR-7:fix-plan-unmentioned"
     # (AR-8) every command the skill runs is granted, and nothing that deletes — a rule the
     # skill cannot carry out degrades silently (the NM-5 lesson).
     for g in 'Bash(git *)' 'Bash(mv *)' 'Bash(mkdir *)' 'Bash(date *)'; do
@@ -9434,7 +9440,7 @@ if [[ -z "$AR_WHY" ]]; then
     done
     grep -qF 'Bash(rm' "$AR_SKILL" && AR_WHY+=" AR-8:can-delete"
     # (AR-9) the legacy layout is recognised under the PL-2 marker, never by a bare old name.
-    grep -qF '(a pre-merge plan)' "$AR_SKILL" || AR_WHY+=" AR-9:legacy-layout-unrecognised"
+    grep -qF '(a pre-merge plan)' "$AR_PLANS" || AR_WHY+=" AR-9:legacy-layout-unrecognised"
     # (AR-10) the one reader that wants completed plans reads the archive too — a glob that
     # misses returns "no prior plan", never an error, so nothing else would notice.
     grep -qF '`.unikit/code/archive/plans/*/*.md`' "$AR_DESIGN_CTX" || AR_WHY+=" AR-10:fallback-blind-to-archive"
@@ -9451,7 +9457,7 @@ if [[ -z "$AR_WHY" ]]; then
     # an archived plan offered for execution would undo the one thing the archive is for.
     grep -qF '`.unikit/code/archive/plans/`' "$AR_EXPLORE" || AR_WHY+=" AR-13:explore-blind-to-archive"
     grep -qF 'History, never a plan to continue' "$AR_EXPLORE" || AR_WHY+=" AR-13:explore-may-resume"
-    grep -qF '`/unikit-explore` reads archived plans as history' "$AR_SKILL" || AR_WHY+=" AR-13:reader-unlisted"
+    grep -qF '`/unikit-explore` reads archived plans as history' "$AR_PLANS" || AR_WHY+=" AR-13:reader-unlisted"
     # (AR-14) the run says what it is about to do before it reads anything: a real interactive run
     # classified thirty plans for five minutes and opened with a remark about the language.
     grep -qF '**First, announce the mode**' "$AR_SKILL" || AR_WHY+=" AR-14:step0-reads-first"
@@ -9460,34 +9466,34 @@ if [[ -z "$AR_WHY" ]]; then
     grep -qF '**Then say what you are doing, as you do it.**' "$AR_SKILL" || AR_WHY+=" AR-14:silent-steps"
     # (AR-15) the table carries the created and last-change dates the archiving decision rests on,
     # each with its source order, and uncommitted changes win over the last commit.
-    grep -qF 'folder · verdict · created · last change' "$AR_SKILL" || AR_WHY+=" AR-15:no-dates-in-table"
-    grep -qF "the task file's \`Created: YYYY-MM-DD\` header line" "$AR_SKILL" || AR_WHY+=" AR-15:created-source-lost"
-    grep -qF 'has changes no commit holds yet' "$AR_SKILL" || AR_WHY+=" AR-15:last-change-ignores-working-tree"
+    grep -qF 'folder · verdict · created · last change' "$AR_PLANS" || AR_WHY+=" AR-15:no-dates-in-table"
+    grep -qF "the task file's \`Created: YYYY-MM-DD\` header line" "$AR_PLANS" || AR_WHY+=" AR-15:created-source-lost"
+    grep -qF 'has changes no commit holds yet' "$AR_PLANS" || AR_WHY+=" AR-15:last-change-ignores-working-tree"
     grep -qF 'including a remark made while a command runs' "$AR_SKILL" || AR_WHY+=" AR-14:english-remarks-allowed"
     # (AR-16) an unfinished plan has a sanctioned way out: a real user archived eleven abandoned
     # plans and the agent had to break the skill's own rule to do it. It moves only after the
     # user has seen what is left, its label says so, --all never takes it, and the readers that
     # want completed plans (the implemented_version fallback) or history (explore) tell it apart.
-    grep -qF 'Archive them unfinished' "$AR_SKILL" || AR_WHY+=" AR-16:no-unfinished-option"
-    grep -qF '`Archived: <today> — unfinished (<done>/<total>)`' "$AR_SKILL" || AR_WHY+=" AR-16:unfinished-label-lost"
-    grep -qF 'an unfinished plan is archived only by an explicit choice' "$AR_SKILL" || AR_WHY+=" AR-16:all-takes-unfinished"
-    grep -qF 'an `empty`, `broken bundle` or `not a plan` folder never moves' "$AR_SKILL" || AR_WHY+=" AR-16:empty-may-move"
+    grep -qF 'Archive them unfinished' "$AR_PLANS" || AR_WHY+=" AR-16:no-unfinished-option"
+    grep -qF '`Archived: <today> — unfinished (<done>/<total>)`' "$AR_PLANS" || AR_WHY+=" AR-16:unfinished-label-lost"
+    grep -qF 'an unfinished plan is archived only by an explicit choice' "$AR_PLANS" || AR_WHY+=" AR-16:all-takes-unfinished"
+    grep -qF 'an `empty`, `broken bundle` or `not a plan` folder never moves' "$AR_PLANS" || AR_WHY+=" AR-16:empty-may-move"
     grep -qF 'An archived plan whose `Archived:` line ends in' "$AR_DESIGN_CTX" || AR_WHY+=" AR-16:fallback-reads-unfinished"
     grep -qF 'was dropped part-way' "$AR_EXPLORE" || AR_WHY+=" AR-16:explore-reads-unfinished-as-built"
     # (AR-17) the plans are chosen by row number or by a date rule on the table's own columns,
     # written in the user's own answer: no option for typing a choice and no second question with
     # example answers (a user found those examples strange).
-    grep -qF 'write row numbers (3, 5-7) or a date rule' "$AR_SKILL" || AR_WHY+=" AR-17:no-choice-by-date"
-    if grep -qF 'Choose by number or date' "$AR_SKILL"; then AR_WHY+=" AR-17:typing-option-returned"; fi
-    if grep -qF 'two short examples of the answer' "$AR_SKILL"; then AR_WHY+=" AR-17:example-options-returned"; fi
-    grep -qF 'A date rule is matched against the table' "$AR_SKILL" || AR_WHY+=" AR-17:date-rule-unbound"
+    grep -qF 'write row numbers (3, 5-7) or a date rule' "$AR_PLANS" || AR_WHY+=" AR-17:no-choice-by-date"
+    if grep -qF 'Choose by number or date' "$AR_PLANS"; then AR_WHY+=" AR-17:typing-option-returned"; fi
+    if grep -qF 'two short examples of the answer' "$AR_PLANS"; then AR_WHY+=" AR-17:example-options-returned"; fi
+    grep -qF 'A date rule is matched against the table' "$AR_PLANS" || AR_WHY+=" AR-17:date-rule-unbound"
     # (AR-18) the table reaches the screen: a real interactive run classified ten plans with a
     # script, left the table and every INFO line inside the folded tool output, printed one
     # summary sentence, and asked "Archive which plans?" naming rows #4, #5, #7, #9 the user had
     # never seen. Anchored on formulations, as the mode-optimise.md precedent does it.
     grep -qF '**What the user must see, print as your own message.**' "$AR_SKILL" || AR_WHY+=" AR-18:no-visible-output-rule"
     grep -qF 'Tool output is folded away from the user' "$AR_SKILL" || AR_WHY+=" AR-18:tool-output-assumed-visible"
-    grep -qF 'ask it only once the whole table is on screen' "$AR_SKILL" || AR_WHY+=" AR-18:question-before-table"
+    grep -qF 'ask it only once the whole table is on screen' "$AR_PLANS" || AR_WHY+=" AR-18:question-before-table"
     # (AR-19) /unikit-explore met by the slug of an ARCHIVED research prints the way back and
     # stops. The negative half is the load-bearing one: explore is given no right to move a
     # folder, so the way back can only be the archive skill's.
@@ -9509,9 +9515,13 @@ if [[ -z "$AR_WHY" ]]; then
     done
     grep -qF 'The archived-slug check of *Naming convention* runs on the settled slug first' "$AR_EXPLORE" || AR_WHY+=" AR-20:save-skips-the-check"
     grep -qF 'is not pinned under' "$AR_ULTRA_FMT" || AR_WHY+=" AR-20:first-pin-skips-the-check"
+    # The retargeted checks are counted from this script's own text, so deleting them (instead of
+    # keeping them on the right file) fails here and does not just look like fewer passes.
+    AR_PLANS_N="$(awk '/^# AR: \/unikit-archive/{f=1} f&&/fail "AR plan archive contract/{exit} f&&/grep -qF/&&index($0,"\"$AR_PLANS\""){n++} END{print n+0}' "${BASH_SOURCE[0]}")"
+    (( AR_PLANS_N >= 40 )) || AR_WHY+=" AR-plans:retargeted-checks=$AR_PLANS_N"
 fi
 if [[ -z "$AR_WHY" ]]; then
-    pass "AR-1…AR-20 unikit-archive: announces itself first, prints the dated table as its own message before asking, archives an unfinished plan only on an explicit choice and says so; non-x marks are unfinished, untransferred findings (keyed on the trap back-reference) and open rule candidates ask and never stop, git mv only for a tracked folder, no overwrite and no commit; the implemented_version fallback and both plan producers see the archive, implement names it, explore reads it as history and never reuses an archived research's slug (AR-19/AR-20)"
+    pass "AR-1…AR-20 unikit-archive: announces itself first, prints the dated table as its own message before asking, archives an unfinished plan only on an explicit choice and says so; non-x marks are unfinished, untransferred findings (keyed on the trap back-reference) and open rule candidates ask and never stop, git mv only for a tracked folder, no overwrite and no commit; the implemented_version fallback and both plan producers see the archive, implement names it, explore reads it as history and never reuses an archived research's slug (AR-19/AR-20); $AR_PLANS_N plan-protocol checks read references/plans.md"
 else
     fail "AR plan archive contract:$AR_WHY"
 fi

@@ -79,7 +79,7 @@ cat > "$CLAUDE_DIR/.unikit.json" << 'EOF'
                           "unikit-rules", "unikit-skills-context", "unikit-verify",
                           "unikit-gd-explore", "unikit-gd-balance", "unikit-gd-experiment", "unikit-gd-recon", "unikit-gd-docs",
                           "unikit-gd-flow", "unikit-gd-content", "unikit-gd-verify",
-                          "unikit-pr"],
+                          "unikit-pr", "unikit-archive"],
       "installedSubagents": ["unikit-architecture-sidecar"]
     }
   ],
@@ -399,6 +399,10 @@ assert_exists "$CLAUDE_DIR/.claude/skills/unikit-explore/references/merge-resear
 # missing delivery would silently skip the re-render in both skills.
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-explore/references/index-render.md" \
   "unikit-explore index-render.md reference installed"
+# unikit-archive keeps its plan protocol in a reference (SKILL.md is the router); it is read
+# only when plans are archived, so no content guard sees a missing delivery.
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-archive/references/plans.md" \
+  "unikit-archive plans.md reference installed (the plan protocol)"
 # Same for the planner: merge-plan.md is read only on a merge request.
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-plan/references/merge-plan.md" \
   "unikit-plan merge-plan.md reference installed"
