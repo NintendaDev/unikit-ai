@@ -112,7 +112,7 @@ This skill is a **plan refinement orchestrator**, not a code writer. It loads pr
 
 **For deep code analysis, use the `recon-agent` alias**:
 - Launch 2-3 tasks in parallel for different aspects of the codebase
-- Each task MUST receive references to project doc files in its prompt — paths to `.unikit/ARCHITECTURE.md` and relevant core/stack rule files loaded in Bootstrap
+- Each task MUST receive references to project doc files in its prompt — paths to `.unikit/ARCHITECTURE.md`, the architecture topic files matched to its focus, and relevant core/stack rule files loaded in Bootstrap
 
 **Do NOT use `/unikit-execute` or `develop-agent`** — these are for code-writing skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`). Plan refinement needs code reading and analysis, not code writing.
 
@@ -281,7 +281,7 @@ Before any analysis — silently load the project knowledge base. Do NOT narrate
 #### Required reads (always, every time, in parallel)
 
 1. **`.unikit/DESCRIPTION.md`** — project description, tech stack, constraints
-2. **`.unikit/ARCHITECTURE.md`** — architecture decisions, folder structure, module rules, dependency directions
+2. **`.unikit/ARCHITECTURE.md`** — architecture decisions, folder structure, module rules, dependency directions. **Architecture topics:** the root now; then the topic files listed under its `## Topics` whose `Load when` matches any phase of the plan under review — its name and tasks — loaded with the rule topics; when unsure, load. A listed file that is missing → `WARN [architecture] topic file missing: .unikit/architecture/<slug>.md`, continue.
 3. **Read `.unikit/memory/code/RULES_INDEX.md`**. Load rules:
    - **RULES.md**: ALWAYS read `.unikit/RULES.md` first (highest priority) **Rule topics:** once the plan is loaded, load the topic files listed under its `## Topics` whose `Load when` matches any phase of that plan — its phase names and tasks; when unsure, load (`RULES_INDEX.md` → Step 1).
    - **Core**: read the Core table. For EACH row where Required By = `all` or contains `{{self_name}}` — read that file from `.unikit/memory/code/core/` using the Read tool. Do NOT skip any matching row. Always re-read at skill start, never rely on prior conversation cache
@@ -381,7 +381,7 @@ Follow the delegation rules from **Code Analysis Rules** section above.
 Formulate analysis questions based on the feature plan, then launch Explore tasks in parallel. With a scope set from the plan's reconnaissance (`recon-baseline.md`), they cover only the paths that changed since a recon file's `HEAD` and what the reconnaissance does not cover. Each task MUST receive references to project doc files in its prompt.
 
 **Doc references to include in every Explore task prompt:**
-- `.unikit/ARCHITECTURE.md` — always (module boundaries, dependency rules)
+- `.unikit/ARCHITECTURE.md` root — always (module boundaries, dependency rules); plus the topic paths matched to the task's focus
 - Core rule files loaded in Bootstrap — pass the **paths from RULES_INDEX.md** relevant to the task's focus
 - Stack rule files loaded in Bootstrap — pass if the task's focus involves that framework
 
@@ -392,6 +392,7 @@ Task 1 — Existing code & bindings:
 recon-agent(prompt:
   "Before analysis, read these project docs:
    - .unikit/ARCHITECTURE.md
+   - [architecture topic paths relevant to focus]
    - [core rule paths from RULES_INDEX.md Core table]
 
    Find all existing customer-related classes, interfaces,
@@ -403,6 +404,7 @@ Task 2 — Integration points:
 recon-agent(prompt:
   "Before analysis, read these project docs:
    - .unikit/ARCHITECTURE.md
+   - [architecture topic paths relevant to focus]
    - [core rule paths from RULES_INDEX.md Core table]
 
    Find all SignalBus events (ISignal structs) related to
@@ -414,6 +416,7 @@ Task 3 — Save & controller patterns:
 recon-agent(prompt:
   "Before analysis, read these project docs:
    - .unikit/ARCHITECTURE.md
+   - [architecture topic paths relevant to focus]
    - [core rule paths from RULES_INDEX.md Core table]
 
    Check existing SaveSerializer implementations.

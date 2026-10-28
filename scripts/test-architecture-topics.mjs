@@ -265,8 +265,13 @@ const READERS = [
   { file: 'skills/unikit-plan/SKILL.md', mode: 'P', needs: [`${READER_MARK} only the root here`, 'load per phase in Step 5 (**Rule refresh per phase**)'] },
   { file: 'skills/unikit-implement/SKILL.md', mode: 'P', needs: [`${READER_MARK} only the root here`, 'load per phase in Step 3.0'] },
   { file: 'skills/unikit-execute/SKILL.md', mode: 'P', needs: [`${READER_MARK} the root now`, '`Load when` matches this task', 'when unsure, load', MISSING_WARN] },
+  { file: 'subagents/unikit-implement-worker.md', mode: 'P', needs: [`${READER_MARK} then load the topic files`, '`Load when` matches your phase', 'when unsure, load', MISSING_WARN] },
+  { file: 'subagents/unikit-implement-coordinator.md', mode: 'P', needs: [`${READER_MARK} only the root here`, '`Load when` matches this phase', MISSING_WARN] },
+  { file: 'subagents/unikit-plan-polisher.md', mode: 'P', needs: [`${READER_MARK} its topic files load lazily`, '`Load when` matches a phase you write or check', 'when unsure, load'] },
+  { file: 'skills/unikit-improve/SKILL.md', mode: 'F', needs: [`${READER_MARK} the root now`, 'matches any phase of the plan under review', 'when unsure, load', MISSING_WARN] },
+  { file: 'skills/unikit-improve/references/VALIDATOR.md', mode: 'F', needs: ['the `.unikit/ARCHITECTURE.md` root and the topic file the item names', 'the `.unikit/ARCHITECTURE.md` root and the matched topic'] },
 ];
-const READERS_FLOOR = 3;
+const READERS_FLOOR = 8;
 
 guard('ART-6', 'readers: every reader of the root says how it loads the topics', (t) => {
   t.ok(READERS.length >= READERS_FLOOR, `the table has at least ${READERS_FLOOR} readers (${READERS.length})`);
@@ -296,6 +301,14 @@ guard('ART-7', 'loading by phase: implement Step 3.0, the plan refresh, the refe
   for (const ref of ['mode-add.md', 'mode-ultra.md', 'ultra-direct.md', 'ultra-stateful.md']) {
     t.has(read(`skills/unikit-plan/references/${ref}`), 'Rule refresh per phase', `${ref} still points to the refresh`);
   }
+  const coordinator = read('subagents/unikit-implement-coordinator.md');
+  const phaseItem = coordinator.split('\n').find((l) => l.startsWith('- **Every phase you execute yourself, the first included**')) ?? '';
+  const firstItem = coordinator.split('\n').find((l) => l.startsWith('- **The first phase you execute yourself**')) ?? '';
+  t.has(firstItem, '`.unikit/ARCHITECTURE.md` (the root;', 'coordinator Bootstrap reads the root (F7)');
+  t.has(phaseItem, '`## Topics` in `.unikit/ARCHITECTURE.md`', 'coordinator loads the topic files in the phase item (F7)');
+  t.has(coordinator, 'Rules — once per phase, never per task.', 'coordinator keeps "once per phase"');
+  t.has(read('subagents/unikit-implement-worker.md'), 'your phase', 'worker loads by its phase');
+  t.has(read('subagents/unikit-plan-polisher.md'), 'load lazily', 'polisher loads lazily');
 });
 
 // ── ART-8 ───────────────────────────────────────────────────────────────────
@@ -306,6 +319,14 @@ guard('ART-8', 'sub-agent prompts carry topic paths, not "read the file"', (t) =
   const at = plan.indexOf('   - .unikit/ARCHITECTURE.md\n');
   t.ok(at >= 0 && plan.slice(at, at + 400).includes('[architecture topic paths relevant to <focus>'), 'the slot stands right under the root in the Phase A prompt');
   t.has(plan, 'the topic files matched to the phases found in Phase A', 'Phase B names the topic files');
+  const improve = read('skills/unikit-improve/SKILL.md');
+  const slots = improve.split('[architecture topic paths relevant to focus]').length - 1;
+  t.ok(slots === 3, `improve Step 2 prompts carry the topic-path slot three times (${slots})`);
+  t.has(improve, 'the architecture topic files matched to its focus', 'improve names the topic files in the recon rules');
+  t.has(improve, 'plus the topic paths matched to the task\'s focus', 'improve doc references');
+  const validator = read('skills/unikit-improve/references/VALIDATOR.md');
+  t.has(validator, 'root and the topic file the item names', 'the validator reads the root and the named topic');
+  t.has(validator, 'the matched topic', 'the validator rereads the matched topic');
 });
 
 // ── ART-9 ───────────────────────────────────────────────────────────────────

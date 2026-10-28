@@ -9693,7 +9693,8 @@ if [[ -z "$BX_WHY" ]]; then
     bx_max "BS-2:size" 9000 "$BS_REF"
 
     # (BS-3) improve's size
-    bx_max "BS-3:skill-size" 62000 "$UNIKIT_IMPROVE_SKILL"
+    # 62000 -> 62560: architecture topics, 2026-10-28 — the Bootstrap read of the topic files and the topic-path slot in the recon prompts (AD-12)
+    bx_max "BS-3:skill-size" 62560 "$UNIKIT_IMPROVE_SKILL"
 
     # (BX-1) the four branch files: no agent-filter markers, no engine words, all point at the contract
     for f in "$BP_REF" "$BM_REF" "$BC_REF" "$BS_REF"; do
