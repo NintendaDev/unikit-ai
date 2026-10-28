@@ -39,7 +39,7 @@ For each new `#include` of a header from another module:
 find Source/ -name '*.Build.cs' 2>/dev/null
 ```
 
-Defer to `.unikit/ARCHITECTURE.md` for the authoritative dependency rules. Flag circular dependencies.
+Defer to the `.unikit/ARCHITECTURE.md` root and the topic files matched to the changed files for the authoritative dependency rules. Flag circular dependencies.
 
 ### Public/Private directory split
 

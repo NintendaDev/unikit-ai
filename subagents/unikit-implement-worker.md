@@ -49,7 +49,7 @@ IMPORTANT: You are a subagent — you cannot spawn child agents. All quality che
 
 Before writing code:
 1. Read `.unikit/DESCRIPTION.md` — project specification
-2. Read `.unikit/ARCHITECTURE.md` — module boundaries
+2. Read `.unikit/ARCHITECTURE.md` — module boundaries. **Architecture topics:** then load the topic files listed under its `## Topics` whose `Load when` matches your phase — its name and every task you were handed; when unsure, load. A listed file that is missing → `WARN [architecture] topic file missing: .unikit/architecture/<slug>.md`, continue.
 3. Read `.unikit/memory/code/RULES_INDEX.md`. Load rules:
    - **RULES.md**: ALWAYS read `.unikit/RULES.md` first (highest priority). **Rule topics:** then load the topic files listed under its `## Topics` whose `Load when` matches your phase — its name and every task you were handed; when unsure, load. A listed file that is missing → `WARN [rules] topic file missing: .unikit/rules/<slug>.md`, continue.
    - **Core**: read the Core table. For EACH row where Required By = `all` or contains `{{self_name}}` — read that file from `.unikit/memory/code/core/` using the Read tool. Do NOT skip any matching row. Always re-read at skill start, never rely on prior conversation cache

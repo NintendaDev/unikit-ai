@@ -195,7 +195,7 @@ Before responding to the user — before any exploration, questions, or analysis
 Read ALL of these files in parallel before doing anything else:
 
 1. **`.unikit/DESCRIPTION.md`** — project description, tech stack, constraints
-2. **`.unikit/ARCHITECTURE.md`** — architecture decisions, folder structure, module rules
+2. **`.unikit/ARCHITECTURE.md`** — architecture decisions, folder structure, module rules. **Architecture topics:** the root; then the topic files listed under its `## Topics` whose `Load when` matches the subject of the work; when the work moves to another area, load the ones not loaded yet; when unsure, load. A missing file → `WARN [architecture] topic file missing: .unikit/architecture/<slug>.md`, continue.
 3. **Read `.unikit/memory/code/RULES_INDEX.md`**. Load rules:
    - **RULES.md**: ALWAYS read `.unikit/RULES.md` first (highest priority) **Rule topics:** load the topic files listed under its `## Topics` whose `Load when` matches the research topic; when the exploration moves to another area, load the ones not loaded yet; when unsure, load.
    - **Core**: read the Core table. For EACH row where Required By = `all` or contains `{{self_name}}` — read that file from `.unikit/memory/code/core/` using the Read tool. Do NOT skip any matching row. Always re-read at skill start, never rely on prior conversation cache

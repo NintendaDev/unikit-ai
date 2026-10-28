@@ -1143,6 +1143,7 @@ assert_contains "$RULES_INDEX" "code-style" "RULES_INDEX should contain seeded c
 # The rule-topics reading protocol lives in the template's Step 1 and reaches the project
 # only through this regeneration — the one end-to-end proof that the canon is delivered.
 assert_contains "$RULES_INDEX" "Project rule topics" "RULES_INDEX should carry the project rule-topics protocol (Step 1 canon)"
+assert_contains "$RULES_INDEX" "Project architecture topics" "RULES_INDEX should carry the project architecture-topics protocol (Step 1 canon)"
 
 # ─────────────────────────────────────────────────────
 # Test 5: (removed)
@@ -1300,6 +1301,15 @@ assert_exists "$GODOT_DIR/.claude/skills/unikit/references/ENGINE_RULES.md" \
   "ENGINE_RULES.md should be installed for unikit (godot)"
 assert_exists "$GODOT_DIR/.claude/skills/unikit-architecture/references/ENGINE_RULES.md" \
   "ENGINE_RULES.md should be installed for unikit-architecture (godot)"
+# unikit-architecture ships a scripts/ subdir (architecture-layout.mjs, which optimise runs) and two
+# mode references; the engine file lands next to them and replaces none of them.
+assert_exists "$GODOT_DIR/.claude/skills/unikit-architecture/scripts/architecture-layout.mjs" \
+  "architecture-layout.mjs should be delivered into the installed unikit-architecture skill (scripts/ subdir)"
+assert_exists "$GODOT_DIR/.claude/skills/unikit-architecture/references/mode-update.md" \
+  "mode-update.md should be delivered next to ENGINE_RULES.md in unikit-architecture"
+assert_exists "$GODOT_DIR/.claude/skills/unikit-architecture/references/mode-optimise.md" \
+  "mode-optimise.md should be delivered next to ENGINE_RULES.md in unikit-architecture"
+echo "  ✓ unikit-architecture: architecture-layout.mjs and both mode references delivered next to ENGINE_RULES.md"
 
 # Verify Godot rules are from the Godot template, not Unity
 assert_contains "$GODOT_DIR/.claude/skills/unikit/references/ENGINE_RULES.md" \

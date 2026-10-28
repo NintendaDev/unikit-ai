@@ -62,6 +62,7 @@ child_start install     bash "$SCRIPT_DIR/test-install.sh"
 child_start migrations  bash "$SCRIPT_DIR/test-migrations.sh"
 child_start extsel      bash "$SCRIPT_DIR/test-extension-selection.sh"
 child_start layout      bash "$SCRIPT_DIR/test-rules-layout.sh"
+child_start architecture-layout bash "$SCRIPT_DIR/test-architecture-layout.sh"
 child_start planbundle  bash "$SCRIPT_DIR/test-plan-bundle.sh"
 child_start genres      bash "$SCRIPT_DIR/test-genres.sh"
 child_start skillgroups bash "$SCRIPT_DIR/test-skill-groups.sh"
@@ -8719,7 +8720,8 @@ fi
 # cannot collide with content — asserted as the literal the skill spells out, so a rewrite
 # onto a different delimiter has to delete this line first.
 UR1_WHY=""
-grep -qF 'argument-hint: "[rule text or topic | numbered batch | compact | optimise | prune]"' "$EV_RULES_SKILL" || UR1_WHY+=" argument-hint-not-updated"
+# (the hint gained "a request about the rules in plain words" — architecture topics, 2026-10-28; RMI-4 pins that tail)
+grep -qF 'argument-hint: "[rule text or topic | numbered batch | compact | optimise | prune | a request about the rules in plain words]"' "$EV_RULES_SKILL" || UR1_WHY+=" argument-hint-not-updated"
 grep -qF 'numbered batch'  "$EV_RULES_SKILL" || UR1_WHY+=" no-batch-mode"
 grep -qF '`^\d+\. `'       "$EV_RULES_SKILL" || UR1_WHY+=" no-marker-rule"
 if [[ -z "$UR1_WHY" ]]; then
@@ -9005,7 +9007,8 @@ fi
 PRT_PRUNE_REF="$ROOT_DIR/skills/unikit-rules/references/mode-prune.md"
 PRT10_WHY=""
 grep -qF 'references/mode-prune.md' "$EV_RULES_SKILL" || PRT10_WHY+=" dispatch-missing"
-grep -qF 'Exactly `prune`?' "$EV_RULES_SKILL" || PRT10_WHY+=" not-exact-match"
+# (the decision tree now reads "the whole argument is `prune`" under "Parameter (checked first, never interpreted") — RMI-1 pins the rest)
+grep -qF 'the whole argument is `prune`' "$EV_RULES_SKILL" || PRT10_WHY+=" not-exact-match"
 grep -qF 'deletes a rule only in Mode E (`prune`)' "$EV_RULES_SKILL" || PRT10_WHY+=" skill:deletion-not-confined"
 grep -qF 'deletes a rule only in its `prune` mode' "$UNIKIT_VERIFY_CONTRACT" || PRT10_WHY+=" contract:deletion-not-confined"
 if [[ ! -s "$PRT_PRUNE_REF" ]]; then
@@ -9642,7 +9645,8 @@ if [[ -z "$BX_WHY" ]]; then
     # 65800 -> 66100: the 3.0.0 layout (a block per bridge in the Bootstrap); lowered again when the routing prose moves to a reference
     # 66100 -> 66300 for the 3.0.0 findings table, then 66300 -> 65830: the gate procedure moved into references/bridge-gates.md
     # 65830 -> 65950: the Bootstrap reads the order file and the routing file in one sentence (XE-2), as implement and execute do
-    bx_max "BC-1:skill-size" 65950 "$UNIKIT_VERIFY_SKILL"
+    # 65950 -> 66690: architecture topics, 2026-10-28 — the Step 0.2 read of the topic files, the 3.4 table check and the 3.6 suggestions (AD-12); the numbers live in the contract
+    bx_max "BC-1:skill-size" 66690 "$UNIKIT_VERIFY_SKILL"
 
     # (BC-2) verify's branch: headings, the two level sentences, and the one place of suggested_next
     BX_CHK=$((BX_CHK + 1))
@@ -9692,7 +9696,8 @@ if [[ -z "$BX_WHY" ]]; then
     bx_max "BS-2:size" 9000 "$BS_REF"
 
     # (BS-3) improve's size
-    bx_max "BS-3:skill-size" 62000 "$UNIKIT_IMPROVE_SKILL"
+    # 62000 -> 62560: architecture topics, 2026-10-28 — the Bootstrap read of the topic files and the topic-path slot in the recon prompts (AD-12)
+    bx_max "BS-3:skill-size" 62560 "$UNIKIT_IMPROVE_SKILL"
 
     # (BX-1) the four branch files: no agent-filter markers, no engine words, all point at the contract
     for f in "$BP_REF" "$BM_REF" "$BC_REF" "$BS_REF"; do
@@ -9728,7 +9733,8 @@ if [[ -z "$BX_WHY" ]]; then
     # 53600 -> 53900: the 3.0.0 layout (a block per bridge in the Bootstrap); lowered again when the routing prose moves to a reference
     # 53900 -> 54200 for the 3.0.0 findings table, then 54200 -> 53650: the console check moved into references/console-check.md
     # 53650 -> 53720: the bridge order moved from the config to .unikit/bridges.yaml and the routing file joined it in one Bootstrap sentence (XE-2)
-    bx_max "BM-6:implement-skill-size" 53720 "$UNIKIT_IMPLEMENT_SKILL"
+    # 53720 -> 54520: architecture topics, 2026-10-28 — the Step 1 and Step 3.0 reads of the topic files and the 3.7 delta form (AD-12)
+    bx_max "BM-6:implement-skill-size" 54520 "$UNIKIT_IMPLEMENT_SKILL"
     # (BC-4) a measurement the user skipped is a skipped row, not a blocker
     bx_has "BC-4:skipped-measure-is-a-blocker" '⏭️ SKIPPED' "$BC_REF"
     # (BC-5) a name stated in ## Not measured is accounted for — a measurement the user skipped is not a blocker
@@ -12620,6 +12626,26 @@ else
     echo "$BRL_OUTPUT" | sed 's/^/      /'
 fi
 
+# Part 7e8: architecture topics (family ART) and the request-driven modes of unikit-rules (family RMI)
+# ─────────────────────────────────────────────
+# The root and its topic files, the modes of unikit-architecture, every reader's way of loading the topics, the
+# growth sign of verify, the one-way border of the design review, the pointers and the docs
+# (scripts/test-architecture-topics.mjs). Pure fs over the sources; the helper itself is Part 13e.
+echo -e "\n${BOLD}Part 7e8: architecture topics (ART-*, RMI-*)${NC}"
+
+set +e
+ART_OUTPUT=$(node "$ROOT_DIR/scripts/test-architecture-topics.mjs" 2>&1)
+ART_EXIT=$?
+set -e
+
+if [[ $ART_EXIT -eq 0 ]]; then
+    pass "Architecture topic guards"
+    echo "$ART_OUTPUT" | tail -1 | sed 's/^/    /'
+else
+    fail "Architecture topic guards"
+    echo "$ART_OUTPUT" | sed 's/^/      /'
+fi
+
 # (BR-8a) The 2.x layout is gone from every text the package ships. Step 1: no literal path of the
 # single-server rules folder under .unikit/system/ in skills/, subagents/ or data/. SV-5 forbids an
 # unknown path under .unikit/system/ already; this names the reason and counts what it looked at.
@@ -14604,6 +14630,18 @@ if [[ $CHILD_EXIT -eq 0 ]]; then
     pass "plan-bundle helper tests passed"
 else
     fail "plan-bundle helper tests failed"
+fi
+
+# ─────────────────────────────────────────────
+# Part 13e: architecture-layout.mjs — the architecture optimise helper, run for real on fixture projects
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 13e: architecture-layout helper tests (TAL-1…TAL-15)${NC}"
+child_wait architecture-layout
+printf '%s\n' "$CHILD_OUTPUT"
+if [[ $CHILD_EXIT -eq 0 ]]; then
+    pass "architecture-layout helper tests passed"
+else
+    fail "architecture-layout helper tests failed"
 fi
 
 # ─────────────────────────────────────────────

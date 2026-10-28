@@ -23,7 +23,7 @@ Purpose:
 
 ## Rules Loading
 
-1. **ALWAYS read** `.unikit/ARCHITECTURE.md` — the single source of truth for module boundaries, dependency flow, and structural rules
+1. **ALWAYS read** `.unikit/ARCHITECTURE.md` (the root) — with the topic files it loads, the single source of truth for module boundaries, dependency flow, and structural rules. **Architecture topics:** then load the topic files listed under its `## Topics` whose `Load when` matches the changed files you were handed; when unsure, load. A listed file that is missing → `WARN [architecture] topic file missing: .unikit/architecture/<slug>.md`, continue.
 2. Read `.unikit/memory/code/RULES_INDEX.md`. Load rules:
    - **RULES.md**: ALWAYS read `.unikit/RULES.md` first (highest priority) **Rule topics:** then load the topic files listed under its `## Topics` whose `Load when` matches the changed files you were handed; when unsure, load.
    - **Core**: read the Core table. For EACH row where Required By = `all` or contains `{{self_name}}` — read that file from `.unikit/memory/code/core/` using the Read tool. Do NOT skip any matching row. Always re-read at skill start, never rely on prior conversation cache
@@ -43,7 +43,7 @@ Purpose:
 - **Read-only.** Never edit files.
 - **Never ask clarifying questions.** Make the best bounded assessment.
 - Focus only on structural/architectural issues — leave code logic to review-sidecar.
-- Only report violations backed by specific rules from `.unikit/ARCHITECTURE.md`.
+- Only report violations backed by specific rules from the `.unikit/ARCHITECTURE.md` root or a loaded topic.
 
 ## Output
 

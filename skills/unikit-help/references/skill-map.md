@@ -42,13 +42,16 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   or `/unikit-gd-brainstorm` / `/unikit-gd-spec` for the design track.
 
 ### unikit-architecture
-- **Purpose:** Generate / update `.unikit/ARCHITECTURE.md` — folder layout, dependency rules,
-  module communication, chosen architecture pattern.
-- **When:** "describe the architecture", "which architecture should I use", or to refresh it.
-- **In:** an optional pattern name (else auto-detect). Reads DESCRIPTION.md + the project scan.
-- **Out:** `.unikit/ARCHITECTURE.md`.
+- **Purpose:** Generate / update / reorganize `.unikit/ARCHITECTURE.md` — folder layout, dependency
+  rules, module communication, chosen architecture pattern. A large file is split into a root and topic
+  files in `.unikit/architecture/` that load only when the work matches them.
+- **When:** "describe the architecture", "which architecture should I use", "update the architecture",
+  "the architecture file is too big", or to refresh it.
+- **In:** a mode — `generate`, `update [text]` or `optimise` — by its keyword or by a request in plain
+  words; an optional pattern name (else auto-detect). Reads DESCRIPTION.md + the project scan.
+- **Out:** `.unikit/ARCHITECTURE.md`, and the topic files in `.unikit/architecture/` when it has topics.
 - **Required-context, auto-run by `/unikit`.** Standalone editor afterward. Before: `/unikit`.
-  After: read by almost every skill's bootstrap.
+  After: read by almost every skill's bootstrap — the root, and the topic files by the work.
 
 ---
 
@@ -479,6 +482,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **`prune` mode:** `/unikit-rules prune` lists deletion candidates with evidence — "delete everything
   proposed" removes them in one answer, or choose by id — and resolves contradictions in a separate
   question (keep the right side or merge both into one rule); a partly outdated rule is never deleted.
+- **By keyword or in plain words:** each mode is also started by a request in plain words; the keyword stays the exact form.
 - **Every mode announces itself** before reading anything, in one plain sentence — which mode
   and what it is about to do — and starts every step with one short line about what it is doing now.
 - **Optional.** After: `/unikit-memory migrate-rules` (promote a mature rule into the knowledge base).

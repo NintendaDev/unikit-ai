@@ -181,7 +181,7 @@ Check if `--strict` is in `$ARGUMENTS`. If yes — enable strict mode (see Stric
 - Read the **plan manifest** — `.unikit/code/plans/<folder>/PLAN.md` for a folder plan, `.unikit/code/PLAN.md` for a flat fast-mode plan. In fast and full one file carries everything: `## Overview`, `## Settings`, the `## Checklist` with phases, dependencies and completion status, and `## Technical Context` (constraints, interfaces, key patterns, dependency graph, files, editor targets, DI bindings). **In an ultra bundle it does not:** the manifest carries the checklist and only the cross-phase part of `## Technical Context`, while every task's own detail lives in its phase file — the reading depth is stated in `.unikit/system/ultra-plan-read.md`. For the full section list see `{{skills_dir}}/unikit-plan/references/TASK-FORMAT.md` → *Plan Manifest Template*; it is not restated here.
 - If the manifest has a `## Based on` section pointing to a research, do **NOT** read that research's `RESEARCH.md` as a substitute for the plan's own context. The plan's `## Technical Context` is authoritative and supersedes the research summary (`/unikit-plan`: it was synthesized from the research and then verified against the code). The research is read for **one** purpose only — the drift check below.
 - Read **`.unikit/DESCRIPTION.md`** — project specification, tech stack
-- Read **`.unikit/ARCHITECTURE.md`** — project structure, dependency rules, modules, namespace conventions
+- Read **`.unikit/ARCHITECTURE.md`** — project structure, dependency rules, modules, namespace conventions. **Architecture topics:** the root now; then the topic files listed under its `## Topics` whose `Load when` matches a file the plan's tasks changed — their `Files:` lines and the diff under verification; when unsure, load (`RULES_INDEX.md` → Step 1). A listed file that is missing is reported in 3.4.
 - Read **`.unikit/ROADMAP.md`** (if present) — strategic milestones for alignment checks
 
 **Research drift check** — only when `## Based on` has at least one entry. Read `.unikit/system/research-link.md` now, and only now, and run its `## Checking an entry` against every entry. Name it and follow it; never restate it here — one contract, one place.
@@ -463,6 +463,7 @@ Check `.unikit/ARCHITECTURE.md`:
 - New modules or directories → should be in the project tree
 - New module boundaries → should be reflected in dependency rules
 - Changes to folder structure → should be updated
+- Topic table ↔ `.unikit/architecture/`: a listed file missing, or a file no row lists → `WARN [architecture] topic table: <slug or file> …`; growth → `CONTEXT-GATES-AND-OWNERSHIP.md` → `## Architecture growth sign`, reported in 3.6
 
 ### 3.5 Context Gates (Architecture / Rules / Roadmap)
 
@@ -471,7 +472,7 @@ Apply the canonical contract from `{{skills_dir}}/{{self_name}}/references/CONTE
 Evaluate and report each gate explicitly:
 
 - **Architecture gate**
-  - Pass: implementation follows module/layer boundaries, dependency rules, and anti-patterns from `.unikit/ARCHITECTURE.md`
+  - Pass: implementation follows module/layer boundaries, dependency rules, and anti-patterns from the `.unikit/ARCHITECTURE.md` root and the topics loaded for the checked files
   - Warn: architecture document appears stale or mapping is ambiguous
   - Fail: clear boundary/dependency violation (e.g. `Assets/Modules/` → `Assets/Game/`)
 
@@ -506,7 +507,7 @@ Logging/reporting format:
 If you detect that a context artifact is stale, missing, or ambiguous, report it as a drift finding and provide the owner-command remediation:
 
 - `DESCRIPTION.md` drift → suggest `/unikit` (or note that `/unikit-implement` should have updated it)
-- `ARCHITECTURE.md` drift → suggest `/unikit-architecture`
+- `ARCHITECTURE.md` drift → suggest `/unikit-architecture update`; growth or a topic table ↔ files mismatch → suggest `/unikit-architecture optimise` (growth sign: `CONTEXT-GATES-AND-OWNERSHIP.md`)
 - `RULES.md` drift → suggest `/unikit-rules` to add missing conventions
 - `## Topics` table ↔ `.unikit/rules/` drift (a listed file missing, a file not listed) → suggest `/unikit-rules optimise`
 - `ROADMAP.md` drift → suggest `/unikit-roadmap check` (or `/unikit-roadmap <update request>`)

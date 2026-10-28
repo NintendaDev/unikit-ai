@@ -21,7 +21,7 @@ pillar / rule** (`gd-critique` — no citation → downgrade to Suggestion).
 | **pillar alignment** | Does the system serve ≥1 pillar? Does anything contradict a pillar (lower-numbered wins)? | Critical (contradicts a pillar) |
 | **systems-math** | Try to BREAK the numbers: find a dominant strategy, an infinite/positive-feedback loop, a degenerate min-max line, a cost curve that inverts, a value at zero/max/negative that breaks a formula, or an intransitivity that collapses to one best choice. "Ranges look fine" is not a result — name the exploit or state the line you tried and why it fails. | Critical (dominant strategy / infinite loop); Major (untuned range / unhandled extreme) |
 | **scope** | Is the S/M/L/XL realistic against the ambition and the team constraint? | Major (scope/ambition mismatch) |
-| **feasibility** | Reads `DESCRIPTION.md`/`ARCHITECTURE.md` (the **single** sanctioned code-context read) to flag implementability risks against the actual stack/architecture. | Critical (unimplementable on this stack) |
+| **feasibility** | Reads `DESCRIPTION.md`, the `ARCHITECTURE.md` root and `.unikit/architecture/*.md` (the **single** sanctioned code-context read, a fixed set of paths) to flag implementability risks against the actual stack/architecture. | Critical (unimplementable on this stack) |
 | **fantasy-delivery** | Does section B's promised feeling actually arise from the mechanics in C/D/E? Does the system serve ≥1 SDT need (autonomy/competence/relatedness)? Attack the gap between the promised fantasy and what the rules produce. | Major (mechanics don't deliver the stated fantasy); Critical (system serves no need and no pillar) |
 
 ## Provenance lens (imported & code-reconstructed systems)

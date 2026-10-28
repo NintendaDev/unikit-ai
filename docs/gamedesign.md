@@ -672,7 +672,8 @@ rather than opening the boundary generally (together with the `implemented_versi
 writeback above they make up the boundary's three sanctioned exceptions):
 
 1. The **feasibility lens** inside `/unikit-gd-review` may read exactly
-   `.unikit/DESCRIPTION.md` and `.unikit/ARCHITECTURE.md` — never `.unikit/code/` or
+   `.unikit/DESCRIPTION.md`, the `.unikit/ARCHITECTURE.md` root and the topic files in
+   `.unikit/architecture/` — a fixed set of paths, never `.unikit/code/` or
    actual source — to flag a design the real tech stack can't support (a Critical
    finding, evidenced by the line it relied on).
 2. The **brownfield research verbs** (`/unikit-gd-recon`, the `/unikit-gd-explore`

@@ -136,11 +136,15 @@ Silently load — do not narrate:
 
 **One-way boundary:** never read `.unikit/code/`, project source, or build
 artifacts. **Single sanctioned exception:** the **feasibility lens** may read
-**only** `.unikit/DESCRIPTION.md` and `.unikit/ARCHITECTURE.md` (two files, exact
-paths) to flag implementability risks. It must NOT read `.unikit/code/`, `Assets/`,
-or any source/build artifact — doing so violates the one-way boundary. A
-feasibility finding cites the line it relied on in DESCRIPTION/ARCHITECTURE as its
-evidence.
+**only** `.unikit/DESCRIPTION.md`, the `.unikit/ARCHITECTURE.md` root and the topic
+files `.unikit/architecture/*.md` that its `## Topics` lists (a fixed set of
+paths, no other project file) to flag implementability risks. **Architecture
+topics:** the root; then the topic files whose `Load when` matches the subject of
+the assessment; when unsure, load; a missing file → `WARN [architecture] topic file
+missing: .unikit/architecture/<slug>.md`, continue. It must NOT read `.unikit/code/`,
+`Assets/`, or any source/build artifact — doing so violates the one-way boundary. A
+feasibility finding cites the line and the file it relied on (DESCRIPTION, the
+root or a topic file) as its evidence.
 
 <!-- unikit:extension-point:bootstrap -->
 
@@ -414,8 +418,8 @@ the called skill does next.
   (research-bucket mode) — so the pipeline `review → [explore] → apply` runs on the one
   file. That cross-skill write is explore's only write to this folder.
 - **Read-only:** every design document (sections A–K, `GAME.md`, all of `GD-IDS.yaml`
-  including `doc_status`); plus `DESCRIPTION.md`/`ARCHITECTURE.md` for the feasibility
-  lens only. review makes **no** design-surface write — only the report file.
+  including `doc_status`); plus `DESCRIPTION.md`, the `ARCHITECTURE.md` root and
+  `.unikit/architecture/*.md` for the feasibility lens only. review makes **no** design-surface write — only the report file.
 - **Not this skill:** consistency/impact checks → `unikit-gd-verify`; **applying** the
   apply-ready bucket → `unikit-gd-apply`; **developing** the research bucket →
   `unikit-gd-explore`; authoring → `unikit-gd-system` (systems) / `unikit-gd-spec`

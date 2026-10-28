@@ -66,7 +66,7 @@ Missing type hints are a warning (strict mode: failure).
 
 Godot has **no compile-time module boundary enforcement**. Skip automated boundary checks.
 
-Defer to `.unikit/ARCHITECTURE.md` for convention-based boundary rules if available.
+Defer to the `.unikit/ARCHITECTURE.md` root and the topic files matched to the changed files for convention-based boundary rules if available.
 
 ## Editor Target Checks
 

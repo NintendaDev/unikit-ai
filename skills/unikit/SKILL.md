@@ -102,7 +102,7 @@ There is no keyword and no argument for this mode; it is chosen by intent alone,
 
 **Mode dispatch — returning project.** If `.unikit/config.yaml` **exists** and the intent of the prompt is not to actualize the configuration (the mode above), load `{{skills_dir}}/{{self_name}}/references/mode-menu.md` and follow it: it shows the state of the project and offers the actions to choose from, so the full bootstrap runs only when the user picks it. On entering the mode print `INFO [config] returning-project menu`. The text of the prompt is not parsed here; the menu keeps it as it is. As with the mode above there is no keyword and no argument; if `.unikit/config.yaml` does **not** exist the mode never applies.
 
-All unikit artifacts live under fixed default paths (`.unikit/DESCRIPTION.md`, `.unikit/ARCHITECTURE.md`, `.unikit/RULES.md`, `.unikit/memory/`, `.unikit/code/plans/`, etc.) — see `{{skills_dir}}/{{self_name}}/references/config-template.yaml` for the canonical `language` / `workflow` / `git` schema.
+All unikit artifacts live under fixed default paths (`.unikit/DESCRIPTION.md`, `.unikit/ARCHITECTURE.md` with its topic files in `.unikit/architecture/`, `.unikit/RULES.md`, `.unikit/memory/`, `.unikit/code/plans/`, etc.) — see `{{skills_dir}}/{{self_name}}/references/config-template.yaml` for the canonical `language` / `workflow` / `git` schema.
 
 ---
 
@@ -463,7 +463,7 @@ Knowledge base rules for the project. Located in `.unikit/memory/`.
 ## Override Priority (highest wins)
 
 1. **`.unikit/RULES.md`** and its topic files in `.unikit/rules/` — project-specific overrides (always win)
-2. **`.unikit/ARCHITECTURE.md`** — project architecture decisions
+2. **`.unikit/ARCHITECTURE.md`** and its topic files in `.unikit/architecture/` — project architecture decisions
 3. **`.unikit/memory/code/core/*.md`** — universal best practices
 4. **`.unikit/memory/code/stack/*.md`** — framework-specific knowledge
 
@@ -767,7 +767,7 @@ Generate `.unikit/DESCRIPTION.md` with content adapted to what was actually disc
 - [Notable patterns: DI lifecycle, factory pattern, event bus, etc.]
 
 ## Architecture
-See `.unikit/ARCHITECTURE.md` for detailed architecture guidelines.
+See `.unikit/ARCHITECTURE.md` (and its topic files in `.unikit/architecture/`) for detailed architecture guidelines.
 
 ## Non-Functional Requirements
 - **Platform:** [target platforms]
@@ -841,7 +841,7 @@ as the basis for the structure section, but only include directories and files t
 
 ### Step 10: Delegate Architecture Generation
 
-After Step 9 finishes, generate `.unikit/ARCHITECTURE.md` by delegating to `/unikit-architecture`. Step 11 (Print Setup Summary) runs in the same response immediately after `/unikit-architecture` returns — do not stop in between.
+After Step 9 finishes, generate or update `.unikit/ARCHITECTURE.md` by delegating to `/unikit-architecture`. Step 11 (Print Setup Summary) runs in the same response immediately after `/unikit-architecture` returns — do not stop in between.
 
 **Invariant — always via subagent:** route `/unikit-architecture` through an `Agent()` call. Never invoke it inline in this skill's own context. Architecture generation is token-heavy (ENGINE_RULES, project scan, DESCRIPTION, RULES, RULES_INDEX, existing ARCHITECTURE) and must not pollute the `/unikit` context before Step 11 runs.
 
@@ -855,7 +855,7 @@ Agent(
 )
 ```
 
-**Wait for the `Agent()` call to return** before proceeding to Step 11.
+**Wait for the `Agent()` call to return** before proceeding to Step 11. The sub-skill may ask the user (the pattern in generate, the layout offer in update); wait for it to return before Step 11.
 
 **Fallback** (only if the `Agent` tool is unavailable in the current environment): invoke `unikit-architecture` with no arguments in this skill's context (`## Skill calls`), wait for it to return, then proceed to Step 11. Unlike Step 9.8, Step 11's summary explicitly lists `.unikit/ARCHITECTURE.md` as a generated artifact — the flow must complete in the same turn, so inline execution is the mandatory fallback here.
 
@@ -875,7 +875,7 @@ Project context configured!
 Config file:        .unikit/config.yaml (edit to customize language, git, workflow)
 Project description: .unikit/DESCRIPTION.md
 Project map:        AGENTS.md
-Architecture:       .unikit/ARCHITECTURE.md
+Architecture:       .unikit/ARCHITECTURE.md (topic files in .unikit/architecture/, when it has any)
 Memory rules:       .unikit/memory/ (see RULES_INDEX.md)
 
 Next steps:
@@ -928,5 +928,5 @@ instead); do not gate on "gd-skills are installed" — the wizard installs all s
 ## Artifact Ownership
 
 - **Primary:** `.unikit/config.yaml`, `.unikit/DESCRIPTION.md`, `AGENTS.md`
-- **Delegated:** `.unikit/ARCHITECTURE.md` via `/unikit-architecture`
+- **Delegated:** `.unikit/ARCHITECTURE.md` (and `.unikit/architecture/`, when it has topics) via `/unikit-architecture`
 - **Read-only:** `.unikit/RULES.md`, engine project settings (per ENGINE_RULES.md)

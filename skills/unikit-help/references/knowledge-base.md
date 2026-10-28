@@ -17,7 +17,7 @@ Rules live under `.unikit/memory/<module>/<tier>/` and are listed in a per-modul
 with the **highest priority**. A long `RULES.md` can be split into common rules and topic files
 in `.unikit/rules/` that load only when the work matches their `Load when`.
 
-Priority (highest wins): `.unikit/RULES.md` (+ its topic files) → `.unikit/ARCHITECTURE.md` →
+Priority (highest wins): `.unikit/RULES.md` (+ its topic files) → `.unikit/ARCHITECTURE.md` (+ its topic files) →
 module `core` rules → module `stack`/`library` rules.
 
 ---
@@ -118,7 +118,8 @@ Relevant to the dev pipeline:
    one line, one directive. A growing file can be split into topics that load only when the
    work matches — `/unikit-rules optimise`, which the skill also offers by itself;
    `/unikit-rules compact` shortens rules in place, and `/unikit-rules prune` deletes the ones
-   you pick from an evidenced candidate list.
+   you pick from an evidenced candidate list. Each mode is also started by a request in plain
+   words; the keyword stays the exact form.
 2. **Promote** — `/unikit-memory migrate-rules` moves a matured `RULES.md` entry into the proper
    `core`/`stack`/`library` rule file (with conflict handling and a `no-migrate` tag option).
 3. **Generate / research** — `/unikit-memory <description or source>` creates a full rule. It

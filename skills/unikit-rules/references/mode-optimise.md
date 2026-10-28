@@ -2,7 +2,7 @@
 
 `unikit-rules` reads this file in two cases, and never otherwise:
 
-- **Explicit** — the whole argument is `optimise` or `optimize`, in any letter case (SKILL.md → Step 1, which has already printed the Mode D announcement before this file was read). It works in every state: it reorganizes a `legacy` file, turns a `flat` one into topics and removes its marker, and regroups a `topics` one.
+- **Explicit** — the request asked for it: the whole argument is `optimise` or `optimize` (any letter case), or the request says so in plain words (SKILL.md → Step 1, which has already printed the Mode D announcement before this file was read). It works in every state: it reorganizes a `legacy` file, turns a `flat` one into topics and removes its marker, and regroups a `topics` one.
 - **Offer** — the Step 3 state was `legacy`: after the Step 6 report of an add (Modes A and B), or before compaction (Mode C). Follow `## Offer` below.
 
 The layout — the two shapes of the root, the header paragraph, the table row, the topic file, the marker — is SKILL.md → `## Layout of the rule files`; the placement criteria are SKILL.md → Step 4. This file only moves rules into that layout.

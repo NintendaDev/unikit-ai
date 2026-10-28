@@ -84,7 +84,7 @@ The following always stay in English across ALL artifacts — UI, generated file
 - File names, folder names, file paths, and branch names
 - Code snippets, code examples, and inline code blocks
 - Code documentation (XML docs, JSDoc, inline comments in source code)
-- Architecture documentation (`.unikit/ARCHITECTURE.md`)
+- Architecture documentation (`.unikit/ARCHITECTURE.md` and the topic files in `.unikit/architecture/`)
 - JSON keys and machine-readable config files (e.g., `docs-config.json`, `config.yaml`)
 - Framework, library, and package names (e.g., Zenject, UniTask, DOTween)
 - Markdown anchor IDs (for URL stability)

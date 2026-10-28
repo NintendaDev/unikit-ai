@@ -175,7 +175,9 @@ Bootstrap loads coding rules and principles ONCE upfront so the fix can be imple
 3. `.unikit/memory/code/RULES_INDEX.md` — index of core/stack rules
 4. For EACH row in the Core table where Required By = `all` or contains `unikit-fix` — read that file from `.unikit/memory/code/core/` using the Read tool.
 
-Stack rules are loaded on-demand later — when investigation reveals which framework is involved (e.g. R3, Zenject, UniTask). At the same point, load the topic files listed under `## Topics` in `.unikit/RULES.md` whose `Load when` matches the area the investigation localized — the files, types or feature the bug lives in; when unsure, load (`RULES_INDEX.md` → Step 1).
+Also read `.unikit/ARCHITECTURE.md` (the root) — Steps 4.4 and 4.5 check the fix against it. **Architecture topics:** the root now; once the error is localized, load the topic files listed under its `## Topics` whose `Load when` matches the files you localized; when unsure, load. A listed file that is missing → `WARN [architecture] topic file missing: .unikit/architecture/<slug>.md`, continue.
+
+Stack rules are loaded on-demand later — when investigation reveals which framework is involved (e.g. R3, Zenject, UniTask). At the same point, load the topic files listed under `## Topics` in `.unikit/RULES.md` and in `.unikit/ARCHITECTURE.md` whose `Load when` matches the area the investigation localized — the files, types or feature the bug lives in; when unsure, load (`RULES_INDEX.md` → Step 1).
 
 **The fix runs against a plan whose manifest has `## Experiment Context`** (the session started from such a plan, or the prompt carries a `Prototype plan:` note) → read `.unikit/system/prototype-profile.md` now, once, and follow its `## Role: quality and the rest` — Steps 5 and 7.3, and the prompt of a delegate, follow it. Missing or unreadable → `WARN [prototype] profile contract missing — fixing as for an ordinary plan; run unikit-ai update`.
 
@@ -484,12 +486,12 @@ If the engine has no companion file mechanism — skip this check.
 
 ### 4.4 Module Boundary Check
 
-Verify the fix doesn't violate module boundaries defined in `.unikit/ARCHITECTURE.md`.
+Verify the fix doesn't violate module boundaries defined in the `.unikit/ARCHITECTURE.md` root and the loaded topics.
 For each modified source file in a module directory: check that imports don't reference forbidden dependency directions (as specified in the architecture doc).
 
 ### 4.5 Naming Convention Check
 
-For any new source files, verify naming/namespace follows the convention table from `.unikit/ARCHITECTURE.md`.
+For any new source files, verify naming/namespace follows the convention table from the `.unikit/ARCHITECTURE.md` root and the loaded topics.
 
 ---
 

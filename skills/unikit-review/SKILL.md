@@ -60,7 +60,7 @@ and use that model, no effort.
 ## Step 1: Load rules
 
 Read (they always apply):
-- `.unikit/ARCHITECTURE.md` — module boundaries, dependency rules
+- `.unikit/ARCHITECTURE.md` — module boundaries, dependency rules. **Architecture topics:** the root always; then the topic files listed under its `## Topics` whose `Load when` matches a reviewed file — its path, type or area (Step 3); when unsure, load. A listed file that is missing → `WARN [architecture] topic file missing: .unikit/architecture/<slug>.md`, continue.
 - `.unikit/ROADMAP.md` (if present) — milestone alignment
 - `.unikit/system/gate-result-contract.md` — schema for the machine-readable `unikit-gate-result` block emitted in Step 5. If missing or unreadable, do not block: the Step 5 gate-result section is self-sufficient on the schema and degrades gracefully (see there).
 
@@ -120,11 +120,11 @@ Read `.unikit/skill-context/{{self_name}}/SKILL.md` if it exists — project-lev
 
 Now that target code is available, scan it for framework markers from the **Stack** section of `RULES_INDEX.md`. Each entry lists which keywords/types indicate relevance ("Load When" column). Load only matching rule files. If no markers match — skip stack rules entirely.
 
-**Rule topics.** In the same pass, load the topic files listed under `## Topics` in `.unikit/RULES.md` whose `Load when` matches the reviewed files — their paths, types, area; when unsure, load (`RULES_INDEX.md` → Step 1). They apply in Step 4 together with the root's rules.
+**Rule topics.** In the same pass, load the topic files listed under `## Topics` in `.unikit/RULES.md` **and in `.unikit/ARCHITECTURE.md`** whose `Load when` matches the reviewed files — their paths, types, area; when unsure, load (`RULES_INDEX.md` → Step 1). They apply in Step 4 together with the root's rules.
 
 ## Step 4: Analyze
 
-Apply **all loaded rules** (core + stack + project + ARCHITECTURE.md) uniformly, regardless of mode.
+Apply **all loaded rules** (core + stack + project + the ARCHITECTURE.md root and its loaded topics) uniformly, regardless of mode.
 
 For each file or diff hunk, check:
 - **Rule violations** — every loaded rule against the code
@@ -147,7 +147,7 @@ Record exact line numbers (or commit hash + file:line for diff modes) and releva
 
 ### General checklist
 
-Always run these checks in addition to project rules. If a finding from the checklist contradicts a loaded project/core/stack rule or ARCHITECTURE.md (i.e. the code follows project conventions) — **suppress the finding**, it is not an issue.
+Always run these checks in addition to project rules. If a finding from the checklist contradicts a loaded project/core/stack rule, the ARCHITECTURE.md root or a loaded topic (i.e. the code follows project conventions) — **suppress the finding**, it is not an issue.
 
 **Correctness:**
 - [ ] Logic errors or bugs
