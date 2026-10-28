@@ -1143,6 +1143,7 @@ assert_contains "$RULES_INDEX" "code-style" "RULES_INDEX should contain seeded c
 # The rule-topics reading protocol lives in the template's Step 1 and reaches the project
 # only through this regeneration — the one end-to-end proof that the canon is delivered.
 assert_contains "$RULES_INDEX" "Project rule topics" "RULES_INDEX should carry the project rule-topics protocol (Step 1 canon)"
+assert_contains "$RULES_INDEX" "Project architecture topics" "RULES_INDEX should carry the project architecture-topics protocol (Step 1 canon)"
 
 # ─────────────────────────────────────────────────────
 # Test 5: (removed)

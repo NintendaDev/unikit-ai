@@ -194,7 +194,7 @@ Silently load the project knowledge base before any exploration — do not narra
 #### Required reads (always, every time, in parallel)
 
 1. **`.unikit/DESCRIPTION.md`** — project description, tech stack, constraints
-2. **`.unikit/ARCHITECTURE.md`** — architecture decisions, folder structure, module rules, dependency directions
+2. **`.unikit/ARCHITECTURE.md`** — architecture decisions, folder structure, module rules, dependency directions. **Architecture topics:** only the root here; the topic files its `## Topics` table lists load per phase in Step 5 (**Rule refresh per phase**) and, for the recon tasks below, by their focus.
 3. **Read `.unikit/memory/code/RULES_INDEX.md`**. Load rules:
    - **RULES.md**: ALWAYS read `.unikit/RULES.md` first (highest priority). **Rule topics:** only the root here — its topic files load per phase in Step 5 (**Rule refresh per phase**), or earlier when the Step 4 exploration needs one.
    - **Core**: read the Core table. For EACH row where Required By = `all` or contains `{{self_name}}` — read that file from `.unikit/memory/code/core/` using the Read tool. Do NOT skip any matching row. Always re-read at skill start, never rely on prior conversation cache
@@ -409,6 +409,7 @@ Every task gets the same prompt shape; only the focus and the rule paths change:
 recon-agent(prompt:
   "Before analysis, read these project docs:
    - .unikit/ARCHITECTURE.md
+   - [architecture topic paths relevant to <focus> — from the root's `## Topics`]
    - [core rule paths relevant to <focus> — from the RULES_INDEX.md Core table]
    - [stack rule paths, when <focus> involves a specific framework]
 
@@ -429,7 +430,7 @@ When `research_linked = true`: use the research's `## Active Summary` — and `C
 
 When `research_linked = false`: perform full technical analysis from scratch.
 
-Launch an Explore task for detailed technical analysis using findings from Phase A. Include doc references (ARCHITECTURE.md + all core/stack rules from Bootstrap). The task should:
+Launch an Explore task for detailed technical analysis using findings from Phase A. Include doc references (the ARCHITECTURE.md root, the topic files matched to the phases found in Phase A, and all core/stack rules from Bootstrap). The task should:
 1. Read source code of existing similar features found in Phase A
 2. Extract interface signatures, constructor dependencies, DI bindings from installers
 3. Identify patterns the new feature must follow (naming, structure, registration)
@@ -553,7 +554,7 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
 
    **PR checkpoint task.** When `pr_checkpoints = true` and there are two or more modules, the last task of every module but the last is a PR checkpoint task carrying `PR checkpoint: <module name> → <base>` in the position `Files:` occupies; under `Testing: yes` and `Test checkpoints: phase | task` the module's test-checkpoint task stands right before it. Grammar, labels and placement: `TASK-FORMAT.md` → `### PR checkpoint task grammar`.
 
-   **Rule refresh per phase.** Before you draft the tasks of each phase — in ultra, before you write each phase file (`mode-ultra.md` Step F) — match the phase's name and the tasks you are about to write against the `Load when` column of the `## Topics` table in `.unikit/RULES.md` and the Stack table of `.unikit/memory/code/RULES_INDEX.md`. Read only the topic files and stack rules not loaded yet — keep their paths in `loaded_rules`, the same delta `/unikit-implement` Step 3.0 computes; when unsure, load. A listed topic file that is missing → `WARN [rules] topic file missing: .unikit/rules/<slug>.md`, continue. Nothing is re-read between the tasks of one phase.
+   **Rule refresh per phase.** Before you draft the tasks of each phase — in ultra, before you write each phase file (`mode-ultra.md` Step F) — match the phase's name and the tasks you are about to write against the `Load when` column of the `## Topics` tables in `.unikit/RULES.md` and in `.unikit/ARCHITECTURE.md` (read at Step 0.5; a root without that table has no topics) and the Stack table of `.unikit/memory/code/RULES_INDEX.md`. Read only the topic files and stack rules not loaded yet — keep their paths in `loaded_rules`, the same delta `/unikit-implement` Step 3.0 computes; when unsure, load. A listed topic file that is missing → `WARN [rules] topic file missing: .unikit/rules/<slug>.md` (an architecture topic: `WARN [architecture] topic file missing: .unikit/architecture/<slug>.md`), continue. Nothing is re-read between the tasks of one phase.
 
 6. **`## Commit Plan`** — when 5+ tasks, checkpoints every 3-5 tasks, each mirrored by a decorative `<!-- Commit checkpoint: tasks X-Y -->` marker in `## Checklist`; `/unikit-implement` does not parse it (`TASK-FORMAT.md`). A range never crosses a module boundary.
 
@@ -619,5 +620,5 @@ Beyond Step 5 item 5 and `references/TASK-FORMAT.md`: name a dependency on anoth
 1. **NO report tasks** — don't create summary/report tasks at the end of a plan
 2. **Right granularity** — not too big (overwhelming), not too small (noise). A task should be completable in one focused session
 3. **Dependencies matter** — order tasks so they can be done sequentially without blockers
-4. **Respect module boundaries** — follow the dependency rules of `.unikit/ARCHITECTURE.md`; never invent a direction it does not state
+4. **Respect module boundaries** — follow the dependency rules of the `.unikit/ARCHITECTURE.md` root and of the topic loaded for the phase; never invent a direction it does not state
 5. **A plan is intent, not inventory — no tool name ever reaches it.** Names live in the live catalog and in the `evidence` column of a findings row, and nowhere else. No bridge id reaches the plan either: the `bridge` cell of a findings row is written by an executor. The planner never lifts an obligation on the executor's behalf — no pre-declared gate, no "this server cannot do X", no `⏸️ MANUAL` written in advance

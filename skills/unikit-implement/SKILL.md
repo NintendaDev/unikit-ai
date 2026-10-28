@@ -235,7 +235,7 @@ Then reconcile plan state with reality:
 - Read the **plan manifest** — `.unikit/code/plans/<folder>/PLAN.md`, or the flat `.unikit/code/PLAN.md`. Its section list: `{{skills_dir}}/unikit-plan/references/TASK-FORMAT.md` → *Plan Manifest Template*. In an ultra bundle every task's detail lives in its phase file; the reading depth is set by `.unikit/system/ultra-plan-read.md`.
 - `## Based on` names a research → do **NOT** read its `RESEARCH.md` as a substitute for the plan's own context: the plan's `## Technical Context` supersedes it. The research is read for **one** purpose only — the drift check below.
 - Read **`.unikit/DESCRIPTION.md`** — project specification, tech stack, constraints
-- Read **`.unikit/ARCHITECTURE.md`** — project structure, tech stack, and pointers to detailed rules
+- Read **`.unikit/ARCHITECTURE.md`** — project structure, tech stack, and pointers to detailed rules. **Architecture topics:** only the root here; the topic files its `## Topics` table lists load per phase in Step 3.0.
 
 **Research drift check** — only when `## Based on` has at least one entry. Read `.unikit/system/research-link.md` now, and only now, and run its `## Checking an entry` against every entry.
 
@@ -301,7 +301,7 @@ No rules means no known exceptions, never no capabilities. Absence never disable
 7. `.unikit/system/ultra-plan-read.md` — **only when Step 0.1 found the marker `<!-- unikit:plan-mode:ultra -->`**: read it once — here, unless Step 0.1 already did — and follow it for detection, per-consumer reading depth, what is mutable during execution, and the blocking integrity checks. A plan without the marker never reads this file.
    **If `.unikit/system/ultra-plan-read.md` is missing or unreadable, do not block:** treat every plan as a single-file plan and continue exactly as before — a project that predates the ultra port has no bundles to read.
 
-Keep an in-memory list of loaded rule file paths (`loaded_rules`). Used in Step 3.0 for delta detection.
+Keep an in-memory list of loaded rule and topic file paths (`loaded_rules`). Used in Step 3.0 for delta detection.
 
 <!-- unikit:extension-point:bootstrap -->
 
@@ -357,9 +357,9 @@ Keep a running list of files you create, modify, or delete during execution — 
 
 Before executing the first task of any phase (including the first phase):
 1. Re-read `.unikit/memory/code/RULES_INDEX.md`.
-2. Match the phase name and its task descriptions against the Stack table's `Load When` column **and against the `Load when` column of the `## Topics` table in `.unikit/RULES.md`** (read at Step 1.5; a root without that table has no topics).
-3. Compute delta: stack rules and topic files needed for this phase that are NOT in `loaded_rules`. A topic whose match is uncertain is needed.
-4. Read each delta rule — a stack rule from `.unikit/memory/code/stack/`, a topic file from `.unikit/rules/` — using the Read tool. A topic file the table lists but the disk lacks → print `WARN [rules] topic file missing: .unikit/rules/<slug>.md` and continue.
+2. Match the phase name and its task descriptions against the Stack table's `Load When` column **and against the `Load when` column of the `## Topics` tables in `.unikit/RULES.md` and in `.unikit/ARCHITECTURE.md`** (both roots read at Steps 1 and 1.5; a root without that table has no topics).
+3. Compute delta: stack rules and topic files (rule and architecture) needed for this phase that are NOT in `loaded_rules`. A topic whose match is uncertain is needed.
+4. Read each delta rule — a stack rule from `.unikit/memory/code/stack/`, a topic file from `.unikit/rules/` or `.unikit/architecture/` — using the Read tool. A topic file the table lists but the disk lacks → print `WARN [rules] topic file missing: .unikit/rules/<slug>.md` (an architecture topic: `WARN [architecture] topic file missing: .unikit/architecture/<slug>.md`) and continue.
 5. Add them to `loaded_rules`.
 
 Inside a phase, do NOT re-check rules between individual tasks — they share the same loaded set.
@@ -483,7 +483,7 @@ After completing a phase, check whether the implementation introduced structural
 
 - **If the tech stack changed** (new dependencies, integrations, or tools added) → update `.unikit/DESCRIPTION.md` with factual deltas only. Do not rewrite — add or modify the relevant section.
 - **If new modules, directories, or layers were added** → update `AGENTS.md` — refresh the project structure tree and key entry points table to reflect new directories/files.
-- **If new modules or dependency rules changed** → update `.unikit/ARCHITECTURE.md` — add new modules to the folder structure section and update dependency constraints if needed.
+- **If new modules, directories or layers were added, a dependency rule changed, or a contract or channel between modules was added** → update `.unikit/ARCHITECTURE.md` with one table row or one list line per fact: in the topic file whose `Load when` matches the area of the change, else in the root section that fits the kind (`Folder Structure`, `Dependency Rules`, `Cross-Module Communication`); when unsure, the root. Never a paragraph, a new topic or a moved block. A decision (principle, anti-pattern, pattern choice) or an explanation of how a mechanism works is not a delta: print `INFO [architecture] update suggested: <one line>` and leave the file.
 
 Skip this step if the phase only modified existing files without structural changes.
 

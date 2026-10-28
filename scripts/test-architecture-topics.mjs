@@ -217,6 +217,114 @@ guard('ART-4', 'optimise: no item deleted, confirmation, offer, helper limits an
   t.ok(exists(HELPER), 'the helper exists');
 });
 
+// ── ART-5 ───────────────────────────────────────────────────────────────────
+
+const TEMPLATE_CODE = 'data/RULES_INDEX_TEMPLATE.md';
+const TEMPLATE_GAMEDESIGN = 'data/gamedesign/templates/GD_RULES_INDEX.md';
+const CANON_MARK = '**Project architecture topics.**';
+
+function walk(dir, ext, out = []) {
+  for (const entry of fs.readdirSync(path.join(ROOT, dir), { withFileTypes: true })) {
+    const rel = `${dir}/${entry.name}`;
+    if (entry.isDirectory()) walk(rel, ext, out);
+    else if (entry.name.endsWith(ext)) out.push(rel);
+  }
+  return out;
+}
+
+guard('ART-5', 'canon: one paragraph in the code RULES_INDEX template, none in the game-design one, nothing in src/', (t) => {
+  const template = read(TEMPLATE_CODE);
+  const paragraph = template.split('\n').find((l) => l.startsWith(CANON_MARK)) ?? '';
+  t.ok(paragraph.length > 0, 'the canon paragraph exists');
+  for (const sentence of [
+    'A `.unikit/ARCHITECTURE.md` with a `## Topics` section — a table with the columns `Topic` and `Load when` — is split',
+    'each table row links a topic file `.unikit/architecture/<slug>.md` that applies only to the work its `Load when` describes',
+    'Load a topic file by the same rule as a rule topic: when the current work matches it',
+    're-check whenever the work moves to a new phase or area, and read only the topic files not loaded yet; when unsure, load it',
+    'A skill that works in phases loads topic files at the start of each phase; a check loads them by the files it checks.',
+    'print `WARN [architecture] topic file missing: .unikit/architecture/<slug>.md` and continue',
+    'Inside its own area a topic wins over a root section it contradicts.',
+    'No `## Topics` section → the whole file applies, as before.',
+  ]) t.has(paragraph, sentence, 'canon sentence');
+  t.has(template, '2. **`.unikit/ARCHITECTURE.md`** and its topic files in `.unikit/architecture/` — project architecture decisions', 'priority line 2 names the topics');
+  t.lacks(read(TEMPLATE_GAMEDESIGN), CANON_MARK, 'the game-design index does not carry the architecture canon');
+  const srcFiles = walk('src', '.ts');
+  t.ok(srcFiles.length > 0, 'src/ files found');
+  for (const file of srcFiles) {
+    const text = read(file);
+    t.ok(!text.includes('architecture-layout') && !text.includes('.unikit/architecture'), `${file}: the installer knows nothing of the topic files`);
+  }
+});
+
+// ── ART-6 ───────────────────────────────────────────────────────────────────
+
+const READER_MARK = '**Architecture topics:**';
+const MISSING_WARN = 'WARN [architecture] topic file missing: .unikit/architecture/<slug>.md';
+// Every skill or agent file that reads the root, the way it loads the topics. Tasks 14, 18 and 22 add their rows.
+const READERS = [
+  { file: 'skills/unikit-plan/SKILL.md', mode: 'P', needs: [`${READER_MARK} only the root here`, 'load per phase in Step 5 (**Rule refresh per phase**)'] },
+  { file: 'skills/unikit-implement/SKILL.md', mode: 'P', needs: [`${READER_MARK} only the root here`, 'load per phase in Step 3.0'] },
+  { file: 'skills/unikit-execute/SKILL.md', mode: 'P', needs: [`${READER_MARK} the root now`, '`Load when` matches this task', 'when unsure, load', MISSING_WARN] },
+];
+const READERS_FLOOR = 3;
+
+guard('ART-6', 'readers: every reader of the root says how it loads the topics', (t) => {
+  t.ok(READERS.length >= READERS_FLOOR, `the table has at least ${READERS_FLOOR} readers (${READERS.length})`);
+  for (const r of READERS) {
+    const text = read(r.file);
+    for (const need of r.needs) t.has(text, need, `${r.file} (mode ${r.mode})`);
+  }
+});
+
+// ── ART-7 ───────────────────────────────────────────────────────────────────
+
+guard('ART-7', 'loading by phase: implement Step 3.0, the plan refresh, the references that point to it', (t) => {
+  const implement = read('skills/unikit-implement/SKILL.md');
+  const from = implement.indexOf('**3.0: Phase Rules Refresh');
+  const to = implement.indexOf('Inside a phase, do NOT re-check rules', from);
+  t.ok(from >= 0 && to > from, 'the Step 3.0 window is found');
+  const window = implement.slice(from, to);
+  t.has(window, '.unikit/ARCHITECTURE.md', 'Step 3.0 names the architecture table');
+  t.has(window, '.unikit/architecture/', 'Step 3.0 names the topic directory');
+  t.has(window, 'A topic whose match is uncertain is needed.', 'Step 3.0 loads on doubt');
+  t.has(window, MISSING_WARN, 'Step 3.0 warns about a missing topic file');
+  const plan = read('skills/unikit-plan/SKILL.md');
+  const refresh = plan.split('\n').find((l) => l.trimStart().startsWith('**Rule refresh per phase.**')) ?? '';
+  t.has(refresh, '.unikit/ARCHITECTURE.md', 'the plan refresh paragraph names the architecture table');
+  t.has(refresh, 'when unsure, load', 'the plan refresh loads on doubt');
+  t.has(refresh, 'WARN [architecture] topic file missing: .unikit/architecture/<slug>.md', 'the plan refresh warns about a missing topic file');
+  for (const ref of ['mode-add.md', 'mode-ultra.md', 'ultra-direct.md', 'ultra-stateful.md']) {
+    t.has(read(`skills/unikit-plan/references/${ref}`), 'Rule refresh per phase', `${ref} still points to the refresh`);
+  }
+});
+
+// ── ART-8 ───────────────────────────────────────────────────────────────────
+
+guard('ART-8', 'sub-agent prompts carry topic paths, not "read the file"', (t) => {
+  const plan = read('skills/unikit-plan/SKILL.md');
+  t.has(plan, '[architecture topic paths relevant to <focus> — from the root\'s `## Topics`]', 'Phase A slot');
+  const at = plan.indexOf('   - .unikit/ARCHITECTURE.md\n');
+  t.ok(at >= 0 && plan.slice(at, at + 400).includes('[architecture topic paths relevant to <focus>'), 'the slot stands right under the root in the Phase A prompt');
+  t.has(plan, 'the topic files matched to the phases found in Phase A', 'Phase B names the topic files');
+});
+
+// ── ART-9 ───────────────────────────────────────────────────────────────────
+
+guard('ART-9', 'the delta: one row or line per fact, never a paragraph, a topic or a moved block', (t) => {
+  const implement = read('skills/unikit-implement/SKILL.md');
+  const execute = read('skills/unikit-execute/SKILL.md');
+  t.has(implement, 'with one table row or one list line per fact', 'implement 3.7: the form');
+  t.has(implement, 'Never a paragraph, a new topic or a moved block.', 'implement 3.7: what is not a delta');
+  t.has(implement, 'print `INFO [architecture] update suggested: <one line>` and leave the file', 'implement 3.7: a decision is suggested, not written');
+  t.lacks(implement, 'add new modules to the folder structure section', 'implement 3.7: the old wording is gone');
+  t.has(implement, '**3.7: Update context artifacts (if project structure changed)**', 'implement 3.7 heading unchanged');
+  t.has(implement, 'Skip this step if the phase only modified existing files without structural changes.', 'implement 3.7 last line unchanged');
+  t.has(implement, '→ update `.unikit/DESCRIPTION.md` with factual deltas only.', 'new libraries still go to DESCRIPTION.md');
+  t.has(execute, 'as one table row or list line in the topic file whose `Load when` matches', 'execute 5.1: the form');
+  t.has(execute, '(never a paragraph, a new topic or a moved block)', 'execute 5.1: what is not a delta');
+  t.has(execute, 'print `INFO [architecture] update suggested: <one line>`', 'execute 5.1: a decision is suggested');
+});
+
 // ── Report ──────────────────────────────────────────────────────────────────
 
 let failed = 0;

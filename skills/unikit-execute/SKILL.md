@@ -95,7 +95,7 @@ These describe the engine bridges actually configured for this project: their bo
 **Rules Loading.** Before writing code, load the project rules from `.unikit/`:
 
 1. **ALWAYS read** `.unikit/DESCRIPTION.md` — project specification, tech stack, constraints
-2. **ALWAYS read** `.unikit/ARCHITECTURE.md` — module boundaries, dependency directions, communication patterns
+2. **ALWAYS read** `.unikit/ARCHITECTURE.md` — module boundaries, dependency directions, communication patterns. **Architecture topics:** the root now; load the topic files listed under its `## Topics` whose `Load when` matches this task; when unsure, load. A listed file that is missing → `WARN [architecture] topic file missing: .unikit/architecture/<slug>.md`, continue.
 3. **Read `.unikit/memory/code/RULES_INDEX.md`**. Load rules:
    - **RULES.md**: ALWAYS read `.unikit/RULES.md` first (highest priority) **Rule topics:** load the topic files listed under its `## Topics` whose `Load when` matches the current task; when unsure, load.
    - **Core**: read the Core table. For EACH row where Required By = `all` or contains `{{self_name}}` — read that file from `.unikit/memory/code/core/` using the Read tool. Do NOT skip any matching row. Always re-read at skill start, never rely on prior conversation cache
@@ -170,7 +170,7 @@ Work in the phase order of **A5** — `code → compilation → editor → wirin
 
 Not run in the delegate mode: there the report of 5.3 is the reply and the caller does the rest.
 
-**5.1 Context files.** Update only what the change touched: `.unikit/DESCRIPTION.md` — factual deltas for new dependencies or integrations; `AGENTS.md` and `.unikit/ARCHITECTURE.md` — only when new modules, directories or layers were created. `.unikit/ROADMAP.md` and `.unikit/RULES.md` are never edited here. In `.unikit/TODO.md` tick (`- [ ]` → `- [x]`, with `Edit`) every open item the change resolves, matched by meaning; no file or no match → nothing.
+**5.1 Context files.** Update only what the change touched: `.unikit/DESCRIPTION.md` — factual deltas for new dependencies or integrations; `AGENTS.md` — only when new modules, directories or layers were created; `.unikit/ARCHITECTURE.md` — only for a new module, directory, layer, dependency rule or contract, as one table row or list line in the topic file whose `Load when` matches, else in the root section that fits (never a paragraph, a new topic or a moved block); a decision or an explanation is not a delta — print `INFO [architecture] update suggested: <one line>`. `.unikit/ROADMAP.md` and `.unikit/RULES.md` are never edited here. In `.unikit/TODO.md` tick (`- [ ]` → `- [x]`, with `Edit`) every open item the change resolves, matched by meaning; no file or no match → nothing.
 
 **5.2 Documentation**, by `--docs`:
 - `yes` — invoke `unikit-docs`.
