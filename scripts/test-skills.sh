@@ -4898,7 +4898,7 @@ done < <(printf '%s\n%s' "$RDF_CHECKING" "$RDF_WRITING" | grep -oE '`WARN \[rese
 #     migrated file). `## Who writes the field` measured 0 at sizes 8-10 and is included —
 #     no section is excluded.
 RDF_SHINGLE_WORDS=9
-RDF_SHINGLE_SECTIONS=('## The entry' '## What is hashed' '## Computing the hash' '## Writing an entry' '## Checking an entry' '## Who writes the field')
+RDF_SHINGLE_SECTIONS=('## The entry' '## Finding the folder' '## What is hashed' '## Computing the hash' '## Writing an entry' '## Checking an entry' '## Who writes the field')
 rdf_normalize() { tr '[:upper:]' '[:lower:]' | tr -d '`*_' | tr '\n' ' ' | tr -s '[:space:]' ' '; }
 rdf_shingles() {
     awk -v n="$1" '{
@@ -4997,6 +4997,52 @@ if [[ -z "$RDH_WHY" ]]; then
     pass "RD-H the contract is read only at its research step, never at Bootstrap, and the digest is computed at read time, not at write time"
 else
     fail "RD-H the contract is read or the digest computed at the wrong point:$RDH_WHY"
+fi
+
+# (RD-I) A linked research is found by NAME: the live folder first, the archive second, and
+# the place of the folder never raises a warning. The rule lives in ONE section of the
+# contract; a skill that spelled the archive path out would be a second copy of it, and
+# RD-F would not see it (its windows are the contract's wording, not the path).
+# Positions are read from the headings, never from a line number. Every $(grep ...) is
+# wrapped: an empty grep under set -e would abort the whole suite instead of failing here.
+RDI_WHY=""
+RDI_SECTION="$(awk 'index($0,"## Finding the folder")==1{f=1;next} f&&/^## /{f=0} f' "$RL_CONTRACT")"
+rdi_line() { { grep -n "^$1\$" "$RL_CONTRACT" || true; } | head -1 | cut -d: -f1; }
+RDI_ENTRY_N="$(rdi_line '## The entry')"
+RDI_FIND_N="$(rdi_line '## Finding the folder')"
+RDI_HASHED_N="$(rdi_line '## What is hashed')"
+if [[ -z "$RDI_SECTION" ]]; then
+    RDI_WHY+=" no-section"
+elif [[ -z "$RDI_ENTRY_N" || -z "$RDI_FIND_N" || -z "$RDI_HASHED_N" ]] \
+    || ! [[ "$RDI_ENTRY_N" -lt "$RDI_FIND_N" && "$RDI_FIND_N" -lt "$RDI_HASHED_N" ]]; then
+    RDI_WHY+=" section-out-of-place"
+fi
+for p in '.unikit/code/archive/researches/<slug>/' 'INFO [research] <slug> is archived' \
+    'exists in researches/ and in archive/researches/' 'reading researches/' 'Neither exists' 'never the archive'; do
+    printf '%s' "$RDI_SECTION" | grep -qF "$p" || RDI_WHY+=" section-lacks:${p// /-}"
+done
+# The place alone is not a finding: INFO in the section, no WARN of any label.
+printf '%s' "$RDI_SECTION" | grep -qF 'WARN [research' && RDI_WHY+=" section-warns-for-the-place"
+# The ladder points at the section and keeps its ONE label (RD-C holds the same from the
+# other side; this is the half that fails when the pointer is the thing that went).
+RDI_CHECKING="$(awk '/^## Checking an entry/{f=1} f&&/^## Who writes the field/{f=0} f' "$RL_CONTRACT")"
+printf '%s' "$RDI_CHECKING" | grep -qF 'Finding the folder' || RDI_WHY+=" checking-does-not-point-at-the-section"
+RDI_LABELS="$(printf '%s' "$RDI_CHECKING" | { grep -oE 'WARN \[research[a-zA-Z-]*\]' || true; } | sort -u | wc -l | tr -d ' ')"
+[[ "$RDI_LABELS" -eq 1 ]] || RDI_WHY+=" checking-labels=$RDI_LABELS"
+grep -qF 'neither folder exists' "$RL_CONTRACT" || RDI_WHY+=" source-missing-lost-the-both-absent-case"
+grep -qF 'Finding the folder' "$UNIKIT_IMPROVE_SKILL" || RDI_WHY+=" improve-no-pointer"
+# No consuming skill names the archive path: the contract is the one place that does.
+RDI_N=0
+for f in "${RD_CONSUMERS[@]}"; do
+    n="$(basename "$(dirname "$f")")"
+    RDI_N=$((RDI_N + 1))
+    grep -qF 'archive/researches' "$f" && RDI_WHY+=" $n-names-the-archive-path"
+done
+[[ "$RDI_N" -gt 0 ]] || RDI_WHY+=" derivation-empty:consumers"
+if [[ -z "$RDI_WHY" ]]; then
+    pass "RD-I a linked research is found by name, live folder first and archive second, in the contract only ($RDI_N consuming skills name no archive path)"
+else
+    fail "RD-I research folder resolution broke:$RDI_WHY"
 fi
 
 # =============================================
@@ -9699,7 +9745,8 @@ if [[ -z "$BX_WHY" ]]; then
     # (BS-3) improve's size
     # 62000 -> 62560: architecture topics, 2026-10-28 — the Bootstrap read of the topic files and the topic-path slot in the recon prompts (AD-12)
     # 62560 -> 62580: the Subagent arguments pointer moved out of the alias section into one of its own (AP-22), +15 bytes of heading
-    bx_max "BS-3:skill-size" 62580 "$UNIKIT_IMPROVE_SKILL"
+    # 62580 -> 62720: research archive, 2026-10-28 — the linked research is read from the folder the contract's "Finding the folder" returns (+140 bytes)
+    bx_max "BS-3:skill-size" 62720 "$UNIKIT_IMPROVE_SKILL"
 
     # (BX-1) the four branch files: no agent-filter markers, no engine words, all point at the contract
     for f in "$BP_REF" "$BM_REF" "$BC_REF" "$BS_REF"; do

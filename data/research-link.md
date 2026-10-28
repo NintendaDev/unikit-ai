@@ -26,9 +26,20 @@ Example:
 - `SOURCE.md` — original exploration dialogue
 ```
 
-The heading is the folder name, whatever that name is. A folder created before dateless naming keeps the form `YYYY-MM-DD_name` — an entry reading `### 2026-03-15_customer-items-on-scene` is exactly as valid as the example above. Full paths resolve from `.unikit/code/researches/<slug>/`.
+The heading is the folder name, whatever that name is. A folder created before dateless naming keeps the form `YYYY-MM-DD_name` — an entry reading `### 2026-03-15_customer-items-on-scene` is exactly as valid as the example above. Full paths resolve from the folder `## Finding the folder` returns.
 
 An entry carrying `- **Brief SHA256**: …` predates this field — the retired brief field, hashed `RESEARCH_BRIEF.md`. It is never recomputed against the summary; see `## Checking an entry` → **unknown (retired field)**.
+
+## Finding the folder
+
+The heading of an entry is a folder name, never a path. Before anything is read from a linked research, find its folder:
+
+1. `.unikit/code/researches/<slug>/` — when it exists, read there.
+2. Otherwise `.unikit/code/archive/researches/<slug>/` — read there and print `INFO [research] <slug> is archived — read from .unikit/code/archive/researches/<slug>/`, once per folder per run.
+3. Both exist (a research moved back by hand and the copy stayed) — read `researches/` and print `INFO [research] <slug> exists in researches/ and in archive/researches/ — reading researches/`.
+4. Neither exists — **source missing**, see `## Checking an entry`.
+
+An archived research is found, not lost: the hash, the files and every outcome below are the same wherever the folder lies, and the place alone never raises a warning. Only a reader that resolves the name of an entry comes here; `researches/INDEX.md` lists live researches and never the archive.
 
 ## What is hashed
 
@@ -79,11 +90,11 @@ No placeholder, no timestamp: an absent field is honester than a field that look
 
 Only when the entry carries a `Summary SHA256`. An entry with neither hash field is resolved by the **unknown (no hash)** outcome below, without recomputing anything.
 
-Recompute the digest over the linked research's current `## Active Summary`, by the procedure above, and compare it against the recorded `Summary SHA256`:
+Find the folder first (`## Finding the folder`); the digest and every outcome below are computed from it. Recompute the digest over the linked research's current `## Active Summary`, by the procedure above, and compare it against the recorded `Summary SHA256`:
 
 - **match** — say nothing, continue.
 - **drift** — recomputed ≠ the recorded `Summary SHA256`. Print `WARN [research-drift]: <folder> — the linked Active Summary is no longer byte-identical to the one this plan was built from`.
-- **source missing** — `RESEARCH.md` is missing or unreadable, or its `## Active Summary` markers are absent or duplicated. Print `WARN [research-drift]: <folder> source missing`.
+- **source missing** — `RESEARCH.md` is missing or unreadable in the folder found, neither folder exists, or its `## Active Summary` markers are absent or duplicated. Print `WARN [research-drift]: <folder> source missing`.
 - **unknown (retired field)** — the entry carries a `Brief SHA256` and no `Summary SHA256`; nothing is recomputed. Print `WARN [research-drift]: <folder> drift unknown (recorded against the retired brief field)`. Never read a digest recorded against the retired brief field as a `Summary SHA256`.
 - **unknown (no hash)** — no hash field of either name is recorded. Print `WARN [research-drift]: <folder> drift unknown (no hash recorded)`.
 - **no tool** — neither `shasum` nor `sha256sum` is available. Print `WARN [research-drift]: no SHA256 tool available — drift checks skipped` once for the whole run.

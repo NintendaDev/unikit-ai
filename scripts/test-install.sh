@@ -242,6 +242,8 @@ assert_contains "$RESEARCH_LINK_PATH" 'WARN \[research-drift\]' \
   "research-link.md carries the canonical WARN [research-drift] label"
 assert_not_contains "$RESEARCH_LINK_PATH" '\{\{' \
   "research-link.md is a flat copy — no unresolved {{vars}}"
+assert_contains "$RESEARCH_LINK_PATH" 'archive/researches' \
+  "research-link.md carries the archive resolution — a linked research is found there too"
 
 # ─────────────────────────────────────────────────────
 # Test 1b-pb: plan-boundaries.md installed as a system asset (flat copy, no vars)
