@@ -223,6 +223,7 @@ When the topic involves a library or framework from the project's tech stack (`D
 
 The argument after `/unikit-explore` can be:
 - **The slug of an existing research folder** in `.unikit/code/researches/` — an **entry into the continuation cycle**, not a new topic: load `{{skills_dir}}/{{self_name}}/references/continuing.md` and follow it.
+- **The slug of an archived research** — the argument is one token naming a folder in `.unikit/code/archive/researches/` and no folder in `.unikit/code/researches/`. It is not a new topic and not yet a continuation: print `INFO [research] <slug> is archived — bring it back with /unikit-archive researches restore <slug>, then continue it here` and stop. This skill has no `mv`; it never moves a folder.
 - **An ultra request** — the leading `ultra` token, or the same request in the user's own wording ("ultra research", "ultraresearch", "ultra explore", "ультраисследование", "run an ultra research on the save system") — switches on adaptive research artifacts and the pinned dialogue log. Load `{{skills_dir}}/{{self_name}}/references/ULTRA-RESEARCH-FORMAT.md` now and follow it: it owns the pinning of the log while the conversation goes on, and the artifacts at save time. The stance and the exploration itself are unchanged. Ultra is **user-named, never model-inferred**: it is never chosen because the topic is large or difficult, and wording that only asks for care ("research this deeply", "a thorough investigation") is not an ultra request — explore normally.
 - **A merge request** — the user asks to merge a named branch into the current one (not a rebase, a cherry-pick or a merge by pull request number). Load `{{skills_dir}}/{{self_name}}/references/merge-research.md` now and follow it: it owns the analysis, the questions and the form of the saved research. If it cannot be read, print `WARN [merge] merge-research reference missing` and explore normally. An ordinary exploration does not read that file.
 - **An experiment** — the topic is `EXP-<nnn>`, a path to an `experiment.md`, an experiment folder, or an experiment named by its description ("how do we implement the latest experiment"): an ordinary exploration grounded on the card (*Optional reads* → Experiment grounding). It is not a mode of its own: the stance, the dialogue and the save are unchanged; only the saved summary gains an `Experiment:` line and a `Next step:` in selector form (see the template).
@@ -277,6 +278,18 @@ All researches live in `.unikit/code/researches/`. Each research gets its own fo
   research topic. **No date.**
 - The date lives in the `Created:` and `Updated:` fields of the manifest header.
 
+**An archived slug is never taken.** A slug that equals a folder name in `.unikit/code/archive/researches/` — generated, recomputed at the save, or typed by the user — is not used silently: plans that linked the archived research find it by that name, and a new folder under the same name would answer to their links. The check runs wherever a slug is settled — the first pin of an ultra exploration and the save. Ask:
+
+```
+The question tool of your agent (`AskUserQuestion`): A research named <slug> is archived. What should happen?
+
+Options:
+1. Use another name — the slug arrives as the free-text answer; picked without one, ask for it again the same way
+2. Restore it first — print /unikit-archive researches restore <slug> and hold: nothing is written, the conversation goes on and the save can be asked for again
+```
+
+After *Use another name* print `WARN [research] <slug> is archived — saving under <new-slug>`, after the answer and never instead of the question. An automatic suffix (`-2`) is **forbidden**.
+
 <!-- Why the folder name carries no date: docs/skills/unikit-explore-save-rationale.md in the UniKit repository. -->
 
 ### How to save
@@ -306,6 +319,9 @@ If the user agrees:
    the topic carried at that moment. Recompute the slug from the topic as it has now settled,
    and when the two differ, rename the folder — **before** the manifest is written. A saved
    research is never renamed.
+
+   The archived-slug check of *Naming convention* runs on the settled slug first, then the
+   live-folder check below.
 
    **If that slug already names a folder in `.unikit/code/researches/`** — any folder other
    than this exploration's own pinned one (ultra only) — do not resolve it silently. Ask:

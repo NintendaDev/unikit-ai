@@ -9380,8 +9380,9 @@ AR_PLAN_SKILL="$ROOT_DIR/skills/unikit-plan/SKILL.md"
 AR_POLISHER="$ROOT_DIR/subagents/unikit-plan-polisher.md"
 AR_IMPLEMENT="$ROOT_DIR/skills/unikit-implement/SKILL.md"
 AR_EXPLORE="$ROOT_DIR/skills/unikit-explore/SKILL.md"
+AR_ULTRA_FMT="$ROOT_DIR/skills/unikit-explore/references/ULTRA-RESEARCH-FORMAT.md"
 AR_WHY=""
-for f in "$AR_SKILL" "$AR_DESIGN_CTX" "$AR_PLAN_SKILL" "$AR_POLISHER" "$AR_IMPLEMENT" "$AR_EXPLORE"; do
+for f in "$AR_SKILL" "$AR_DESIGN_CTX" "$AR_PLAN_SKILL" "$AR_POLISHER" "$AR_IMPLEMENT" "$AR_EXPLORE" "$AR_ULTRA_FMT"; do
     [[ -s "$f" ]] || AR_WHY+=" missing:${f#"$ROOT_DIR"/}"
 done
 if [[ -z "$AR_WHY" ]]; then
@@ -9487,9 +9488,30 @@ if [[ -z "$AR_WHY" ]]; then
     grep -qF '**What the user must see, print as your own message.**' "$AR_SKILL" || AR_WHY+=" AR-18:no-visible-output-rule"
     grep -qF 'Tool output is folded away from the user' "$AR_SKILL" || AR_WHY+=" AR-18:tool-output-assumed-visible"
     grep -qF 'ask it only once the whole table is on screen' "$AR_SKILL" || AR_WHY+=" AR-18:question-before-table"
+    # (AR-19) /unikit-explore met by the slug of an ARCHIVED research prints the way back and
+    # stops. The negative half is the load-bearing one: explore is given no right to move a
+    # folder, so the way back can only be the archive skill's.
+    grep -qF 'INFO [research] <slug> is archived — bring it back with /unikit-archive researches restore' "$AR_EXPLORE" || AR_WHY+=" AR-19:no-way-back"
+    grep -qF 'This skill has no `mv`' "$AR_EXPLORE" || AR_WHY+=" AR-19:no-statement-that-it-moves-nothing"
+    AR19_FM="$(awk 'NR==1&&/^---$/{f=1;next} f&&/^---$/{exit} f' "$AR_EXPLORE")"
+    [[ -n "$AR19_FM" ]] || AR_WHY+=" AR-19:explore-has-no-frontmatter"
+    if printf '%s' "$AR19_FM" | grep -qF 'Bash(mv'; then AR_WHY+=" AR-19:explore-may-move-a-folder"; fi
+    # (AR-20) an archived slug is never taken by a new or pinned folder: plans that linked the
+    # archived research find it by that name, and a live folder under it would answer to their
+    # links. Checked wherever a slug is settled (first pin, save); no automatic suffix. The
+    # `automatic suffix` ban is read inside the new paragraph: the live-collision rule next to
+    # it carries the same words and would hide a missing ban here.
+    AR20_BLOCK="$(awk 'index($0,"**An archived slug is never taken.**")==1{f=1} f&&index($0,"<!-- Why the folder name")==1{f=0} f' "$AR_EXPLORE")"
+    [[ -n "$AR20_BLOCK" ]] || AR_WHY+=" AR-20:no-archived-slug-rule"
+    for p in 'Use another name' 'Restore it first' 'automatic suffix' 'The check runs wherever a slug is settled' \
+        'WARN [research] <slug> is archived — saving under <new-slug>'; do
+        printf '%s' "$AR20_BLOCK" | grep -qF "$p" || AR_WHY+=" AR-20:rule-lacks:${p// /-}"
+    done
+    grep -qF 'The archived-slug check of *Naming convention* runs on the settled slug first' "$AR_EXPLORE" || AR_WHY+=" AR-20:save-skips-the-check"
+    grep -qF 'is not pinned under' "$AR_ULTRA_FMT" || AR_WHY+=" AR-20:first-pin-skips-the-check"
 fi
 if [[ -z "$AR_WHY" ]]; then
-    pass "AR-1…AR-18 unikit-archive: announces itself first, prints the dated table as its own message before asking, archives an unfinished plan only on an explicit choice and says so; non-x marks are unfinished, untransferred findings (keyed on the trap back-reference) and open rule candidates ask and never stop, git mv only for a tracked folder, no overwrite and no commit; the implemented_version fallback and both plan producers see the archive, implement names it, explore reads it as history"
+    pass "AR-1…AR-20 unikit-archive: announces itself first, prints the dated table as its own message before asking, archives an unfinished plan only on an explicit choice and says so; non-x marks are unfinished, untransferred findings (keyed on the trap back-reference) and open rule candidates ask and never stop, git mv only for a tracked folder, no overwrite and no commit; the implemented_version fallback and both plan producers see the archive, implement names it, explore reads it as history and never reuses an archived research's slug (AR-19/AR-20)"
 else
     fail "AR plan archive contract:$AR_WHY"
 fi
