@@ -137,7 +137,7 @@ Silently load — do not narrate:
 **One-way boundary:** never read `.unikit/code/`, project source, or build
 artifacts. **Single sanctioned exception:** the **feasibility lens** may read
 **only** `.unikit/DESCRIPTION.md`, the `.unikit/ARCHITECTURE.md` root and the topic
-files its `## Topics` lists, all under `.unikit/architecture/` (a fixed set of
+files `.unikit/architecture/*.md` that its `## Topics` lists (a fixed set of
 paths, no other project file) to flag implementability risks. **Architecture
 topics:** the root; then the topic files whose `Load when` matches the subject of
 the assessment; when unsure, load; a missing file → `WARN [architecture] topic file

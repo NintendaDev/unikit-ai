@@ -5,7 +5,7 @@
 # what it exists for: every item survives a reorganization word for word, and nothing is written when
 # the plan is wrong or stale. Works on copies only (a nested suite never edits a tracked file); the
 # CRLF case and the "no Detailed Rules" case are built at run time — .gitattributes forces LF on checkout.
-# Guards TAL-1…TAL-14; each prints how many objects it checked, and a guard that checked none fails.
+# Guards TAL-1…TAL-15; each prints how many objects it checked, and a guard that checked none fails.
 # Usage: ./scripts/test-architecture-layout.sh
 
 set -euo pipefail
@@ -279,8 +279,125 @@ check "the root keeps its own section names" 'grep -qxF "## Cross-Module Communi
 check "the rename loses no line" '[[ "$(lost "$FIXTURES/legacy/.unikit" "$P/.unikit")" -eq 0 && "$(nitems "$P")" -eq 35 ]]'
 counted
 
+guard 15 "defects found by the verification audit: C# headings, repeated sections, unlisted files, bad plan files, repeated rows, open fences, mixed ranges"
+mkproj() { local d; d="$(mktemp -d "$TMP_ROOT/$1.XXXXXX")"; mkdir -p "$d/.unikit"; cat > "$d/.unikit/ARCHITECTURE.md"; echo "$d"; }
+line_of() { grep -nxF -- "$2" "$1" | cut -d: -f1 | sed -n "${3:-1}p"; }
+S="$(mkproj sharp <<'EOF'
+# Architecture: T
+
+## Using C#
+
+First item about C#.
+
+## Plain
+
+Second item.
+EOF
+)"
+plan "$S" '{"version":1,"fingerprint":"@FP@","topics":[{"slug":"cs","title":"C sharp","loadWhen":"c sharp"}],"assign":{"root":["P2"],"cs":["P1"]}}'
+run apply --root "$S"
+check "a section name that ends with # is written whole into the topic file" '[[ $LAST_CODE -eq 0 ]] && grep -qxF "## Using C#" "$S/.unikit/architecture/cs.md"'
+D="$(mkproj dup <<'EOF'
+# Architecture: T
+
+## Dup
+
+### S
+
+item1
+
+## Dup
+
+item2
+
+## Other
+
+item3
+EOF
+)"
+plan "$D" '{"version":1,"fingerprint":"@FP@","topics":[],"assign":{"root":["P1-P3"]}}'
+run apply --root "$D"
+DUP_FILE="$D/.unikit/ARCHITECTURE.md"
+check "an item that was not under a ### heading is not written under one: the repeated ## Dup heading is written again" \
+    '[[ $LAST_CODE -eq 0 && "$(grep -cxF "## Dup" "$DUP_FILE")" -eq 2 && "$(line_of "$DUP_FILE" "### S")" -lt "$(line_of "$DUP_FILE" "## Dup" 2)" && "$(line_of "$DUP_FILE" "## Dup" 2)" -lt "$(line_of "$DUP_FILE" "item2")" ]]'
+U="$(mkproj unl <<'EOF'
+# Architecture: T
+
+## One
+
+item1
+
+## Two
+
+item2
+EOF
+)"
+mkdir -p "$U/.unikit/architecture"
+echo "USER FILE keep me" > "$U/.unikit/architecture/mine.md"
+plan "$U" '{"version":1,"fingerprint":"@FP@","topics":[{"slug":"mine","title":"Mine","loadWhen":"x"}],"assign":{"root":["P1"],"mine":["P2"]}}'
+BEFORE="$(tree_sha "$U")"
+run apply --root "$U"
+check "a topic slug whose file exists and no row lists is refused, the file stays" '[[ $LAST_CODE -eq 2 && "$(tree_sha "$U")" == "$BEFORE" ]] && grep -qF "no row lists it" <<< "$LAST_OUT" && grep -qxF "USER FILE keep me" "$U/.unikit/architecture/mine.md"'
+for body in 'not json' 'null' '[]' '{"version":1}'; do
+    printf '%s' "$body" > "$U/.unikit/architecture-layout.plan.json"
+    BEFORE="$(tree_sha "$U")"
+    run apply --root "$U"
+    check "a plan file that reads \"$body\" is invalid: exit 2, nothing written" '[[ $LAST_CODE -eq 2 && "$(tree_sha "$U")" == "$BEFORE" ]]'
+done
+R="$(mkproj rows <<'EOF'
+# Architecture: T
+
+## One
+
+item1
+
+## Topics
+
+| Topic | Load when |
+|-------|-----------|
+| [T](architecture/t.md) | a |
+| [T again](architecture/t.md) | b |
+EOF
+)"
+mkdir -p "$R/.unikit/architecture"
+printf '# Architecture — T\n\n## S\n\nx\n\ny\n' > "$R/.unikit/architecture/t.md"
+run parse --root "$R"
+check "two table rows with one slug read the file once and warn about the second row" '[[ "$(nitems "$R")" -eq 3 ]] && grep -qF "t is listed twice" <<< "$LAST_OUT"'
+F="$(mkproj fence <<'EOF'
+# Architecture: Small
+
+## Project
+
+A short project.
+
+## Folder Structure
+
+```
+Game/
+EOF
+)"
+plan "$F" '{"version":1,"fingerprint":"@FP@","topics":[{"slug":"a","title":"A","loadWhen":"x"}],"assign":{"root":["C1"],"a":["P1"]}}'
+BEFORE="$(tree_sha "$F")"
+run apply --root "$F"
+check "an open code fence makes apply refuse and name the cause, nothing written" '[[ $LAST_CODE -eq 2 && "$(tree_sha "$F")" == "$BEFORE" ]] && grep -qF "is never closed" <<< "$LAST_OUT" && grep -qF "close it in the source first" <<< "$LAST_OUT"'
+M="$(mkproj range <<'EOF'
+# Architecture: T
+
+## One
+
+item1
+
+- item2
+EOF
+)"
+plan "$M" '{"version":1,"fingerprint":"@FP@","topics":[],"assign":{"root":["P1-L1","L1"]}}'
+BEFORE="$(tree_sha "$M")"
+run apply --root "$M"
+check "a range that mixes two kinds is refused" '[[ $LAST_CODE -eq 2 && "$(tree_sha "$M")" == "$BEFORE" ]] && grep -qF "is not an item id" <<< "$LAST_OUT"'
+counted
+
 echo -e "\n${BOLD}Every guard checked at least one object${NC}"
-for n in 1 2 3 4 5 6 7 8 9 10 11 12 13 14; do
+for n in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
     check "TAL-$n counted objects" '[[ "${GUARD_N[$n]:-0}" -gt 0 ]]'
 done
 

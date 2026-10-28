@@ -14635,7 +14635,7 @@ fi
 # ─────────────────────────────────────────────
 # Part 13e: architecture-layout.mjs — the architecture optimise helper, run for real on fixture projects
 # ─────────────────────────────────────────────
-echo -e "\n${BOLD}Part 13e: architecture-layout helper tests (TAL-1…TAL-14)${NC}"
+echo -e "\n${BOLD}Part 13e: architecture-layout helper tests (TAL-1…TAL-15)${NC}"
 child_wait architecture-layout
 printf '%s\n' "$CHILD_OUTPUT"
 if [[ $CHILD_EXIT -eq 0 ]]; then

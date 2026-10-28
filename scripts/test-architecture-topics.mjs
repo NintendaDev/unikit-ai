@@ -266,11 +266,11 @@ const READERS = [
   { file: 'skills/unikit-implement/SKILL.md', mode: 'P', needs: [`${READER_MARK} only the root here`, 'load per phase in Step 3.0'] },
   { file: 'skills/unikit-execute/SKILL.md', mode: 'P', needs: [`${READER_MARK} the root now`, '`Load when` matches this task', 'when unsure, load', MISSING_WARN] },
   { file: 'subagents/unikit-implement-worker.md', mode: 'P', needs: [`${READER_MARK} then load the topic files`, '`Load when` matches your phase', 'when unsure, load', MISSING_WARN] },
-  { file: 'subagents/unikit-implement-coordinator.md', mode: 'P', needs: [`${READER_MARK} only the root here`, '`Load when` matches this phase', MISSING_WARN] },
+  { file: 'subagents/unikit-implement-coordinator.md', mode: 'P', needs: [`${READER_MARK} only the root here`, 'And the topic files listed under `## Topics` in `.unikit/ARCHITECTURE.md` whose `Load when` matches this phase', `(${READER_MARK} when unsure, load; a missing file → \`WARN [architecture] topic file missing:`] },
   { file: 'subagents/unikit-plan-polisher.md', mode: 'P', needs: [`${READER_MARK} its topic files load lazily`, '`Load when` matches a phase you write or check', 'when unsure, load'] },
   { file: 'skills/unikit-improve/SKILL.md', mode: 'F', needs: [`${READER_MARK} the root now`, 'matches any phase of the plan under review', 'when unsure, load', MISSING_WARN] },
   { file: 'skills/unikit-improve/references/VALIDATOR.md', mode: 'F', needs: ['the `.unikit/ARCHITECTURE.md` root and the topic file the item names', 'the `.unikit/ARCHITECTURE.md` root and the matched topic'] },
-  { file: 'skills/unikit-verify/SKILL.md', mode: 'F', needs: [`${READER_MARK} the root now`, 'matches a file the plan\'s tasks changed', 'when unsure, load'] },
+  { file: 'skills/unikit-verify/SKILL.md', mode: 'F', needs: [`${READER_MARK} the root now`, 'matches a file the plan\'s tasks changed', 'when unsure, load', 'A listed file that is missing is reported in 3.4'] },
   { file: 'skills/unikit-review/SKILL.md', mode: 'F', needs: [`${READER_MARK} the root always`, '`Load when` matches a reviewed file', 'when unsure, load', MISSING_WARN] },
   { file: 'skills/unikit-commit/SKILL.md', mode: 'F', needs: [`${READER_MARK} the root; then the topic files`, '`Load when` matches a staged file', 'when unsure, load', MISSING_WARN] },
   { file: 'skills/unikit-fix/SKILL.md', mode: 'F', needs: [`${READER_MARK} the root now`, '`Load when` matches the files you localized', 'when unsure, load', MISSING_WARN] },
@@ -287,11 +287,6 @@ const EXEMPT = [
   'skills/unikit-architecture/', 'skills/unikit/', 'skills/unikit-help/', 'skills/unikit-memory/', 'skills/unikit-rules/', 'skills/unikit-evolve/',
   'skills/unikit-roadmap/SKILL.md', 'skills/unikit-verify/references/CONTEXT-GATES-AND-OWNERSHIP.md', 'skills/unikit-docs/references/DOC-TEMPLATES.md',
 ];
-// A line that reads the root: a read verb before the path, or a list item that opens with the path and explains it.
-const READ_SITE_RES = [
-  /\b(?:read|reads|load|loads)\b[^\n]{0,40}`?\.unikit\/ARCHITECTURE\.md/i,
-  /^\s*(?:[-*]|\d+\.)\s+\*{0,2}`\.unikit\/ARCHITECTURE\.md`\*{0,2}\s+[—-]/,
-];
 
 guard('ART-6', 'readers: every reader of the root says how it loads the topics', (t) => {
   t.ok(READERS.length >= READERS_FLOOR, `the table has at least ${READERS_FLOOR} readers (${READERS.length})`);
@@ -301,8 +296,8 @@ guard('ART-6', 'readers: every reader of the root says how it loads the topics',
   }
   // Mode R: the scope of a commit is read from the module map in the root, so Step 6 carries no topic clause.
   const commit = read('skills/unikit-commit/SKILL.md');
-  const from = commit.indexOf('6. **Identify Scope**');
-  const to = commit.indexOf('7. ', from);
+  const from = commit.indexOf('\n6. **Identify Scope**');
+  const to = commit.indexOf('\n7. ', from);
   t.ok(from >= 0 && to > from, 'the commit Step 6 window is found');
   t.lacks(commit.slice(from, to), READER_MARK, 'commit Step 6 reads the root only (mode R)');
 });
@@ -369,6 +364,7 @@ guard('ART-9', 'the delta: one row or line per fact, never a paragraph, a topic 
   t.has(implement, '→ update `.unikit/DESCRIPTION.md` with factual deltas only.', 'new libraries still go to DESCRIPTION.md');
   t.has(execute, 'as one table row or list line in the topic file whose `Load when` matches', 'execute 5.1: the form');
   t.has(execute, '(never a paragraph, a new topic or a moved block)', 'execute 5.1: what is not a delta');
+  t.lacks(execute, '`AGENTS.md` and `.unikit/ARCHITECTURE.md` — only when new modules, directories or layers were created', 'execute 5.1: the old wording is gone');
   t.has(execute, 'print `INFO [architecture] update suggested: <one line>`', 'execute 5.1: a decision is suggested');
 });
 
@@ -424,19 +420,13 @@ guard('ART-11', 'the two gaps (fix, coordinator), the engine checks and the prot
 
 // ── ART-6b ──────────────────────────────────────────────────────────────────
 
-guard('ART-6b', 'every file that reads the root is a listed reader or a justified exception', (t) => {
+guard('ART-6b', 'every file that names the root path is a listed reader or a justified exception, and every listed reader names it', (t) => {
   const files = [...walk('skills', '.md'), ...walk('subagents', '.md')];
-  let readers = 0;
-  let exempt = 0;
-  for (const rel of files) {
-    const text = read(rel);
-    if (!text.split('\n').some((line) => READ_SITE_RES.some((re) => re.test(line)))) continue;
-    if (EXEMPT.some((e) => rel.startsWith(e))) { exempt++; continue; }
-    readers++;
-    t.ok(READERS.some((r) => r.file === rel), `${rel} reads .unikit/ARCHITECTURE.md and is not in READERS or EXEMPT — add a row or justify the exception`);
-  }
-  t.seen(files.length);
-  t.ok(readers >= READERS_FLOOR - 4, `the crawl found readers (${readers}), exceptions (${exempt}), in ${files.length} files`);
+  const mentioning = files.filter((rel) => read(rel).includes('.unikit/ARCHITECTURE.md'));
+  const outside = mentioning.filter((rel) => !EXEMPT.some((e) => rel.startsWith(e)));
+  for (const rel of outside) t.ok(READERS.some((r) => r.file === rel), `${rel} names .unikit/ARCHITECTURE.md and is not in READERS or EXEMPT — add a row or justify the exception`);
+  for (const r of READERS) t.ok(outside.includes(r.file), `${r.file} is in READERS but no longer names .unikit/ARCHITECTURE.md — drop the row`);
+  t.ok(outside.length === READERS.length, `the crawl found ${outside.length} readers outside the exceptions, the table has ${READERS.length} (${mentioning.length - outside.length} exempt, ${files.length} files)`);
 });
 
 // ── ART-12 ──────────────────────────────────────────────────────────────────
@@ -445,10 +435,10 @@ guard('ART-12', 'one-way border of the design review: a fixed set of paths that 
   const review = read('skills/unikit-gd-review/SKILL.md').replace(/\s+/g, ' ');
   const lenses = read('skills/unikit-gd-review/references/lenses.md');
   const principles = read('data/gamedesign/gd-principles.md').replace(/\s+/g, ' ');
-  t.has(review, 'the `.unikit/ARCHITECTURE.md` root and the topic files its `## Topics` lists, all under `.unikit/architecture/` (a fixed set of paths, no other project file)', 'review: the exception names the fixed paths');
+  t.has(review, 'the `.unikit/ARCHITECTURE.md` root and the topic files `.unikit/architecture/*.md` that its `## Topics` lists (a fixed set of paths, no other project file)', 'review: the exception names the fixed paths');
   t.has(review, 'the `ARCHITECTURE.md` root and `.unikit/architecture/*.md` for the feasibility lens only', 'review: the read-only list names the topic directory');
-  t.has(lenses, '`.unikit/architecture/*.md`', 'lenses: the feasibility lens names the topic directory');
-  t.has(principles, '`.unikit/architecture/*.md`', 'gd-principles: the feasibility exception names the topic directory');
+  t.has(lenses.split('\n').find((l) => l.startsWith('| **feasibility**')) ?? '', '`.unikit/architecture/*.md`', 'lenses: the feasibility row names the topic directory');
+  t.ok(/feasibility lens\*\* inside `unikit-gd-review` may read `DESCRIPTION\.md`, the `ARCHITECTURE\.md` root and `\.unikit\/architecture\/\*\.md`/.test(principles), 'gd-principles: the feasibility exception names the same set of paths');
   for (const [name, text] of [['review', review], ['lenses', lenses], ['gd-principles', principles]]) t.lacks(text, 'two files, exact', `${name}: the old "two files" wording is gone`);
   t.has(principles, 'Sanctioned exceptions (three, narrow)', 'T8-8 heading unchanged');
   for (const fragment of ['brownfield-bootstrap carve-out', 'read-only research verbs', 'extracted from code', 'are **never** in']) t.has(principles, fragment, 'RD-3 fragment');
@@ -457,19 +447,24 @@ guard('ART-12', 'one-way border of the design review: a fixed set of paths that 
 // ── ART-13 ──────────────────────────────────────────────────────────────────
 
 guard('ART-13', 'pointers, the receivers of the hand-off, Step 10 of /unikit, the help map', (t) => {
-  t.has(read('skills/unikit/references/mode-menu.md'), 'runs `unikit-architecture` in its update mode', 'the menu action Description runs update');
+  t.has(read('skills/unikit/references/mode-menu.md'), 'otherwise runs in its update mode, so nothing already written is removed', 'the menu action Description runs update on an existing file');
   t.has(read('skills/unikit-rules/references/mode-prune.md'), '`/unikit-architecture update` with the block as its argument', 'prune hands the block to update');
   t.has(read('skills/unikit-rules/SKILL.md'), '`ARCHITECTURE.md` and its topic files', 'unikit-rules points to the topic files');
   for (const rel of ['skills/unikit-memory/SKILL.md', 'skills/unikit-memory/references/module-code.md', 'skills/unikit-memory/references/module-gamedesign.md']) t.has(read(rel), '`.unikit/architecture/`', `${rel} routes architecture decisions to the topic files too`);
   t.has(read('skills/unikit-evolve/SKILL.md'), '(and `.unikit/architecture/`)', 'evolve may not write the topic files');
   t.has(read('skills/unikit/references/LANGUAGE_RULES_TEMPLATE.md'), 'the topic files in `.unikit/architecture/`', 'topic files are always English');
   const unikit = read('skills/unikit/SKILL.md');
+  t.has(unikit, '`.unikit/ARCHITECTURE.md` with its topic files in `.unikit/architecture/`', 'unikit: the list of artifact paths');
+  t.has(unikit, '`.unikit/ARCHITECTURE.md`** and its topic files in `.unikit/architecture/` — project architecture decisions', 'unikit: priority line 2');
+  t.has(unikit, 'See `.unikit/ARCHITECTURE.md` (and its topic files in `.unikit/architecture/`) for detailed architecture guidelines.', 'unikit: the pointer in the generated file');
   t.has(unikit, 'The sub-skill may ask the user (the pattern in generate, the layout offer in update); wait for it to return before Step 11.', 'Step 10 waits for the questions of the sub-skill');
   t.has(unikit, 'prompt: "{{agent_skill_call:unikit-architecture}}",', 'Step 10 still calls the skill without arguments (I8)');
   const map = read('skills/unikit-help/references/skill-map.md');
   t.has(map, '### unikit-architecture', 'the map keeps the heading the help test requires');
   for (const mode of ['`generate`', '`update [text]`', '`optimise`']) t.has(map, mode, `the map names the mode ${mode}`);
   t.has(map, '`.unikit/architecture/`', 'the map names the topic directory');
+  t.has(map.replace(/\s+/g, ' '), 'and the topic files in `.unikit/architecture/` when it has topics', 'the map lists the topic files among the outputs');
+  t.has(read('skills/unikit-rules/references/mode-optimise.md'), 'the request asked for it', 'unikit-rules optimise starts on a request too');
   t.has(read('skills/unikit-help/references/knowledge-base.md'), '`.unikit/ARCHITECTURE.md` (+ its topic files)', 'the priority line has the topic files');
 });
 
@@ -541,7 +536,8 @@ guard('ART-14', 'docs: eight pages name the topic directory, the marker is docum
   t.has(read('docs/dynamic-memory.md'), '<!-- unikit:architecture-layout flat -->', 'dynamic-memory documents the flat marker');
   t.has(read('docs/dynamic-memory.md'), '## Architecture topics', 'dynamic-memory has the section on architecture topics');
   t.has(read('docs/gamedesign.md').replace(/\s+/g, ' '), 'a fixed set of paths', 'gamedesign documents the fixed set of paths');
-  t.seen(0);
+  t.lacks(read('docs/subagents.md'), 'step 10 writes `ARCHITECTURE.md` through `unikit-architecture`', 'subagents: the old "step 10 writes" wording is gone');
+  t.ok(DOC_PAGES.length === 8, `eight pages are checked (${DOC_PAGES.length})`);
 });
 
 // ── Report ──────────────────────────────────────────────────────────────────

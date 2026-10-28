@@ -109,7 +109,7 @@ The mode comes from the user's request together with the state of the file (belo
 |------|--------------|------|
 | A: generate | `generate: I'll scan the project and write .unikit/ARCHITECTURE.md.` | Steps 0–6 below |
 | B: update | `update: I'll rescan the project and add what is missing to .unikit/ARCHITECTURE.md; nothing already written is removed.` | Steps 0–2, then read `{{skills_dir}}/{{self_name}}/references/mode-update.md` and follow it; Steps 3–4 do not run |
-| C: optimise | `optimise: I'll sort .unikit/ARCHITECTURE.md into a root and topic files and show you the proposed layout before writing anything.` | read `{{skills_dir}}/{{self_name}}/references/mode-optimise.md` and follow it; Steps 0–6 do not run |
+| C: optimise | `optimise: I'll sort .unikit/ARCHITECTURE.md into a root and topic files and show you the proposed layout before writing anything.` | read `{{skills_dir}}/{{self_name}}/references/mode-optimise.md` and follow it; Steps 0–4 and 6 do not run, Step 5 (the `AGENTS.md` row) runs when that file says so |
 
 **The state** is decided by the file's content, checked in this order, the first match wins:
 
@@ -350,7 +350,7 @@ in the "AI Context Files" table (or equivalent section):
 | .unikit/ARCHITECTURE.md | Architecture decisions and guidelines |
 ```
 
-When the file has topics, the row reads `| .unikit/ARCHITECTURE.md | Architecture decisions and guidelines; topic files in .unikit/architecture/ load when their "Load when" matches |`. Modes B and C run this step too, when the file has just received its first topic or lost its last one.
+When the file has topics, the row reads `| .unikit/ARCHITECTURE.md | Architecture decisions and guidelines; topic files in .unikit/architecture/ load when their "Load when" matches |`. Modes B and C run this step too whenever the file has topics when they finish, or has just lost its last one: the row is checked every time, so a regenerated `AGENTS.md` gets the topic note back.
 
 If the entry already exists, verify it's accurate. If `AGENTS.md` doesn't exist, skip this step silently.
 

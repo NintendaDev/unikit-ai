@@ -39,10 +39,10 @@ const PEEK = 70;
 const EXIT = { OK: 0, USAGE: 1, INVALID: 2, STALE: 3 };
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+){0,2}$/;
 const ID_RE = /^([PLTC])(\d+)$/;
-const RANGE_RE = /^([PLTC])(\d+)-(?:[PLTC])?(\d+)$/;
+const RANGE_RE = /^([PLTC])(\d+)-\1?(\d+)$/;
 const ITEM_RE = /^([-*+]|\d{1,3}[.)])[ \t]+(?=\S)/;
 const NUMBERED_RE = /^\d{1,3}[.)][ \t]+\S/;
-const HEADING_RE = /^(#{1,6})[ \t]+(.*?)[ \t#]*$/;
+const HEADING_RE = /^(#{1,6})[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$/;
 const SEPARATOR_RE = /^ {0,3}([-*_])(?: *\1){2,} *$/;
 const FENCE_RE = /^[ \t]*(`{3,}|~{3,})/;
 const INDENTED_RE = /^[ \t]+\S/;
@@ -179,7 +179,7 @@ function scanFile(lines, role, rel) {
 
 // ── INVENTORY ──────────────────────────────────────────────────────────────────────────────
 function inventory(root) {
-  const inv = { state: 'empty', files: [], topics: [], warnings: [], items: [], hasMarker: false, eol: '\n', rootScan: null };
+  const inv = { state: 'empty', files: [], topics: [], unlisted: [], warnings: [], items: [], hasMarker: false, eol: '\n', rootScan: null };
   const rootAbs = path.join(root, ROOT_FILE);
   if (!fs.existsSync(rootAbs)) return withFingerprint(inv);
   const rootRead = readFile(rootAbs);
@@ -189,6 +189,7 @@ function inventory(root) {
   if (rootScan.hasTable && rootScan.hasMarker) inv.warnings.push('WARN [architecture] layout: flat marker ignored — the file already has a ## Topics table');
   for (const row of rootScan.rows) {
     if (row.bad) { inv.warnings.push(`WARN [architecture] topic table: row ${row.line} is not a [Title](architecture/<slug>.md) row — ignored: ${row.bad.trim()}`); continue; }
+    if (inv.topics.some((t) => t.slug === row.slug)) { inv.warnings.push(`WARN [architecture] topic table: ${row.slug} is listed twice — the second row is ignored`); continue; }
     const rel = `${TOPICS_DIR}/${row.slug}.md`;
     inv.topics.push({ slug: row.slug, title: row.title, loadWhen: row.loadWhen, path: rel });
     if (!fs.existsSync(path.join(root, rel))) { inv.warnings.push(`WARN [architecture] topic table: ${row.slug} is listed, ${rel} does not exist`); continue; }
@@ -197,11 +198,8 @@ function inventory(root) {
   }
   const listed = new Set(inv.topics.map((t) => `${t.slug}.md`));
   const dirAbs = path.join(root, TOPICS_DIR);
-  if (fs.existsSync(dirAbs)) {
-    for (const name of fs.readdirSync(dirAbs).filter((n) => n.endsWith('.md')).sort()) {
-      if (!listed.has(name)) inv.warnings.push(`WARN [architecture] topic table: ${TOPICS_DIR}/${name} is not listed under ## Topics — no reader loads it`);
-    }
-  }
+  inv.unlisted = fs.existsSync(dirAbs) ? fs.readdirSync(dirAbs).filter((n) => n.endsWith('.md') && !listed.has(n)).sort() : [];
+  for (const name of inv.unlisted) inv.warnings.push(`WARN [architecture] topic table: ${TOPICS_DIR}/${name} is not listed under ## Topics — no reader loads it`);
   inv.state = rootScan.hasTable ? 'topics' : rootScan.hasMarker ? 'flat' : rootScan.sections.length === 0 ? 'empty' : 'legacy';
   if (inv.state !== 'empty') {
     const counts = {};
@@ -217,9 +215,7 @@ function inventory(root) {
 }
 
 function withFingerprint(inv) {
-  const h = createHash('sha256');
-  for (const f of inv.files) h.update(`${f.path}\0${f.sha}\n`);
-  inv.fingerprint = h.digest('hex').slice(0, 16);
+  inv.fingerprint = inv.files.reduce((h, f) => h.update(`${f.path}\0${f.sha}\n`), createHash('sha256')).digest('hex').slice(0, 16);
   return inv;
 }
 
@@ -268,10 +264,12 @@ function checkPlan(inv, plan) {
   for (const t of topics) {
     if (!SLUG_RE.test(t?.slug ?? '')) errors.push(`topic slug "${t?.slug}" must be kebab-case, one to three words`);
     else if (t.slug === ROOT || slugs.has(t.slug)) errors.push(`topic slug "${t.slug}" is reserved or used twice`);
+    else if (inv.unlisted.includes(`${t.slug}.md`)) errors.push(`topic slug "${t.slug}": ${TOPICS_DIR}/${t.slug}.md exists and no row lists it — writing the topic would overwrite it; pick another slug`);
     slugs.add(t?.slug);
     if (!t?.title || FORBIDDEN_TITLE_RE.test(t.title)) errors.push(`topic "${t?.slug}": title is empty or carries | [ ] or a line break`);
     if (!t?.loadWhen || FORBIDDEN_CELL_RE.test(t.loadWhen)) errors.push(`topic "${t?.slug}": "Load when" is empty or carries | or a line break`);
   }
+  for (const w of inv.warnings.filter((x) => x.includes('is never closed'))) errors.push(`${w.replace('WARN [architecture] parse: ', '')} — close it in the source first: anything written after an open fence would become part of it`);
   const byId = new Map(inv.items.map((it) => [it.id, it]));
   const order = new Map(inv.items.map((it, n) => [it.id, n]));
   const dest = new Map([[ROOT, []], ...topics.map((t) => [t.slug, []])]);
@@ -304,12 +302,12 @@ function checkPlan(inv, plan) {
 // ── RENDER ─────────────────────────────────────────────────────────────────────────────────
 // Writes items after a heading. A blank line separates two items unless they were neighbours
 // in the source and nothing separated them there; table rows share a copy of their table head.
-function writeItems(out, items) {
+function writeItems(out, items, heading) {
   let [sub, prev] = [null, null];
   const gap = () => { if (out[out.length - 1] !== '') out.push(''); };
   for (const it of items) {
-    if (it.sub !== sub && it.sub) { gap(); out.push(it.sub); prev = null; }
-    sub = it.sub ?? sub;
+    if (it.sub !== sub && (it.sub || (sub && heading))) { gap(); out.push(it.sub ?? heading); prev = null; }
+    sub = it.sub;
     const neighbour = prev && it.prev === prev;
     if (it.kind === 'T' && !(neighbour && prev.kind === 'T')) { gap(); out.push(...it.head); }
     else if (!neighbour || it.blankBefore) gap();
@@ -341,7 +339,7 @@ function renderRoot(checked, inv) {
     const hadItems = inv.rootScan.sections.filter((s) => s.name === name).some((s) => s.count > 0);
     if (mine.length === 0 && hadItems) continue;
     out.push('', raw(name));
-    writeItems(out, mine);
+    writeItems(out, mine, raw(name));
   }
   if (!tableDone) table();
   return out;
@@ -354,7 +352,7 @@ function renderTopic(t, items, checked) {
     const name = checked.rename.get(`${t.slug}\0${it.section}`) ?? it.section ?? LEAD_NAME;
     groups.set(name, [...(groups.get(name) ?? []), it]);
   }
-  for (const [name, list] of groups) { out.push('', `## ${name}`); writeItems(out, list); }
+  for (const [name, list] of groups) { out.push('', `## ${name}`); writeItems(out, list, `## ${name}`); }
   return out;
 }
 
@@ -414,23 +412,25 @@ function printOutline(inv, checked) {
   };
   for (const t of topics) outline(`${t.title} — architecture/${t.slug}.md`, dest.get(t.slug), t.slug);
   outline(`Root — ${ROOT_FILE}`, dest.get(ROOT), ROOT);
-  const notes = [];
-  if (inv.hasMarker && topics.length > 0) notes.push('The flat marker is removed.');
-  if (removed.length) notes.push(`Deleted after writing: ${removed.map((t) => t.path).join(', ')}.`);
-  if (notes.length) console.log(`\n${notes.join('\n')}`);
+  if (inv.hasMarker && topics.length > 0) console.log('\nThe flat marker is removed.');
+  if (removed.length) console.log(`\nDeleted after writing: ${removed.map((t) => t.path).join(', ')}.`);
 }
 
 function readPlan(root) {
   const abs = path.join(root, PLAN_FILE);
   if (!fs.existsSync(abs)) throw new UsageError(`${PLAN_FILE} does not exist — write the plan first`);
   try { return JSON.parse(fs.readFileSync(abs, 'utf8').replace(BOM, '')); }
-  catch (e) { throw new UsageError(`${PLAN_FILE} is not valid JSON: ${e.message}`); }
+  catch (e) { return { invalid: `${PLAN_FILE} is not valid JSON: ${e.message}` }; }
 }
 
 // ── COMMANDS ───────────────────────────────────────────────────────────────────────────────
 function apply(root, dryRun) {
   const inv = inventory(root);
   const plan = readPlan(root);
+  if (!plan || typeof plan !== 'object' || Array.isArray(plan) || plan.invalid || typeof plan.fingerprint !== 'string') {
+    console.log(`The plan is not valid — nothing written:\n  - ${plan?.invalid ?? 'it must be a JSON object that carries the fingerprint parse printed'}`);
+    return EXIT.INVALID;
+  }
   if (plan.fingerprint !== inv.fingerprint) {
     console.log(`The architecture files changed since parse (fingerprint ${plan.fingerprint} ≠ ${inv.fingerprint}) — run parse again and rebuild the plan. Nothing written.`);
     return EXIT.STALE;
@@ -481,10 +481,8 @@ function main(argv) {
   }
   const dryRun = argv.includes('--dry-run');
   const [command, ...extra] = args;
-  if (!command || command === '--help' || command === '-h' || extra.length) {
-    console.log(USAGE);
-    return command === '--help' || command === '-h' ? EXIT.OK : EXIT.USAGE;
-  }
+  const help = command === '--help' || command === '-h';
+  if (!command || help || extra.length) { console.log(USAGE); return help ? EXIT.OK : EXIT.USAGE; }
   if (command === 'parse') { printParse(inventory(root)); return EXIT.OK; }
   if (command === 'apply') return apply(root, dryRun);
   if (command === 'discard') { fs.rmSync(path.join(root, PLAN_FILE), { force: true }); return EXIT.OK; }

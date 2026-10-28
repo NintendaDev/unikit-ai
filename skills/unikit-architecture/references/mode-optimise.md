@@ -29,7 +29,7 @@ Only when `node` cannot run: do the same steps by hand, as `## By hand` at the e
 ## D.1 Read
 
 1. Run `parse`. `state: empty` → on an explicit call print `INFO [architecture] optimise: no architecture document — file unchanged` and stop; on an offer stop without a word.
-2. Print its `WARN` lines. A file in `.unikit/architecture/` that no row lists is outside the layout and stays untouched.
+2. Print its `WARN` lines. A file in `.unikit/architecture/` that no row lists is outside the layout and stays untouched — a proposed topic never takes its name. A `WARN` that a code fence is never closed makes `apply` refuse: close the fence in the file (only with the user's say-so, it is their file) and run `parse` again.
 3. Every item has an id. `P<n>` is a paragraph, `L<n>` a list item with its continuations and nested lines, `T<n>` one data row of a table (the helper copies the table head to every file the rows land in), `C<n>` a fenced code block. A shape the grammar does not recognise surfaces as a paragraph: nothing is dropped.
 4. `N` is the number of items — the count the report must show.
 5. Explicit call → print `Read <N> items from <K> files — grouping them into topics now; this is the longest step.` before starting D.2.
@@ -79,7 +79,7 @@ Explicit call → first print `Writing <T> topic files and the root…`. Then ru
 - `2` → nothing was written: print the reasons, correct the plan, and return to D.3 — the user confirms the corrected outline.
 - `3` → the architecture files changed since D.1: nothing was written; start again at D.1.
 
-`apply` writes the topic files first and the root last: the `# Architecture:` title, the header quote, the sections that still hold items, `## Topics` with one row per topic in alphabetical order of slug directly above `## Detailed Rules`. The flat marker, `---` separators and empty sections are not carried over; inside every destination the items keep their original relative order. It deletes only the topic files of the old table that the plan drops — never a file no row listed.
+`apply` writes the topic files first and the root last: the `# Architecture:` title, the header quote, the sections that still hold items, `## Topics` with one row per topic in alphabetical order of slug directly above `## Detailed Rules`. `---` separators and the sections whose items all moved are not carried over, and the flat marker is dropped once the file has a topic (it stays while there is none); inside every destination the items keep their original relative order. It deletes only the topic files of the old table that the plan drops — never a file no row listed.
 
 ## D.6 Report
 

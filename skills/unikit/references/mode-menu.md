@@ -34,7 +34,7 @@ Print the state in a few lines — the keys the config lacks, the bridges, the d
 | **Config** | always | adds the missing settings to `.unikit/config.yaml` | the config mode, from Phase C on, then STOP |
 | **Environment** | `BRIDGES.md` exists | checks the CLI, the package and the editor of every bridge; installs only after a confirmation | `bridge-setup.md`, then STOP |
 | **Rules** | always | scans the project and creates the stack rules for the frameworks it uses and has none for; writes under `.unikit/memory/code/stack/` | Steps 5, 6 and 9, then STOP |
-| **Description** | always | scans the project again and rewrites `.unikit/DESCRIPTION.md` and `AGENTS.md`, runs `unikit-architecture` in its update mode — nothing already written in `.unikit/ARCHITECTURE.md` is removed; it is named **Finish the setup** when any of the three documents is missing | Steps 1-11 |
+| **Description** | always | scans the project again and rewrites `.unikit/DESCRIPTION.md` and `AGENTS.md`, runs `unikit-architecture` — it generates `.unikit/ARCHITECTURE.md` when the file is missing and otherwise runs in its update mode, so nothing already written is removed; it is named **Finish the setup** when any of the three documents is missing | Steps 1-11 |
 
 The first of these that applies is the recommended one: any of the three documents missing → **Description** (as **Finish the setup**); the config lacks keys → **Config**. When none applies, no action is marked.
 

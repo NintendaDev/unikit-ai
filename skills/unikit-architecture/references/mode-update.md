@@ -6,7 +6,7 @@ The layout — the two shapes of the root, the table row, the topic file, the ma
 
 ## U.1 Read
 
-1. Read the root. Its state (`topics`, `flat` or `legacy`; `empty` never reaches this file) comes from SKILL.md → `## Modes`. Print its `WARN` lines about drift between the table and the topic files; fix none of them.
+1. Read the root. Its state (`topics`, `flat` or `legacy`; `empty` never reaches this file) comes from SKILL.md → `## Modes`. Compare the rows of `## Topics` with the files in `.unikit/architecture/` (list the directory) and print the drift `WARN` lines of SKILL.md → `## Modes`; fix none of them.
 2. Open a topic file only when a fact has to be placed in its area, or when the area has to be compared with the scan (U.2). The root alone is enough for everything else.
 
 ## U.2 Rescan
@@ -49,7 +49,7 @@ A new topic file follows the layout; its row joins the table in alphabetical ord
 
 Print one line `INFO [architecture] update: added=<n> stale=<k> new-topics=<t>`, then a table `# | Fact | Placed in`, then the list of `stale` paths. Not one word about the length of the file and no advice to move anything into the knowledge base.
 
-If this run gave the file its first topic (U.5), run Step 5 of SKILL.md: the `AGENTS.md` row names the topic directory.
+If the file has topics after this run, run Step 5 of SKILL.md: the `AGENTS.md` row names the topic directory.
 
 ## U.7 Offer
 
