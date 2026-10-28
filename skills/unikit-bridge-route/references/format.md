@@ -6,7 +6,7 @@ Path: `.unikit/bridge-routing.md`. Optional: no file means no routing rules. The
 
 ```markdown
 # Bridge routing
-<!-- Read by the agents when they choose a bridge. Kept by /unikit-bridge-route or by hand. No file means no routing rules. -->
+<!-- Read by the agents when they choose a bridge. Kept by /unikit-bridge-route or by hand. No file means no routing rules. A row decides only the steps of its own area; every other step follows the order in .unikit/bridges.yaml. -->
 
 | area | when | rule | bridges | why |
 |---|---|---|---|---|
@@ -32,5 +32,6 @@ Path: `.unikit/bridge-routing.md`. Optional: no file means no routing rules. The
 - One row per line; a pipe inside a cell is written `\|`.
 - The header line and the separator line stay as shown; rows keep the order they were written in, a new row goes last.
 - A row never leaves `rule` or `bridges` empty. `area` is never empty (`*` stands for any).
+- A row decides only the steps of its own `area`: every other step follows the order of `.unikit/bridges.yaml`, and a bridge that a row names for one area is not promoted anywhere else. To send everything but one area through a bridge, write a `*` row (`first`) next to the row of that area: the row of the area is stronger and decides alone.
 - Two rows with the same `area` and `when` and different rules are not written.
 - How an agent chooses between rows is not repeated here: `.unikit/system/dev-principles.md` -> **D3** owns it.

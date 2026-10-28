@@ -1921,6 +1921,35 @@ await group('SP-4', async () => {
     report('SP-4', 'every row of BRIDGES.md that dev-principles.md names is printed', named.length, violations);
 });
 
+// ── SP-5: the order of the bridges binds every step, and a step that leaves it says why ──
+
+await group('SP-5', async () => {
+    const violations = [];
+    let scanned = 0;
+    const check = (ok, message) => { scanned++; if (!ok) violations.push(message); };
+    const text = readRepo(DEV_PRINCIPLES);
+    const boundary = text.indexOf(LAZY_BOUNDARY_MARKER);
+    const workflow = sectionOf(boundary < 0 ? '' : text.slice(0, boundary), '## Engine workflow', '## Code conventions');
+    const d3 = sectionOf(text, '### D3. ', '### D4. ');
+    check(boundary >= 0 && workflow !== '' && d3 !== '', 'dev-principles.md: the lazy-read boundary, the Engine workflow or D3 was not found');
+    check(!text.includes('but the choice stays yours'), 'dev-principles.md: the order of the bridges is a matter of choice again ("the choice stays yours")');
+    check(workflow.includes('The order binds every step') && workflow.includes('needs a reason') && workflow.includes('`INFO [bridge-order]`'),
+        'Engine workflow (read on every Bootstrap): a bridge that is not the first one is not tied to a printed reason');
+    for (const phrase of [
+        '**A bridge that is not the first.**', '`INFO [bridge-order] <step>: <bridge> (first: <bridge>; <why>)`', 'once per step',
+        '`routing row <area> <rule>`', '`no route`', '`unavailable: <the observation>`', 'is none of these',
+    ]) check(d3.includes(phrase), `D3: "${phrase}" is missing`);
+    const format = readRepo(ROUTE_FORMAT);
+    const { renderBridgesManifest } = await dist('core/bridges/manifest.js');
+    const routingLine = /\nrouting: [^\n]*/.exec(renderBridgesManifest({ engineId: 'unity', bridges: [], unselected: [] }))?.[0] ?? '';
+    for (const [label, body] of [['format.md', format], ['the routing line of BRIDGES.md', routingLine]]) {
+        check(body.includes('only the steps of its own area') && body.includes('every other step'), `${label}: does not say that a row decides only the steps of its own area`);
+    }
+    check(format.includes('<!-- Read by the agents when they choose a bridge.') && format.includes('only the steps of its own area'), 'format.md: the header comment written into the file does not carry the scope of a row');
+    check(readRepo('subagents/unikit-implement-worker.md').includes('`INFO [bridge-order]`'), 'the worker does not return its INFO [bridge-order] lines');
+    report('SP-5', 'a row decides only its own area, every other step follows the order, and a bridge that is not the first is announced with its reason', scanned, violations);
+});
+
 // ── NB: nothing of the retired documentation skill is left ──
 
 await group('NB-1', async () => {

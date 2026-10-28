@@ -58,7 +58,7 @@ function posixPath(...segments: string[]): string {
 
 /** Static text: it does not depend on what the order file holds or whether the routing file exists (NFR-1). */
 const ORDER_POINTER_LINE = `order: ${posixPath(UNIKIT_DIR, BRIDGE_ORDER_FILE)} - kept by unikit-ai init and update (edit the list to reorder); a missing file means the default order above`;
-const ROUTING_POINTER_LINE = `routing: ${posixPath(UNIKIT_DIR, BRIDGE_ROUTING_FILE)} - optional rules per case, written by /unikit-bridge-route; a missing file means no routing rules`;
+const ROUTING_POINTER_LINE = `routing: ${posixPath(UNIKIT_DIR, BRIDGE_ROUTING_FILE)} - optional rules per case, written by /unikit-bridge-route; a row decides only the steps of its own area, every other step follows the order; a missing file means no routing rules`;
 
 /** One table cell: a pipe would end it and a line break would end the row. */
 function cell(text: string): string {
