@@ -9646,7 +9646,8 @@ if [[ -z "$BX_WHY" ]]; then
     # 66100 -> 66300 for the 3.0.0 findings table, then 66300 -> 65830: the gate procedure moved into references/bridge-gates.md
     # 65830 -> 65950: the Bootstrap reads the order file and the routing file in one sentence (XE-2), as implement and execute do
     # 65950 -> 66690: architecture topics, 2026-10-28 — the Step 0.2 read of the topic files, the 3.4 table check and the 3.6 suggestions (AD-12); the numbers live in the contract
-    bx_max "BC-1:skill-size" 66690 "$UNIKIT_VERIFY_SKILL"
+    # 66690 -> 66710: the Subagent arguments pointer moved out of the alias section into one of its own (AP-22), +14 bytes of heading
+    bx_max "BC-1:skill-size" 66710 "$UNIKIT_VERIFY_SKILL"
 
     # (BC-2) verify's branch: headings, the two level sentences, and the one place of suggested_next
     BX_CHK=$((BX_CHK + 1))
@@ -9697,7 +9698,8 @@ if [[ -z "$BX_WHY" ]]; then
 
     # (BS-3) improve's size
     # 62000 -> 62560: architecture topics, 2026-10-28 — the Bootstrap read of the topic files and the topic-path slot in the recon prompts (AD-12)
-    bx_max "BS-3:skill-size" 62560 "$UNIKIT_IMPROVE_SKILL"
+    # 62560 -> 62580: the Subagent arguments pointer moved out of the alias section into one of its own (AP-22), +15 bytes of heading
+    bx_max "BS-3:skill-size" 62580 "$UNIKIT_IMPROVE_SKILL"
 
     # (BX-1) the four branch files: no agent-filter markers, no engine words, all point at the contract
     for f in "$BP_REF" "$BM_REF" "$BC_REF" "$BS_REF"; do
@@ -9734,7 +9736,8 @@ if [[ -z "$BX_WHY" ]]; then
     # 53900 -> 54200 for the 3.0.0 findings table, then 54200 -> 53650: the console check moved into references/console-check.md
     # 53650 -> 53720: the bridge order moved from the config to .unikit/bridges.yaml and the routing file joined it in one Bootstrap sentence (XE-2)
     # 53720 -> 54520: architecture topics, 2026-10-28 — the Step 1 and Step 3.0 reads of the topic files and the 3.7 delta form (AD-12)
-    bx_max "BM-6:implement-skill-size" 54520 "$UNIKIT_IMPLEMENT_SKILL"
+    # 54520 -> 54540: the Subagent arguments pointer moved out of the alias section into one of its own (AP-22), +14 bytes of heading
+    bx_max "BM-6:implement-skill-size" 54540 "$UNIKIT_IMPLEMENT_SKILL"
     # (BC-4) a measurement the user skipped is a skipped row, not a blocker
     bx_has "BC-4:skipped-measure-is-a-blocker" '⏭️ SKIPPED' "$BC_REF"
     # (BC-5) a name stated in ## Not measured is accounted for — a measurement the user skipped is not a blocker
@@ -13283,7 +13286,7 @@ else
         '| `/unikit` Step 9.8 | executor |' '| `/unikit` Step 10 | executor |' '| `/unikit-gd-brainstorm` Phase 3.5 | executor |' \
         '| `unikit-implement-worker` | executor |' '| `unikit-plan-polisher` | executor |' \
         '| `unikit-review-sidecar` | validator |' '| `unikit-architecture-sidecar` | validator |' '| `unikit-docs-sidecar` | validator |' \
-        '| `unikit-commit-sidecar` | reader |'; do
+        '| `unikit-commit-sidecar` | reader |' '| `/unikit-review` reviewers | validator |'; do
         APX_CHK=$((APX_CHK + 1))
         grep -qF -- "$apx_lit" "$APX_ROLES_FILE" || APX_WHY+=" AP-19:assignment-changed(${apx_lit:0:34})"
     done
@@ -13320,11 +13323,31 @@ APX_CHK=$((APX_CHK + 2))
 grep -qF 'also carries the `model` and `effort` call parameters of its role' "$ROOT_DIR/subagents/unikit-implement-coordinator.md" || APX_WHY+=" AP-20:implement-dispatch-not-parameterised"
 grep -qF 'Pass the `model` and `effort` call parameters of the polisher' "$ROOT_DIR/subagents/unikit-plan-coordinator.md" || APX_WHY+=" AP-20:plan-dispatch-not-parameterised"
 # (AP-21) is added next to the texts it pins — see the tasks of phase 6
+# (AP-22) the pointer is a rule of the whole run, so it never stands inside the section of the aliases. /unikit-review declares
+# one alias, `check-agent`, and that one runs only on `+check`; the reviewers a run starts on its own decision are named by no
+# step, and a pointer in the alias section was read as the alias's own rule: a run that started five reviewers (live run,
+# 2026-10-28) passed them neither the configured effort nor the configured model. Every pointer therefore stands outside the
+# `## Delegation agents` section (the one AP-19 reads the aliases from). /unikit-review also says, right under it, that the rule
+# covers a launch no step names, and the roles table places that launch (pinned in AP-19).
+APX_PTR_SCOPE_N=0
+for apx_f in "$AP_SCOPE"/*/SKILL.md; do
+    grep -qF '**Subagent arguments.**' "$apx_f" || continue
+    APX_PTR_SCOPE_N=$((APX_PTR_SCOPE_N + 1))
+    apx_in=$(awk '/^## Delegation agents/{f=1;next} /^## /{f=0} f && /^\*\*Subagent arguments\.\*\*/{c++} END{print c+0}' "$apx_f")
+    [[ "${apx_in:-0}" -eq 0 ]] || APX_WHY+=" AP-22:pointer-inside-alias-section:${apx_f#"$ROOT_DIR"/}"
+done
+APX_CHK=$((APX_CHK + APX_PTR_SCOPE_N + 2))
+[[ "$APX_PTR_SCOPE_N" -gt 0 ]] || APX_WHY+=" AP-22:no-pointer"
+APX_RV="$AP_SCOPE/unikit-review/SKILL.md"
+APX_RV_SCOPE=$( { grep -cF 'It covers every subagent of this review, with `+check` or without it' "$APX_RV" || true; } )
+[[ "${APX_RV_SCOPE:-0}" -eq 1 ]] || APX_WHY+=" AP-22:review-scope-sentence-count(${APX_RV_SCOPE:-0})"
+APX_RV_OWN=$( { grep -cF 'one you start yourself, such as a reviewer over part of a large diff, which no step here names' "$APX_RV" || true; } )
+[[ "${APX_RV_OWN:-0}" -eq 1 ]] || APX_WHY+=" AP-22:review-own-launch-sentence-count(${APX_RV_OWN:-0})"
 (( APX_CHK > 0 )) || APX_WHY+=" AP-16:nothing-checked"
 if [[ -z "$APX_WHY" ]]; then
-    pass "AP-16…AP-20 subagent arguments and roles: the contract file, the pointers as one text, the docs, the roles table, the coordinators (${APX_CHK} checks)"
+    pass "AP-16…AP-22 subagent arguments and roles: the contract file, the pointers as one text, the docs, the roles table, the coordinators, the pointer outside the alias section (${APX_CHK} checks)"
 else
-    fail "AP-16…AP-20 subagent arguments and roles:$APX_WHY"
+    fail "AP-16…AP-22 subagent arguments and roles:$APX_WHY"
 fi
 
 # >>> UQ block

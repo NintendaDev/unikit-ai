@@ -65,11 +65,7 @@ language setting.
 
 **The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
 
-## Delegation agents
-
-This skill uses two named delegation aliases for `Agent(...)` calls. The aliases are the
-single place where each delegate's agent type and call arguments are declared — call sites
-name the alias and never carry a type or a model argument of their own.
+## Subagent launches
 
 **Subagent arguments.** Before the first subagent you launch, read `.unikit/system/subagent-arguments.md`
 and `.unikit/config.yaml` once and settle the model and effort of every launch as that file says.
@@ -78,6 +74,12 @@ built-in model of a reader and a validator: `"{{agent_model_default}}"`, of an e
 If the file cannot be read, print
 `WARN [delegation] subagent-arguments contract missing — built-in model tier used, effort not passed`
 and use that model, no effort.
+
+## Delegation agents
+
+This skill uses two named delegation aliases for `Agent(...)` calls. The aliases are the
+single place where each delegate's agent type and call arguments are declared — call sites
+name the alias and never carry a type or a model argument of their own.
 
 - **`recon-agent`** — read-only parallel reconnaissance. Expands to:
 

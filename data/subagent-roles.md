@@ -23,6 +23,7 @@ The table is primary: a launch it names has the role of its row, even where a de
 | `/unikit` Step 9.8 | executor | One launch per stack rule to generate, through `unikit-memory` |
 | `/unikit` Step 10 | executor | The architecture document, through `unikit-architecture` |
 | `/unikit-gd-brainstorm` Phase 3.5 | executor | Market validation through `unikit-gd-explore`. It gathers facts, but it runs a skill that writes, and the user assigned it to the executors on purpose: while the executor value is `inherit`, this launch stays on the model and the effort of the session |
+| `/unikit-review` reviewers | validator | A reviewer the run starts on its own decision over part of a diff, which no step of the skill names: it judges code that already exists, returns findings and changes nothing |
 | `unikit-implement-worker` | executor | File agent: executes one phase of a plan, started by `unikit-implement-coordinator` |
 | `unikit-plan-polisher` | executor | File agent: creates and refines a plan, started by `unikit-plan-coordinator` |
 | `unikit-review-sidecar` | validator | File agent: background code-review sidecar |
