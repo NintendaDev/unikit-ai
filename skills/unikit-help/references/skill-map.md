@@ -209,15 +209,23 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 ### unikit-archive
 - **Purpose:** Move a completed folder plan — or, on your explicit choice, an unfinished one,
   labelled as such — from `.unikit/code/plans/<folder>/` to `.unikit/code/archive/plans/<folder>/`,
-  so plan lookup and the plan lists stop offering it.
-  Never deletes, never commits.
-- **When:** "archive the plan", "archive completed plans", "clean up plans".
-- **In:** a plan folder name, `--all`, `list`, or nothing (interactive — a table of every plan with
-  its verdict, created date and last change, oldest change first; pick by number or by date).
-- **Out:** the moved folder + one `Archived:` line in its manifest.
+  and a code research from `.unikit/code/researches/<slug>/` to
+  `.unikit/code/archive/researches/<slug>/`, so plan lookup, the plan lists and `/unikit-plan`
+  stop offering them. A plan that links a research still finds it by its folder name; a research
+  that an unfinished plan links is not offered. Never deletes, never commits.
+- **When:** "archive the plan", "archive completed plans", "clean up plans", "archive researches",
+  "clean up researches", "restore a research".
+- **In:** nothing (it asks what to archive — plans, researches or both), `plans`, `researches`
+  (a table of the researches that can go, oldest first; pick by number or by date),
+  `researches <slug>`, `researches --all`, `researches restore [<slug>]`, a plan folder name,
+  `--all`, or `list` (both archives). A plan is classified with its verdict, created date and last
+  change, oldest change first.
+- **Out:** the moved folder + one `Archived:` line in its manifest; for a research also a
+  re-rendered `.unikit/code/researches/INDEX.md`.
 - **Optional (after commit).** Untransferred MCP findings and `open` rule candidates never
   block: it asks whether to handle them first (`/unikit-bridge-trap`, `/unikit-verify`) or
-  archive anyway. `/unikit-explore` reads archived plans as history.
+  archive anyway. `/unikit-explore` reads archived plans as history and never takes the slug of
+  an archived research.
 
 ### unikit-evolve
 - **Purpose:** Learn from accumulated fix-patches — extract prevention points and turn them into

@@ -155,7 +155,7 @@ canonical intent list and the full routing table live in
 | Test the code | `/unikit-implement` (test checkpoints), `/unikit-verify` (checks the recorded run), `/unikit-fix` | scenarios.md |
 | Fix a bug | `/unikit-fix` (or `/unikit-explore` first for deep bugs) | scenarios.md |
 | Review code quality | `/unikit-review` → `/unikit-fix` | skill-map.md |
-| Archive finished plans / clean up the plan list | `/unikit-archive` (then `/unikit-commit` the move) | skill-map.md |
+| Archive finished plans or researches / clean up the lists / bring a research back | `/unikit-archive` (then `/unikit-commit` the move) | skill-map.md |
 | Open / describe / merge a PR | `/unikit-pr` | skill-map.md |
 | An engine bridge reported success but nothing changed | `/unikit-bridge-trap` (record the finding) → `/unikit-bridge-audit` (curate later) | skill-map.md |
 | Say which bridge a kind of work goes through, or never goes through | `/unikit-bridge-route` | skill-map.md |

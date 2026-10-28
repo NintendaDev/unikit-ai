@@ -223,6 +223,7 @@ When the topic involves a library or framework from the project's tech stack (`D
 
 The argument after `/unikit-explore` can be:
 - **The slug of an existing research folder** in `.unikit/code/researches/` — an **entry into the continuation cycle**, not a new topic: load `{{skills_dir}}/{{self_name}}/references/continuing.md` and follow it.
+- **The slug of an archived research** — the argument is one token naming a folder in `.unikit/code/archive/researches/` and no folder in `.unikit/code/researches/`. It is not a new topic and not yet a continuation: print `INFO [research] <slug> is archived — bring it back with /unikit-archive researches restore <slug>, then continue it here` and stop. This skill has no `mv`; it never moves a folder.
 - **An ultra request** — the leading `ultra` token, or the same request in the user's own wording ("ultra research", "ultraresearch", "ultra explore", "ультраисследование", "run an ultra research on the save system") — switches on adaptive research artifacts and the pinned dialogue log. Load `{{skills_dir}}/{{self_name}}/references/ULTRA-RESEARCH-FORMAT.md` now and follow it: it owns the pinning of the log while the conversation goes on, and the artifacts at save time. The stance and the exploration itself are unchanged. Ultra is **user-named, never model-inferred**: it is never chosen because the topic is large or difficult, and wording that only asks for care ("research this deeply", "a thorough investigation") is not an ultra request — explore normally.
 - **A merge request** — the user asks to merge a named branch into the current one (not a rebase, a cherry-pick or a merge by pull request number). Load `{{skills_dir}}/{{self_name}}/references/merge-research.md` now and follow it: it owns the analysis, the questions and the form of the saved research. If it cannot be read, print `WARN [merge] merge-research reference missing` and explore normally. An ordinary exploration does not read that file.
 - **An experiment** — the topic is `EXP-<nnn>`, a path to an `experiment.md`, an experiment folder, or an experiment named by its description ("how do we implement the latest experiment"): an ordinary exploration grounded on the card (*Optional reads* → Experiment grounding). It is not a mode of its own: the stance, the dialogue and the save are unchanged; only the saved summary gains an `Experiment:` line and a `Next step:` in selector form (see the template).
@@ -277,6 +278,18 @@ All researches live in `.unikit/code/researches/`. Each research gets its own fo
   research topic. **No date.**
 - The date lives in the `Created:` and `Updated:` fields of the manifest header.
 
+**An archived slug is never taken.** A slug that equals a folder name in `.unikit/code/archive/researches/` — generated, recomputed at the save, or typed by the user — is not used silently: plans that linked the archived research find it by that name, and a new folder under the same name would answer to their links. The check runs wherever a slug is settled — the first pin of an ultra exploration and the save. Ask:
+
+```
+The question tool of your agent (`AskUserQuestion`): A research named <slug> is archived. What should happen?
+
+Options:
+1. Use another name — the slug arrives as the free-text answer; picked without one, ask for it again the same way
+2. Restore it first — print /unikit-archive researches restore <slug> and hold: nothing is written, the conversation goes on and the save can be asked for again
+```
+
+After *Use another name* print `WARN [research] <slug> is archived — saving under <new-slug>`, after the answer and never instead of the question. An automatic suffix (`-2`) is **forbidden**.
+
 <!-- Why the folder name carries no date: docs/skills/unikit-explore-save-rationale.md in the UniKit repository. -->
 
 ### How to save
@@ -306,6 +319,9 @@ If the user agrees:
    the topic carried at that moment. Recompute the slug from the topic as it has now settled,
    and when the two differ, rename the folder — **before** the manifest is written. A saved
    research is never renamed.
+
+   The archived-slug check of *Naming convention* runs on the settled slug first, then the
+   live-folder check below.
 
    **If that slug already names a folder in `.unikit/code/researches/`** — any folder other
    than this exploration's own pinned one (ultra only) — do not resolve it silently. Ask:
@@ -796,73 +812,7 @@ silence: no block, no line.
 
 ### Step 4: Re-render the Researches Index
 
-`.unikit/code/researches/INDEX.md` is a **generated** registry. It is not edited and it is not
-appended to: on every save it is re-rendered whole from the folders on disk.
-
-1. List the subfolders of `.unikit/code/researches/`.
-2. For each, read its `RESEARCH.md` and take: the **first line** (the mode marker — present
-   means `ultra`, absent means `standard`), the H1 title, the header fields `Created` /
-   `Updated` / `Status` / `Lifecycle` / `Target`, and the `Topic:` line from
-   `## Active Summary` — that line **is** the `Summary`.
-3. A folder with no readable `RESEARCH.md` is skipped, and the skip is **printed**. Which line
-   gets printed depends on what the folder holds.
-
-   A folder carrying a `SOURCE.md` and no manifest is an **unfinished exploration**, not a
-   broken one — an ultra conversation whose pinned log ended before it was saved, or a save that
-   stopped after the log, which is written first. It stays out of the registry all the same, and
-   it is announced by a line that names the way back into it:
-
-   ```
-   NOTE [research] <folder> — unfinished exploration: SOURCE.md is there, the manifest is not.
-                   Continue it with: /unikit-explore <folder>
-   ```
-
-   `NOTE`, not `WARN`: the work resumes through `references/continuing.md`.
-
-   Every other folder without a manifest keeps the line it has always had:
-
-   ```
-   WARN [research] skipped <folder> — no readable RESEARCH.md
-   ```
-
-   Skipping in silence is forbidden. What skips a folder is the missing manifest, and nothing else.
-
-4. Overwrite the file whole. The header is always:
-
-   ```markdown
-   # Researches Index
-
-   > Generated by /unikit-explore on every save. Do not edit manually — edits are overwritten.
-   ```
-
-5. Each record:
-
-   ```markdown
-   ---
-
-   ### <Research Title>
-   - **Created**: YYYY-MM-DD HH:MM
-   - **Updated**: YYYY-MM-DD HH:MM
-   - **Status**: completed | in-progress | needs-follow-up
-   - **Lifecycle**: active | paused | superseded
-   - **Mode**: standard | ultra
-   - **Summary**: <1-2 sentences, from `Topic:`>
-   - **Path**: `<slug>/`
-   - **Target**: SYS-<slug>   (optional, omit the line when absent)
-   ```
-
-6. Sort by `Updated` descending; ties broken by `Created` descending; then by folder name.
-   `Updated` is the key on purpose — in a research with a continuation cycle, freshness means
-   "when this was last confirmed", not "when the folder was opened".
-
-7. After the re-render, print the reconciliation summary:
-
-   ```
-   researches/INDEX.md re-rendered:
-   - Kept: N
-   - Added: N (list names)
-   - Removed: N (list names)
-   ```
+`.unikit/code/researches/INDEX.md` is a **generated** registry: it is not edited and not appended to — on every save it is re-rendered whole from the folders on disk. Read `{{skills_dir}}/{{self_name}}/references/index-render.md` and follow it. If it cannot be read, print `WARN [research] index-render reference missing — researches/INDEX.md was not re-rendered; run unikit-ai update` and go on to the gate.
 
 <!-- Why reconciliation stopped being a separate command: docs/skills/unikit-explore-save-rationale.md in the UniKit repository. -->
 

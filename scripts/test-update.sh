@@ -2401,6 +2401,8 @@ assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-explore/references/exper
     "unikit-gd-explore experiment-lens.md travels under references/ (non-flat copyDirectory)"
 assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-archive/SKILL.md" \
     "update --install-new installed the new plan-archive skill (unikit-archive)"
+assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-archive/references/plans.md" \
+    "unikit-archive plans.md travels under references/ (non-flat copyDirectory)"
 assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-pr/SKILL.md" \
     "update --install-new installed the new pull-request skill (unikit-pr)"
 assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-plan/SKILL.md" \

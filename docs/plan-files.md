@@ -16,6 +16,7 @@ Plans are stored in two locations depending on mode:
 | `/unikit-plan add` | Existing plan location | Modifies existing plan in-place |
 | `/unikit-fix` (plan mode) | `.unikit/code/FIX_PLAN.md` | Single file with analysis + fix steps |
 | `/unikit-archive` | `.unikit/code/archive/plans/<feature-name>/` | A completed folder plan (or, on your explicit choice, an unfinished one, marked as such), moved whole; its manifest gains an `Archived:` line |
+| `/unikit-archive researches` | `.unikit/code/archive/researches/<slug>/` | A code research, moved whole; its `RESEARCH.md` gains an `Archived:` line under `Updated:` |
 
 Ultra reuses the full-mode folder and the same `PLAN.md` entry point — moving a plan from full to ultra is purely additive: phase files appear, nothing is renamed, external links stay valid.
 
@@ -523,6 +524,8 @@ Discovery is unchanged for bundles. A directory listing cannot tell a bundle fro
 
 An archived plan (`.unikit/code/archive/plans/<folder>/`) is not discovered - it was moved there to stop being offered. An explicit path `@.unikit/code/archive/plans/<folder>` still reaches it in `/unikit-implement` and `/unikit-improve`, and a commit's `Plan: <folder>` trailer names the folder to look for. `/unikit-explore` reads archived plans whose name matches its topic, as the history of how a feature was built.
 
+An archived research (`.unikit/code/archive/researches/<slug>/`) is found by name, not by path: a plan's `## Based on` entry is the folder name, and `/unikit-implement`, `/unikit-verify` and `/unikit-improve` look in `researches/` first and in `archive/researches/` second, printing `INFO [research] <slug> is archived` and no drift warning. Archiving a research therefore changes no plan, open or archived, and its Active Summary hash stays valid.
+
 ## Artifact Ownership
 
 To avoid ownership conflicts, artifact writers are command-scoped:
@@ -537,6 +540,7 @@ To avoid ownership conflicts, artifact writers are command-scoped:
 | `.unikit/RULES.md` + `.unikit/rules/*.md` | `/unikit-rules` | Convention source of truth: common rules in the root, topic files by `Load when` |
 | `.unikit/code/plans/*/PLAN.md` + `phase-NN-*.md` | `/unikit-plan` | Folder-plan manifest; `/unikit-improve` refines existing. Phase files are written by `/unikit-plan ultra` and `/unikit-improve` — never by an executor |
 | `.unikit/code/archive/plans/*/` | `/unikit-archive` | Completed folder plans (unfinished ones only on your explicit choice), moved unchanged apart from one `Archived:` line |
+| `.unikit/code/archive/researches/*/` | `/unikit-archive researches` | Code researches, moved unchanged apart from one `Archived:` line; `researches restore` moves them back |
 | `.unikit/code/FIX_PLAN.md` | `/unikit-fix` | Bug-fix analysis and steps |
 | `.unikit/code/patches/*.md` | `/unikit-fix` | Self-improvement patches |
 | `.unikit/skill-context/*` | `/unikit-evolve` | Project-specific skill overrides |

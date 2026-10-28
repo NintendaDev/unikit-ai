@@ -220,22 +220,31 @@ Creates conventional commits with engine-aware checks:
 - Merges only with a merge commit, and only when merging brings nothing from the base branch, GitHub says the PR can be merged, and you confirm; the test state is shown before the question, never a condition. Otherwise the PR stays open with the reason named
 - Never merges the base branch into yours, never resolves conflicts, never force-pushes, never writes into a plan
 
-### `/unikit-archive [list | --all | <plan-folder>]` - move finished plans out of the active list
+### `/unikit-archive [plans | researches [<slug> | --all | restore [<slug>]] | list | --all | <plan-folder>]` - move finished plans and researches out of the active list
 
 ```
 /unikit-archive
+/unikit-archive plans
+/unikit-archive researches
+/unikit-archive researches customer-items-on-scene
+/unikit-archive researches --all
+/unikit-archive researches restore
 /unikit-archive list
 /unikit-archive --all
 /unikit-archive inventory-system
 ```
-Moves a completed folder plan from `.unikit/code/plans/<folder>/` to `.unikit/code/archive/plans/<folder>/`:
+Moves a completed folder plan from `.unikit/code/plans/<folder>/` to `.unikit/code/archive/plans/<folder>/`, and a code research from `.unikit/code/researches/<slug>/` to `.unikit/code/archive/researches/<slug>/`:
+- With no arguments it first asks what to archive - plans, researches or both; an item with nothing to move is not offered, and `plans` or `researches` skips the question. When you choose both, the plans are done first
 - Says in a sentence what it is about to do before reading anything, starts every step with one short line about what it is doing right now, then shows every plan with its verdict, its **created** date (the manifest's `Created:` line, the folder's date prefix, or the commit that added it) and its **last change** (the last commit touching the folder, or the file date when there are uncommitted changes) - oldest change first
 - A completed plan - every checklist task `[x]` - is the default choice. An unfinished plan moves only when you pick it - by its number or by a date rule such as "created on or before 2026-09-14" - and confirm after seeing its open tasks; its manifest then says `Archived: <date> — unfinished (<done>/<total>)`, so `/unikit-plan` and `/unikit-explore` never take it for finished work. `--all` takes completed plans only, and a plan with no tasks is never archived
 - Nothing else blocks a finished plan. Engine bridge findings never transferred to `.unikit/bridge-notes/` and rule candidates still `open` are shown, and the skill asks whether to handle them first (`/unikit-bridge-trap`, `/unikit-verify`) or archive anyway
 - Uses `git mv` when the folder is tracked by git and plain `mv` otherwise; the folder name never changes, and the manifest gains one `Archived:` line
 - Never deletes, overwrites or commits - commit the move with `/unikit-commit`
-- The fast plan `.unikit/code/PLAN.md`, `.unikit/code/FIX_PLAN.md`, researches and patches are never archived
+- The fast plan `.unikit/code/PLAN.md`, `.unikit/code/FIX_PLAN.md`, patches and game-design researches (`.unikit/gamedesign/researches/`) are never archived; code researches are, by `researches`
 - Plan lookup, `--list` and the "latest plan" choice stop offering an archived plan; `/unikit-plan` still reads archived plans for the `implemented_version` fallback and will not give a new plan an archived plan's name, and `/unikit-explore` reads them as the history of how a feature was built
+- Researches: every research that no unfinished plan links is shown with its `Status`, `Lifecycle` and last `Updated` - oldest first. The ones an unfinished plan links are named in a line under the table and come back as soon as that plan is finished or archived. **All** takes the `completed` and `superseded` ones (`researches --all` takes the same set after one confirmation); an `in-progress`, `needs-follow-up` or `paused` research is picked by its number or by a date rule. `researches <slug>` archives one research, and asks first when an unfinished plan still links it
+- A research moves whole (`git mv` when tracked, `mv` otherwise), its `RESEARCH.md` gains an `Archived:` line under `Updated:`, and `researches/INDEX.md` is re-rendered once at the end, so `/unikit-plan` stops offering it. The Active Summary is not touched, so every plan's recorded `Summary SHA256` still matches. `researches restore [<slug>]` brings a research back and removes the line
+- A plan that links an archived research keeps working: the `## Based on` entry is a folder name, and `/unikit-implement`, `/unikit-verify` and `/unikit-improve` look in `researches/` first and in `archive/researches/` second, with an `INFO [research]` line and no drift warning. `/unikit-explore` never takes the slug of an archived research - it asks for another name, or points to `researches restore`
 
 ### `/unikit-evolve` - learn project rules from past fixes
 
