@@ -395,6 +395,10 @@ assert_exists "$CLAUDE_DIR/.claude/skills/unikit-plan/references/design-context.
 # so no content guard sees a missing delivery — this assertion is the one that does.
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-explore/references/merge-research.md" \
   "unikit-explore merge-research.md reference installed"
+# The index render (Step 4 of every save) is a reference; unikit-archive reads it too, so a
+# missing delivery would silently skip the re-render in both skills.
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-explore/references/index-render.md" \
+  "unikit-explore index-render.md reference installed"
 # Same for the planner: merge-plan.md is read only on a merge request.
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-plan/references/merge-plan.md" \
   "unikit-plan merge-plan.md reference installed"

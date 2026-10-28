@@ -1854,6 +1854,8 @@ fi
 GD_FLOW_SKILL="$ROOT_DIR/skills/unikit-gd-flow/SKILL.md"
 GD_BRAINSTORM_SKILL="$ROOT_DIR/skills/unikit-gd-brainstorm/SKILL.md"
 UNIKIT_EXPLORE_SKILL="$ROOT_DIR/skills/unikit-explore/SKILL.md"
+# Step 4 of /unikit-explore (the researches index render) lives here; /unikit-archive reads it too.
+EXPLORE_INDEX_RENDER="$ROOT_DIR/skills/unikit-explore/references/index-render.md"
 GD_DEFECTIVE_DIR="$ROOT_DIR/scripts/test-fixtures/gamedesign/defective-gdd"
 
 # (FL-1) The flow-zone skill exists, and the FLOW.md template carries the mode-aware
@@ -3435,7 +3437,9 @@ grep -qF '<slug>/SOURCE.md' "$SF_SPEC" || SF_WHY+=" SF-3:no-folder-target"
 # The re-render literal `no readable RESEARCH.md` is NOT asserted here on purpose: UR-2 already
 # owns it, in this same file. Two guards on one defect give two failures and the question of
 # which is canonical — the ED-8 precedent. Do not re-add.
-grep -qF 'NOTE [research]' "$SF_SKILL" || SF_WHY+=" SF-3:no-unfinished-branch"
+# The unfinished-exploration branch is part of the index render, which moved out of SKILL.md
+# into references/index-render.md; it is asserted there.
+grep -qF 'NOTE [research]' "$EXPLORE_INDEX_RENDER" || SF_WHY+=" SF-3:no-unfinished-branch"
 if grep -qF '.pin.' "$SF_SKILL" || grep -qF '.pin.' "$SF_SPEC"; then SF_WHY+=" SF-3:scratch-file-returned"; fi
 # The floor is the half that keeps "the agent decides when" from becoming "the agent defers"; it
 # stays in the offer rule of the skill and is restated in the reference.
@@ -5277,10 +5281,31 @@ if grep -qF 'unikit:research-mode:ultra' "$UR_PLAN_SPEC"; then UR_WHY+=" researc
 # through the surviving mechanism: a folder is skipped for a missing manifest and for nothing
 # else. That is what keeps a folder full of adaptive artifacts from silently dropping out of
 # the registry, which is the failure the retired assert existed to prevent.
-grep -qF 'no readable RESEARCH.md' "$UR_EXPLORE" || UR_WHY+=" rerender-skips-on-anything-but-a-missing-manifest"
+#
+# The re-render itself is in references/index-render.md since /unikit-archive re-renders the
+# same index after it moves a research; the literal is asserted there.
+grep -qF 'no readable RESEARCH.md' "$EXPLORE_INDEX_RENDER" || UR_WHY+=" rerender-skips-on-anything-but-a-missing-manifest"
+
+# (UR-2b) The render has ONE home and SKILL.md loads it. The registry's format is now read by
+# a second skill, so the lines nobody else pinned are pinned here: the index is re-rendered
+# whole, never edited by hand, no folder is skipped in silence, and the order is by Updated.
+# The reference carries no frontmatter (it is not a skill). SKILL.md keeps no copy of the
+# render, and a reference that cannot be read is announced, never skipped in silence.
+if [[ -s "$EXPLORE_INDEX_RENDER" ]]; then
+    [[ "$(head -c 3 "$EXPLORE_INDEX_RENDER")" != '---' ]] || UR_WHY+=" index-render:has-frontmatter"
+    for p in 're-rendered whole' 'Do not edit manually' 'Skipping in silence is forbidden' \
+        'Sort by `Updated` descending' 'Kept:' 'Added:' 'Removed:' '{{skills_dir}}/{{self_name}}/references/continuing.md'; do
+        grep -qF "$p" "$EXPLORE_INDEX_RENDER" || UR_WHY+=" index-render:lacks:${p// /-}"
+    done
+else
+    UR_WHY+=" index-render:no-reference"
+fi
+grep -qF '{{skills_dir}}/{{self_name}}/references/index-render.md' "$UR_EXPLORE" || UR_WHY+=" index-render:skill-does-not-load-it"
+grep -qF 'index-render reference missing' "$UR_EXPLORE" || UR_WHY+=" index-render:no-missing-reference-warning"
+if grep -qF 'Overwrite the file whole.' "$UR_EXPLORE"; then UR_WHY+=" index-render:copy-left-in-skill"; fi
 
 if [[ -z "$UR_WHY" ]]; then
-    pass "UR-1/UR-2 ultra research reference + dispatch; the plan and research markers stay distinct; the re-render skips only a missing manifest"
+    pass "UR-1/UR-2/UR-2b ultra research reference + dispatch; the plan and research markers stay distinct; the re-render (references/index-render.md) skips only a missing manifest"
 else
     fail "UR-1/UR-2 ultra research contract:$UR_WHY"
 fi
@@ -5406,10 +5431,11 @@ else
     # satisfied by deleting the feature, so the positive half asserts the reconciliation
     # SURVIVED: the three counters `init` used to print are printed by the re-render. Scope is
     # deliberately only `unikit-explore` — `unikit-gd-explore` keeps its own `init` (DEC-7).
+    # The counters are printed by the render, which lives in references/index-render.md.
     if grep -q '^## Init' "$RM_SKILL"; then RM_WHY+=" RM-4:init-section-returned"; fi
     if grep -n 'argument-hint' "$RM_SKILL" | grep -q 'init'; then RM_WHY+=" RM-4:init-in-argument-hint"; fi
     for RM_COUNT in 'Kept:' 'Added:' 'Removed:'; do
-        grep -qF "$RM_COUNT" "$RM_SKILL" || RM_WHY+=" RM-4:reconciliation-counter-lost:$RM_COUNT"
+        grep -qF "$RM_COUNT" "$EXPLORE_INDEX_RENDER" || RM_WHY+=" RM-4:reconciliation-counter-lost:$RM_COUNT"
     done
     # The skill body is not the only place the argument was promised. `unikit-help` is read by
     # an agent choosing a route, so a retired argument surviving THERE is worse than in prose a
