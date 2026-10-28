@@ -9543,6 +9543,11 @@ if [[ -z "$AR_WHY" ]]; then
     ar_has "AR-21:plans-do-not-come-first" 'the plan protocol first' "$AR_SKILL"
     ar_has "AR-21:cancel-does-not-end-the-run" '"Cancel" inside the plan protocol ends the whole run' "$AR_SKILL"
     ar_has "AR-21:closing-line-twice" 'is printed once per run' "$AR_SKILL"
+    # Only "Cancel" ends a "Plans and researches" run; any other stop of the plan protocol ends that
+    # protocol and the researches follow. A menu question skipped for lack of an object still gets
+    # the announcement of the protocol that runs instead (the first output said "I'll ask").
+    ar_has "AR-21:other-stops-end-the-run" 'ends that protocol only, and the researches protocol follows' "$AR_SKILL"
+    ar_has "AR-21:skipped-question-unannounced" 'no question: say its announcement, then run its protocol' "$AR_SKILL"
     # (AR-22) the two protocols are references, loaded by their full path, with no frontmatter (a
     # reference is not a skill); the researches protocol reads the index render of /unikit-explore
     # through that skill's own folder and the plan classification through plans.md.

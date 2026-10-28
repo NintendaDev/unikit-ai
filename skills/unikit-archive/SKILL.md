@@ -90,7 +90,7 @@ The first word is matched as typed, before that stripping: `plans`, `researches`
 
 ### The menu
 
-Asked before anything is classified. It looks only at whether folders exist — `.unikit/code/plans/*/` and `.unikit/code/researches/*/` — and reads nothing else. An item whose object does not exist is not offered; one object left → no question, its protocol runs; none → `Nothing to archive.` and stop. Both exist:
+Asked before anything is classified. It looks only at whether folders exist — `.unikit/code/plans/*/` and `.unikit/code/researches/*/` — and reads nothing else. An item whose object does not exist is not offered; one object left → no question: say its announcement, then run its protocol; none → `Nothing to archive.` and stop. Both exist:
 
 ```
 The question tool of your agent (`AskUserQuestion`): What should be archived?
@@ -104,7 +104,7 @@ Options:
 
 - "Plans" → say the interactive announcement now, then run the plan protocol.
 - "Researches" → say the researches announcement now, then run the researches protocol.
-- "Plans and researches" → the plan protocol first, with its announcement; when it has finished, the researches protocol, with its announcement. "Cancel" inside the plan protocol ends the whole run: the researches are not asked.
+- "Plans and researches" → the plan protocol first, with its announcement; when it has finished, the researches protocol, with its announcement. "Cancel" inside the plan protocol ends the whole run: the researches are not asked. Any other stop of the plan protocol — `No plan can be archived now.`, a plan skipped — ends that protocol only, and the researches protocol follows.
 - "Cancel" → stop.
 
 The closing line `Nothing was committed. Commit the move with /unikit-commit.` is printed once per run, after the last summary: when both protocols ran, the plan protocol's copy is held back until the researches' summary is out.
