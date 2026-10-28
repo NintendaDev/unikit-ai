@@ -10,7 +10,7 @@
 **Never touched:**
 - `.unikit/code/PLAN.md` — the fast plan; `/unikit-implement` offers to delete it when it is done.
 - `.unikit/code/FIX_PLAN.md` — `/unikit-fix` deletes it.
-- researches (`.unikit/code/researches/`, `.unikit/gamedesign/researches/`) — open plans and `GD-IDS.yaml` point at them by path.
+- design researches (`.unikit/gamedesign/researches/`) — `GD-IDS.yaml`, `RECON.md` and experiment cards point at them by path; code researches are archived by the researches protocol, never by this one.
 - patches (`.unikit/code/patches/`) — `/unikit-evolve` reads them.
 - `.unikit/ROADMAP.md`.
 
@@ -155,9 +155,3 @@ Omit `Skipped` when `<k>` is 0.
 3. Never commit or push — `/unikit-commit` does that.
 4. Edit nothing but the one `Archived:` line.
 5. Other skills do not search the archive, on purpose: an archived plan must stop being offered. Three readers look there explicitly: the `implemented_version` fallback of `/unikit-plan` needs completed plans and skips one labelled `unfinished`; the `/unikit-plan` collision check keeps a new plan from taking an archived plan's name; `/unikit-explore` reads archived plans as history of what was already built — an `unfinished` one as work that was dropped — never as a plan to continue.
-
-## Artifact Ownership
-
-- **Owns:** `.unikit/code/archive/plans/`.
-- **Reads:** `.unikit/code/plans/*/`, `.unikit/bridge-notes/*.md` and its parked `archive/` copies, `.unikit/config.yaml`.
-- **Modifies:** nothing outside the folders it moves.
