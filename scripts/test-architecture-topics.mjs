@@ -276,13 +276,27 @@ const READERS = [
   { file: 'skills/unikit-fix/SKILL.md', mode: 'F', needs: [`${READER_MARK} the root now`, '`Load when` matches the files you localized', 'when unsure, load', MISSING_WARN] },
   { file: 'subagents/unikit-architecture-sidecar.md', mode: 'F', needs: [`${READER_MARK} then load the topic files`, '`Load when` matches the changed files you were handed', 'when unsure, load', MISSING_WARN] },
   { file: 'subagents/unikit-review-sidecar.md', mode: 'F', needs: [`${READER_MARK} then load the topic files`, '`Load when` matches the changed files you were handed', 'when unsure, load', MISSING_WARN] },
+  { file: 'skills/unikit-explore/SKILL.md', mode: 'T', needs: [`${READER_MARK} the root; then the topic files`, '`Load when` matches the subject of the work', 'when the work moves to another area, load the ones not loaded yet', 'when unsure, load', MISSING_WARN] },
+  { file: 'skills/unikit-gd-review/SKILL.md', mode: 'T', needs: [`${READER_MARK} the root; then the topic files`, '`Load when` matches the subject of the assessment', 'when unsure, load', MISSING_WARN] },
+  { file: 'skills/unikit-docs/SKILL.md', mode: 'A', needs: [`${READER_MARK} read the root and every topic file listed under its \`## Topics\``, MISSING_WARN] },
 ];
-const READERS_FLOOR = 14;
+const READERS_FLOOR = 17;
+// Files that mention the root without reading it for their own work: the owner, the pointers, the roadmap (mode R: the
+// root alone is enough), the ownership contract and the docs template (the skill that owns it is in READERS).
+const EXEMPT = [
+  'skills/unikit-architecture/', 'skills/unikit/', 'skills/unikit-help/', 'skills/unikit-memory/', 'skills/unikit-rules/', 'skills/unikit-evolve/',
+  'skills/unikit-roadmap/SKILL.md', 'skills/unikit-verify/references/CONTEXT-GATES-AND-OWNERSHIP.md', 'skills/unikit-docs/references/DOC-TEMPLATES.md',
+];
+// A line that reads the root: a read verb before the path, or a list item that opens with the path and explains it.
+const READ_SITE_RES = [
+  /\b(?:read|reads|load|loads)\b[^\n]{0,40}`?\.unikit\/ARCHITECTURE\.md/i,
+  /^\s*(?:[-*]|\d+\.)\s+\*{0,2}`\.unikit\/ARCHITECTURE\.md`\*{0,2}\s+[—-]/,
+];
 
 guard('ART-6', 'readers: every reader of the root says how it loads the topics', (t) => {
   t.ok(READERS.length >= READERS_FLOOR, `the table has at least ${READERS_FLOOR} readers (${READERS.length})`);
   for (const r of READERS) {
-    const text = read(r.file);
+    const text = read(r.file).replace(/\s+/g, ' ');
     for (const need of r.needs) t.has(text, need, `${r.file} (mode ${r.mode})`);
   }
   // Mode R: the scope of a commit is read from the module map in the root, so Step 6 carries no topic clause.
@@ -404,6 +418,115 @@ guard('ART-11', 'the two gaps (fix, coordinator), the engine checks and the prot
   const profile = read('data/prototype-profile.md');
   t.has(profile, '(the root or a loaded topic)', 'the prototype profile accepts a prohibition in a loaded topic');
   t.has(profile, '(implement Step 3.7)', 'the profile still points to implement Step 3.7');
+});
+
+// ── ART-6b ──────────────────────────────────────────────────────────────────
+
+guard('ART-6b', 'every file that reads the root is a listed reader or a justified exception', (t) => {
+  const files = [...walk('skills', '.md'), ...walk('subagents', '.md')];
+  let readers = 0;
+  let exempt = 0;
+  for (const rel of files) {
+    const text = read(rel);
+    if (!text.split('\n').some((line) => READ_SITE_RES.some((re) => re.test(line)))) continue;
+    if (EXEMPT.some((e) => rel.startsWith(e))) { exempt++; continue; }
+    readers++;
+    t.ok(READERS.some((r) => r.file === rel), `${rel} reads .unikit/ARCHITECTURE.md and is not in READERS or EXEMPT — add a row or justify the exception`);
+  }
+  t.seen(files.length);
+  t.ok(readers >= READERS_FLOOR - 4, `the crawl found readers (${readers}), exceptions (${exempt}), in ${files.length} files`);
+});
+
+// ── ART-12 ──────────────────────────────────────────────────────────────────
+
+guard('ART-12', 'one-way border of the design review: a fixed set of paths that includes the topic directory', (t) => {
+  const review = read('skills/unikit-gd-review/SKILL.md').replace(/\s+/g, ' ');
+  const lenses = read('skills/unikit-gd-review/references/lenses.md');
+  const principles = read('data/gamedesign/gd-principles.md').replace(/\s+/g, ' ');
+  t.has(review, 'the `.unikit/ARCHITECTURE.md` root and the topic files its `## Topics` lists, all under `.unikit/architecture/` (a fixed set of paths, no other project file)', 'review: the exception names the fixed paths');
+  t.has(review, 'the `ARCHITECTURE.md` root and `.unikit/architecture/*.md` for the feasibility lens only', 'review: the read-only list names the topic directory');
+  t.has(lenses, '`.unikit/architecture/*.md`', 'lenses: the feasibility lens names the topic directory');
+  t.has(principles, '`.unikit/architecture/*.md`', 'gd-principles: the feasibility exception names the topic directory');
+  for (const [name, text] of [['review', review], ['lenses', lenses], ['gd-principles', principles]]) t.lacks(text, 'two files, exact', `${name}: the old "two files" wording is gone`);
+  t.has(principles, 'Sanctioned exceptions (three, narrow)', 'T8-8 heading unchanged');
+  for (const fragment of ['brownfield-bootstrap carve-out', 'read-only research verbs', 'extracted from code', 'are **never** in']) t.has(principles, fragment, 'RD-3 fragment');
+});
+
+// ── ART-13 ──────────────────────────────────────────────────────────────────
+
+guard('ART-13', 'pointers, the receivers of the hand-off, Step 10 of /unikit, the help map', (t) => {
+  t.has(read('skills/unikit/references/mode-menu.md'), 'runs `unikit-architecture` in its update mode', 'the menu action Description runs update');
+  t.has(read('skills/unikit-rules/references/mode-prune.md'), '`/unikit-architecture update` with the block as its argument', 'prune hands the block to update');
+  t.has(read('skills/unikit-rules/SKILL.md'), '`ARCHITECTURE.md` and its topic files', 'unikit-rules points to the topic files');
+  for (const rel of ['skills/unikit-memory/SKILL.md', 'skills/unikit-memory/references/module-code.md', 'skills/unikit-memory/references/module-gamedesign.md']) t.has(read(rel), '`.unikit/architecture/`', `${rel} routes architecture decisions to the topic files too`);
+  t.has(read('skills/unikit-evolve/SKILL.md'), '(and `.unikit/architecture/`)', 'evolve may not write the topic files');
+  t.has(read('skills/unikit/references/LANGUAGE_RULES_TEMPLATE.md'), 'the topic files in `.unikit/architecture/`', 'topic files are always English');
+  const unikit = read('skills/unikit/SKILL.md');
+  t.has(unikit, 'The sub-skill may ask the user (the pattern in generate, the layout offer in update); wait for it to return before Step 11.', 'Step 10 waits for the questions of the sub-skill');
+  t.has(unikit, 'prompt: "{{agent_skill_call:unikit-architecture}}",', 'Step 10 still calls the skill without arguments (I8)');
+  const map = read('skills/unikit-help/references/skill-map.md');
+  t.has(map, '### unikit-architecture', 'the map keeps the heading the help test requires');
+  for (const mode of ['`generate`', '`update [text]`', '`optimise`']) t.has(map, mode, `the map names the mode ${mode}`);
+  t.has(map, '`.unikit/architecture/`', 'the map names the topic directory');
+  t.has(read('skills/unikit-help/references/knowledge-base.md'), '`.unikit/ARCHITECTURE.md` (+ its topic files)', 'the priority line has the topic files');
+});
+
+// ── RMI-1…RMI-4 ─────────────────────────────────────────────────────────────
+
+const RULES_SKILL = read('skills/unikit-rules/SKILL.md');
+const RULES_SKILL_FLAT = RULES_SKILL.replace(/\s+/g, ' ');
+
+guard('RMI-1', 'unikit-rules: parameter, then the intent of the request, then the arguments', (t) => {
+  t.has(RULES_SKILL, 'Determine the mode: the parameter first, then the intent of the request, then the arguments.', 'order of the three');
+  t.has(RULES_SKILL, 'Parameter (checked first, never interpreted; any letter case):', 'parameter first');
+  for (const p of ['the whole argument is `compact`', 'the whole argument is `optimise` / `optimize`', 'the whole argument is `prune`']) t.has(RULES_SKILL, p, `parameter ${p}`);
+  t.has(RULES_SKILL, 'Mode A: Direct add, N rules', 'Mode A batch stays');
+  t.has(RULES_SKILL, 'Mode A: Direct add, 1 rule', 'Mode A single stays');
+  t.has(RULES_SKILL, 'Mode B: Interactive', 'Mode B stays');
+  t.has(RULES_SKILL, 'exact argument, never on containment', 'RFM-6 literal');
+  t.has(RULES_SKILL, 'numbered batch | compact', 'RFM-5 substring of the argument-hint');
+  t.lacks(RULES_SKILL, 'only the bare argument selects the mode', 'the old rule is gone');
+});
+
+guard('RMI-2', 'unikit-rules: rules of the intent', (t) => {
+  t.has(RULES_SKILL, '**A rule stays a rule.**', 'a rule stays a rule');
+  t.has(RULES_SKILL, 'When in doubt it is a rule.', 'doubt means a rule');
+  t.has(RULES_SKILL, '("Prune unused usings before every commit")', 'the example of a directive about code');
+  t.has(RULES_SKILL, '`optimise` (recommended — it moves rules and deletes or rewords nothing) / `compact` / `prune`', 'the question of an unclear kind');
+  t.has(RULES_SKILL_FLAT, 'runs in the order given', 'a rule and a wish run in the order given');
+  t.has(RULES_SKILL_FLAT, '`$ARGUMENTS` empty and the message that started the run', 'the starting message is the request');
+  t.has(RULES_SKILL, 'Modes C, D and E write nothing before the user confirms.', 'maintenance confirms first');
+});
+
+guard('RMI-3', 'unikit-rules: the announcement and the references', (t) => {
+  t.has(RULES_SKILL, '**Announce the mode first.**', 'PRT-12: announce first');
+  t.has(RULES_SKILL, 'very first output of the run', 'PRT-12: first output');
+  t.has(RULES_SKILL_FLAT, "before Step 0, before the mode's reference file, before any project file, and before any other sentence", 'PRT-12: before everything');
+  for (const line of ["`Adding <N> rule(s) — first I'll check them against the knowledge base and the rules you already have.`",
+    "`compact: I'll shorten the rules that can be shorter and show every change before writing — no rule is deleted.`",
+    "`optimise: I'll sort the rules into topics and show you the proposed layout before writing anything.`",
+    "`prune: I'll look for rules that can go — duplicates, outdated references, lines that aren't rules — and for rules that contradict each other; nothing changes until you choose.`"]) t.has(RULES_SKILL, line, 'PRT-12: the announcement line');
+  t.has(RULES_SKILL_FLAT, 'The request alone decides the mode (the parameter, or the intent of the request)', 'the request decides');
+  t.has(RULES_SKILL_FLAT, 'that question comes first, and the announcement follows the answer', 'the one exception to the first output');
+  const optimise = read('skills/unikit-rules/references/mode-optimise.md');
+  const prune = read('skills/unikit-rules/references/mode-prune.md');
+  t.has(optimise, 'the request asked for it', 'mode-optimise: explicit means the request asked');
+  t.has(prune, 'the request asked for `prune`', 'mode-prune: the request asked');
+  t.lacks(optimise, '**Explicit** — the whole argument is', 'mode-optimise: not only the bare argument');
+  t.lacks(prune, 'reads this file only when the whole argument is', 'mode-prune: not only the bare argument');
+});
+
+guard('RMI-4', 'unikit-rules: the surface and the help files', (t) => {
+  const front = frontmatter(RULES_SKILL);
+  const hint = /^argument-hint:\s*"(.*)"$/m.exec(front)?.[1] ?? '';
+  t.has(hint, 'a request about the rules in plain words', 'argument-hint names the request');
+  const description = foldedDescription(front);
+  t.ok(description.length > 0 && description.length <= MAX_DESCRIPTION, `description fits ${MAX_DESCRIPTION} characters (${description.length})`);
+  t.ok(!CYRILLIC_RE.test(description), 'description has English triggers only');
+  t.has(description, 'by keyword or in plain words', 'description says both ways');
+  for (const rel of ['skills/unikit-help/references/skill-map.md', 'skills/unikit-help/references/knowledge-base.md']) {
+    t.has(read(rel).replace(/\s+/g, ' '), 'started by a request in plain words; the keyword stays the exact form', `${rel} says both ways`);
+  }
 });
 
 // ── Report ──────────────────────────────────────────────────────────────────

@@ -5,15 +5,16 @@ description: >-
   quick-capture inbox for this project's rules (common rules always load; topic files in
   .unikit/rules/ load when the work matches), automatically loaded by /unikit-implement
   (later promotable via /unikit-memory migrate-rules). Works only with a rule typed as a
-  prompt — it does NOT read files, folders, URLs, or PDFs. Cross-checks against the
-  knowledge base (RULES_INDEX.md) to avoid duplicating core/stack entries. Use for fast,
-  one-line conventions and corrections: "add a rule", "remember this", "convention",
+  prompt — it does NOT read files, folders, URLs, or PDFs. Cross-checks the knowledge
+  base (RULES_INDEX.md) to avoid duplicating core/stack entries. Use for one-line
+  conventions and corrections: "add a rule", "remember this", "convention",
   "always do X", "never use Y", "from now on do Z", or when the user corrects agent
   behavior and wants it remembered; also "split the rules into topics" (optimise), "clean
-  up the rules" (prune), "shorten RULES.md" (compact). If the user points to a source
+  up the rules" (prune), "shorten RULES.md" (compact), by keyword or in plain words.
+  If the user points to a source
   (file, folder, URL, PDF, article, book) or wants to research/document framework usage,
   use /unikit-memory; for architecture decisions use ARCHITECTURE.md.
-argument-hint: "[rule text or topic | numbered batch | compact | optimise | prune]"
+argument-hint: "[rule text or topic | numbered batch | compact | optimise | prune | a request about the rules in plain words]"
 allowed-tools:
   - Read
   - Write
@@ -100,7 +101,7 @@ It travels with the data, so it instructs even a reader whose skills predate top
 
 ### Step 0: Load Skill Context
 
-**First, announce the mode** (Step 1 → **Announce the mode first**): the argument alone decides it, and its announcement is the run's first output — before this read.
+**First, announce the mode** (Step 1 → **Announce the mode first**): the request alone decides it, and its announcement is the run's first output — before this read.
 
 Read `.unikit/skill-context/unikit-rules/SKILL.md` if it exists. Treat it as project-level overrides — when it conflicts with this SKILL.md, the skill-context wins.
 
@@ -109,18 +110,29 @@ Read `.unikit/skill-context/unikit-rules/SKILL.md` if it exists. Treat it as pro
 ### Step 1: Determine Mode
 
 ```
-Check $ARGUMENTS:
-├── Exactly `compact`?             → Mode C: retro-compaction
-├── Exactly `optimise`/`optimize`? → Mode D: reorganize into topics
-├── Exactly `prune`?               → Mode E: delete the rules the user selects
-├── Numbered batch?                → Mode A: Direct add, N rules
-├── Has text?                      → Mode A: Direct add, 1 rule
-└── No arguments?                  → Mode B: Interactive
+Determine the mode: the parameter first, then the intent of the request, then the arguments.
+1. Parameter (checked first, never interpreted; any letter case):
+   ├── the whole argument is `compact`                → Mode C: retro-compaction
+   ├── the whole argument is `optimise` / `optimize`  → Mode D: reorganize into topics
+   └── the whole argument is `prune`                  → Mode E: delete the rules the user selects
+2. Otherwise the intent of the request — $ARGUMENTS, or, when it is empty, the message that started the run — read as free text in any language. A request addressed to the rules as a collection ("the rules", `RULES.md`, "the topics") with a maintenance verb:
+   ├── shorten, make the rules concise, retro-fit an old file     → Mode C
+   ├── sort into topics, split by topic, regroup, reorganize      → Mode D
+   └── clean up, remove obsolete, duplicate or contradicting rules → Mode E
+3. Anything else:
+   ├── Numbered batch?                              → Mode A: Direct add, N rules
+   ├── Has text?                                    → Mode A: Direct add, 1 rule
+   └── No arguments and no request about the rules? → Mode B: Interactive
 ```
 
-**Modes C, D and E are matched on an exact argument, never on containment.** A rule that happens to contain the word "compact", "optimise" or "prune" is still a rule; only the bare argument selects the mode. Mode D accepts `optimise` or `optimize`, in any letter case; Mode E accepts `prune`, in any letter case.
+**The parameters `compact`, `optimise`/`optimize` and `prune` are matched on an exact argument, never on containment**, in any letter case: Mode D accepts `optimise` or `optimize`, Mode E accepts `prune`. Both ways stay: the parameter is the stable interface other skills and scripts use, free text is for people. **Rules of the intent.**
+1. **A rule stays a rule.** Free text selects a maintenance mode only when its object is the rules as a collection and its verb is maintenance. A directive about the code or the project — even one that contains the word "compact", "optimise" or "prune" ("Prune unused usings before every commit") — is a rule and goes to Mode A, exactly as before. When in doubt it is a rule.
+2. A request whose object is clearly the rules but whose kind is unclear ("tidy up the rules") is asked once, with the question tool of your agent (`AskUserQuestion`): `optimise` (recommended — it moves rules and deletes or rewords nothing) / `compact` / `prune`. It is never guessed.
+3. A request that holds a rule and a maintenance wish ("remember: never use var, and then shorten the file") runs in the order given — Mode A, then the maintenance mode with its own confirmation.
+4. `$ARGUMENTS` empty and the message that started the run asks for a maintenance mode → that mode (this is where a skill picked by its description lands); empty and nothing about the rules → Mode B, as before.
+5. Whatever the wording or the parameter, Modes C, D and E write nothing before the user confirms.
 
-**Announce the mode first.** The argument alone decides the mode, so the mode is known before any file is read — say it before reading any. A tool call that sits alone on screen for minutes, or a remark about what you are about to read or compute, reads as a hang. Right after the language rules are loaded, the **very first output of the run** — before Step 0, before the mode's reference file, before any project file, and before any other sentence — is the mode's announcement below, said in `language.ui` (mode names stay as they are).
+**Announce the mode first.** The request alone decides the mode (the parameter, or the intent of the request), so the mode is known before any file is read — say it before reading any. The one exception is rule 2 above: that question comes first, and the announcement follows the answer. A tool call that sits alone on screen for minutes, or a remark about what you are about to read or compute, reads as a hang. Right after the language rules are loaded, the **very first output of the run** — before Step 0, before the mode's reference file, before any project file, and before any other sentence — is the mode's announcement below, said in `language.ui` (mode names stay as they are).
 
 **One or two plain sentences, as you would say it to a colleague** — which mode is on and what it is about to do, and for Modes C, D and E that nothing is written before the user says so. No numbered steps, no heading, no list: the steps show up as the work happens.
 
@@ -216,7 +228,7 @@ Every rule list — the whole file in the `flat` and `legacy` states, the `## Co
 - **One line. One directive.** A short "why" may share that same line where it earns its place.
 - Directive language — "Never…", "Always…", "Use…".
 - **There is no numeric limit.** This skill does not count characters and **prints no service line about length**, neither in the rule nor in the report.
-- **What never goes into a rule:** its origin ("Found in Task 14.3"), the story of the incident, a description of how the code is currently built, a task or phase number. History lives in git and in the patches; the current shape of the code lives in `ARCHITECTURE.md`.
+- **What never goes into a rule:** its origin ("Found in Task 14.3"), the story of the incident, a description of how the code is currently built, a task or phase number. History lives in git and in the patches; the current shape of the code lives in `ARCHITECTURE.md` and its topic files.
 - A duplicate by meaning is skipped, exactly as before.
 - **A rule that cannot be reduced to one directive without losing knowledge is written as it stands**, and is marked in no way at all. This skill does not refuse, does not truncate, and **does not recommend moving the rule into the knowledge base** — that transfer is something the user starts, and offering it on every rule would be precisely the service noise this form exists to remove.
 
@@ -309,7 +321,7 @@ This skill deletes a rule only in Mode E (`prune`), and only the rules the user 
 From RULES_INDEX.md, the override priority (highest wins):
 
 1. `.unikit/RULES.md` and its topic files in `.unikit/rules/` — project-specific overrides (what this skill writes to). Inside a topic's own area, a topic rule wins over a `## Common` rule it contradicts.
-2. `.unikit/ARCHITECTURE.md` — project architecture decisions
+2. `.unikit/ARCHITECTURE.md` and its topic files in `.unikit/architecture/` — project architecture decisions
 3. `.unikit/memory/code/core/*.md` — universal best practices
 4. `.unikit/memory/code/stack/*.md` — framework-specific knowledge
 

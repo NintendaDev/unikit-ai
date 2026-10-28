@@ -89,7 +89,7 @@ past it.
 - `{{skills_dir}}/unikit-*/**` — the built-in skills. An override belongs in skill-context;
   that is the whole reason skill-context exists
 - `.unikit/memory/**` — owned by `/unikit-memory`
-- `.unikit/DESCRIPTION.md`, `.unikit/ARCHITECTURE.md`, `.unikit/ROADMAP.md`
+- `.unikit/DESCRIPTION.md`, `.unikit/ARCHITECTURE.md` (and `.unikit/architecture/`), `.unikit/ROADMAP.md`
 - everything else in the project, including its source code
 
 **The only skill this command may invoke is `/unikit-rules`.** Never `/unikit`, never

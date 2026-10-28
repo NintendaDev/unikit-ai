@@ -8720,7 +8720,8 @@ fi
 # cannot collide with content — asserted as the literal the skill spells out, so a rewrite
 # onto a different delimiter has to delete this line first.
 UR1_WHY=""
-grep -qF 'argument-hint: "[rule text or topic | numbered batch | compact | optimise | prune]"' "$EV_RULES_SKILL" || UR1_WHY+=" argument-hint-not-updated"
+# (the hint gained "a request about the rules in plain words" — architecture topics, 2026-10-28; RMI-4 pins that tail)
+grep -qF 'argument-hint: "[rule text or topic | numbered batch | compact | optimise | prune | a request about the rules in plain words]"' "$EV_RULES_SKILL" || UR1_WHY+=" argument-hint-not-updated"
 grep -qF 'numbered batch'  "$EV_RULES_SKILL" || UR1_WHY+=" no-batch-mode"
 grep -qF '`^\d+\. `'       "$EV_RULES_SKILL" || UR1_WHY+=" no-marker-rule"
 if [[ -z "$UR1_WHY" ]]; then
@@ -9006,7 +9007,8 @@ fi
 PRT_PRUNE_REF="$ROOT_DIR/skills/unikit-rules/references/mode-prune.md"
 PRT10_WHY=""
 grep -qF 'references/mode-prune.md' "$EV_RULES_SKILL" || PRT10_WHY+=" dispatch-missing"
-grep -qF 'Exactly `prune`?' "$EV_RULES_SKILL" || PRT10_WHY+=" not-exact-match"
+# (the decision tree now reads "the whole argument is `prune`" under "Parameter (checked first, never interpreted") — RMI-1 pins the rest)
+grep -qF 'the whole argument is `prune`' "$EV_RULES_SKILL" || PRT10_WHY+=" not-exact-match"
 grep -qF 'deletes a rule only in Mode E (`prune`)' "$EV_RULES_SKILL" || PRT10_WHY+=" skill:deletion-not-confined"
 grep -qF 'deletes a rule only in its `prune` mode' "$UNIKIT_VERIFY_CONTRACT" || PRT10_WHY+=" contract:deletion-not-confined"
 if [[ ! -s "$PRT_PRUNE_REF" ]]; then

@@ -53,7 +53,7 @@ and file *format*.
 ## What Does NOT Belong in This Module
 
 - **Architecture decisions** (module boundaries, dependency flow, DI structure) →
-  `.unikit/ARCHITECTURE.md`
+  `.unikit/ARCHITECTURE.md` and its topic files in `.unikit/architecture/`
 - **Project-specific overrides** (explicit deviations from core/stack rules) →
   `.unikit/RULES.md` via the `unikit-rules` skill
 
@@ -72,7 +72,7 @@ pick the tier for the `code` module:
    - **`core`** — content about universal practices (code style, design
      principles, testing, performance) → `.unikit/memory/code/core/`
    - **Neither** — redirect the user to the correct destination:
-     - Architecture → `.unikit/ARCHITECTURE.md`
+     - Architecture → `.unikit/ARCHITECTURE.md` and its topic files in `.unikit/architecture/`
      - Project-specific overrides → `.unikit/RULES.md` via the `unikit-rules` skill
      - **Stop here. Do NOT create any files.**
 

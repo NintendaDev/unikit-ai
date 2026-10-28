@@ -12,7 +12,7 @@ description: >-
   "validate" re-syncs RULES_INDEX.md; "--module <id>" targets a module. For a quick
   one-line convention or correction typed as a prompt ("always do X", "never use Y",
   "remember this") with no source, use /unikit-rules; for architecture decisions use
-  ARCHITECTURE.md.
+  ARCHITECTURE.md and its topics.
 argument-hint: "[description | URL(s) | file/folder | PDF/Fb2/Epub paths | migrate-rules | optimise | validate | --module <id> | --skip-registry ]"
 allowed-tools:
   - Read
@@ -58,7 +58,7 @@ new `module-<id>.md` contract.
 ## What Does NOT Belong Here
 
 - **Architecture decisions** (module boundaries, dependency flow, DI structure) →
-  `.unikit/ARCHITECTURE.md`
+  `.unikit/ARCHITECTURE.md` and its topic files in `.unikit/architecture/`
 - **Project-specific overrides** (explicit deviations from base rules) →
   `.unikit/RULES.md` via the `unikit-rules` skill
 
@@ -386,7 +386,7 @@ Use the **active module's contract** (`references/module-<moduleId>.md` →
    the content belongs to **none** of the module's tiers.
    - If the content fits none of the tiers, redirect the user to the correct
      destination named in the contract's "What Does NOT Belong" section
-     (architecture → `.unikit/ARCHITECTURE.md`; project-specific overrides →
+     (architecture → `.unikit/ARCHITECTURE.md` and its topic files; project-specific overrides →
      `.unikit/RULES.md` via `unikit-rules`). **Stop here. Do NOT create any files.**
    - If the content fits none of the tiers **and** seems to belong to a *different
      module* than the one resolved in Step 0.5, return to Step 0.5 and re-ask the
