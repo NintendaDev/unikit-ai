@@ -10,11 +10,11 @@ Canonical contract for unikit workflow commands. This file defines:
 | Command              | Primary write ownership                                                                      | Read-only context                                                                                        | Approved exceptions                                                                                                                                                       |
 |----------------------|----------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `unikit`             | `.unikit/DESCRIPTION.md`, `AGENTS.md` (setup map)                                            | Existing project files and context artifacts                                                             | May call `unikit-architecture` to create/update `.unikit/ARCHITECTURE.md` during setup                                                                                  |
-| `unikit-architecture`| `.unikit/ARCHITECTURE.md`                                                                    | `.unikit/DESCRIPTION.md`                                                                                 | May update `AGENTS.md` context table                                                                                                                                      |
+| `unikit-architecture`| `.unikit/ARCHITECTURE.md` and the topic files in `.unikit/architecture/`                     | `.unikit/DESCRIPTION.md`                                                                                 | May update `AGENTS.md` context table                                                                                                                                      |
 | `unikit-roadmap`     | `.unikit/ROADMAP.md`                                                                         | `.unikit/DESCRIPTION.md`, `.unikit/ARCHITECTURE.md`                                                      | `unikit-implement` may mark completed milestones after implementation                                                                                                      |
 | `unikit-plan`        | `.unikit/code/PLAN.md` (fast), `.unikit/code/plans/{folder}/PLAN.md` (full/ultra)      | `.unikit/DESCRIPTION.md`, `.unikit/ARCHITECTURE.md`, `.unikit/ROADMAP.md`, `.unikit/code/researches/`         | `unikit-improve` may refine existing plan files                                                                                                                            |
 | `unikit-improve`     | Refinements to `.unikit/code/PLAN.md` or existing plans in `.unikit/code/plans/`                       | `.unikit/DESCRIPTION.md`, `.unikit/ARCHITECTURE.md`, `.unikit/code/researches/`                               | None                                                                                                                                                                      |
-| `unikit-implement`   | Plan progress updates (checkboxes/task status)                                               | `.unikit/RULES.md` (+ `.unikit/rules/`), `.unikit/ARCHITECTURE.md`, `.unikit/DESCRIPTION.md`, `.unikit/ROADMAP.md`, `.unikit/code/patches/`, `.unikit/memory/` | May update `.unikit/DESCRIPTION.md` and `.unikit/ARCHITECTURE.md` only when stack/structure changed; may update `.unikit/ROADMAP.md` milestone completion; may append a candidate row to the plan's `## Rule Candidates` (a plan edit — it never writes `.unikit/RULES.md`) |
+| `unikit-implement`   | Plan progress updates (checkboxes/task status)                                               | `.unikit/RULES.md` (+ `.unikit/rules/`), `.unikit/ARCHITECTURE.md`, `.unikit/DESCRIPTION.md`, `.unikit/ROADMAP.md`, `.unikit/code/patches/`, `.unikit/memory/` | May update `.unikit/DESCRIPTION.md`, and add one table row or list line per fact to `.unikit/ARCHITECTURE.md` or its topic files, only when stack/structure changed; may update `.unikit/ROADMAP.md` milestone completion; may append a candidate row to the plan's `## Rule Candidates` (a plan edit — it never writes `.unikit/RULES.md`) |
 | `unikit-fix`         | `.unikit/code/FIX_PLAN.md` (plan mode), `.unikit/code/patches/*.md`                                   | `.unikit/DESCRIPTION.md`, `.unikit/ARCHITECTURE.md`, `.unikit/RULES.md` (+ `.unikit/rules/`), `.unikit/memory/`, existing patches | None (context artifacts remain read-only by default)                                                                                                                       |
 | `unikit-explore`     | `.unikit/code/researches/` only (`RESEARCH.md`, `SOURCE.md`, adaptive artifacts)                                  | All context and codebase files for analysis                                                              | None                                                                                                                                                                      |
 | `unikit-commit`      | Git commit object/message only                                                               | Context artifacts are read-only gates                                                                    | No context artifact writes by default                                                                                                                                      |
@@ -38,14 +38,14 @@ These files are **read-only for every command except the two named in the Artifa
 ## Artifact Update Policy
 
 - **Owner writes only:** An artifact should be updated by its owner command.
-- **Implement may do factual deltas:** `unikit-implement` may update `.unikit/DESCRIPTION.md` and `.unikit/ARCHITECTURE.md` only when implementation materially changed stack/structure.
+- **Implement may do factual deltas:** `unikit-implement` and `unikit-execute` may update `.unikit/DESCRIPTION.md`, and may add one table row or list line per fact to `.unikit/ARCHITECTURE.md` — in the existing topic file whose `Load when` matches the area of the change, else in the root section that fits the kind — only when implementation materially changed stack/structure. A new topic, a moved block or a split is `unikit-architecture` only (its `update` and `optimise` modes).
 - **Verify stays read-only:** `unikit-verify` reports drift and suggests owner commands; it does not update context artifacts by default. There are **two named exceptions**, and neither weakens the other: (1) the all-AC-met `implemented` writeback to the design layer (`GD-IDS.yaml` `implemented_version` — a single surface; GAME.md's `## System Map [gen]` renders it read-only), per the `unikit-verify` row above and `gd-principles` → One-Way Boundary; (2) appending a candidate row to the plan's `## Rule Candidates` — a plan edit, not a context-artifact edit, and never a write to `.unikit/RULES.md`.
 - **User-managed files are untouchable, with one named writer:** `.unikit/RULES.md` and its topic files in `.unikit/rules/` are written **only** by `/unikit-rules`, and every other command reaches them exclusively by invoking that skill with a batch the **user has selected** — never on its own judgement. `/unikit-rules` itself deletes a rule only in its `prune` mode, and only the rules the user selected there; its `compact` and `optimise` modes never delete one. `/unikit-memory` may **remove** entries it has migrated into the knowledge base (Branch C, removal only — plus two named edits: the `<!-- @no-migrate -->` tag its Keep option appends, and the deletion of a topic file that migration emptied, together with its `## Topics` row). `CLAUDE.md` is edited by no command at all. A command may record a *candidate* rule in the plan's `## Rule Candidates` — that is a plan edit, not a rules edit.
 
 ## Context Gates (commit/review/verify)
 
 These commands evaluate context consistency against:
-- `.unikit/ARCHITECTURE.md`
+- `.unikit/ARCHITECTURE.md` — the root, and the topic files in `.unikit/architecture/` whose `Load when` matches the changed files
 - `.unikit/RULES.md` — its `## Common` rules and the topic files whose `Load when` matches the changed files — + `CLAUDE.md` (optional, graceful if missing)
 - `.unikit/ROADMAP.md` (optional, graceful if missing)
 
@@ -56,7 +56,7 @@ Gate outputs must use:
 Additionally, `unikit-verify` and `unikit-review` each emit a machine-readable `unikit-gate-result` fenced JSON block as the **last** fence of their output (schema: `.unikit/system/gate-result-contract.md`). `unikit-verify` owns the `verify` gate (projecting its task-audit + context gates); `unikit-review` owns the `review` gate (projecting its Findings table). `unikit-commit` emits no gate-result block.
 
 ### Architecture Gate
-- **Pass:** Changes follow documented module/layer boundaries and asmdef dependency rules.
+- **Pass:** Changes follow documented module/layer boundaries and asmdef dependency rules — those of the root and of the topics loaded for the checked files.
 - **Warn:** Architecture document appears stale or mapping is ambiguous.
 - **Fail:** Clear boundary/dependency violation against explicit architecture rules (e.g. `Assets/Modules/` → `Assets/Game/`).
 
@@ -79,8 +79,18 @@ Additionally, `unikit-verify` and `unikit-review` each emit a machine-readable `
 ### Verify strict mode
 - Architecture clear violations: **fail**
 - Rules clear violations: **fail**
-- Stale context artifacts (DESCRIPTION.md, ARCHITECTURE.md out of sync): **warn**
+- Stale context artifacts (DESCRIPTION.md, ARCHITECTURE.md root or topics out of sync): **warn**
 
 ### Commit and review mode
 - Context gates are read-only and non-destructive.
 - Blocking behavior is only allowed when explicitly requested by the user or policy extension.
+
+## Architecture growth sign
+
+The only place of the numbers. `unikit-verify` 3.4 reads the lines with the file-read tool (no shell count) and reports in 3.6. Suggest `/unikit-architecture optimise` when:
+
+- (a) the root has no `## Topics` table and no `flat` marker and is longer than 300 lines;
+- (b) a topic file is longer than 300 lines;
+- (c) a row of the table lists a missing file, or a file in `.unikit/architecture/` has no row.
+
+300 lines is a starting value measured on one project (a root of 25–35 KB is about 170–235 lines). The result is a suggestion in 3.6, never a write; a root with the `flat` marker is never measured, because the user has refused the topic layout.

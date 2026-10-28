@@ -41,7 +41,7 @@ These stay in force for a prototype plan:
 - The interface is legible: the key elements the card (or the brief) names are readable at a glance.
 - Data integrity: nothing that already saves, loads or migrates player or project data is broken.
 - Explicit project constraints: the rules of `.unikit/RULES.md` and the written prohibitions of
-  `.unikit/ARCHITECTURE.md` are obeyed.
+  `.unikit/ARCHITECTURE.md` (the root or a loaded topic) are obeyed.
 - The card's (or the brief's) `Out of Scope` is a boundary: what it excludes is not built.
 - Existing behaviour outside the prototype is unchanged.
 - The evidence contract (Layer A of `.unikit/system/dev-principles.md`): a report never declares
@@ -140,15 +140,15 @@ These stay in force for a prototype plan:
   extensibility, the depth of error handling, missing documentation, a `// TODO:` comment or
   roadmap linkage.
 - **The architecture sidecar:** report only a breach of a prohibition written in
-  `.unikit/ARCHITECTURE.md` or `.unikit/RULES.md`; say nothing about missing structure.
+  `.unikit/ARCHITECTURE.md` (the root or a loaded topic) or `.unikit/RULES.md`; say nothing about missing structure.
 - **`/unikit-fix`:** a fix inside a prototype plan follows `## Softened`; `TODO.md` is not ticked
   (Step 7.3); a regression test (Step 5) is suggested only when the plan says `Testing: yes`. The
   prompt of a `develop-agent` it launches carries the same note as the coordinator's workers do.
 - **`/unikit-execute`:** applies `## Softened` and skips the documentation-update and TODO parts
   of the conventions it reads.
 - **`/unikit-commit`:** skips the roadmap-alignment suggestion of its context check; its architecture
-  check reports only a breach of a prohibition written in `.unikit/ARCHITECTURE.md` or
-  `.unikit/RULES.md`; the message is written as usual.
+  check reports only a breach of a prohibition written in `.unikit/ARCHITECTURE.md` (the root or a
+  loaded topic) or `.unikit/RULES.md`; the message is written as usual.
 
 ## Not this contract
 

@@ -37,7 +37,7 @@ New directories under `Assets/` must also have `.meta` files.
 
 ## Module Boundary Checks (asmdef)
 
-Verify new/modified files don't violate module boundaries defined in `.unikit/ARCHITECTURE.md`.
+Verify new/modified files don't violate module boundaries defined in the `.unikit/ARCHITECTURE.md` root and the topic files matched to the changed files.
 
 ### Fallback rules (if ARCHITECTURE.md unavailable)
 

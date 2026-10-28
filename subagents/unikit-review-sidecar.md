@@ -23,7 +23,7 @@ Purpose:
 
 ## Rules Loading
 
-1. Read `.unikit/ARCHITECTURE.md` — check dependency directions and module boundaries
+1. Read `.unikit/ARCHITECTURE.md` — check dependency directions and module boundaries. **Architecture topics:** then load the topic files listed under its `## Topics` whose `Load when` matches the changed files you were handed; when unsure, load. A listed file that is missing → `WARN [architecture] topic file missing: .unikit/architecture/<slug>.md`, continue.
 2. Read `.unikit/memory/code/RULES_INDEX.md`. Load rules:
    - **RULES.md**: ALWAYS read `.unikit/RULES.md` first (highest priority) **Rule topics:** then load the topic files listed under its `## Topics` whose `Load when` matches the changed files you were handed; when unsure, load.
    - **Core**: read the Core table. For EACH row where Required By = `all` or contains `{{self_name}}` — read that file from `.unikit/memory/code/core/` using the Read tool. Do NOT skip any matching row. Always re-read at skill start, never rely on prior conversation cache
@@ -36,7 +36,7 @@ Purpose:
 - Correctness: logic errors, off-by-one, null/missing checks, broken contracts
 - Regression: does the change break existing callers or interfaces?
 - Performance: hot-path allocations, unnecessary copies, framework anti-patterns per loaded Stack rules
-- Architecture: forbidden dependency directions per `.unikit/ARCHITECTURE.md`
+- Architecture: forbidden dependency directions per the `.unikit/ARCHITECTURE.md` root and the loaded topics
 - Engine integration: if an engine bridge listed in `.unikit/system/engine-bridges/BRIDGES.md` answers with your tools, check the console for compilation errors
 
 ## Rules

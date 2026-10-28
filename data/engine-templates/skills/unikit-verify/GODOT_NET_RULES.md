@@ -30,7 +30,7 @@ For each `.csproj`, read `<ProjectReference>` entries to build a dependency grap
 
 ### Single-project layout
 
-If only one `.csproj` exists — defer module boundary checks to `.unikit/ARCHITECTURE.md` convention-based rules.
+If only one `.csproj` exists — defer module boundary checks to the convention-based rules of the `.unikit/ARCHITECTURE.md` root and the topic files matched to the changed files.
 
 ## C# Namespace Conventions
 
@@ -82,7 +82,7 @@ Flag changes to third-party addons.
 ## Module Boundary Checks
 
 If multi-project layout: use `.csproj` references (see above).
-If single-project: defer to `.unikit/ARCHITECTURE.md`.
+If single-project: defer to the `.unikit/ARCHITECTURE.md` root and the topic files matched to the changed files.
 
 Godot's native scene tree has no compile-time boundary enforcement beyond `.csproj` references.
 

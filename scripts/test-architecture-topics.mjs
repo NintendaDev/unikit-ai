@@ -270,8 +270,14 @@ const READERS = [
   { file: 'subagents/unikit-plan-polisher.md', mode: 'P', needs: [`${READER_MARK} its topic files load lazily`, '`Load when` matches a phase you write or check', 'when unsure, load'] },
   { file: 'skills/unikit-improve/SKILL.md', mode: 'F', needs: [`${READER_MARK} the root now`, 'matches any phase of the plan under review', 'when unsure, load', MISSING_WARN] },
   { file: 'skills/unikit-improve/references/VALIDATOR.md', mode: 'F', needs: ['the `.unikit/ARCHITECTURE.md` root and the topic file the item names', 'the `.unikit/ARCHITECTURE.md` root and the matched topic'] },
+  { file: 'skills/unikit-verify/SKILL.md', mode: 'F', needs: [`${READER_MARK} the root now`, 'matches a file the plan\'s tasks changed', 'when unsure, load'] },
+  { file: 'skills/unikit-review/SKILL.md', mode: 'F', needs: [`${READER_MARK} the root always`, '`Load when` matches a reviewed file', 'when unsure, load', MISSING_WARN] },
+  { file: 'skills/unikit-commit/SKILL.md', mode: 'F', needs: [`${READER_MARK} the root; then the topic files`, '`Load when` matches a staged file', 'when unsure, load', MISSING_WARN] },
+  { file: 'skills/unikit-fix/SKILL.md', mode: 'F', needs: [`${READER_MARK} the root now`, '`Load when` matches the files you localized', 'when unsure, load', MISSING_WARN] },
+  { file: 'subagents/unikit-architecture-sidecar.md', mode: 'F', needs: [`${READER_MARK} then load the topic files`, '`Load when` matches the changed files you were handed', 'when unsure, load', MISSING_WARN] },
+  { file: 'subagents/unikit-review-sidecar.md', mode: 'F', needs: [`${READER_MARK} then load the topic files`, '`Load when` matches the changed files you were handed', 'when unsure, load', MISSING_WARN] },
 ];
-const READERS_FLOOR = 8;
+const READERS_FLOOR = 14;
 
 guard('ART-6', 'readers: every reader of the root says how it loads the topics', (t) => {
   t.ok(READERS.length >= READERS_FLOOR, `the table has at least ${READERS_FLOOR} readers (${READERS.length})`);
@@ -279,6 +285,12 @@ guard('ART-6', 'readers: every reader of the root says how it loads the topics',
     const text = read(r.file);
     for (const need of r.needs) t.has(text, need, `${r.file} (mode ${r.mode})`);
   }
+  // Mode R: the scope of a commit is read from the module map in the root, so Step 6 carries no topic clause.
+  const commit = read('skills/unikit-commit/SKILL.md');
+  const from = commit.indexOf('6. **Identify Scope**');
+  const to = commit.indexOf('7. ', from);
+  t.ok(from >= 0 && to > from, 'the commit Step 6 window is found');
+  t.lacks(commit.slice(from, to), READER_MARK, 'commit Step 6 reads the root only (mode R)');
 });
 
 // ── ART-7 ───────────────────────────────────────────────────────────────────
@@ -344,6 +356,54 @@ guard('ART-9', 'the delta: one row or line per fact, never a paragraph, a topic 
   t.has(execute, 'as one table row or list line in the topic file whose `Load when` matches', 'execute 5.1: the form');
   t.has(execute, '(never a paragraph, a new topic or a moved block)', 'execute 5.1: what is not a delta');
   t.has(execute, 'print `INFO [architecture] update suggested: <one line>`', 'execute 5.1: a decision is suggested');
+});
+
+// ── ART-10 ──────────────────────────────────────────────────────────────────
+
+guard('ART-10', 'verify and the ownership contract: table check, suggestions, growth sign, owner of the topic files', (t) => {
+  const verify = read('skills/unikit-verify/SKILL.md');
+  const contract = read('skills/unikit-verify/references/CONTEXT-GATES-AND-OWNERSHIP.md');
+  t.has(verify, 'Topic table ↔ `.unikit/architecture/`: a listed file missing, or a file no row lists → `WARN [architecture] topic table:', '3.4 checks the table against the files');
+  t.has(verify, '→ suggest `/unikit-architecture update`; growth or a topic table ↔ files mismatch → suggest `/unikit-architecture optimise`', '3.6 suggests update and optimise');
+  t.has(verify, 'CONTEXT-GATES-AND-OWNERSHIP.md` → `## Architecture growth sign`', 'SKILL.md points to the contract for the numbers');
+  t.lacks(verify, '300 lines', 'the numbers live only in the contract');
+  t.has(verify, '`/unikit-verify` is **read-only** for context artifacts.', '3.6 stays read-only');
+  for (const n of ['3.2', '3.3', '3.4', '3.5', '3.6', '3.7', '3.9']) t.ok(new RegExp(`^#{2,4} ${n.replace('.', '\\.')}[ :]`, 'm').test(verify), `verify keeps the step ${n}`);
+  t.ok(Buffer.byteLength(verify, 'utf8') <= 70000, 'verify SKILL.md stays under the 70000-byte ceiling');
+  t.has(contract, '## Architecture growth sign', 'the contract has the growth sign');
+  t.has(contract, 'is longer than 300 lines', 'the contract holds the number');
+  t.has(contract, 'Suggest `/unikit-architecture optimise` when:', 'the sign suggests optimise');
+  t.has(contract, 'The result is a suggestion in 3.6, never a write', 'the sign never writes');
+  t.has(contract, '`.unikit/ARCHITECTURE.md` and the topic files in `.unikit/architecture/`', 'the matrix names the topic files');
+  t.has(contract, 'A new topic, a moved block or a split is `unikit-architecture` only', 'only the owner creates a topic');
+  t.has(contract, 'one table row or list line per fact', 'implement may add a row, not a block');
+  // literals the older guards (T8-9, RCA-17…19, PRT-9, PRT-10, BC-3) pin in this file must survive
+  for (const literal of ['Single sanctioned design write', 'written **only** by `/unikit-rules`', 'removal only', '## Rule Candidates', 'implemented_version', '.unikit/rules/',
+    'the `<!-- @no-migrate -->` tag its Keep option appends', 'deletes a rule only in its `prune` mode', '`## Measurements` is read here, never written.']) t.has(contract, literal, 'older guard literal');
+  t.lacks(contract, 'No command edits', 'retired wording stays retired');
+});
+
+// ── ART-11 ──────────────────────────────────────────────────────────────────
+
+guard('ART-11', 'the two gaps (fix, coordinator), the engine checks and the prototype profile', (t) => {
+  const fix = read('skills/unikit-fix/SKILL.md');
+  const bootstrap = fix.slice(fix.indexOf('## Step 0.2: Load Fix Context'), fix.indexOf('**The fix runs against a plan whose manifest has `## Experiment Context`**'));
+  t.has(bootstrap, 'Also read `.unikit/ARCHITECTURE.md` (the root)', 'fix Bootstrap 0.2 reads the root (F1)');
+  t.has(bootstrap, '4. For EACH row in the Core table', 'fix keeps its numbered Bootstrap list');
+  t.has(fix, 'module boundaries defined in the `.unikit/ARCHITECTURE.md` root and the loaded topics', 'fix 4.4 checks against the loaded topics');
+  t.has(fix, 'convention table from the `.unikit/ARCHITECTURE.md` root and the loaded topics', 'fix 4.5 checks against the loaded topics');
+  for (const sidecar of ['subagents/unikit-architecture-sidecar.md', 'subagents/unikit-review-sidecar.md']) {
+    const text = read(sidecar);
+    t.has(text, '`Load when`', `${sidecar} names Load when`);
+    t.has(text, 'changed files', `${sidecar} names the changed files`);
+  }
+  t.has(read('subagents/unikit-architecture-sidecar.md'), 'backed by specific rules from the `.unikit/ARCHITECTURE.md` root or a loaded topic', 'the sidecar reports only breaches of a written rule, topic included');
+  for (const engine of ['UNITY', 'GODOT', 'GODOT_NET', 'UNREAL_ENGINE_5']) {
+    t.has(read(`data/engine-templates/skills/unikit-verify/${engine}_RULES.md`), 'topic files matched to the changed files', `${engine}_RULES.md defers to root and topics`);
+  }
+  const profile = read('data/prototype-profile.md');
+  t.has(profile, '(the root or a loaded topic)', 'the prototype profile accepts a prohibition in a loaded topic');
+  t.has(profile, '(implement Step 3.7)', 'the profile still points to implement Step 3.7');
 });
 
 // ── Report ──────────────────────────────────────────────────────────────────
