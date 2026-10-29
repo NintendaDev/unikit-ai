@@ -188,7 +188,7 @@ for skill_dir in "$ROOT_DIR"/skills/*/; do
     fi
 
     # Check name is lowercase with hyphens only
-    if [[ "$FM_NAME" =~ [A-Z] ]]; then
+    if [[ "$FM_NAME" != "${FM_NAME,,}" ]]; then
         fail "$skill_name — name contains uppercase characters"
         SKILL_ERRORS=$((SKILL_ERRORS + 1))
     fi
