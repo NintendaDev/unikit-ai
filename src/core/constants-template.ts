@@ -5,8 +5,8 @@
 // that file sits at the Part 7i ceiling (`SIZE_LIMIT=500` over `src/core/*.ts`). Unlike its sibling
 // it is NOT re-exported from `constants.ts`: this table reads constants while the module loads, so
 // an `export *` back from `constants.ts` would make the two a cycle and the first read a TDZ error
-// (guard SV-1c). It is a leaf of the import graph — it imports `./constants.js`, `./constants-bridges.js`
-// and `./constants-kimi.js` (themselves leaves over `./constants.js`) and nothing else.
+// (guard SV-1c). It is a leaf of the import graph — it imports `./constants.js` and `./constants-bridges.js`
+// (itself a leaf over `./constants.js`) and nothing else.
 //
 // The golden-guard #1 Part C exclusion is by FILE NAME (`constants\.ts|modules\.ts`) and this file
 // does not match it — no module id, tier path or modules registry file name may be spelled out
@@ -39,7 +39,6 @@ import {
   USER_QUESTIONS_FILE,
 } from './constants.js';
 import { BRIDGES_MANIFEST_FILE, ENGINE_BRIDGES_DIR_NAME } from './constants-bridges.js';
-import { KIMI_SUBAGENT_MODELS_FILE } from './constants-kimi.js';
 
 // --- File names that have no constant in `constants.ts` ---
 //
@@ -106,7 +105,6 @@ export const SYSTEM_FILE_VARS = [
   { name: 'prototype_profile_contract', segments: [...SYSTEM_ROOT, PROTOTYPE_PROFILE_FILE], kind: 'file', delivery: 'cli' },
   { name: 'subagent_arguments_contract', segments: [...SYSTEM_ROOT, SUBAGENT_ARGUMENTS_FILE], kind: 'file', delivery: 'cli' },
   { name: 'subagent_roles_contract', segments: [...SYSTEM_ROOT, SUBAGENT_ROLES_FILE], kind: 'file', delivery: 'cli' },
-  { name: 'kimi_subagent_models', segments: [...SYSTEM_ROOT, KIMI_SUBAGENT_MODELS_FILE], kind: 'file', delivery: 'cli' },
   { name: 'user_questions_contract', segments: [...SYSTEM_ROOT, USER_QUESTIONS_FILE], kind: 'file', delivery: 'cli' },
   { name: 'gd_principles', segments: [...GAMEDESIGN_ROOT, GD_PRINCIPLES_FILE], kind: 'file', delivery: 'cli' },
   { name: 'gd_authoring', segments: [...GAMEDESIGN_ROOT, GD_AUTHORING_FILE], kind: 'file', delivery: 'cli' },

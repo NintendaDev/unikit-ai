@@ -4,7 +4,6 @@
 // substitution, NOT hash-tracked — every init/update rewrites it. The next flat contract goes here too.
 
 import { SUBAGENT_ARGUMENTS_FILE, SUBAGENT_ROLES_FILE, USER_QUESTIONS_FILE } from '../constants.js';
-import { KIMI_SUBAGENT_MODELS_FILE } from '../constants-kimi.js';
 import { installFlatSystemAsset } from './shared.js';
 
 /**
@@ -38,9 +37,4 @@ export async function installSubagentRolesContract(projectDir: string): Promise<
  */
 export async function installUserQuestionsContract(projectDir: string): Promise<void> {
   await installFlatSystemAsset(projectDir, USER_QUESTIONS_FILE, 'installUserQuestionsContract');
-}
-
-/** The optional Kimi subagent pool template, refreshed verbatim on every init/update for manual merging by the user. */
-export async function installKimiSubagentModelsTemplate(projectDir: string): Promise<void> {
-  await installFlatSystemAsset(projectDir, KIMI_SUBAGENT_MODELS_FILE, 'installKimiSubagentModelsTemplate');
 }

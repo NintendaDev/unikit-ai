@@ -809,7 +809,6 @@ The same variables are available in the text of an injection and in the `.md` re
 | `{{prototype_profile_contract}}` | `.unikit/system/prototype-profile.md` | always |
 | `{{subagent_arguments_contract}}` | `.unikit/system/subagent-arguments.md` | always |
 | `{{subagent_roles_contract}}` | `.unikit/system/subagent-roles.md` | always |
-| `{{kimi_subagent_models}}` | `.unikit/system/kimi-subagent-models.toml` | always |
 | `{{user_questions_contract}}` | `.unikit/system/user-questions.md` | always |
 | `{{gd_principles}}` | `.unikit/system/gamedesign/gd-principles.md` | always |
 | `{{gd_authoring}}` | `.unikit/system/gamedesign/gd-authoring.md` | always |

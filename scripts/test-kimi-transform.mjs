@@ -415,7 +415,7 @@ await group('T', async () => {
     assertTrue('T1d the welcome message has at least 3 lines', Array.isArray(onboarding.welcomeMessage) && onboarding.welcomeMessage.length >= 3);
     assertTrue('T1e the welcome message tells the user to trust the folder (REQ-005)', onboarding.welcomeMessage.some((line) => /trust/i.test(line)));
     assertTrue('T1f the invocation hint names /unikit-plan', typeof onboarding.invocationHint === 'string' && onboarding.invocationHint.includes('/unikit-plan'));
-    const poolHints = onboarding.welcomeMessage.filter((line) => line.includes('.unikit/system/kimi-subagent-models.toml'));
+    const poolHints = onboarding.welcomeMessage.filter((line) => line.includes('.kimi-code/kimi-subagent-models.toml'));
     assertEq('T1h the optional pool hint appears exactly once in the init welcome', poolHints.length, 1);
     for (const fragment of ['$KIMI_CODE_HOME/config.toml', '~/.kimi-code/config.toml', 'manually merge', 'does not write global config', '.unikit/config.yaml']) {
         assertTrue(`T1h the pool hint names ${fragment}`, poolHints[0]?.includes(fragment), poolHints[0]);
@@ -507,43 +507,44 @@ await group('W', async () => {
 await group('M', async () => {
     const source = await fs.readFile(path.join(ROOT, 'data', 'kimi-subagent-models.toml'), 'utf8');
     const document = parse(source);
-    const roles = ['reader', 'validator', 'executor'];
+    const variants = { reader: 'low', validator: 'high', executor: 'high' };
+    const aliases = Object.keys(variants).map((role) => `unikit-${role}`);
+    const metadata = ['provider', 'model', 'max_context_size', 'capabilities', 'support_efforts', 'display_name'];
+    const capabilities = ['thinking', 'always_thinking', 'image_in', 'video_in', 'tool_use', 'dynamically_loaded_tools'];
     const efforts = ['low', 'high', 'max'];
-    const aliases = roles.flatMap((role) => efforts.map((effort) => `unikit-${role}-${effort}`));
-    const metadata = ['provider', 'model', 'max_context_size', 'capabilities', 'support_efforts'];
 
-    assertJsonEq('M1 exactly the nine role×effort model aliases exist', Object.keys(document.models ?? {}).sort(), [...aliases].sort());
-    assertEq('M2 the pool default is the balanced executor variant', document.secondary_model?.default_model, 'unikit-executor-high');
+    assertJsonEq('M1 exactly the three role aliases exist', Object.keys(document.models ?? {}).sort(), [...aliases].sort());
+    assertEq('M2 the pool default is the reader', document.secondary_model?.default_model, 'unikit-reader');
     assertJsonEq('M3 every alias is advertised in the pool', Object.keys(document.secondary_model?.models ?? {}).sort(), [...aliases].sort());
     assertEq('M4 no global secondary effort overrides the variants', document.secondary_model?.default_effort, undefined);
     assertEq('M5 force is not enabled', document.secondary_model?.force, undefined);
     assertEq('M6 primary is not declared as a pool alias', document.secondary_model?.models?.primary, undefined);
     assertEq('M7 no providers or credentials are shipped', document.providers, undefined);
 
-    for (const role of roles) {
-        for (const effort of efforts) {
-            const alias = `unikit-${role}-${effort}`;
-            const variant = document.models?.[alias];
-            assertTrue(`M8 ${alias}: the variant is a standalone table`, variant !== undefined, JSON.stringify(variant));
-            for (const field of metadata) {
-                assertTrue(`M9 ${alias}: metadata field ${field} is present`, Object.hasOwn(variant ?? {}, field), JSON.stringify(variant));
-            }
-            assertEq(`M10 ${alias}: provider is an explicit copy placeholder`, variant?.provider, 'COPY_FROM_EXISTING_MODEL');
-            assertEq(`M10 ${alias}: model is an explicit copy placeholder`, variant?.model, 'COPY_FROM_EXISTING_MODEL');
-            assertEq(`M10 ${alias}: context size is an explicit copy placeholder`, variant?.max_context_size, 0);
-            assertJsonEq(`M10 ${alias}: capabilities are an explicit copy placeholder`, variant?.capabilities, ['COPY_FROM_EXISTING_MODEL']);
-            assertJsonEq(`M11 ${alias}: supported effort levels`, variant?.support_efforts, efforts);
-            assertEq(`M12 ${alias}: overrides pin only the variant effort`, variant?.overrides?.default_effort, effort);
-            assertJsonEq(`M12 ${alias}: no extra override fields`, Object.keys(variant?.overrides ?? {}), ['default_effort']);
-            assertTrue(`M13 ${alias}: the selected effort is supported`, variant?.support_efforts?.includes(variant?.overrides?.default_effort), JSON.stringify(variant?.overrides));
+    for (const [role, effort] of Object.entries(variants)) {
+        const alias = `unikit-${role}`;
+        const variant = document.models?.[alias];
+        assertTrue(`M8 ${alias}: the variant is a standalone table`, variant !== undefined, JSON.stringify(variant));
+        for (const field of metadata) {
+            assertTrue(`M9 ${alias}: metadata field ${field} is present`, Object.hasOwn(variant ?? {}, field), JSON.stringify(variant));
         }
+        assertEq(`M10 ${alias}: example provider is populated`, variant?.provider, 'managed:kimi-code');
+        assertEq(`M10 ${alias}: example model is populated`, variant?.model, 'k3.1-pro');
+        assertEq(`M10 ${alias}: example context size is populated`, variant?.max_context_size, 1048576);
+        assertJsonEq(`M10 ${alias}: example capabilities are populated`, variant?.capabilities, capabilities);
+        assertJsonEq(`M11 ${alias}: supported effort levels`, variant?.support_efforts, efforts);
+        assertEq(`M11 ${alias}: display name identifies the role`, variant?.display_name, alias);
+        assertEq(`M12 ${alias}: overrides pin only the role effort`, variant?.overrides?.default_effort, effort);
+        assertJsonEq(`M12 ${alias}: no extra override fields`, Object.keys(variant?.overrides ?? {}), ['default_effort']);
+        assertTrue(`M13 ${alias}: the selected effort is supported`, variant?.support_efforts?.includes(variant?.overrides?.default_effort), JSON.stringify(variant?.overrides));
     }
 
     assertTrue('M14 the warning forbids replacing the whole global config', source.includes('Do not replace your whole config.toml'));
     assertTrue('M15 the warning forbids blind duplicate tables', source.includes('do\n# not blindly duplicate tables'));
     assertTrue('M16 managed refresh is called out', source.includes('managed refresh'));
     assertTrue('M17 no machine-specific path is shipped', !/(?:[A-Za-z]:[\\/]|\/home\/|\/Users\/)/.test(source));
-    console.log(`DEBUG [M] validated ${aliases.length} Kimi subagent model variants`);
+    assertTrue('M18 example values require verification against the real config', source.includes('EXAMPLE VALUES: verify provider, model, max_context_size, capabilities and'));
+    console.log(`DEBUG [M] validated ${aliases.length} Kimi subagent model aliases`);
 });
 
 console.log(`\nkimi-transform: ${passed} passed, ${failed} failed`);

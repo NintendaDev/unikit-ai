@@ -330,17 +330,13 @@ assert_not_contains "$SUBAGENT_ARGS_PATH" '\{\{' \
   "subagent-arguments.md is a flat copy — no unresolved {{vars}}"
 
 # ─────────────────────────────────────────────────────
-# Test 1b-km: kimi-subagent-models.toml installed verbatim as a flat system asset
+# Test 1b-km: the Kimi-only template is absent from other agents' projects
 # ─────────────────────────────────────────────────────
-KIMI_SUBAGENT_MODELS_PATH="$CLAUDE_DIR/.unikit/system/kimi-subagent-models.toml"
-assert_exists "$KIMI_SUBAGENT_MODELS_PATH" "kimi-subagent-models.toml created in .unikit/system/"
+KIMI_SUBAGENT_MODELS_PATH="$CLAUDE_DIR/.kimi-code/kimi-subagent-models.toml"
+KIMI_SUBAGENT_MODELS_LEGACY_PATH="$CLAUDE_DIR/.unikit/system/kimi-subagent-models.toml"
+assert_not_exists "$KIMI_SUBAGENT_MODELS_PATH" "kimi-subagent-models.toml not created for a non-Kimi project"
+assert_not_exists "$KIMI_SUBAGENT_MODELS_LEGACY_PATH" "kimi-subagent-models.toml has no legacy system-asset copy"
 KIMI_SUBAGENT_MODELS_SOURCE_SHA=$(sha_of "$ROOT_DIR/data/kimi-subagent-models.toml")
-assert_same_sha "$KIMI_SUBAGENT_MODELS_PATH" "$KIMI_SUBAGENT_MODELS_SOURCE_SHA" \
-  "kimi-subagent-models.toml is byte-identical to the data/ template"
-assert_contains "$KIMI_SUBAGENT_MODELS_PATH" '^\[models\.unikit-executor-high\.overrides\]$' \
-  "kimi-subagent-models.toml carries the executor-high variant"
-assert_not_contains "$KIMI_SUBAGENT_MODELS_PATH" '\{\{' \
-  "kimi-subagent-models.toml is a flat copy — no unresolved {{vars}}"
 
 # ─────────────────────────────────────────────────────
 # Test 1b-sr: subagent-roles.md installed as a system asset (flat copy, no vars)
@@ -915,14 +911,14 @@ KIMI_INIT_OUTPUT="$TMPDIR/kimi-init.out"
   const { getAgentOnboarding } = await import('./dist/core/transformer.js');
   process.stdout.write(getAgentOnboarding('kimi').welcomeMessage.join('\n'));
 ") > "$KIMI_INIT_OUTPUT" 2>&1
-assert_contains "$KIMI_INIT_OUTPUT" '\.unikit/system/kimi-subagent-models\.toml' \
+assert_contains "$KIMI_INIT_OUTPUT" '\.kimi-code/kimi-subagent-models\.toml' \
   "Kimi init welcome prints the pool template path"
 assert_contains "$KIMI_INIT_OUTPUT" 'does not write global config' \
   "Kimi init welcome says global config is not written"
 
 KIMI_UPDATE_OUTPUT="$TMPDIR/kimi-update.out"
 (cd "$KIMI_DIR" && KIMI_CODE_HOME="$KIMI_TEST_HOME" HOME="$KIMI_TEST_USER_HOME" USERPROFILE="$KIMI_TEST_USER_HOME" node "$ROOT_DIR/dist/cli/index.js" update > "$KIMI_UPDATE_OUTPUT" 2>&1)
-assert_contains "$KIMI_UPDATE_OUTPUT" '\.unikit/system/kimi-subagent-models\.toml' \
+assert_contains "$KIMI_UPDATE_OUTPUT" '\.kimi-code/kimi-subagent-models\.toml' \
   "Kimi update prints the pool template path"
 assert_contains "$KIMI_UPDATE_OUTPUT" '\$KIMI_CODE_HOME/config\.toml' \
   "Kimi update names the isolated global config location"
@@ -966,6 +962,17 @@ assert_exists "$KIMI_SKILLS/unikit/references/LANGUAGE_RULES_TEMPLATE.md" \
   "kimi: unikit skill references/ delivered"
 assert_not_exists "$KIMI_DIR/.agents" \
   "kimi: the shared .agents/ directory is never created (ADR-0001)"
+
+KIMI_SUBAGENT_MODELS_PATH="$KIMI_DIR/.kimi-code/kimi-subagent-models.toml"
+KIMI_SUBAGENT_MODELS_LEGACY_PATH="$KIMI_DIR/.unikit/system/kimi-subagent-models.toml"
+assert_exists "$KIMI_SUBAGENT_MODELS_PATH" "kimi: template installed in .kimi-code/"
+assert_same_sha "$KIMI_SUBAGENT_MODELS_PATH" "$KIMI_SUBAGENT_MODELS_SOURCE_SHA" \
+  "kimi: delivered template is byte-identical to data/"
+assert_contains "$KIMI_SUBAGENT_MODELS_PATH" '^\[models\.unikit-reader\.overrides\]$' \
+  "kimi: delivered template carries the reader effort override"
+assert_not_exists "$KIMI_SUBAGENT_MODELS_LEGACY_PATH" "kimi: no legacy .unikit/system copy"
+assert_not_contains "$KIMI_SUBAGENT_MODELS_PATH" '\{\{' \
+  "kimi: delivered template has no unresolved vars"
 
 # No invocation rewrite (REQ-002): /unikit-* is accepted as shorthand for /skill:unikit-*
 assert_contains "$KIMI_SKILLS/unikit-plan/references/TASK-FORMAT.md" '/unikit-implement' \
@@ -1096,6 +1103,14 @@ assert_not_contains "$KIMI_MCP" 'YOUR_GITHUB_PAT' "kimi: no Antigravity-style pl
 # absence of the header is asserted on the STRUCTURE of the github entry, not by text search.
 KIMI_GH_SHAPE=$(node -e "const j = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8')); const e = j.mcpServers.github; process.stdout.write(e && e.headers === undefined && e.type === undefined && e.bearerTokenEnvVar === 'GITHUB_PAT' ? 'ok' : 'bad');" "$KIMI_MCP")
 [[ "$KIMI_GH_SHAPE" == "ok" ]] || { echo "Assertion failed: kimi github entry must carry bearerTokenEnvVar and neither headers nor type"; exit 1; }
+
+# Deselecting Kimi removes both its agent-scoped template and a legacy system-asset copy.
+mkdir -p "$KIMI_DIR/.unikit/system"
+printf 'legacy template\n' > "$KIMI_SUBAGENT_MODELS_LEGACY_PATH"
+node -e "const fs = require('fs'); const f = process.argv[1]; const c = JSON.parse(fs.readFileSync(f, 'utf8')); c.agents = [{ id: 'claude', skillsDir: '.claude/skills', subagentsDir: '.claude/agents', installedSkills: [], installedSubagents: [] }]; fs.writeFileSync(f, JSON.stringify(c, null, 2));" "$KIMI_DIR/.unikit.json"
+run_update "$KIMI_DIR"
+assert_not_exists "$KIMI_SUBAGENT_MODELS_PATH" "kimi: deselection removes the .kimi-code template"
+assert_not_exists "$KIMI_SUBAGENT_MODELS_LEGACY_PATH" "kimi: deselection also removes the legacy system-asset copy"
 
 echo "  ✓ kimi: own .kimi-code/ tree, worker type coder from the profile (skills + references), no \$N token, adapted coordinators, bearerTokenEnvVar MCP"
 

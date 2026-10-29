@@ -37,7 +37,7 @@ const POSIX = '/';
 const FRAMEWORK_DIR = '.unikit';
 const CONSTANTS_FILE = 'src/core/constants.ts';
 const REGISTRY_FILE = 'src/core/constants-template.ts';
-const REGISTRY_IMPORT_ALLOWED = ['./constants.js', './constants-bridges.js', './constants-kimi.js'];
+const REGISTRY_IMPORT_ALLOWED = ['./constants.js', './constants-bridges.js'];
 // SV-9b: where the warning for an unknown name is called from, and the module it lives in.
 const INJECTIONS_FILE = 'src/core/extension-injections.ts';
 const UNKNOWN_VARS_FILE = 'src/core/extension-unknown-vars.ts';
@@ -100,7 +100,7 @@ const PINNED_NAMES = [
     'system_dir', 'system_gamedesign_dir', 'system_genres_dir', 'system_engine_bridges_dir',
     'cli_contract', 'dev_principles', 'modules_yml', 'gate_result_contract', 'ultra_plan_read_contract',
     'research_link_contract', 'plan_boundaries_contract', 'merge_analysis_contract', 'balance_handback_contract',
-    'prototype_profile_contract', 'subagent_arguments_contract', 'subagent_roles_contract', 'kimi_subagent_models', 'user_questions_contract',
+    'prototype_profile_contract', 'subagent_arguments_contract', 'subagent_roles_contract', 'user_questions_contract',
     'gd_principles', 'gd_authoring', 'gd_lifecycle', 'gd_flow_axis', 'gd_content_axis', 'gd_provenance', 'gd_critique',
     'design_read_contract', 'engine_bridges_manifest', 'language_rules',
 ];

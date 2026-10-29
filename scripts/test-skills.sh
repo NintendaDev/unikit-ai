@@ -13435,12 +13435,12 @@ apx_doc "agents-kimi-primary" 'The special alias `primary` explicitly inherits t
 apx_doc "agents-kimi-variants" '`[models.<alias>.overrides].default_effort`' "$APX_DOC_AGENTS"
 apx_doc "cfg-kimi-key" '| `model.kimi.<role>` |' "$APX_DOC_CFG"
 apx_doc "cfg-kimi-no-effort" '**Kimi Code has no effort key or call slot.**' "$APX_DOC_CFG"
-apx_doc "cfg-kimi-template" '`.unikit/system/kimi-subagent-models.toml`' "$APX_DOC_CFG"
+apx_doc "cfg-kimi-template" '`.kimi-code/kimi-subagent-models.toml`' "$APX_DOC_CFG"
 # the help index of the system files names the new one (the help test does not guard that list)
 APX_HELP_KB="$ROOT_DIR/skills/unikit-help/references/knowledge-base.md"
 apx_doc "help-kb" '`subagent-arguments.md` — how the model and the effort of a subagent are settled' "$APX_HELP_KB"
 apx_doc "help-kb-roles" '`subagent-roles.md` — which role (reader, validator or executor) each subagent launch has' "$APX_HELP_KB"
-apx_doc "help-kb-kimi" '`kimi-subagent-models.toml` — nine optional role×effort model aliases for Kimi' "$APX_HELP_KB"
+apx_doc "help-kb-kimi" '`.kimi-code/kimi-subagent-models.toml` — three role aliases for Kimi (reader, validator, executor),' "$APX_HELP_KB"
 APX_DOC_OLD=$( { grep -cF '### Model argument' "$APX_DOC_SUB" || true; } )
 APX_CHK=$((APX_CHK + 1))
 [[ "${APX_DOC_OLD:-0}" -eq 0 ]] || APX_WHY+=" AP-18:retired-heading-left"
