@@ -13370,11 +13370,11 @@ else
         'A slot with nothing to pass is removed from the call together with its comma' \
         'is compared without regard to case' \
         'in lower case' \
-        'runs on the effort of the agent that launched it' \
+        'a subagent started by a subagent follows its immediate launcher' \
         'The user asked for effort <level> for every subagent.' \
         'WARN [delegation] effort "<value>" is not supported by this runtime' \
-        'WARN [delegation] effort "<value>" rejected — retried on the session effort' \
-        'WARN [delegation] model "<name>" rejected — retried on the session model' \
+        'WARN [delegation] effort "<value>" rejected — retried without the effort override' \
+        'WARN [delegation] model "<name>" rejected — retried without the model override' \
         'repeat it **once** without the effort'; do
         APX_CHK=$((APX_CHK + 1))
         grep -qF -- "$apx_lit" "$APX_ARGS_FILE" || APX_WHY+=" AP-16:contract-lacks(${apx_lit:0:28})"
@@ -13523,10 +13523,12 @@ for apx_f in "$ROOT_DIR"/subagents/*.md; do
             'as the `model` and `effort` call parameters of the launch' \
             'A parameter with nothing to pass is left out of the call' \
             'WARN [delegation] subagent-arguments contract missing' \
-            'skip this section and pass nothing'; do
+            'On Kimi Code read `subagents.model.kimi.<role>` and pass only the `model` parameter settled by the same contract: there is no effort key or parameter and no per-agent setting.'; do
             APX_CHK=$((APX_CHK + 1))
             grep -qF -- "$apx_lit" "$apx_f" || APX_WHY+=" AP-20:launcher-lacks(${apx_lit:0:28}):${apx_f#"$ROOT_DIR"/}"
         done
+        APX_CHK=$((APX_CHK + 1))
+        ! grep -qF 'skip this section and pass nothing' "$apx_f" || APX_WHY+=" AP-20:stale-kimi-skip:${apx_f#"$ROOT_DIR"/}"
     else
         [[ "${apx_has:-0}" -eq 0 ]] || APX_WHY+=" AP-20:non-launcher-with-section:${apx_f#"$ROOT_DIR"/}"
     fi

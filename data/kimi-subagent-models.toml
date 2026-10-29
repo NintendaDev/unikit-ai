@@ -1,0 +1,110 @@
+# Optional Kimi Code subagent pool: three roles × three effort variants.
+#
+# MANUAL MERGE ONLY. Do not replace your whole config.toml with this file and do
+# not blindly duplicate tables that already exist: TOML rejects duplicate tables.
+# Preserve your providers, credentials, existing [models] entries and settings.
+#
+# For every alias below, copy provider, model, max_context_size, capabilities and
+# support_efforts in full from one existing [models] entry in your config. The
+# placeholder values are deliberate and are not a runnable model definition.
+# Keep every variant standalone: aliases do not inherit metadata from each other.
+# default_effort belongs only under each variant's [models.<alias>.overrides].
+# Assign the aliases you want to subagents.model.kimi.<role> in .unikit/config.yaml.
+#
+# A managed refresh or login may remove custom model entries. Check these aliases
+# afterwards and restore them manually if needed. UniKit never writes global config.
+
+[models.unikit-reader-low]
+provider = "COPY_FROM_EXISTING_MODEL"
+model = "COPY_FROM_EXISTING_MODEL"
+max_context_size = 0
+capabilities = ["COPY_FROM_EXISTING_MODEL"]
+support_efforts = ["low", "high", "max"]
+[models.unikit-reader-low.overrides]
+default_effort = "low"
+
+[models.unikit-reader-high]
+provider = "COPY_FROM_EXISTING_MODEL"
+model = "COPY_FROM_EXISTING_MODEL"
+max_context_size = 0
+capabilities = ["COPY_FROM_EXISTING_MODEL"]
+support_efforts = ["low", "high", "max"]
+[models.unikit-reader-high.overrides]
+default_effort = "high"
+
+[models.unikit-reader-max]
+provider = "COPY_FROM_EXISTING_MODEL"
+model = "COPY_FROM_EXISTING_MODEL"
+max_context_size = 0
+capabilities = ["COPY_FROM_EXISTING_MODEL"]
+support_efforts = ["low", "high", "max"]
+[models.unikit-reader-max.overrides]
+default_effort = "max"
+
+[models.unikit-validator-low]
+provider = "COPY_FROM_EXISTING_MODEL"
+model = "COPY_FROM_EXISTING_MODEL"
+max_context_size = 0
+capabilities = ["COPY_FROM_EXISTING_MODEL"]
+support_efforts = ["low", "high", "max"]
+[models.unikit-validator-low.overrides]
+default_effort = "low"
+
+[models.unikit-validator-high]
+provider = "COPY_FROM_EXISTING_MODEL"
+model = "COPY_FROM_EXISTING_MODEL"
+max_context_size = 0
+capabilities = ["COPY_FROM_EXISTING_MODEL"]
+support_efforts = ["low", "high", "max"]
+[models.unikit-validator-high.overrides]
+default_effort = "high"
+
+[models.unikit-validator-max]
+provider = "COPY_FROM_EXISTING_MODEL"
+model = "COPY_FROM_EXISTING_MODEL"
+max_context_size = 0
+capabilities = ["COPY_FROM_EXISTING_MODEL"]
+support_efforts = ["low", "high", "max"]
+[models.unikit-validator-max.overrides]
+default_effort = "max"
+
+[models.unikit-executor-low]
+provider = "COPY_FROM_EXISTING_MODEL"
+model = "COPY_FROM_EXISTING_MODEL"
+max_context_size = 0
+capabilities = ["COPY_FROM_EXISTING_MODEL"]
+support_efforts = ["low", "high", "max"]
+[models.unikit-executor-low.overrides]
+default_effort = "low"
+
+[models.unikit-executor-high]
+provider = "COPY_FROM_EXISTING_MODEL"
+model = "COPY_FROM_EXISTING_MODEL"
+max_context_size = 0
+capabilities = ["COPY_FROM_EXISTING_MODEL"]
+support_efforts = ["low", "high", "max"]
+[models.unikit-executor-high.overrides]
+default_effort = "high"
+
+[models.unikit-executor-max]
+provider = "COPY_FROM_EXISTING_MODEL"
+model = "COPY_FROM_EXISTING_MODEL"
+max_context_size = 0
+capabilities = ["COPY_FROM_EXISTING_MODEL"]
+support_efforts = ["low", "high", "max"]
+[models.unikit-executor-max.overrides]
+default_effort = "max"
+
+[secondary_model]
+default_model = "unikit-executor-high"
+
+[secondary_model.models]
+unikit-reader-low = "Reader with low effort"
+unikit-reader-high = "Reader with high effort"
+unikit-reader-max = "Reader with max effort"
+unikit-validator-low = "Validator with low effort"
+unikit-validator-high = "Validator with high effort"
+unikit-validator-max = "Validator with max effort"
+unikit-executor-low = "Executor with low effort"
+unikit-executor-high = "Executor with high effort"
+unikit-executor-max = "Executor with max effort"
