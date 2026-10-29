@@ -415,6 +415,11 @@ await group('T', async () => {
     assertTrue('T1d the welcome message has at least 3 lines', Array.isArray(onboarding.welcomeMessage) && onboarding.welcomeMessage.length >= 3);
     assertTrue('T1e the welcome message tells the user to trust the folder (REQ-005)', onboarding.welcomeMessage.some((line) => /trust/i.test(line)));
     assertTrue('T1f the invocation hint names /unikit-plan', typeof onboarding.invocationHint === 'string' && onboarding.invocationHint.includes('/unikit-plan'));
+    const poolHints = onboarding.welcomeMessage.filter((line) => line.includes('.unikit/system/kimi-subagent-models.toml'));
+    assertEq('T1h the optional pool hint appears exactly once in the init welcome', poolHints.length, 1);
+    for (const fragment of ['$KIMI_CODE_HOME/config.toml', '~/.kimi-code/config.toml', 'manually merge', 'does not write global config', '.unikit/config.yaml']) {
+        assertTrue(`T1h the pool hint names ${fragment}`, poolHints[0]?.includes(fragment), poolHints[0]);
+    }
 
     const verbatim = 'subagent_type: "general-purpose"';
     assertEq('T1g transform rewrites nothing in skill text (types come from the profile)', t.transform('x', verbatim).content, verbatim);

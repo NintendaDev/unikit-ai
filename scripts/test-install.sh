@@ -96,7 +96,10 @@ seed_rule "$CLAUDE_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
 seed_rule "$CLAUDE_DIR" unity core "$CORE_RULE_UNITY_DESIGN_PRINCIPLES"
 seed_rule "$CLAUDE_DIR" unity stack "$STACK_RULE_UNITY_UNITASK"
 
-run_update "$CLAUDE_DIR"
+CLAUDE_UPDATE_OUTPUT="$TMPDIR/claude-update.out"
+(cd "$CLAUDE_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$CLAUDE_UPDATE_OUTPUT" 2>&1)
+assert_not_contains "$CLAUDE_UPDATE_OUTPUT" 'kimi-subagent-models\.toml' \
+  "non-Kimi update does not print the Kimi pool hint"
 
 # Subagent files SHOULD be installed for claude (supportsSubagents: true)
 assert_exists "$CLAUDE_DIR/.claude/agents/unikit-architecture-sidecar.md" "subagent files must be installed for claude"
@@ -325,6 +328,19 @@ assert_contains "$SUBAGENT_ARGS_PATH" 'WARN \[delegation\] effort' \
   "subagent-arguments.md carries the canonical WARN [delegation] effort label"
 assert_not_contains "$SUBAGENT_ARGS_PATH" '\{\{' \
   "subagent-arguments.md is a flat copy — no unresolved {{vars}}"
+
+# ─────────────────────────────────────────────────────
+# Test 1b-km: kimi-subagent-models.toml installed verbatim as a flat system asset
+# ─────────────────────────────────────────────────────
+KIMI_SUBAGENT_MODELS_PATH="$CLAUDE_DIR/.unikit/system/kimi-subagent-models.toml"
+assert_exists "$KIMI_SUBAGENT_MODELS_PATH" "kimi-subagent-models.toml created in .unikit/system/"
+KIMI_SUBAGENT_MODELS_SOURCE_SHA=$(sha_of "$ROOT_DIR/data/kimi-subagent-models.toml")
+assert_same_sha "$KIMI_SUBAGENT_MODELS_PATH" "$KIMI_SUBAGENT_MODELS_SOURCE_SHA" \
+  "kimi-subagent-models.toml is byte-identical to the data/ template"
+assert_contains "$KIMI_SUBAGENT_MODELS_PATH" '^\[models\.unikit-executor-high\.overrides\]$' \
+  "kimi-subagent-models.toml carries the executor-high variant"
+assert_not_contains "$KIMI_SUBAGENT_MODELS_PATH" '\{\{' \
+  "kimi-subagent-models.toml is a flat copy — no unresolved {{vars}}"
 
 # ─────────────────────────────────────────────────────
 # Test 1b-sr: subagent-roles.md installed as a system asset (flat copy, no vars)
@@ -875,7 +891,43 @@ EOF
 inject_fake_registry "$KIMI_DIR"
 
 seed_rule "$KIMI_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
-run_update "$KIMI_DIR"
+
+KIMI_TEST_HOME="$TMPDIR/test-kimi-home"
+KIMI_TEST_USER_HOME="$TMPDIR/test-kimi-user-home"
+KIMI_GLOBAL_CONFIG="$KIMI_TEST_HOME/config.toml"
+mkdir -p "$KIMI_TEST_HOME" "$KIMI_TEST_USER_HOME"
+cat > "$KIMI_GLOBAL_CONFIG" << 'EOF'
+[providers.sentinel]
+api_key = "FAKE_DO_NOT_CHANGE"
+
+[models.existing]
+provider = "sentinel"
+model = "keep-existing-model"
+
+[secondary_model]
+default_model = "existing"
+EOF
+KIMI_GLOBAL_SHA=$(sha_of "$KIMI_GLOBAL_CONFIG")
+
+# These are the exact welcome lines init prints through getAgentOnboarding.
+KIMI_INIT_OUTPUT="$TMPDIR/kimi-init.out"
+(cd "$ROOT_DIR" && KIMI_CODE_HOME="$KIMI_TEST_HOME" HOME="$KIMI_TEST_USER_HOME" USERPROFILE="$KIMI_TEST_USER_HOME" node --input-type=module -e "
+  const { getAgentOnboarding } = await import('./dist/core/transformer.js');
+  process.stdout.write(getAgentOnboarding('kimi').welcomeMessage.join('\n'));
+") > "$KIMI_INIT_OUTPUT" 2>&1
+assert_contains "$KIMI_INIT_OUTPUT" '\.unikit/system/kimi-subagent-models\.toml' \
+  "Kimi init welcome prints the pool template path"
+assert_contains "$KIMI_INIT_OUTPUT" 'does not write global config' \
+  "Kimi init welcome says global config is not written"
+
+KIMI_UPDATE_OUTPUT="$TMPDIR/kimi-update.out"
+(cd "$KIMI_DIR" && KIMI_CODE_HOME="$KIMI_TEST_HOME" HOME="$KIMI_TEST_USER_HOME" USERPROFILE="$KIMI_TEST_USER_HOME" node "$ROOT_DIR/dist/cli/index.js" update > "$KIMI_UPDATE_OUTPUT" 2>&1)
+assert_contains "$KIMI_UPDATE_OUTPUT" '\.unikit/system/kimi-subagent-models\.toml' \
+  "Kimi update prints the pool template path"
+assert_contains "$KIMI_UPDATE_OUTPUT" '\$KIMI_CODE_HOME/config\.toml' \
+  "Kimi update names the isolated global config location"
+assert_same_sha "$KIMI_GLOBAL_CONFIG" "$KIMI_GLOBAL_SHA" \
+  "Kimi init/update leaves global providers, auth and existing models byte-identical"
 
 KIMI_SKILLS="$KIMI_DIR/.kimi-code/skills"
 KIMI_AGENTS="$KIMI_DIR/.kimi-code/agents"
@@ -964,8 +1016,10 @@ if [[ "$KIMI_EXPLORE_FILES" -ne 0 ]]; then
   grep -rEn 'subagent_type:[[:space:]]*"?Explore' "$KIMI_SKILLS" --include='*.md' | cut -c1-160 | head -5
   exit 1
 fi
-assert_contains "$KIMI_SKILLS/unikit-fix/SKILL.md" 'subagent_type: explore, prompt:' \
-  "kimi: recon-agent launches the profile's reader type, lower case"
+assert_contains "$KIMI_SKILLS/unikit-fix/SKILL.md" 'subagent_type: explore, model: <model>, prompt:' \
+  "kimi: recon-agent launches the profile's reader type with the model slot"
+assert_not_contains "$KIMI_SKILLS/unikit-fix/SKILL.md" 'effort: <effort>' \
+  "kimi: recon-agent has no effort slot"
 
 # No positional-argument token in a SKILL.md body (REQ-004, DEC-012)
 KIMI_DOLLAR_HITS=$(grep -rEn '\$[0-9]' "$KIMI_SKILLS" --include='SKILL.md' 2>/dev/null | wc -l | tr -d ' ' || true)

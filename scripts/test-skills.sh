@@ -13418,7 +13418,7 @@ apx_doc "cfg-bucket3" 'an empty `subagents.model.<agent>.<role>` or `subagents.e
 apx_doc "sub-heading" '### Subagent arguments' "$APX_DOC_SUB"
 apx_doc "sub-roles" 'The role of a launch - **reader**, **validator** or **executor** - comes from the table in `.unikit/system/subagent-roles.md`' "$APX_DOC_SUB"
 apx_doc "sub-slots" 'the installer draws them into the call head of every skill as slots' "$APX_DOC_SUB"
-apx_doc "sub-retry" 'WARN [delegation] effort "<value>" rejected - retried on the session effort' "$APX_DOC_SUB"
+apx_doc "sub-retry" 'WARN [delegation] effort "<value>" rejected - retried without the effort override' "$APX_DOC_SUB"
 apx_doc "sub-no-slot" 'a runtime without an effort slot gets `WARN [delegation] effort "<value>" is not supported' "$APX_DOC_SUB"
 apx_doc "sub-nested" '### Nested launches and effort - what is established' "$APX_DOC_SUB"
 apx_doc "sub-nesting-claude" 'launched two subagents itself (depth 2' "$APX_DOC_SUB"
@@ -13430,11 +13430,17 @@ apx_doc "agents-not-measured" 'whether that depends on `/effort` was not measure
 apx_doc "agents-codex" 'The call also takes `model` and `reasoning_effort`' "$APX_DOC_AGENTS"
 apx_doc "agents-codex-nested" 'a subagent started with `reasoning_effort` low started another with `high`' "$APX_DOC_AGENTS"
 apx_doc "agents-nested" '**Nested subagents (client `agy`, probes of 2026-10-18 and 2026-10-19, from the journals).**' "$APX_DOC_AGENTS"
-apx_doc "agents-kimi" 'UniKit passes neither a model nor an effort to Kimi Code subagents' "$APX_DOC_AGENTS"
+apx_doc "agents-kimi" 'UniKit can pass a **model** to Kimi Code subagents' "$APX_DOC_AGENTS"
+apx_doc "agents-kimi-primary" 'The special alias `primary` explicitly inherits the caller' "$APX_DOC_AGENTS"
+apx_doc "agents-kimi-variants" '`[models.<alias>.overrides].default_effort`' "$APX_DOC_AGENTS"
+apx_doc "cfg-kimi-key" '| `model.kimi.<role>` |' "$APX_DOC_CFG"
+apx_doc "cfg-kimi-no-effort" '**Kimi Code has no effort key or call slot.**' "$APX_DOC_CFG"
+apx_doc "cfg-kimi-template" '`.unikit/system/kimi-subagent-models.toml`' "$APX_DOC_CFG"
 # the help index of the system files names the new one (the help test does not guard that list)
 APX_HELP_KB="$ROOT_DIR/skills/unikit-help/references/knowledge-base.md"
 apx_doc "help-kb" '`subagent-arguments.md` — how the model and the effort of a subagent are settled' "$APX_HELP_KB"
 apx_doc "help-kb-roles" '`subagent-roles.md` — which role (reader, validator or executor) each subagent launch has' "$APX_HELP_KB"
+apx_doc "help-kb-kimi" '`kimi-subagent-models.toml` — nine optional role×effort model aliases for Kimi' "$APX_HELP_KB"
 APX_DOC_OLD=$( { grep -cF '### Model argument' "$APX_DOC_SUB" || true; } )
 APX_CHK=$((APX_CHK + 1))
 [[ "${APX_DOC_OLD:-0}" -eq 0 ]] || APX_WHY+=" AP-18:retired-heading-left"
