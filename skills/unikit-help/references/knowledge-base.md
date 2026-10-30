@@ -101,10 +101,15 @@ Relevant to the dev pipeline:
   `/unikit-verify`, `/unikit-pr`, `/unikit-improve`, `/unikit-review`, `/unikit-fix`,
   `/unikit-execute`, `/unikit-commit` and their subagents, only when the plan has `## Experiment Context`.
 - `subagent-arguments.md` — how the model and the effort of a subagent are settled (your word in the
-  request or earlier in the session, then the config key of the launch's role, then the built-in value),
-  read by the skills that launch a subagent, and by the two coordinators, before their first launch.
+  request or earlier in the session, then the config key of the launch's role, then the built-in value);
+  `inherit` means no override and the runtime's own default, not necessarily the session model. Read by
+  the skills that launch a subagent, and by the two coordinators, before their first launch.
 - `subagent-roles.md` — which role (reader, validator or executor) each subagent launch has, so that its
   model and effort are read from the right config key; read together with `subagent-arguments.md`.
+- `.kimi-code/kimi-subagent-models.toml` — three role aliases for Kimi (reader, validator, executor),
+  delivered only for Kimi and removed with it, for manual merging into the user's global Kimi config;
+  example model metadata must be verified against real entries. Role assignments live in
+  `.unikit/config.yaml`, and UniKit never writes that global config.
 - `user-questions.md` — how a skill asks you a question (what is chosen and what each option changes
   printed first, then the question tool of your agent, the run waiting in the same turn for your
   answer); read by the skills that ask you a question, before their first question.

@@ -189,13 +189,12 @@ git:
 # repeats the call once without the effort and, if it still fails, without the
 # model.
 #   <value>  — pass it to the subagent
-#   inherit  — pass nothing; the subagent runs on the model — or the effort — of
-#              the agent that launches it
+#   inherit  — pass no override; the runtime applies its own default
 #   (empty)  — the same as inherit; a deliberate choice, never filled in again
 # A model key that is missing altogether falls back to the built-in model of the
 # role (a reader and a validator: the default noted below; an executor: inherit);
 # an effort key that is missing passes nothing. Each block lists the agents whose
-# subagent call takes that argument without any setting of the runtime itself.
+# subagent call can take that argument; any runtime precondition is noted below.
 # What you ask for in a request, or said earlier in the session, wins over both
 # blocks for that run: "use opus for the subagents" or "effort high for the
 # subagents". A single value written directly under an agent, as in earlier
@@ -227,11 +226,23 @@ subagents:
       validator: flash
       executor: inherit
 
-    # Cursor, OpenCode, Kimi Code, Qwen Code and Universal / Other have no key:
-    # their subagent call takes no model argument, or takes one only after you set
-    # up the client itself, so UniKit draws no model slot for them and passes
-    # nothing — the subagent runs on the model of the session (the same as
-    # inherit). Set the model in the client's own settings.
+    # Kimi Code. An alias from [secondary_model.models] in the user's Kimi
+    # config.toml, or primary to inherit the caller's model and effort. The model
+    # parameter exists only with a configured pool; force = true rejects an
+    # explicit model. Built-in default: inherit (no override) for every role.
+    # Without a pool the caller's model applies; with a pool the runtime uses
+    # secondary_model.default_model. Effort has no call argument: set the native
+    # secondary_model.default_effort globally, or assign standalone model variants
+    # with overrides.default_effort to roles here. There is no effort.kimi key.
+    kimi:
+      reader: inherit
+      validator: inherit
+      executor: inherit
+
+    # Cursor, OpenCode, Qwen Code and Universal / Other have no key: their
+    # subagent call takes no model argument, or takes one only after you set up
+    # the client itself, so UniKit draws no model slot for them and passes no
+    # override. Set the model in the client's own settings.
 
   effort:
     # Claude Code. low | medium | high | xhigh | max — the levels the effort

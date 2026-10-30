@@ -188,7 +188,7 @@ for skill_dir in "$ROOT_DIR"/skills/*/; do
     fi
 
     # Check name is lowercase with hyphens only
-    if [[ "$FM_NAME" =~ [A-Z] ]]; then
+    if [[ "$FM_NAME" != "${FM_NAME,,}" ]]; then
         fail "$skill_name — name contains uppercase characters"
         SKILL_ERRORS=$((SKILL_ERRORS + 1))
     fi
@@ -13370,11 +13370,11 @@ else
         'A slot with nothing to pass is removed from the call together with its comma' \
         'is compared without regard to case' \
         'in lower case' \
-        'runs on the effort of the agent that launched it' \
+        'a subagent started by a subagent follows its immediate launcher' \
         'The user asked for effort <level> for every subagent.' \
         'WARN [delegation] effort "<value>" is not supported by this runtime' \
-        'WARN [delegation] effort "<value>" rejected — retried on the session effort' \
-        'WARN [delegation] model "<name>" rejected — retried on the session model' \
+        'WARN [delegation] effort "<value>" rejected — retried without the effort override' \
+        'WARN [delegation] model "<name>" rejected — retried without the model override' \
         'repeat it **once** without the effort'; do
         APX_CHK=$((APX_CHK + 1))
         grep -qF -- "$apx_lit" "$APX_ARGS_FILE" || APX_WHY+=" AP-16:contract-lacks(${apx_lit:0:28})"
@@ -13418,7 +13418,7 @@ apx_doc "cfg-bucket3" 'an empty `subagents.model.<agent>.<role>` or `subagents.e
 apx_doc "sub-heading" '### Subagent arguments' "$APX_DOC_SUB"
 apx_doc "sub-roles" 'The role of a launch - **reader**, **validator** or **executor** - comes from the table in `.unikit/system/subagent-roles.md`' "$APX_DOC_SUB"
 apx_doc "sub-slots" 'the installer draws them into the call head of every skill as slots' "$APX_DOC_SUB"
-apx_doc "sub-retry" 'WARN [delegation] effort "<value>" rejected - retried on the session effort' "$APX_DOC_SUB"
+apx_doc "sub-retry" 'WARN [delegation] effort "<value>" rejected - retried without the effort override' "$APX_DOC_SUB"
 apx_doc "sub-no-slot" 'a runtime without an effort slot gets `WARN [delegation] effort "<value>" is not supported' "$APX_DOC_SUB"
 apx_doc "sub-nested" '### Nested launches and effort - what is established' "$APX_DOC_SUB"
 apx_doc "sub-nesting-claude" 'launched two subagents itself (depth 2' "$APX_DOC_SUB"
@@ -13430,11 +13430,17 @@ apx_doc "agents-not-measured" 'whether that depends on `/effort` was not measure
 apx_doc "agents-codex" 'The call also takes `model` and `reasoning_effort`' "$APX_DOC_AGENTS"
 apx_doc "agents-codex-nested" 'a subagent started with `reasoning_effort` low started another with `high`' "$APX_DOC_AGENTS"
 apx_doc "agents-nested" '**Nested subagents (client `agy`, probes of 2026-10-18 and 2026-10-19, from the journals).**' "$APX_DOC_AGENTS"
-apx_doc "agents-kimi" 'UniKit passes neither a model nor an effort to Kimi Code subagents' "$APX_DOC_AGENTS"
+apx_doc "agents-kimi" 'UniKit can pass a **model** to Kimi Code subagents' "$APX_DOC_AGENTS"
+apx_doc "agents-kimi-primary" 'The special alias `primary` explicitly inherits the caller' "$APX_DOC_AGENTS"
+apx_doc "agents-kimi-variants" '`[models.<alias>.overrides].default_effort`' "$APX_DOC_AGENTS"
+apx_doc "cfg-kimi-key" '| `model.kimi.<role>` |' "$APX_DOC_CFG"
+apx_doc "cfg-kimi-no-effort" '**Kimi Code has no effort key or call slot.**' "$APX_DOC_CFG"
+apx_doc "cfg-kimi-template" '`.kimi-code/kimi-subagent-models.toml`' "$APX_DOC_CFG"
 # the help index of the system files names the new one (the help test does not guard that list)
 APX_HELP_KB="$ROOT_DIR/skills/unikit-help/references/knowledge-base.md"
 apx_doc "help-kb" '`subagent-arguments.md` — how the model and the effort of a subagent are settled' "$APX_HELP_KB"
 apx_doc "help-kb-roles" '`subagent-roles.md` — which role (reader, validator or executor) each subagent launch has' "$APX_HELP_KB"
+apx_doc "help-kb-kimi" '`.kimi-code/kimi-subagent-models.toml` — three role aliases for Kimi (reader, validator, executor),' "$APX_HELP_KB"
 APX_DOC_OLD=$( { grep -cF '### Model argument' "$APX_DOC_SUB" || true; } )
 APX_CHK=$((APX_CHK + 1))
 [[ "${APX_DOC_OLD:-0}" -eq 0 ]] || APX_WHY+=" AP-18:retired-heading-left"
@@ -13523,10 +13529,12 @@ for apx_f in "$ROOT_DIR"/subagents/*.md; do
             'as the `model` and `effort` call parameters of the launch' \
             'A parameter with nothing to pass is left out of the call' \
             'WARN [delegation] subagent-arguments contract missing' \
-            'skip this section and pass nothing'; do
+            'On Kimi Code read `subagents.model.kimi.<role>` and pass only the `model` parameter settled by the same contract: there is no effort key or parameter and no per-agent setting.'; do
             APX_CHK=$((APX_CHK + 1))
             grep -qF -- "$apx_lit" "$apx_f" || APX_WHY+=" AP-20:launcher-lacks(${apx_lit:0:28}):${apx_f#"$ROOT_DIR"/}"
         done
+        APX_CHK=$((APX_CHK + 1))
+        ! grep -qF 'skip this section and pass nothing' "$apx_f" || APX_WHY+=" AP-20:stale-kimi-skip:${apx_f#"$ROOT_DIR"/}"
     else
         [[ "${apx_has:-0}" -eq 0 ]] || APX_WHY+=" AP-20:non-launcher-with-section:${apx_f#"$ROOT_DIR"/}"
     fi

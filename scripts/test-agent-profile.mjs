@@ -80,7 +80,7 @@ const EXPECTED = {
     opencode: { readerType: 'explore', workerType: 'general', modelDefault: 'inherit', modelArg: '', effortArg: '', skillCall: 'read', spawnArgs: '' },
     // no effort argument in invoke_subagent (probe 2026-10-16, DEC-108)
     antigravity: { readerType: 'research', workerType: 'self', modelDefault: 'flash', modelArg: 'Model', effortArg: '', skillCall: 'read', spawnArgs: '' },
-    kimi: { readerType: 'explore', workerType: 'coder', modelDefault: 'inherit', modelArg: '', effortArg: '', skillCall: 'read', spawnArgs: '' },
+    kimi: { readerType: 'explore', workerType: 'coder', modelDefault: 'inherit', modelArg: 'model', effortArg: '', skillCall: 'read', spawnArgs: '' },
     universal: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: 'inherit', modelArg: '', effortArg: '', skillCall: 'read', spawnArgs: '' },
 };
 
@@ -94,7 +94,7 @@ const HEADS = {
     qwen: { reader: 'subagent_type: Explore,', worker: 'subagent_type: general-purpose,', workerQuoted: 'subagent_type: "general-purpose",' },
     opencode: { reader: 'subagent_type: explore,', worker: 'subagent_type: general,', workerQuoted: 'subagent_type: "general",' },
     antigravity: { reader: 'subagent_type: research, Model: <model>,', worker: 'subagent_type: self, Model: <model>,', workerQuoted: 'subagent_type: "self", Model: <model>,' },
-    kimi: { reader: 'subagent_type: explore,', worker: 'subagent_type: coder,', workerQuoted: 'subagent_type: "coder",' },
+    kimi: { reader: 'subagent_type: explore, model: <model>,', worker: 'subagent_type: coder, model: <model>,', workerQuoted: 'subagent_type: "coder", model: <model>,' },
     universal: { reader: 'subagent_type: Explore,', worker: 'subagent_type: general-purpose,', workerQuoted: 'subagent_type: "general-purpose",' },
 };
 
@@ -168,7 +168,7 @@ await group('V', async () => {
     assertEq(
         'V1 buildTemplateVars(kimi) carries the call heads and the skill-call form',
         JSON.stringify([kimiVars.agent_call_reader, kimiVars.agent_call_worker, kimiVars.agent_call_worker_quoted, kimiVars.agent_skill_call_form]),
-        JSON.stringify(['subagent_type: explore,', 'subagent_type: coder,', 'subagent_type: "coder",', 'read']),
+        JSON.stringify(['subagent_type: explore, model: <model>,', 'subagent_type: coder, model: <model>,', 'subagent_type: "coder", model: <model>,', 'read']),
     );
 
     const probe = '{{agent_id}} {{agent_reader_type}} {{agent_worker_type}} [{{agent_model_default}}]';
@@ -243,7 +243,7 @@ const COMPONENTS = {
     qwen: 'profile:Explore|general-purpose|inherit',
     opencode: 'profile:explore|general|inherit',
     antigravity: 'profile:research|self|flash|args=Model/',
-    kimi: 'profile:explore|coder|inherit',
+    kimi: 'profile:explore|coder|inherit|args=model/',
     universal: 'profile:Explore|general-purpose|inherit',
 };
 

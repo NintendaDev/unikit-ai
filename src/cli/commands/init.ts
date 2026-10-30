@@ -10,6 +10,7 @@ import { collectManagedGrantPrefixes } from '../../core/bridges/grants.js';
 import { getBridgeSetupLines } from '../../core/bridges/summary.js';
 import { installEngineTemplates, installCliContract, installGateResultContract, installUltraPlanReadContract, installResearchLinkContract, installPlanBoundariesContract, installMergeAnalysisContract, installBalanceHandbackContract, installPrototypeProfileContract, installDevPrinciples, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
 import { installSubagentArgumentsContract, installSubagentRolesContract, installUserQuestionsContract } from '../../core/installer/system-contracts.js';
+import { installKimiSubagentModelsTemplate } from '../../core/installer/kimi-subagent-models.js';
 import { memoryDir } from '../../core/constants.js';
 import {
   saveConfig, configExists, loadConfig, readConfigVersion, getCurrentVersion, emptyRulesInstallation,
@@ -320,6 +321,9 @@ export async function initCommand(): Promise<void> {
 
     // Install the user-questions contract (read before their first question by the skills that carry its pointer)
     await installUserQuestionsContract(projectDir);
+
+    // Install the optional template only for Kimi and clean it up when Kimi is deselected
+    await installKimiSubagentModelsTemplate(projectDir, installedAgents.map(agent => agent.id));
 
     // Deliver BRIDGES.md and the rules tree of every selected bridge (sweeps the 2.x engine-mcp folder)
     await installEngineBridges(projectDir, engineId, discoveredServers, answers.engineBridges, installedAgents.map(agent => agent.id));

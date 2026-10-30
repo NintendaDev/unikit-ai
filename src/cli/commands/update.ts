@@ -11,6 +11,7 @@ import {
 } from '../../core/installer/subagents.js';
 import { installEngineTemplates, installCliContract, installGateResultContract, installUltraPlanReadContract, installResearchLinkContract, installPlanBoundariesContract, installMergeAnalysisContract, installBalanceHandbackContract, installPrototypeProfileContract, installDevPrinciples, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
 import { installSubagentArgumentsContract, installSubagentRolesContract, installUserQuestionsContract } from '../../core/installer/system-contracts.js';
+import { installKimiSubagentModelsTemplate } from '../../core/installer/kimi-subagent-models.js';
 import { injectMcpRules } from '../../core/installer/mcp-injection.js';
 import { collectManagedGrantPrefixes } from '../../core/bridges/grants.js';
 import { installExtensionSkills, installExtensionSubagents } from '../../core/installer/extensions.js';
@@ -24,6 +25,7 @@ import { installEngineBridges, readPreviousBridgeSet } from '../../core/installe
 import { swapBridgeNotes } from '../../core/installer/bridge-notes.js';
 import { syncBridgeOrder } from '../../core/installer/bridge-order.js';
 import { syncBridgeRules } from '../../core/installer/bridge-rules.js';
+import { KIMI_SUBAGENT_POOL_HINT } from '../../core/constants-kimi.js';
 import { getAgentConfig } from '../../core/agents.js';
 import { exitOnSharedSkillsDir } from '../guards.js';
 import { fileExists } from '../../utils/fs.js';
@@ -340,6 +342,9 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     // Refresh the user-questions contract (read before their first question by the skills that carry its pointer)
     await installUserQuestionsContract(projectDir);
 
+    // Refresh the optional template only for Kimi and clean it up when Kimi is deselected
+    await installKimiSubagentModelsTemplate(projectDir, config.agents.map(agent => agent.id));
+
     // `update` does not re-ask for servers, but the selection still moves under it: editing
     // `.unikit.json` and re-running is how an engine switch reaches this command, and everything else
     // here already honours it (skills are reinstalled, stale grants cleared, the trees swept). The
@@ -459,6 +464,9 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
       console.log(chalk.green('\n✓ Rules up to date'));
     }
 
+    if (config.agents.some(agent => agent.id === 'kimi')) {
+      console.log(chalk.dim(`\n${KIMI_SUBAGENT_POOL_HINT}`));
+    }
     console.log('');
 
   } catch (error) {
