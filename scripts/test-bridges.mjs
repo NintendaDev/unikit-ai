@@ -1322,9 +1322,9 @@ await group('BR-D', async () => {
         const bin = tmp('br-d-bin-');
         const marker = path.join(bin, 'was-executed.txt');
         fs.writeFileSync(path.join(bin, 'unity.exe'), `echo run > "${marker}"\n`);
-        const winCtx = (envPath, extra = {}) => ({ projectDir: bin, env: { Path: envPath, PATHEXT: '.COM;.EXE;.BAT', ...extra }, platform: 'win32' });
+        const winCtx = (envPath, extra = {}) => ({ projectDir: bin, env: { Path: envPath, PATHEXT: '.com;.exe;.bat', ...extra }, platform: 'win32' });
 
-        // PATHEXT is upper case and the file system is not case-sensitive on Windows: compare the path as the lookup spells it.
+        // Match PATHEXT in the fixture too: a simulated Windows context does not make a Linux host's file system case-insensitive.
         assertEq('BR-D1', 'on Windows the binary is found through PATHEXT, in a variable spelled Path',
             (await detect.findBinaryOnPath('unity', winCtx(`${path.join(bin, 'nowhere')};${bin}`)))?.toLowerCase(), path.join(bin, 'unity.exe').toLowerCase());
         assertEq('BR-D1', 'a PATH without the binary finds nothing', await detect.findBinaryOnPath('unity', winCtx(path.join(bin, 'nowhere'))), null);
@@ -1360,7 +1360,7 @@ await group('BR-D', async () => {
         assertEq('BR-D3', 'an entry without a pattern has no version', await detect.readProjectEngineVersion({ ...card, detect: { binary: 'unity' } }, { projectDir: bin, env: {}, platform: 'win32' }), null);
 
         const onPath = path.join(bin);
-        const ctxFor = (dir, hasBinary) => ({ projectDir: dir, env: { Path: hasBinary ? onPath : path.join(bin, 'nowhere'), PATHEXT: '.EXE' }, platform: 'win32' });
+        const ctxFor = (dir, hasBinary) => ({ projectDir: dir, env: { Path: hasBinary ? onPath : path.join(bin, 'nowhere'), PATHEXT: '.exe' }, platform: 'win32' });
         const high = projectWith('m_EditorVersion: 6000.3.22f1');
         const floorEdge = projectWith('m_EditorVersion: 6000.0.77f1');
         const low = projectWith('m_EditorVersion: 2022.3.45f1');
