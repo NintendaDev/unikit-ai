@@ -98,12 +98,21 @@ Tasks are ordered by dependencies. Each phase includes effort estimate and depen
 **Status:** [ ] Not started
 
 - [ ] Task 1.1 — brief description of what to do
+
   WHY: one-line reason why this task is needed in the context of the feature
+
   Files: `path/to/file.<ext>`
+
 - [ ] Task 1.2 — brief description
+
   WHY: reason
+
   Files: `path/to/file1.<ext>`, `path/to/file2.<ext>`
+
   Editor: [ui] <container> → <target> : <action>
+
+  Editor: [asset] <container> → <target> : <action>
+
 <!-- Commit checkpoint: tasks 1.1-1.6 -->
 
 ### Phase 2: {Phase Name}
@@ -112,8 +121,11 @@ Tasks are ordered by dependencies. Each phase includes effort estimate and depen
 **Status:** [ ] Not started
 
 - [ ] Task 2.1 — brief description
+
   WHY: reason
+
   Files: `path/to/file.<ext>`
+
 <!-- Commit checkpoint: tasks 2.1-2.4 -->
 
 ...
@@ -124,6 +136,7 @@ Tasks are ordered by dependencies. Each phase includes effort estimate and depen
 **Status:** [ ] Not started
 
 - [ ] Task N.1 — brief description
+
   WHY: reason
 
 ## Commit Plan
@@ -261,6 +274,21 @@ Placed last, **after** `## Technical Context`, so it never falls inside the
 
 > **`PR checkpoints: yes` is written only when the plan carries at least one PR checkpoint task**; a plan without the line has none. It is recorded, not re-read: the planner resolves `git.pull_requests.checkpoints` once, and changing the key later never reinterprets a plan already written. Writers that add a module to an existing plan (`/unikit-plan add`, `/unikit-improve`) read this line, never the config key.
 
+### Checklist layout
+
+Every task stays one top-level `- [ ] Task N.M — …` checkbox. Put each task field
+(`WHY:`, `Files:`, every `Editor:`, `Item:`, `Test checkpoint:`, `PR checkpoint:`,
+`Measure:`, `Hand-back:`) in its own paragraph, indented by two spaces under that
+checkbox, with a blank line before it. Leave a blank line between tasks as well.
+Each repeated `Editor:` operation, including `[ui]` and `[asset]`, gets its own
+paragraph — never combine targets into one line or paragraph.
+
+A source newline alone is a Markdown soft break: it displays adjacent fields as
+one paragraph. Blank lines are required; do not rely on the viewer preserving
+source newlines or on invisible trailing spaces. Keep the field names and values
+unchanged, without extra bullets or checkboxes. This layout applies to fast, full
+and ultra plans, including tasks added or revised later.
+
 ### Editor task grammar
 
 Some tasks change the engine editor's **serialized state** (scenes, UI, VFX, animation, assets, input maps, project settings) rather than source files. Such a task carries one or more `Editor:` lines:
@@ -272,7 +300,7 @@ kind ∈ scene | ui | vfx | anim | asset | settings   (default: scene)
 
 Rules:
 
-- **One line per target** — repeat the field when a task touches several targets.
+- **One line per target** — repeat the field when a task touches several targets, separating the fields by the `### Checklist layout` rule above.
 - The field goes **after** `Files:`.
 - Naming of `<container>` and `<target>` is engine-specific — see `references/ENGINE_RULES.md` (§1 kind → concept, §2 language & layout).
 - **Pure code tasks omit the field entirely.** Editing a plain text or config file stays in `Files:`.

@@ -126,10 +126,15 @@ Planned at: <short sha>
 **Status:** [ ] Not started
 
 - [ ] Task 1.1 — {deliverable} ([details](phase-01-{slug}.md#task-11-deliverable))
+
   WHY: …
+
   Files: `…`
+
 - [ ] Task 1.2 — {deliverable} ([details](phase-01-{slug}.md#task-12-deliverable))
+
   WHY: …
+
   Files: `…`
 
 ### Phase 2: {name}
@@ -138,16 +143,27 @@ Planned at: <short sha>
 **Status:** [ ] Not started
 
 - [ ] Task 2.1 — {deliverable} ([details](phase-02-{slug}.md#task-21-deliverable))
+
   WHY: …
+
   Files: `…`
+
 - [ ] Task 2.2 — {deliverable} ([details](phase-02-{slug}.md#task-22-deliverable))
+
   WHY: …
+
   Files: `…`
+
 - [ ] Task 2.3 — test checkpoint for phases 1-2 ([details](phase-02-{slug}.md#task-23-test-checkpoint-for-phases-1-2))
+
   WHY: …
+
   Test checkpoint: phases 1-2
+
 - [ ] Task 2.4 — full test run ([details](phase-02-{slug}.md#task-24-full-test-run))
+
   WHY: …
+
   Test checkpoint: plan
 
 ## Commit Plan
@@ -178,7 +194,8 @@ Rules:
   numbering scheme. The link anchor is the GitHub-style slug of the phase file's task
   heading (`## Task 1.1: Foo` → `#task-11-foo`).
 - The checkbox line stays short and **must** carry its `([details](…))` link. `WHY:` and
-  `Files:` are kept from the base format, unchanged.
+  `Files:` are kept from the base format, unchanged. All task fields follow
+  `TASK-FORMAT.md` → `### Checklist layout`.
 - **`## Architecture and Decisions` holds decisions that bind two or more phases** — a module
   boundary, a shared contract, a chosen trade-off. A decision internal to one phase belongs in
   that task's `### Required Interfaces and Contracts` and is not lifted here. The section is
