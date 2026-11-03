@@ -31,6 +31,8 @@ The knowledge base is **modular** - partitioned into top-level **modules**, each
 | Bootstrap installs | `core` only | the whole catalog (`core` + `library`) |
 | CLI scope | `--module code` (the default only for `rules install <id>…`; `rules list` and `rules status` cover every module by default, `rules show` searches all of them) | `--module gamedesign` |
 
+Selected MCP / bridge rules are the `code/stack` exception: automatic `init` installation and accepted active-provider sync resolve a **complete bundle per id**, trying primary → official → bundled. Other code rules retain module-winner resolution, and gamedesign keeps its existing merge policy. Choices and lifecycle are described in [Configuration](configuration.md#bridge-order-routing-and-the-rule-of-a-bridge).
+
 Below, "`code` module rules" and "`gamedesign` module rules" break out what each module actually stores. The Bootstrap load sequence ([Dynamic Loading](#dynamic-loading)) and the `RULES.md` staging stages ([Rule Lifecycle](#rule-lifecycle)) are written from the `code` pipeline skills' point of view, since every project installs `code` and those mechanics are easiest to show concretely - but they apply to `gamedesign` identically wherever noted inline, just scoped with `--module gamedesign` and rooted at `.unikit/memory/gamedesign/`. For the full write-up of what each `gamedesign` core rule actually teaches, see [Game-Design Module](gamedesign.md#domain-knowledge-rules).
 
 ### The module registry
@@ -132,7 +134,7 @@ A compact auto-generated index that tells pipeline skills (and `/unikit-execute`
 
 The column scheme is module-specific: the `code` module's `core` table carries a **Required By** column (which pipeline skills need that rule loaded - see `data/rules-manifest.json`), because its core rules are mandatory-gated. The `gamedesign` module's `core` table carries an **Origin** column instead (`primary` / `official` / `bundled`), because its core tier resolves per rule id (see the `per-id-merge` row above) and there is no mandatory-gate concept there. Non-core tiers (`stack`, `library`) never carry an extra column - they're load-on-demand either way.
 
-Generated automatically by `unikit-ai update`, `unikit-ai rules sync`, `unikit-ai rules install` (every invocation, both the `defaults` bootstrap and the variadic id form), and `/unikit-memory`. `unikit-ai init` does not create it - the first index appears when `/unikit` Step 9 runs `rules install defaults`. Never edit it manually.
+Generated automatically by `unikit-ai update`, `unikit-ai rules sync`, `unikit-ai rules install` (every invocation, both the `defaults` bootstrap and the variadic id form), and `/unikit-memory`. `unikit-ai init` also rebuilds the code index when optional provider-rule state changes; other starter rules arrive through `/unikit` Step 9. Never edit it manually.
 
 ## Dynamic Loading
 

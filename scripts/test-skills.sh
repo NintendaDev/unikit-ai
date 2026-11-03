@@ -515,7 +515,7 @@ if [[ -f "$MCP_DIR/universal/context7.json" ]]; then
     if validate_json "$MCP_DIR/universal/context7.json"; then
         # Validate required fields
         HAS_FIELDS=$(json_field "$MCP_DIR/universal/context7.json" \
-          "m.key && m.displayName && (m.config || m.configByPlatform) ? 'ok' : 'missing'" 2>/dev/null || echo "missing")
+          "m.key && m.fullName && m.shortName && (m.config || m.configByPlatform) ? 'ok' : 'missing'" 2>/dev/null || echo "missing")
         if [[ "$HAS_FIELDS" == "ok" ]]; then
             KEY_VAL=$(json_field "$MCP_DIR/universal/context7.json" "m.key" 2>/dev/null)
             if [[ "$KEY_VAL" == "context7" ]]; then
@@ -524,7 +524,7 @@ if [[ -f "$MCP_DIR/universal/context7.json" ]]; then
                 fail "mcp/universal/context7.json — expected key 'context7', got '$KEY_VAL'"
             fi
         else
-            fail "mcp/universal/context7.json — missing key, displayName, or config/configByPlatform"
+            fail "mcp/universal/context7.json — missing key, fullName, shortName, or config/configByPlatform"
         fi
     else
         fail "mcp/universal/context7.json — invalid JSON"
@@ -536,11 +536,11 @@ fi
 # universal/github.json — the pull-request server, unchecked by default in the wizard
 if [[ -f "$MCP_DIR/universal/github.json" ]] && validate_json "$MCP_DIR/universal/github.json"; then
     GH_FIELDS=$(json_field "$MCP_DIR/universal/github.json" \
-      "m.key === 'github' && m.displayName && m.config && m.preselect === false ? 'ok' : 'bad'" 2>/dev/null || echo "bad")
+      "m.key === 'github' && m.fullName && m.shortName && m.config && m.preselect === false ? 'ok' : 'bad'" 2>/dev/null || echo "bad")
     if [[ "$GH_FIELDS" == "ok" ]]; then
         pass "mcp/universal/github.json (valid structure, key=github, preselect=false)"
     else
-        fail "mcp/universal/github.json — expected key 'github', displayName, config and preselect: false"
+        fail "mcp/universal/github.json — expected key 'github', fullName, shortName, config and preselect: false"
     fi
 else
     fail "mcp/universal/github.json — missing or invalid JSON"
@@ -554,12 +554,12 @@ for mcp_file in "$BRIDGES_DIR"/unity/*.json; do
     fname=$(basename "$mcp_file")
     if validate_json "$mcp_file"; then
         HAS_FIELDS=$(json_field "$mcp_file" \
-          "m.key && m.displayName && (m.config || m.configByPlatform || (m.kind === 'cli' && m.cli && m.cli.binary)) ? 'ok' : 'missing'" 2>/dev/null || echo "missing")
+          "m.key && m.fullName && m.shortName && (m.config || m.configByPlatform || (m.kind === 'cli' && m.cli && m.cli.binary)) ? 'ok' : 'missing'" 2>/dev/null || echo "missing")
         if [[ "$HAS_FIELDS" == "ok" ]]; then
             KEY_VAL=$(json_field "$mcp_file" "m.key" 2>/dev/null)
             pass "engine-bridges/unity/$fname (valid structure, key=$KEY_VAL)"
         else
-            fail "engine-bridges/unity/$fname — missing key, displayName, or config/configByPlatform"
+            fail "engine-bridges/unity/$fname — missing key, fullName, shortName, or config/configByPlatform"
         fi
     else
         fail "engine-bridges/unity/$fname — invalid JSON"
@@ -577,12 +577,12 @@ for mcp_file in "$BRIDGES_DIR"/godot/*.json; do
     fname=$(basename "$mcp_file")
     if validate_json "$mcp_file"; then
         HAS_FIELDS=$(json_field "$mcp_file" \
-          "m.key && m.displayName && (m.config || m.configByPlatform || (m.kind === 'cli' && m.cli && m.cli.binary)) ? 'ok' : 'missing'" 2>/dev/null || echo "missing")
+          "m.key && m.fullName && m.shortName && (m.config || m.configByPlatform || (m.kind === 'cli' && m.cli && m.cli.binary)) ? 'ok' : 'missing'" 2>/dev/null || echo "missing")
         if [[ "$HAS_FIELDS" == "ok" ]]; then
             KEY_VAL=$(json_field "$mcp_file" "m.key" 2>/dev/null)
             pass "engine-bridges/godot/$fname (valid structure, key=$KEY_VAL)"
         else
-            fail "engine-bridges/godot/$fname — missing key, displayName, or config/configByPlatform"
+            fail "engine-bridges/godot/$fname — missing key, fullName, shortName, or config/configByPlatform"
         fi
     else
         fail "engine-bridges/godot/$fname — invalid JSON"
@@ -596,7 +596,7 @@ fi
 if [[ -f "$BRIDGES_DIR/unreal-engine-5/chir24-unreal-mcp.json" ]]; then
     if validate_json "$BRIDGES_DIR/unreal-engine-5/chir24-unreal-mcp.json"; then
         HAS_FIELDS=$(json_field "$BRIDGES_DIR/unreal-engine-5/chir24-unreal-mcp.json" \
-          "m.key && m.displayName && (m.config || m.configByPlatform || (m.kind === 'cli' && m.cli && m.cli.binary)) ? 'ok' : 'missing'" 2>/dev/null || echo "missing")
+          "m.key && m.fullName && m.shortName && (m.config || m.configByPlatform || (m.kind === 'cli' && m.cli && m.cli.binary)) ? 'ok' : 'missing'" 2>/dev/null || echo "missing")
         if [[ "$HAS_FIELDS" == "ok" ]]; then
             KEY_VAL=$(json_field "$BRIDGES_DIR/unreal-engine-5/chir24-unreal-mcp.json" "m.key" 2>/dev/null)
             IS_ENGINE=$(json_field "$BRIDGES_DIR/unreal-engine-5/chir24-unreal-mcp.json" "m.is_engine === true ? 'true' : 'false'" 2>/dev/null)
@@ -606,7 +606,7 @@ if [[ -f "$BRIDGES_DIR/unreal-engine-5/chir24-unreal-mcp.json" ]]; then
                 fail "engine-bridges/unreal-engine-5/chir24-unreal-mcp.json — key='$KEY_VAL', is_engine=$IS_ENGINE (expected non-empty key + is_engine=true)"
             fi
         else
-            fail "engine-bridges/unreal-engine-5/chir24-unreal-mcp.json — missing key, displayName, or config/configByPlatform"
+            fail "engine-bridges/unreal-engine-5/chir24-unreal-mcp.json — missing key, fullName, shortName, or config/configByPlatform"
         fi
     else
         fail "engine-bridges/unreal-engine-5/chir24-unreal-mcp.json — invalid JSON"
@@ -982,7 +982,7 @@ for (const agent of ['claude', 'cursor', 'qwen', 'opencode', 'codex', 'antigravi
 { const e = (await write('universal', tokenEntry())).settings.mcpServers.github;
   if (e.headers.Authorization !== 'Bearer ${GITHUB_PAT}') why.push('universal:syntax'); }
 if (getMcpWriter('universal') !== getMcpWriter('claude')) why.push('universal:not-the-claude-writer');
-const servers = new Map([['github', { displayName: 'GitHub', config: { headers: { Authorization: 'Bearer {{env:GITHUB_PAT}}' } } }]]);
+const servers = new Map([['github', { fullName: 'GitHub', shortName: 'GitHub', config: { headers: { Authorization: 'Bearer {{env:GITHUB_PAT}}' } } }]]);
 const both = getMcpEnvLines(servers, ['github'], ['claude', 'antigravity']);
 if (both.length !== 2 || !both[0].includes('GITHUB_PAT') || !both[1].includes('YOUR_GITHUB_PAT')) why.push('envLines:antigravity');
 if (getMcpEnvLines(servers, ['github'], ['claude']).length !== 1) why.push('envLines:claude-only');
@@ -6378,7 +6378,7 @@ else
     fi
 fi
 
-# (EM-6) No recommendation wording in a Godot displayName. Ranking is expressed by
+# (EM-6) No recommendation wording in a Godot fullName. Ranking is expressed by
 # `order` alone (decision #10/#12) — a `[Recommended]` tag next to a paid server both
 # duplicates the ordering and editorialises it. Directory-scoped so the ban cannot be
 # reintroduced in whichever Godot config is added next.
@@ -6392,7 +6392,7 @@ done
 if [[ $EM6_SEEN -lt 3 ]]; then
     fail "EM-6 only $EM6_SEEN config(s) under engine-bridges/godot/*.json — the guard lost its objects"
 elif [[ -z "$EM6_WHY" ]]; then
-    pass "EM-6 no [Recommended] tag in any engine-bridges/godot/*.json displayName ($EM6_SEEN scanned)"
+    pass "EM-6 no [Recommended] tag in any engine-bridges/godot/*.json fullName ($EM6_SEEN scanned)"
 else
     fail "EM-6 [Recommended] tag survives in:$EM6_WHY"
 fi
@@ -12841,6 +12841,17 @@ if [[ $BRL_EXIT -eq 0 ]]; then
 else
     fail "Bridge rule guards"
     echo "$BRL_OUTPUT" | sed 's/^/      /'
+fi
+
+set +e
+PROVIDER_OUTPUT=$(node "$ROOT_DIR/scripts/test-provider-rule-selection.mjs" 2>&1)
+PROVIDER_EXIT=$?
+set -e
+if [[ $PROVIDER_EXIT -eq 0 ]]; then
+    pass "Provider rule selection and lifecycle"
+else
+    fail "Provider rule selection and lifecycle"
+    echo "$PROVIDER_OUTPUT"
 fi
 
 # Part 7e8: architecture topics (family ART) and the request-driven modes of unikit-rules (family RMI)

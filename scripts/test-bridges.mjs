@@ -132,6 +132,28 @@ await group('BR-1', async () => {
     report('BR-1', 'every engine-bridges/*/*.json parses and declares is_engine', files, violations);
 });
 
+await group('BR-names', async () => {
+    const { parseMcpServerEntry } = await dist('core/mcp-schema.js');
+    const raw = { key: 'tool', code: 'vendor', fullName: 'Tool (Engine 1+)', shortName: 'Tool', config: { command: 'tool' } };
+    const parsed = parseMcpServerEntry(raw, '.', 'tool.json');
+    assertEq('BR-names', 'the parser preserves both names independently',
+        [parsed?.fullName, parsed?.shortName], [raw.fullName, raw.shortName]);
+    for (const field of ['fullName', 'shortName']) {
+        for (const value of [undefined, '', '   ', 42]) {
+            assertEq('BR-names', `${field} must be a non-empty string (${JSON.stringify(value)})`,
+                parseMcpServerEntry({ ...raw, [field]: value }, '.', 'tool.json'), null);
+        }
+    }
+    const { discoverMcpServers } = await dist('core/mcp.js');
+    for (const engine of ['unity', 'godot', 'godot-net', 'unreal-engine-5']) {
+        const servers = await discoverMcpServers(engine);
+        for (const [id, entry] of servers) {
+            assertEq('BR-names', `${engine}/${id} has a short name without bracketed comments`,
+                typeof entry.shortName === 'string' && entry.shortName.length > 0 && !/[()[\]]/.test(entry.shortName), true);
+        }
+    }
+});
+
 // ── BR-C: the config shape and the selection helpers ─────────────────────────
 
 function tempProject(prefix) {
@@ -148,7 +170,7 @@ function readRawConfig(dir) {
 
 // A catalog entry as the selection helpers see it: only the fields they read.
 function catalogEntry(fileId, code, kind, order) {
-    const entry = { key: fileId, code, kind, isEngine: true, displayName: fileId, originDir: 'unity' };
+    const entry = { key: fileId, code, kind, isEngine: true, fullName: fileId, shortName: fileId, originDir: 'unity' };
     if (order !== undefined) entry.order = order;
     return [fileId, entry];
 }
@@ -218,13 +240,13 @@ await group('BR-W', async () => {
     const before = passed;
 
     const entries = [
-        { fileId: 'zz-no-order', displayName: 'Z', isEngine: true },
-        { fileId: 'coplay-unity-mcp', displayName: 'C', isEngine: true, order: 2 },
-        { fileId: 'unity-biome-mcp', displayName: 'B', isEngine: true, order: 1 },
+        { fileId: 'zz-no-order', fullName: 'Z', shortName: 'Z', isEngine: true },
+        { fileId: 'coplay-unity-mcp', fullName: 'C', shortName: 'C', isEngine: true, order: 2 },
+        { fileId: 'unity-biome-mcp', fullName: 'B', shortName: 'B', isEngine: true, order: 1 },
     ];
     assertEq('BR-W1', 'a fresh install checks the first MCP bridge of the package order', [...wizard.defaultBridgeIds(entries)], ['unity-biome-mcp']);
-    assertEq('BR-W1', 'a catalog of CLI bridges alone checks nothing by default',
-        [...wizard.defaultBridgeIds([{ fileId: 'cli-a', displayName: 'A', isEngine: true, kind: 'cli', order: 1 }])], []);
+    assertEq('BR-W1', 'a catalog of CLI bridges checks the first bridge by default',
+        [...wizard.defaultBridgeIds([{ fileId: 'cli-a', fullName: 'A', shortName: 'A', isEngine: true, kind: 'cli', order: 1 }])], ['cli-a']);
 
     const defaults = wizard.defaultBridgeIds(entries);
     assertEq('BR-W2', 'null (fresh install) follows the defaults', [wizard.isBridgePreselected('unity-biome-mcp', null, defaults), wizard.isBridgePreselected('coplay-unity-mcp', null, defaults)], [true, false]);
@@ -350,7 +372,7 @@ await group('BR-2', async () => {
     report('BR-2', 'every bridge parses without a warning and has a unique numeric order', files, violations);
 
     // The negative half: a malformed optional value is dropped with a warning, the entry survives.
-    const base = { key: 'x', code: 'x', displayName: 'X', is_engine: true, config: { command: 'x' }, docs: { repo: 'https://example.test/x' } };
+    const base = { key: 'x', code: 'x', fullName: 'X', shortName: 'X', is_engine: true, config: { command: 'x' }, docs: { repo: 'https://example.test/x' } };
     const parsed = (patch) => captureWarnings(() => parseMcpServerEntry({ ...base, ...patch }, '.', 'x.json'));
 
     assertEq('BR-2', 'a docs.sources field of an older card is ignored without a warning',
@@ -375,7 +397,7 @@ await group('BR-3', async () => {
     const { renderBridgesManifest } = await dist('core/bridges/manifest.js');
     const before = passed;
 
-    const entry = (code, extra = {}) => ({ key: code, code, isEngine: true, kind: 'mcp', displayName: code, originDir: 'unity', ...extra });
+    const entry = (code, extra = {}) => ({ key: code, code, isEngine: true, kind: 'mcp', fullName: code, shortName: code, originDir: 'unity', ...extra });
     const input = (order) => ({
         engineId: 'unity',
         bridges: order.map(id => ({
@@ -1086,7 +1108,7 @@ await group('BR-2d', async () => {
         forms: { call: 'tool command --project-path "<project-root>" <command>' },
         ...patch,
     });
-    const base = { key: 'c', code: 'c', displayName: 'C', is_engine: true, kind: 'cli', cli: cliBlock() };
+    const base = { key: 'c', code: 'c', fullName: 'C', shortName: 'C', is_engine: true, kind: 'cli', cli: cliBlock() };
     const parsed = (patch) => captureWarnings(() => parseMcpServerEntry({ ...base, ...patch }, '.', 'c.json'));
 
     const good = parsed({});
@@ -1120,7 +1142,7 @@ await group('BR-2d', async () => {
     const withConfig = parsed({ config: { command: 'x' } });
     assertEq('BR-2d', 'a config on a cli entry is ignored with a warning', [withConfig.result?.config, withConfig.lines.length], [undefined, 1]);
 
-    const mcpWithCli = captureWarnings(() => parseMcpServerEntry({ key: 'm', code: 'm', displayName: 'M', is_engine: true, config: { command: 'x' }, cli: cliBlock() }, '.', 'm.json'));
+    const mcpWithCli = captureWarnings(() => parseMcpServerEntry({ key: 'm', code: 'm', fullName: 'M', shortName: 'M', is_engine: true, config: { command: 'x' }, cli: cliBlock() }, '.', 'm.json'));
     assertEq('BR-2d', 'a cli block on an mcp entry is ignored with a warning', [mcpWithCli.result?.cli, mcpWithCli.lines.length], [undefined, 1]);
     assertEq('BR-2d', 'an unknown kind drops the entry and says so', [parsed({ kind: 'bogus' }).result, parsed({ kind: 'bogus' }).lines.length > 0], [null, true]);
 
@@ -1199,14 +1221,14 @@ await group('BR-W3', async () => {
     const { discoverMcpServers } = await dist('core/mcp.js');
     const discovered = await discoverMcpServers('unity');
     const bridges = [...discovered].filter(([, entry]) => entry.isEngine)
-        .map(([fileId, entry]) => ({ fileId, displayName: entry.displayName, isEngine: true, kind: entry.kind, order: entry.order }));
+        .map(([fileId, entry]) => ({ fileId, fullName: entry.fullName, shortName: entry.fullName, isEngine: true, kind: entry.kind, order: entry.order }));
 
     assertEq('BR-W3', 'the catalog of unity lists the universal servers and the three bridges',
         [...discovered.keys()].sort(), ['context7', 'coplay-unity-mcp', 'github', 'unity-biome-mcp', 'unity-cli']);
     assertEq('BR-W3', 'the bridges sort in the package order: the CLI, then Biome, then Coplay',
         wizard.sortMcpChoices(bridges).map(bridge => bridge.fileId), ['unity-cli', 'unity-biome-mcp', 'coplay-unity-mcp']);
-    assertEq('BR-W3', 'a fresh install without detection checks the first MCP bridge, not the CLI',
-        [...wizard.defaultBridgeIds(bridges)], ['unity-biome-mcp']);
+    assertEq('BR-W3', 'a fresh Unity install checks only the CLI even without detection',
+        [...wizard.defaultBridgeIds(bridges)], ['unity-cli']);
 });
 
 // ── BR-5b / BR-5c / BR-5d: the grants of a command-line bridge, and the removal that owns them ──
@@ -1216,7 +1238,7 @@ await group('BR-5b', async () => {
     const { collectManagedGrantPrefixes } = await dist('core/bridges/grants.js');
     const { discoverMcpServers, collectMcpRules } = await dist('core/mcp.js');
     const adapter = getBridgeAdapter('cli');
-    const cliEntry = (shells) => ({ key: 't', code: 't', kind: 'cli', isEngine: true, displayName: 'T', cli: { binary: 'tool', projectFlag: '--project-path', shells, forms: { call: 'tool command --project-path x' } } });
+    const cliEntry = (shells) => ({ key: 't', code: 't', kind: 'cli', isEngine: true, fullName: 'T', shortName: 'T', cli: { binary: 'tool', projectFlag: '--project-path', shells, forms: { call: 'tool command --project-path x' } } });
 
     assertEq('BR-5b', 'a command-line bridge is not registered in the settings file', adapter.registersInSettings, false);
     assertEq('BR-5b', 'a verb becomes a narrow pattern per shell, with no mask on the verb itself',
@@ -1351,10 +1373,9 @@ await group('BR-D', async () => {
         assertEq('BR-D4', 'an MCP bridge, which declares no detection, is never detected', await detect.detectBridge(discovered.get('unity-biome-mcp'), ctxFor(high, true)), false);
 
         const choices = [...discovered].filter(([, entry]) => entry.isEngine)
-            .map(([fileId, entry]) => ({ fileId, displayName: entry.displayName, isEngine: true, kind: entry.kind, order: entry.order }));
-        assertEq('BR-D5', 'a detected CLI is checked in addition to the first MCP bridge',
-            [...wizard.defaultBridgeIds(choices, new Set(['unity-cli']))].sort(), ['unity-biome-mcp', 'unity-cli']);
-        assertEq('BR-D5', 'nothing detected: only the first MCP bridge', [...wizard.defaultBridgeIds(choices, new Set())], ['unity-biome-mcp']);
+            .map(([fileId, entry]) => ({ fileId, fullName: entry.fullName, shortName: entry.fullName, isEngine: true, kind: entry.kind, order: entry.order }));
+        assertEq('BR-D5', 'the CLI is the only default bridge regardless of detection',
+            [...wizard.defaultBridgeIds(choices)], ['unity-cli']);
 
         const both = summary.getBridgeSetupLines(discovered, ['unity-biome-mcp', 'unity-cli'], high);
         assertEq('BR-D6', 'the CLI block opens with its floors', both[0].startsWith('Unity CLI') && both[0].includes('requires: CLI >= 1.0.0-beta.14; package >= 0.9.1-exp.1; engine >= 6000.0'), true);
@@ -1769,7 +1790,7 @@ await group('BR-14', async () => {
     const { mcpSettingsFiles } = await dist('core/agents.js');
     const { renderBridgesManifest } = await dist('core/bridges/manifest.js');
     const before = passed;
-    const base = { key: 'm', code: 'm-code', displayName: 'M', is_engine: true, config: { command: 'x' } };
+    const base = { key: 'm', code: 'm-code', fullName: 'M', shortName: 'M', is_engine: true, config: { command: 'x' } };
     const parsed = (patch, extra = base) => captureWarnings(() => parseMcpServerEntry({ ...extra, ...patch }, '.', 'm.json'));
 
     const good = parsed({ versionProbe: { in: 'args', pattern: '@v(\\d+)' } });
@@ -1786,7 +1807,7 @@ await group('BR-14', async () => {
         assertEq('BR-14', `${label} is dropped with one warning, the entry survives`,
             [bad.result?.versionProbe, bad.lines.length, bad.result === null], [undefined, 1, false]);
     }
-    const cliEntry = { key: 'c', code: 'c', displayName: 'C', is_engine: true, kind: 'cli', cli: { binary: 'tool', projectFlag: '--project-path', forms: { call: 'tool command --project-path "<p>"' } } };
+    const cliEntry = { key: 'c', code: 'c', fullName: 'C', shortName: 'C', is_engine: true, kind: 'cli', cli: { binary: 'tool', projectFlag: '--project-path', forms: { call: 'tool command --project-path "<p>"' } } };
     const onCli = parsed({ versionProbe: { in: 'args', pattern: '(a)' } }, cliEntry);
     assertEq('BR-14', 'a version probe on a command-line bridge is ignored with a warning', [onCli.result?.versionProbe, onCli.lines.length], [undefined, 1]);
 

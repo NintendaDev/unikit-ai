@@ -54,7 +54,7 @@ export function getBridgeSetupLines(discovered: DiscoveredServers, bridgeIds: st
     const setup = entry.setup ?? [];
     if (floors === null && setup.length === 0) continue;
 
-    lines.push(floors === null ? entry.displayName : `${entry.displayName} — requires: ${floors}`);
+    lines.push(floors === null ? entry.fullName : `${entry.fullName} — requires: ${floors}`);
     const root = projectRootFor(entry, projectRoot);
     for (const item of setup) {
       lines.push(`${LINE_INDENT}${ACTOR_LABELS[item.by]} ${item.run.replaceAll(PROJECT_ROOT_SLOT, root)}`);

@@ -67,7 +67,7 @@ What `unikit-ai init` / `update` produces in the user's project root. Detailed w
 | `.unikit/bridge-routing.md` | `/unikit-bridge-route` or by hand | Optional routing rules per case; no file, no rules |
 | `.unikit/bridge-notes/<bridge>.md` | `/unikit-bridge-trap` (writes) · `/unikit-bridge-audit` (curates) · installer **renames only** | This project's findings about each bridge it uses. The installer never touches the content: a bridge that leaves the selection has its file parked as `bridge-notes/archive/<bridge>.md`, and a bridge that returns gets it back. Invariant: one file per bridge - active **or** archived, never both. Lives outside `system/` so the flat rewrite cannot reach it |
 | `.unikit/references/` | `/unikit-references` (`INDEX.md`, `user/`) | The user's own references; never rewritten by `init`/`update` |
-| `.unikit/memory/<module>/<tier>/*.md` | `rules install`/`sync` | Knowledge-base rules pulled from registry — `code/{core,stack}`, `gamedesign/{core,library}` |
+| `.unikit/memory/<module>/<tier>/*.md` | `rules install`/`sync`; provider rules also `init`/`update` | Knowledge-base rules pulled from registry — `code/{core,stack}`, `gamedesign/{core,library}`. Optional provider choices: `rules.providerSelection`; lifecycle: `src/core/installer/provider-rules.ts` |
 | `.unikit/memory/RULES_INDEX.md` | `rules sync` (regenerated) | Compact rules index — never hand-edit |
 | `<agent-config>/skills/` | `init`/`update` | Installed skills (path varies per agent) |
 | `<agent-config>/agents/` | `init`/`update` | Installed subagents |

@@ -23,7 +23,7 @@ import { getMcpEnvLines } from '../../core/mcp-env.js';
 import { installEngineBridges } from '../../core/installer/engine-bridges.js';
 import { swapBridgeNotes } from '../../core/installer/bridge-notes.js';
 import { syncBridgeOrder } from '../../core/installer/bridge-order.js';
-import { syncBridgeRules } from '../../core/installer/bridge-rules.js';
+import { syncProviderRules } from '../../core/installer/provider-rules.js';
 import { createRegistry } from '../../core/registry/index.js';
 import { getAgentConfig } from '../../core/agents.js';
 import { collectExtensionSkillNames, removeAgentSetup } from '../../core/installer/agent-removal.js';
@@ -32,11 +32,18 @@ import { runProjectMemoryMigrations } from '../../core/memory-migrations/index.j
 import { reinstallExtensionAssets } from '../../core/extension-ops.js';
 import { applyExtensionInjections } from '../../core/extension-injections.js';
 import { printInjectionReport } from './injection-report.js';
-import { printBridgeRulesReport } from './bridge-rules-report.js';
+import { printProviderRulesReport } from './provider-rules-report.js';
 import { logInfo } from '../../utils/log.js';
+import { activeProviderIds } from '../../core/provider-rule-selection.js';
+import { isPromptCancellation } from '../wizard/provider-rules.js';
+import { PROVIDER_RULE_SETUP_SUMMARY } from '../../core/constants-provider-rules.js';
 
 export async function initCommand(): Promise<void> {
-  const projectDir = process.cwd();
+  return runInitCommand(process.cwd());
+}
+
+/** Same production path for Commander and replay; only interactive answers are replaceable. */
+export async function runInitCommand(projectDir: string, deps: { runWizard: typeof runWizard } = { runWizard }): Promise<void> {
 
   console.log(chalk.bold.blue('\n🎮 UniKit — AI-powered game development toolkit\n'));
 
@@ -94,7 +101,7 @@ export async function initCommand(): Promise<void> {
     const existingInstalledSkills = existingConfig
       ? renameSkillNames([...new Set(existingConfig.agents.flatMap(a => a.installedSkills))])
       : null;
-    const answers = await runWizard(
+    const answers = await deps.runWizard(
       existingAgentIds,
       existingConfig?.rulesRegistry ?? null,
       existingConfig?.engine ?? null,
@@ -232,11 +239,7 @@ export async function initCommand(): Promise<void> {
       printInjectionReport(injectionReport);
     }
 
-    // Rules installation is deferred to the /unikit skill Step 9, which calls
-    // `unikit-ai rules install` (no args — core whitelist bootstrap) and then
-    // drives stack rule selection through registry lookup + /unikit-memory
-    // generators. init only records an empty rules state so the skill can
-    // populate it.
+    // Core / other stack rules remain the /unikit bootstrap's responsibility.
 
     // Build managed skills and subagents state per agent
     for (const agent of installedAgents) {
@@ -244,7 +247,7 @@ export async function initCommand(): Promise<void> {
       agent.managedSubagents = await buildManagedSubagentsState(projectDir, agent, agent.installedSubagents, engineId, selection);
     }
 
-    // Save config — rules.installed starts empty; /unikit Step 9 fills it.
+    // Re-init retains rule ownership (including unrelated installed entries).
     // genres.installed also starts empty; /unikit-gd-spec installs profiles later.
     const config: UniKitConfig = {
       version: getCurrentVersion(),
@@ -259,7 +262,8 @@ export async function initCommand(): Promise<void> {
       agents: installedAgents,
       extensions: preservedExtensions,
       rules: {
-        installed: emptyRulesInstallation(),
+        installed: existingConfig?.rules.installed ?? emptyRulesInstallation(),
+        providerSelection: existingConfig?.rules.providerSelection,
       },
       genres: {
         installed: [],
@@ -276,16 +280,17 @@ export async function initCommand(): Promise<void> {
       catalogBridgeIds(discoveredServers),
     );
 
-    // The rule of each selected bridge arrives with the bridge and leaves with it. `init` resets the rule state in `config` (the files stay on
-    // disk), so the previous state comes from `existingConfig` and a record of a rule that is still wanted is carried over.
-    const bridgeRules = await syncBridgeRules({
+    // Registry memory rules follow their own consent; bridge system trees remain selected below.
+    const bridgeRules = await syncProviderRules({
       projectDir, config, registry: createRegistry(config.rulesRegistry, engineId), engineId,
-      previousBridgeIds: existingConfig ? Object.keys(existingConfig.engineBridges.selected) : null,
-      currentBridgeIds: answers.engineBridges,
+      previousProviderIds: existingConfig ? activeProviderIds(existingConfig) : null,
+      currentProviderIds: activeProviderIds(config),
+      decisions: answers.providerDecisions,
+      candidates: answers.providerCandidates,
       previousRules: existingConfig?.rules.installed ?? null,
       regenerateIndex: 'disk',
     });
-    printBridgeRulesReport(bridgeRules);
+    printProviderRulesReport(bridgeRules);
 
     await saveConfig(projectDir, config);
 
@@ -388,7 +393,7 @@ export async function initCommand(): Promise<void> {
     }
 
     console.log(chalk.dim(`  Memory directory: ${memoryDir(projectDir)}`));
-    console.log(chalk.dim(`  Rules: run /unikit to install (core + stack via registry)`));
+    console.log(chalk.dim(PROVIDER_RULE_SETUP_SUMMARY));
     console.log(chalk.dim(`  Engine: ${engineId}`));
     console.log(chalk.dim(`  Note: run /unikit (in your AI agent) to bootstrap .unikit/config.yaml — it will ask for language and write paths/git/workflow defaults.`));
     console.log('');
@@ -417,7 +422,7 @@ export async function initCommand(): Promise<void> {
     console.log('');
 
   } catch (error) {
-    if ((error as Error).message?.includes('User force closed')) {
+    if (isPromptCancellation(error)) {
       console.log(chalk.yellow('\nSetup cancelled.'));
       return;
     }

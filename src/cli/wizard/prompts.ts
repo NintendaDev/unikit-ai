@@ -8,8 +8,12 @@ import { detectBridge, type DetectContext } from '../../core/bridges/detect.js';
 import { getAvailableSkills } from '../../core/installer/skills.js';
 import { groupSkills, findUngrouped, resolveSkillDefaults } from '../../core/skill-groups.js';
 import { normalizeRegistryUrl, validateRegistry, manifestEngineIds } from '../../core/registry/validator.js';
-import { OFFICIAL_REGISTRY_URL } from '../../core/registry/index.js';
+import { OFFICIAL_REGISTRY_URL, createRegistry } from '../../core/registry/index.js';
+import { chooseProviderRules, collectProviderCandidates, providerRuleChoices } from './provider-rules.js';
+import type { ProviderRuleSelection } from '../../core/provider-rule-selection.js';
+import type { RuleCandidateSnapshot } from '../../core/registry/rule-candidate.js';
 import { logInfo } from '../../utils/log.js';
+import { PROVIDER_RULE_LOADING } from '../../core/constants-provider-rules.js';
 
 // `inquirer` is ~240ms of module graph, and only the interactive prompts below
 // ever touch it -- a non-interactive `unikit-ai update` or `rules *` used to pay
@@ -38,6 +42,13 @@ export interface WizardAnswers {
   /** Engine bridges (file ids), any number; the order between them is kept in `.unikit/bridges.yaml`. */
   engineBridges: string[];
   rulesRegistry: string;
+  providerDecisions?: ProviderRuleSelection;
+  providerCandidates?: RuleCandidateSnapshot;
+}
+
+export interface WizardDependencies {
+  prompt?: typeof inquirer.prompt;
+  createRegistry?: typeof createRegistry;
 }
 
 export type EngineResolution =
@@ -82,7 +93,7 @@ export function validateAgentSelection(agentIds: string[]): true | string {
 /** One row of the MCP picker — enough to render a choice and to order it. */
 export interface McpChoiceEntry {
   fileId: string;
-  displayName: string;
+  fullName: string;
   isEngine: boolean;
   /** Absent = `mcp`. */
   kind?: BridgeKind;
@@ -117,16 +128,14 @@ export function isMcpPreselected(fileId: string, existingMcpServers: string[] | 
   return existingMcpServers ? existingMcpServers.includes(fileId) : preselect !== false;
 }
 
-// Pure helper -- the bridge checkbox on a fresh install: the first MCP-kind bridge in the package
-// order is checked, the others are not. That is what the radio's `order: 1` used to mean. A bridge of
-// another kind is never checked by position; it is checked when detection found it on this machine
-// (`detected`, from `detectBridge`), and then in addition to the first MCP bridge.
-export function defaultBridgeIds(entries: McpChoiceEntry[], detected: ReadonlySet<string> = new Set()): Set<string> {
-  const first = sortMcpChoices(entries).find(entry => (entry.kind ?? 'mcp') === 'mcp');
-  return new Set([...(first ? [first.fileId] : []), ...detected]);
+// A fresh install checks only the first bridge in package order, regardless of kind.
+// Detection supplies a label; it does not opt the user into additional bridges.
+export function defaultBridgeIds(entries: McpChoiceEntry[]): Set<string> {
+  const first = sortMcpChoices(entries)[0];
+  return new Set(first ? [first.fileId] : []);
 }
 
-/** Added to the label of a bridge that detection found, so the user sees why it is already ticked. */
+/** Added to the label of a bridge that detection found on this machine. */
 const DETECTED_LABEL_SUFFIX = ' — found on this machine';
 
 // Pure helper -- checkbox pre-selection for one bridge. `null` = fresh install (the defaults); an
@@ -151,8 +160,7 @@ function isCustomRegistry(stored: string | null | undefined): boolean {
 // Legacy `null` values (from older projects) still load correctly because
 // `resolveRegistryUrl()` maps them to the official URL at runtime; no
 // migration is needed.
-async function promptRulesRegistry(engineId: string, existingRegistry: string | null): Promise<string> {
-  const inquirer = await loadInquirer();
+async function promptRulesRegistry(engineId: string, existingRegistry: string | null, inquirer: typeof import('inquirer').default): Promise<string> {
   const isCustom = isCustomRegistry(existingRegistry);
 
   const { useCustom } = await inquirer.prompt([
@@ -223,8 +231,10 @@ export async function runWizard(
   existingEngine: string | null = null,
   existingInstalledSkills: string[] | null = null,
   existingSelection: { mcp: string[]; bridges: string[] } | null = null,
+  deps: WizardDependencies = {},
 ): Promise<WizardAnswers> {
-  const inquirer = await loadInquirer();
+  const loaded = await loadInquirer();
+  const inquirer = { ...loaded, prompt: deps.prompt ?? loaded.prompt };
   console.log(chalk.dim('\n\u{1F4A1} Run /unikit after setup to analyze your project and generate project-relevant skills.\n'));
 
   const selectedByDefault = new Set(defaultAgentIds);
@@ -327,7 +337,7 @@ export async function runWizard(
   console.log('');
 
   // Step 4: Rules registry (optional custom source)
-  const rulesRegistry = await promptRulesRegistry(engine, existingRulesRegistry);
+  const rulesRegistry = await promptRulesRegistry(engine, existingRulesRegistry, inquirer);
 
   console.log('');
 
@@ -349,7 +359,7 @@ export async function runWizard(
     for (const [fileId, server] of discoveredServers) {
       const entry: McpChoiceEntry = {
         fileId,
-        displayName: server.displayName,
+        fullName: server.fullName,
         isEngine: server.isEngine,
         kind: server.kind,
         ...(server.order === undefined ? {} : { order: server.order }),
@@ -372,7 +382,7 @@ export async function runWizard(
           name: 'selected',
           message: 'Configure universal MCP servers:',
           choices: sortMcpChoices(universal).map(entry => ({
-            name: entry.displayName,
+            name: entry.fullName,
             value: entry.fileId,
             checked: isMcpPreselected(entry.fileId, existingSelection?.mcp ?? null, entry.preselect),
           })),
@@ -382,7 +392,7 @@ export async function runWizard(
       mcpServers.push(...(selected as string[]));
     }
 
-    // Engine bridges: checkbox; a fresh install checks the first MCP bridge of the package order
+    // Engine bridges: checkbox; a fresh install checks the first bridge of the package order.
     if (bridges.length > 0) {
       // Detection only reads PATH and the version file of the project; it runs nothing (REQ-5).
       const context: DetectContext = { projectDir: process.cwd(), env: process.env, platform: process.platform };
@@ -393,7 +403,7 @@ export async function runWizard(
       }
       logInfo('wizard:mcp', `detected: ${[...detected].join(', ') || '(none)'}`);
 
-      const defaults = defaultBridgeIds(bridges, detected);
+      const defaults = defaultBridgeIds(bridges);
       logInfo('wizard:mcp', `bridges checked by default: ${[...defaults].join(', ') || '(none)'}`);
       const { selected } = await inquirer.prompt([
         {
@@ -404,7 +414,7 @@ export async function runWizard(
           // ("engine-bridges/unity") is a layout detail and stays out of the prompt.
           message: `Engine bridges for "${getEngineConfig(engine).displayName}" (pick any number; the order is kept in .unikit/bridges.yaml):`,
           choices: sortMcpChoices(bridges).map(entry => ({
-            name: detected.has(entry.fileId) ? `${entry.displayName}${DETECTED_LABEL_SUFFIX}` : entry.displayName,
+            name: detected.has(entry.fileId) ? `${entry.fullName}${DETECTED_LABEL_SUFFIX}` : entry.fullName,
             value: entry.fileId,
             checked: isBridgePreselected(entry.fileId, existingSelection?.bridges ?? null, defaults),
           })),
@@ -415,10 +425,12 @@ export async function runWizard(
     }
   }
 
-  // Rules (core + stack) are no longer installed by the wizard — the /unikit
-  // skill Step 9 runs `unikit-ai rules install` (no args) silently for the
-  // core whitelist and then drives stack rule selection through registry
-  // lookup + /unikit-memory generators.
+  const providerIds = [...new Set([...mcpServers, ...engineBridges])];
+  const registry = (deps.createRegistry ?? createRegistry)(rulesRegistry, engine);
+  if (providerIds.length) console.log(chalk.dim(PROVIDER_RULE_LOADING));
+  const providerCandidates = await collectProviderCandidates(registry, engine, providerIds);
+  const providerDecisions = await chooseProviderRules(providerRuleChoices(providerCandidates, engine, providerIds, discoveredServers), inquirer.prompt);
+  // Core and other stack bootstrap still belongs to /unikit Step 9.
 
   return {
     agents: agentSelections,
@@ -427,5 +439,7 @@ export async function runWizard(
     mcpServers,
     engineBridges,
     rulesRegistry,
+    providerCandidates,
+    providerDecisions,
   };
 }

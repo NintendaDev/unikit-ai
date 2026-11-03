@@ -49,13 +49,14 @@ cd my-game-project
 unikit-ai init
 ```
 
-The `init` wizard asks only about installation concerns - it does **not** generate project context or install rules. Specifically:
+The `init` wizard handles installation and optional MCP / bridge rules. Project context and other starter rules are bootstrapped by `/unikit` afterwards. Specifically:
 
 1. **Agents** - multi-select checkbox with one row per agent. Pick one or more; each selected agent gets its own skills and MCP files written in the correct per-agent format, plus subagents where the agent supports them
 2. **Engine** - Unity / Godot 4 / Godot 4 .NET / Unreal Engine 5. On a repeat `init` the engine is reused from `.unikit.json` and the prompt is skipped
 3. **Skills** - grouped multi-select checkbox (Core, Memory and rules, Code, Game Design, Tools). On a fresh `init` every skill is checked by default; uncheck any you don't want (at least one is required). On a repeat `init` the previously installed set is pre-checked, and de-selecting a skill removes it on save
 4. **Custom rules registry** - confirm Y/N. If yes, enter a URL or local path; invalid registries offer retry / skip (skip falls back to the official registry `NintendaDev/unikit-ai-rules`)
 5. **Engine bridges and MCP servers** - two groups of checkboxes: the universal MCP servers (Context7, optional GitHub) and the engine bridges of the engine you selected; tick any number of bridges. The order of the bridges is not asked here - `/unikit` sets it
+6. **MCP / bridge rules** - one checkbox containing only rules with a readable body and all required references. All rows start checked, even on repeat `init`; uncheck any or all. No available rules means no screen. Declining a memory rule keeps the provider configured and its built-in bridge rules tree installed. See [optional provider rules](configuration.md#bridge-order-routing-and-the-rule-of-a-bridge) for update, restoration and cleanup behavior.
 
 After `init` finishes, open your AI agent and run `/unikit`:
 
@@ -183,11 +184,11 @@ The wizard offers the engine bridges of your engine (any number) and the univers
 
 | Engine | Engine bridges (tick any number) | General |
 |--------|---------------------------|---------|
-| Unity | [Unity CLI](https://docs.unity.com/en-us/unity-cli) (Unity 6000.0+, needs the `com.unity.pipeline` package; pre-selected when `unity` is on your `PATH`) · [Unity Biome MCP](https://github.com/german-krasnikov/unity-biome-mcp) (checked by default, Unity 6000.0+) · [Coplay Unity MCP](https://github.com/CoplayDev/unity-mcp) (Unity 2021.3 LTS+) | [Context7](https://github.com/upstash/context7) · [GitHub MCP](https://github.com/github/github-mcp-server) (optional) |
+| Unity | [Unity CLI](https://docs.unity.com/en-us/unity-cli) (checked by default, Unity 6000.0+, needs the `com.unity.pipeline` package) · [Unity Biome MCP](https://github.com/german-krasnikov/unity-biome-mcp) (optional, Unity 6000.0+) · [Coplay Unity MCP](https://github.com/CoplayDev/unity-mcp) (optional, Unity 2021.3 LTS+) | [Context7](https://github.com/upstash/context7) · [GitHub MCP](https://github.com/github/github-mcp-server) (optional) |
 | Godot 4 / Godot 4 .NET | [Fennara Godot AI](https://github.com/fennaraOfficial/fennara-godot-ai) (checked by default, Godot 4.5+) · [GDAI Godot MCP](https://github.com/3ddelano/gdai-mcp-plugin-godot) (Godot 4.1+) · [Coding-Solo Godot MCP](https://github.com/Coding-Solo/godot-mcp) (no declared minimum) | [Context7](https://github.com/upstash/context7) · [GitHub MCP](https://github.com/github/github-mcp-server) (optional) |
 | Unreal Engine 5 | [ChiR24 Unreal MCP](https://github.com/ChiR24/Unreal_mcp) (Unreal Engine 5.0+) | [Context7](https://github.com/upstash/context7) · [GitHub MCP](https://github.com/github/github-mcp-server) (optional) |
 
-The versions are each vendor's own **floor**, and the default is not the most permissive choice: on Godot the checked bridge (Fennara) has the highest floor of the three, so a 4.3 project wants GDAI or Coding-Solo. UniKit AI reads your Unity version only to decide whether to pre-select the Unity CLI; it does not check the floor of any other bridge — the bracket in the wizard is the whole warning you get.
+The versions are each vendor's own **floor**, and the default is not the most permissive choice: on Godot the checked bridge (Fennara) has the highest floor of the three, so a 4.3 project wants GDAI or Coding-Solo. UniKit AI reads your Unity version only for the CLI's detection label; Unity CLI is selected by default even when it is not detected. It does not check the floor of any other bridge — the bracket in the wizard is the whole warning you get.
 
 Engine bridges give the agent real-time feedback - compilation errors, tests, logs - so it can fix issues without developer involvement. Context7 is used by `/unikit-memory` and other skills for up-to-date library documentation lookup. The GitHub MCP is unchecked by default and is used only by `/unikit-pr`; it reads a token from the `GITHUB_PAT` environment variable (see [Configuration](configuration.md)).
 

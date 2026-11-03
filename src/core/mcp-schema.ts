@@ -136,7 +136,7 @@ function parseConfigByPlatform(raw: unknown): Partial<Record<McpPlatformKey, Rec
  *                 malformed field names its source without the caller having to
  *                 re-derive it.
  * @returns `null` when the object cannot describe a usable server: no `key`, no
- *          `code`, no `displayName`, or neither `config` nor `configByPlatform`.
+ *          `code`, no `fullName`/`shortName`, or neither `config` nor `configByPlatform`.
  *          That last disjunction matters — a server whose binary path differs
  *          per OS ships only `configByPlatform`, and demanding `config` would
  *          drop it before it ever reached the wizard.
@@ -151,7 +151,9 @@ function parseConfigByPlatform(raw: unknown): Partial<Record<McpPlatformKey, Rec
  *          nothing downstream can tell it apart from a correct one.
  */
 export function parseMcpServerEntry(raw: unknown, dirPath: string, fileName: string): ParsedMcpServerEntry | null {
-  if (!isRecord(raw) || !raw.key || !raw.displayName) return null;
+  if (!isRecord(raw) || !raw.key) return null;
+  if (typeof raw.fullName !== 'string' || raw.fullName.trim().length === 0
+    || typeof raw.shortName !== 'string' || raw.shortName.trim().length === 0) return null;
 
   if (typeof raw.code !== 'string' || raw.code.length === 0) {
     logWarn('parseMcpServerEntry', `dropped ${fileName}: missing or empty "code"`);
@@ -191,7 +193,8 @@ export function parseMcpServerEntry(raw: unknown, dirPath: string, fileName: str
     code: raw.code,
     isEngine: (raw['is_engine'] as boolean) ?? false,
     kind,
-    displayName: raw.displayName as string,
+    fullName: raw.fullName,
+    shortName: raw.shortName,
   };
 
   if (cli) {

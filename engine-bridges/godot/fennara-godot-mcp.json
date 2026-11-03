@@ -3,7 +3,8 @@
   "code": "fennara",
   "is_engine": true,
   "order": 1,
-  "displayName": "Fennara Godot AI [Free] (Godot 4.5+)",
+  "fullName": "Fennara Godot AI [Free] (Godot 4.5+)",
+  "shortName": "Fennara Godot AI",
   "docs": {
     "context7": "/fennaraofficial/fennara-godot-ai",
     "repo": "https://github.com/fennaraOfficial/fennara-godot-ai"

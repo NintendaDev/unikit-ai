@@ -72,7 +72,7 @@ would dump a manual. Read only the file(s) the current question needs:
 | `{{skills_dir}}/{{self_name}}/references/skill-map.md` | "which skill", "what does X do", a specific skill's inputs/outputs, what runs before/after a skill |
 | `{{skills_dir}}/{{self_name}}/references/pipelines.md` | "where do I start", "what's the workflow", the code spec-driven pipeline, the game-design workflow, how code and design connect, entry points |
 | `{{skills_dir}}/{{self_name}}/references/scenarios.md` | the diagnostic tree, mapping a vague question to an intent, the fallback when intent is unclear |
-| `{{skills_dir}}/{{self_name}}/references/knowledge-base.md` | rules, memory, the two modules (code + gamedesign), the rules registry, turning books/articles into rules, the `unikit-ai rules` CLI |
+| `{{skills_dir}}/{{self_name}}/references/knowledge-base.md` | rules, memory, optional MCP / bridge rules and their consent/cleanup, the two modules (code + gamedesign), the rules registry, turning books/articles into rules, the `unikit-ai rules` CLI |
 
 The full intent→reference map is the table above. When a question spans several areas,
 read the smallest set that covers it.

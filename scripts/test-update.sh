@@ -3282,7 +3282,7 @@ echo "  ✓ bridge order: created in package order, settled runs change nothing,
 
 
 # ─────────────────────────────────────────────
-# Test 39: the rule of a bridge arrives with the bridge and leaves with it
+# Test 39: new rules need consent; previously installed bridge rules follow the lifecycle
 # ─────────────────────────────────────────────
 # The registry is a fixture with a stack rule per bridge (the Biome one carries two reference files). Installed
 # on the first update, left alone afterwards, kept when it was edited, removed when it was not, and brought back
@@ -3324,7 +3324,13 @@ brule_select() {  # <fileId=code ...>: the engine bridges of the project
 }
 
 brule_update 1
-assert_exists "$BRULE_BIO" "bridge rule: the first update installs the rule of the Biome bridge"
+assert_not_exists "$BRULE_BIO" "bridge rule: non-TTY update does not consent to a new rule"
+assert_contains "$TMPDIR/update-bridge-rule-1.log" 'need your choice' "bridge rule: non-TTY pending choice is explained"
+pushd "$BRULE_DIR" > /dev/null
+node "$ROOT_DIR/dist/cli/index.js" rules install unity-biome-mcp unity-cli > /dev/null 2>&1
+popd > /dev/null
+brule_update seeded
+assert_exists "$BRULE_BIO" "bridge rule: update retains the explicitly installed Biome rule"
 assert_exists "$BRULE_CLI" "bridge rule: ...and the rule of the CLI bridge"
 assert_exists "$BRULE_STACK/references/unity-biome-mcp-notes.md" "bridge rule: ...with its reference files"
 assert_exists "$BRULE_STACK/references/unity-biome-mcp-batch.md" "bridge rule: ...both of them"
@@ -3360,12 +3366,16 @@ assert_not_exists "$BRULE_CLI" "bridge rule: an unchanged registry rule goes wit
 assert_exists "$BRULE_BIO" "bridge rule: the rule of the bridge that stays is still there"
 assert_same_sha "$BRULE_BIO" "$BRULE_EDITED_SHA" "bridge rule: ...and not overwritten"
 
-# Deleted by hand while the bridge is selected: it comes back.
+# Deleted by hand: non-TTY update waits for new consent, even after previous approval.
 rm -f "$BRULE_BIO"
 brule_update 5
-assert_exists "$BRULE_BIO" "bridge rule: a deleted rule of a selected bridge comes back"
+assert_not_exists "$BRULE_BIO" "bridge rule: restoring a deleted rule needs fresh consent"
+pushd "$BRULE_DIR" > /dev/null
+node "$ROOT_DIR/dist/cli/index.js" rules install unity-biome-mcp > /dev/null 2>&1
+popd > /dev/null
+assert_exists "$BRULE_BIO" "bridge rule: explicit installation restores the missing rule"
 assert_not_contains "$BRULE_BIO" 'A line the user added' "bridge rule: ...from the registry, not from the edited copy"
-echo "  ✓ bridge rule: installed with its references, left alone when settled, kept when edited, removed when unchanged, back when deleted"
+echo "  ✓ bridge rule: consent required, references delivered, settled unchanged, edited kept, obsolete removed, restoration explicit"
 
 echo ""
 echo "update smoke tests passed"

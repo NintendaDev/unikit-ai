@@ -12,6 +12,7 @@ import os from 'os';
 import fs from 'fs/promises';
 import { spawnSync } from 'child_process';
 import { fileURLToPath, pathToFileURL } from 'url';
+import { loadConfig } from '../dist/core/config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -90,6 +91,13 @@ try {
     // 5. WARN emitted on the real stderr stream, naming the dropped agent.
     assert('tolerance/warn-on-stderr', res.stderr.includes("unknown agent 'gemini'"),
         `no WARN for gemini on stderr; got: ${res.stderr}`);
+
+    const providerConfig = { ...ghostConfig, agents: [], rules: { ...ghostConfig.rules,
+        providerSelection: { context7: false, biome: true, malformed: 'true', '../escape': true } } };
+    await fs.writeFile(path.join(tmp, '.unikit.json'), JSON.stringify(providerConfig));
+    const loaded = await loadConfig(tmp);
+    assert('tolerance/provider-decisions', JSON.stringify(loaded.rules.providerSelection) === JSON.stringify({ context7: false, biome: true }),
+        'loader must keep explicit false/true and drop malformed entries without reading or adopting disk rules');
 } finally {
     await fs.rm(tmp, { recursive: true, force: true });
 }

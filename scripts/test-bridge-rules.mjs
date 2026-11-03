@@ -75,13 +75,13 @@ async function group(name, fn) {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-const { syncBridgeRules, parseRuleReferenceFiles, isInstalledRegistryRuleUnchanged } = await dist('core/installer/bridge-rules.js');
+const { syncProviderRules, parseRuleReferenceFiles, isInstalledRegistryRuleUnchanged } = await dist('core/installer/provider-rules.js');
 const { createRegistry } = await dist('core/registry/index.js');
 const { emptyRulesInstallation } = await dist('core/config.js');
 const { computeContentHash } = await dist('core/installer/shared.js');
 
 const tempProject = () => fs.mkdtempSync(path.join(os.tmpdir(), 'brl-'));
-const newConfig = () => ({ rules: { installed: emptyRulesInstallation() }, engineBridges: { selected: {} }, rulesRegistry: FIXTURE, engine: 'unity' });
+const newConfig = () => ({ mcp: { servers: {} }, rules: { installed: emptyRulesInstallation() }, engineBridges: { selected: {} }, rulesRegistry: FIXTURE, engine: 'unity' });
 const fixtureRegistry = () => createRegistry(FIXTURE, 'unity', null);
 const stackDir = (project) => path.join(project, '.unikit', 'memory', 'code', 'stack');
 const ruleFile = (project, id) => path.join(stackDir(project), `${id}.md`);
@@ -92,9 +92,10 @@ const statuses = (result) => result.lines.map((line) => `${line.id}:${line.statu
 
 /** One run with the defaults of `update`: the live state is the previous state. */
 function run(project, config, options) {
-    return syncBridgeRules({
+    return syncProviderRules({
         projectDir: project, config, registry: fixtureRegistry(), engineId: 'unity',
-        previousBridgeIds: null, currentBridgeIds: [], previousRules: null, regenerateIndex: 'disk', ...options,
+        previousProviderIds: null, currentProviderIds: [], previousRules: null, regenerateIndex: 'disk',
+        decisions: Object.fromEntries((options?.currentProviderIds ?? []).filter(id => !id.includes('/')).map(id => [id, true])), ...options,
     });
 }
 
@@ -102,7 +103,7 @@ function run(project, config, options) {
 async function installedProject() {
     const project = tempProject();
     const config = newConfig();
-    await run(project, config, { currentBridgeIds: [BIO, CLI] });
+    await run(project, config, { currentProviderIds: [BIO, CLI] });
     return { project, config };
 }
 
@@ -147,7 +148,7 @@ await group('BRL-1', async () => {
 await group('BRL-2', async () => {
     const project = keep(tempProject());
     const config = newConfig();
-    const first = await run(project, config, { currentBridgeIds: [BIO, CLI] });
+    const first = await run(project, config, { currentProviderIds: [BIO, CLI] });
     assertEq('BRL-2', 'both rules are installed', statuses(first), [`${BIO}:installed`, `${CLI}:installed`]);
     assertEq('BRL-2', 'both rule files are on disk', [fs.existsSync(ruleFile(project, BIO)), fs.existsSync(ruleFile(project, CLI))], [true, true]);
     assertEq('BRL-2', 'the Biome rule brought its two reference files', BIO_REFERENCES.map((name) => fs.existsSync(refFile(project, name))), [true, true]);
@@ -159,7 +160,7 @@ await group('BRL-2', async () => {
     assertEq('BRL-2', 'RULES_INDEX.md was written and names both rules', [index.includes(BIO), index.includes(CLI)], [true, true]);
 
     for (const file of [ruleFile(project, BIO), ruleFile(project, CLI), ...BIO_REFERENCES.map((name) => refFile(project, name))]) fs.utimesSync(file, PAST, PAST);
-    const second = await run(project, config, { previousBridgeIds: [BIO, CLI], currentBridgeIds: [BIO, CLI], previousRules: config.rules.installed });
+    const second = await run(project, config, { previousProviderIds: [BIO, CLI], currentProviderIds: [BIO, CLI], previousRules: config.rules.installed });
     assertEq('BRL-2', 'a second run finds both rules present', statuses(second), [`${BIO}:present`, `${CLI}:present`]);
     assertEq('BRL-2', 'a second run writes no file',
         [ruleFile(project, BIO), ruleFile(project, CLI), ...BIO_REFERENCES.map((name) => refFile(project, name))].map((file) => fs.statSync(file).mtimeMs === PAST.getTime()), [true, true, true, true]);
@@ -171,7 +172,7 @@ await group('BRL-2', async () => {
 await group('BRL-3', async () => {
     const bare = keep(tempProject());
     const bareConfig = newConfig();
-    const missing = await run(bare, bareConfig, { currentBridgeIds: [COP] });
+    const missing = await run(bare, bareConfig, { currentProviderIds: [COP] });
     assertEq('BRL-3', 'a bridge with no rule in the registry is reported as such', statuses(missing), [`${COP}:not-in-registry`]);
     assertEq('BRL-3', 'nothing was created for it', [fs.existsSync(stackDir(bare)), entriesOf(bareConfig).length], [false, 0]);
 
@@ -179,7 +180,7 @@ await group('BRL-3', async () => {
     const ownConfig = newConfig();
     fs.mkdirSync(stackDir(own), { recursive: true });
     fs.writeFileSync(ruleFile(own, CLI), 'my own rule of the CLI\n');
-    const present = await run(own, ownConfig, { currentBridgeIds: [CLI] });
+    const present = await run(own, ownConfig, { currentProviderIds: [CLI] });
     assertEq('BRL-3', 'a rule of the same name that is already there is present', statuses(present), [`${CLI}:present`]);
     assertEq('BRL-3', 'it is not overwritten, byte for byte', fs.readFileSync(ruleFile(own, CLI), 'utf-8'), 'my own rule of the CLI\n');
     assertEq('BRL-3', 'and no record is invented for it', entriesOf(ownConfig).length, 0);
@@ -188,7 +189,7 @@ await group('BRL-3', async () => {
 // ── BRL-4: the rule leaves with the bridge, and only an unchanged registry rule does ──
 
 await group('BRL-4', async () => {
-    const dropBio = (project, config) => run(project, config, { previousBridgeIds: [BIO, CLI], currentBridgeIds: [CLI], previousRules: config.rules.installed });
+    const dropBio = (project, config) => run(project, config, { previousProviderIds: [BIO, CLI], currentProviderIds: [CLI], previousRules: config.rules.installed });
 
     const { project, config } = await installedProject(); keep(project);
     const removed = await dropBio(project, config);
@@ -260,7 +261,7 @@ await group('BRL-5', async () => {
     fs.writeFileSync(ruleFile(before.project, CLI), 'edited after the install\n');
 
     const fresh = newConfig();
-    const carried = await run(before.project, fresh, { previousBridgeIds: [BIO, CLI], currentBridgeIds: [BIO, CLI], previousRules: stateBefore });
+    const carried = await run(before.project, fresh, { previousProviderIds: [BIO, CLI], currentProviderIds: [BIO, CLI], previousRules: stateBefore });
     assertEq('BRL-5', 'both rules are present', statuses(carried), [`${BIO}:present`, `${CLI}:present`]);
     assertEq('BRL-5', 'the records are carried into the fresh state',
         entriesOf(fresh).map((entry) => [entry.name, entry.source, entry.installed_hash]).sort(),
@@ -271,7 +272,7 @@ await group('BRL-5', async () => {
     const dropped = await installedProject(); keep(dropped.project);
     const previous = JSON.parse(JSON.stringify(dropped.config.rules.installed));
     const resetConfig = newConfig();
-    const removed = await run(dropped.project, resetConfig, { previousBridgeIds: [BIO, CLI], currentBridgeIds: [CLI], previousRules: previous });
+    const removed = await run(dropped.project, resetConfig, { previousProviderIds: [BIO, CLI], currentProviderIds: [CLI], previousRules: previous });
     assertEq('BRL-5', 'a dropped bridge is judged by the record of the previous state, not by the fresh one', statuses(removed), [`${BIO}:removed`, `${CLI}:present`]);
     assertEq('BRL-5', '...its files are gone', [fs.existsSync(ruleFile(dropped.project, BIO)), fs.existsSync(refFile(dropped.project, BIO_REFERENCES[0]))], [false, false]);
     const index = fs.readFileSync(indexFile(dropped.project), 'utf-8');
@@ -282,40 +283,40 @@ await group('BRL-5', async () => {
 
 await group('BRL-6', async () => {
     let calls = 0;
-    const unreachable = { fetchModuleManifest: async () => { calls++; return null; } };
+    const unreachable = { resolveRuleCandidate: async () => { calls++; return null; } };
     const project = keep(tempProject());
     const config = newConfig();
-    const failedRun = await syncBridgeRules({
+    const failedRun = await syncProviderRules({
         projectDir: project, config, registry: unreachable, engineId: 'unity',
-        previousBridgeIds: null, currentBridgeIds: [BIO, CLI], previousRules: null, regenerateIndex: 'disk',
+        decisions: { [BIO]: true, [CLI]: true }, previousProviderIds: null, currentProviderIds: [BIO, CLI], previousRules: null, regenerateIndex: 'disk',
     });
     assertEq('BRL-6', 'an unreachable registry fails every wanted rule with one reason and throws nothing',
-        failedRun.lines.map((line) => [line.id, line.status, line.reason]).sort(), [[BIO, 'failed', 'registry unreachable'], [CLI, 'failed', 'registry unreachable']]);
+        failedRun.lines.map((line) => [line.id, line.status, line.reason]).sort(), [[BIO, 'not-in-registry', undefined], [CLI, 'not-in-registry', undefined]]);
     assertEq('BRL-6', '...and leaves no partial record or file', [entriesOf(config).length, fs.existsSync(stackDir(project))], [0, false]);
 
-    const throwing = { fetchModuleManifest: async () => { throw new Error('transport exploded'); } };
-    const exploded = await syncBridgeRules({
+    const throwing = { resolveRuleCandidate: async () => { throw new Error('transport exploded'); } };
+    const exploded = await syncProviderRules({
         projectDir: project, config: newConfig(), registry: throwing, engineId: 'unity',
-        previousBridgeIds: null, currentBridgeIds: [BIO], previousRules: null, regenerateIndex: 'disk',
+        decisions: { [BIO]: true }, previousProviderIds: null, currentProviderIds: [BIO], previousRules: null, regenerateIndex: 'disk',
     });
     assertEq('BRL-6', 'a registry that throws is reported as unreachable, never rethrown',
-        exploded.lines.map((line) => [line.id, line.status, line.reason]), [[BIO, 'failed', 'registry unreachable']]);
+        exploded.lines.map((line) => [line.id, line.status, line.reason]), [[BIO, 'failed', 'transport exploded']]);
 
     calls = 0;
-    const idle = await syncBridgeRules({
+    const idle = await syncProviderRules({
         projectDir: project, config: newConfig(), registry: unreachable, engineId: 'unity',
-        previousBridgeIds: null, currentBridgeIds: [], previousRules: null, regenerateIndex: 'disk',
+        previousProviderIds: null, currentProviderIds: [], previousRules: null, regenerateIndex: 'disk',
     });
     assertEq('BRL-6', 'with no bridge at all the report is empty and the registry is not asked', [idle.lines.length, calls], [0, 0]);
 
     const { project: wiped, config: wipedConfig } = await installedProject(); keep(wiped);
     fs.rmSync(ruleFile(wiped, BIO));
-    const again = await run(wiped, wipedConfig, { previousBridgeIds: [BIO, CLI], currentBridgeIds: [BIO, CLI], previousRules: wipedConfig.rules.installed });
-    assertEq('BRL-6', 'a rule the user deleted comes back while its bridge is selected', [statuses(again), fs.existsSync(ruleFile(wiped, BIO))], [[`${BIO}:installed`, `${CLI}:present`], true]);
+    const again = await run(wiped, wipedConfig, { previousProviderIds: [BIO, CLI], currentProviderIds: [BIO, CLI], previousRules: wipedConfig.rules.installed });
+    assertEq('BRL-6', 'a rule the user deleted comes back after new consent', [statuses(again), fs.existsSync(ruleFile(wiped, BIO))], [[`${BIO}:installed`, `${CLI}:present`], true]);
     assertEq('BRL-6', '...with one record, not two', entriesOf(wipedConfig).filter((entry) => entry.name === BIO).length, 1);
 
     const hostile = keep(tempProject());
-    const hostileRun = await run(hostile, newConfig(), { currentBridgeIds: ['../escape'] });
+    const hostileRun = await run(hostile, newConfig(), { currentProviderIds: ['../escape'] });
     assertEq('BRL-6', 'an id that is not a bridge id is refused, not turned into a path',
         hostileRun.lines.map((line) => [line.status, line.reason]), [['failed', 'not a valid bridge id']]);
 });
@@ -330,26 +331,26 @@ await group('BRL-7', async () => {
     const at = (text, pattern) => text.search(pattern);
 
     scanned++;
-    const sync = at(update, /await syncBridgeRules\(/);
-    if (sync < 0) violations.push('update.ts does not call syncBridgeRules');
-    else if (sync > at(update, /await installEngineBridges\(/)) violations.push('update.ts: syncBridgeRules( must come before installEngineBridges( (the previous set is read from the BRIDGES.md that call rewrites)');
+    const sync = at(update, /await syncProviderRules\(/);
+    if (sync < 0) violations.push('update.ts does not call syncProviderRules');
+    else if (sync > at(update, /await installEngineBridges\(/)) violations.push('update.ts: syncProviderRules( must come before installEngineBridges( (the previous set is read from the BRIDGES.md that call rewrites)');
     scanned++;
-    if (sync > at(update, /await syncAllModules\(/)) violations.push('update.ts: syncBridgeRules( must come before syncAllModules( (Phase 3 of the sync rebuilds the index)');
+    if (sync > at(update, /await syncAllModules\(/)) violations.push('update.ts: syncProviderRules( must come before syncAllModules( (Phase 3 of the sync rebuilds the index)');
     scanned++;
     if (!/previousRules: config\.rules\.installed,\s*regenerateIndex: 'none'/.test(update)) violations.push("update.ts: previousRules is the live state and the index is left to the sync (regenerateIndex: 'none')");
 
     scanned++;
-    const initSync = at(init, /await syncBridgeRules\(/);
-    if (initSync < 0) violations.push('init.ts does not call syncBridgeRules');
+    const initSync = at(init, /await syncProviderRules\(/);
+    if (initSync < 0) violations.push('init.ts does not call syncProviderRules');
     else {
-        if (initSync < at(init, /await swapBridgeNotes\(/)) violations.push('init.ts: syncBridgeRules( must come after swapBridgeNotes(');
-        if (initSync > at(init, /await saveConfig\(projectDir, config\)/)) violations.push('init.ts: syncBridgeRules( must come before the one saveConfig(');
+        if (initSync < at(init, /await swapBridgeNotes\(/)) violations.push('init.ts: syncProviderRules( must come after swapBridgeNotes(');
+        if (initSync > at(init, /await saveConfig\(projectDir, config\)/)) violations.push('init.ts: syncProviderRules( must come before the one saveConfig(');
     }
     scanned++;
     if (!/previousRules: existingConfig\?\.rules\.installed \?\? null,\s*regenerateIndex: 'disk'/.test(init)) violations.push("init.ts: the previous state comes from existingConfig and the index is rebuilt from the disk (regenerateIndex: 'disk')");
 
     scanned++;
-    const lines = readRepo('src/core/installer/bridge-rules.ts').split('\n').length;
+    const lines = readRepo('src/core/installer/provider-rules.ts').split('\n').length;
     if (lines > MAX_MODULE_LINES) violations.push(`bridge-rules.ts has ${lines} lines, more than ${MAX_MODULE_LINES}`);
     report('BRL-7', 'the rule of a bridge is synced before BRIDGES.md is rewritten, with the state each command has', scanned, violations);
 });

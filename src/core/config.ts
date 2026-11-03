@@ -7,6 +7,7 @@ import { getModule, listModules } from './modules.js';
 import { logInfo } from '../utils/log.js';
 import { normalizeSelection, type ExtensionSelection } from './extension-selection.js';
 import { renameRecordKeys } from './skill-renames.js';
+import { normalizeProviderSelection, type ProviderRuleSelection } from './provider-rule-selection.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../../package.json');
@@ -112,6 +113,7 @@ export interface UniKitConfig {
   extensions?: ExtensionRecord[];
   rules: {
     installed: RulesInstallation;
+    providerSelection?: ProviderRuleSelection;
   };
   /**
    * Selectively installed read-only genre profiles. Optional (additive, like
@@ -453,6 +455,7 @@ export async function loadConfig(projectDir: string): Promise<UniKitConfig | nul
       // Legacy `declined` field (pre-refactor) is silently dropped on load; the next
       // saveConfig will persist the config without it so the migration is seamless.
       installed: normalizeRulesInstallation(rawRules?.installed),
+      providerSelection: normalizeProviderSelection(rawRules?.providerSelection),
     },
     genres: normalizeGenres(raw.genres),
   };

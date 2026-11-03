@@ -109,7 +109,7 @@ function bridgeBlock(bridge: ManifestBridge, settingsFiles: string[]): string[] 
 function notSelectedBlock(input: ManifestInput): string[] {
   const rows = input.unselected.flatMap(({ fileId, entry }) => {
     const probe = getBridgeAdapter(entry.kind).probeLine(entry);
-    return probe === null ? [] : [[fileId, entry.displayName, `\`${probe}\``]];
+    return probe === null ? [] : [[fileId, entry.fullName, `\`${probe}\``]];
   });
   return rows.length > 0 ? [`## ${NOT_SELECTED_HEADING}`, '', ...table(NOT_SELECTED_TABLE_HEADER, rows)] : [];
 }

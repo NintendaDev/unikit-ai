@@ -65,7 +65,10 @@ export interface McpServerEntry {
    * not say is `mcp`: every entry written before the field existed is one.
    */
   kind: BridgeKind;
-  displayName: string;
+  /** Name with requirements and other context, used in the bridge/server picker. */
+  fullName: string;
+  /** Plain name without bracketed comments, used in the provider-rule picker. */
+  shortName: string;
   /**
    * The platform-independent server config. Optional because a server may ship
    * `configByPlatform` instead (an absolute binary path that differs per OS);
@@ -487,7 +490,7 @@ export function getMcpDocsLines(discoveredServers: DiscoveredServers, enabledFil
 
   for (const [fileId, server] of discoveredServers) {
     if (!selected.has(fileId) || !server.docs?.repo) continue;
-    lines.push(`${server.displayName} — setup and requirements: ${server.docs.repo}`);
+    lines.push(`${server.fullName} — setup and requirements: ${server.docs.repo}`);
   }
 
   return lines;

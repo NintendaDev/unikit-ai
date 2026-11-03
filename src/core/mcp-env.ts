@@ -143,11 +143,11 @@ export function getMcpEnvLines(discoveredServers: DiscoveredServers, enabledFile
     const names = collectEnvVarNames([server.config, ...Object.values(server.configByPlatform ?? {})]);
     if (names.length === 0) continue;
 
-    lines.push(`${server.displayName} — set ${names.join(', ')} in the environment your agent starts from`);
+    lines.push(`${server.fullName} — set ${names.join(', ')} in the environment your agent starts from`);
     if (withAntigravity) {
       const placeholders = names.map((name) => renderName(name, 'placeholder')).join(', ');
       lines.push(
-        `${server.displayName} — ${antigravity.displayName}: ${antigravity.settingsFile} holds the placeholder `
+        `${server.fullName} — ${antigravity.displayName}: ${antigravity.settingsFile} holds the placeholder `
         + `${placeholders}; replace it with the token and never commit that file`,
       );
     }

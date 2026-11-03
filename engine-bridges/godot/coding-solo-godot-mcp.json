@@ -3,7 +3,8 @@
   "code": "godot",
   "is_engine": true,
   "order": 3,
-  "displayName": "Coding-Solo Godot MCP [Free]",
+  "fullName": "Coding-Solo Godot MCP [Free]",
+  "shortName": "Coding-Solo Godot MCP",
   "docs": {
     "context7": "/coding-solo/godot-mcp",
     "repo": "https://github.com/Coding-Solo/godot-mcp"
