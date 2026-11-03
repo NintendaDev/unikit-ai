@@ -67,11 +67,11 @@ export const BRIDGE_RULE_KEPT_REASONS = {
 
 /** The words of the lines `init` and `update` print about the rule of a bridge; the id and the reason are added by the printer. */
 export const BRIDGE_RULE_REPORT = {
-  installed: 'Installed the rule of the bridge',
-  removed: 'Removed the rule of the dropped bridge',
+  installed: 'Installed MCP / bridge rule',
+  removed: 'Removed MCP / bridge rule',
   kept: 'Kept the rule',
-  keptOf: 'of the dropped bridge',
-  failed: 'Could not install the rule of the bridge',
+  keptOf: 'of the MCP / bridge',
+  failed: 'Could not install MCP / bridge rule',
 } as const;
 
 /** The project-relative path of the registry rule of a bridge as people read it in a message. */

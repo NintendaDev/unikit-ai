@@ -50,7 +50,7 @@ export const RULES_COMMANDS: CommandEntry[] = [
   },
   {
     command: 'unikit-ai rules sync',
-    description: 'Reconcile disk ↔ .unikit.json state and regenerate RULES_INDEX.md. By default refreshes registry-sourced rules whose version changed and skips locally-modified files with a warning. Use --replace to overwrite local modifications and re-fetch rules at the same version; use --prune to remove obsolete stack rules that vanished from the registry; combine both for a full mirror (the old `sync --force`). Exits 8 when the project migration chain still has pending work (memory layout, workspace, the `.unikit.json` MCP and engine bridge sections, bridge notes or plan files) — run `unikit-ai update` first.',
+    description: 'Reconcile disk ↔ .unikit.json state and regenerate RULES_INDEX.md. By default refreshes registry-sourced rules whose version changed and skips locally-modified files with a warning. Accepted active MCP / bridge rules resolve complete bundles per id, also compare origin/body/reference changes at equal version, and are protected from prune on temporary registry gaps. Missing files are never installed by sync. Use --replace to overwrite local modifications and re-fetch rules at the same version; use --prune to remove obsolete stack rules that vanished from the registry; combine both for a full mirror (the old `sync --force`). Exits 8 when the project migration chain still has pending work (memory layout, workspace, the `.unikit.json` MCP and engine bridge sections, bridge notes or plan files) — run `unikit-ai update` first.',
     flags: ['--replace', '--prune'],
   },
   {
@@ -132,11 +132,11 @@ export const GENRES_COMMANDS: CommandEntry[] = [
 export const GENERAL_COMMANDS: CommandEntry[] = [
   {
     command: 'unikit-ai init',
-    description: 'Initialize UniKit in current project (interactive wizard)',
+    description: 'Initialize UniKit in current project (interactive wizard). After MCP / bridge selection, offers available registry memory rules, all checked by default; confirming no rows declines them without disabling providers. Re-init preserves installed rule provenance and removes only unchanged managed rules after refusal or provider removal.',
   },
   {
     command: 'unikit-ai update',
-    description: 'Update installed skills, agents, and rules to latest version. To update the CLI package itself, run `unikit-ai self-update`.',
+    description: 'Update installed skills, agents, and rules to latest version. New or missing MCP / bridge rules require a fresh choice with both stdin/stdout attached to a terminal; non-TTY runs leave them pending and saved refusals are preserved. --force does not consent to new provider rules. To update the CLI package itself, run `unikit-ai self-update`.',
     flags: ['--force'],
   },
   {

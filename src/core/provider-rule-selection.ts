@@ -1,7 +1,7 @@
 import type { UniKitConfig } from './config.js';
 import { CODE_MODULE_ID } from './constants.js';
-import { PROVIDER_ID_PATTERN, PROVIDER_RULE_LOG, PROVIDER_RULE_TIER, providerRulePath } from './constants-provider-rules.js';
-import { fileExists } from '../utils/fs.js';
+import { PROVIDER_ID_PATTERN, PROVIDER_RULE_LOG, PROVIDER_RULE_MESSAGES, PROVIDER_RULE_TIER, PROVIDER_RULE_EXTENSION, providerRulePath } from './constants-provider-rules.js';
+import { isFile } from '../utils/fs.js';
 import { logInfo } from '../utils/log.js';
 
 export type ProviderRuleSelection = Record<string, boolean>;
@@ -10,13 +10,13 @@ export type ProviderRuleSelection = Record<string, boolean>;
 export function normalizeProviderSelection(raw: unknown): ProviderRuleSelection | undefined {
   if (raw === undefined) return undefined;
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
-    logInfo(PROVIDER_RULE_LOG, 'ignored malformed providerSelection');
+    logInfo(PROVIDER_RULE_LOG, PROVIDER_RULE_MESSAGES.malformedSelection);
     return undefined;
   }
   const selection: ProviderRuleSelection = {};
   for (const [id, enabled] of Object.entries(raw)) {
     if (!PROVIDER_ID_PATTERN.test(id) || typeof enabled !== 'boolean') {
-      logInfo(PROVIDER_RULE_LOG, `ignored malformed decision: ${id}`);
+      logInfo(PROVIDER_RULE_LOG, PROVIDER_RULE_MESSAGES.malformedDecision(id));
       continue;
     }
     Object.defineProperty(selection, id, { value: enabled, enumerable: true, writable: true, configurable: true });
@@ -34,12 +34,12 @@ export async function adoptLegacyProviderSelection(projectDir: string, config: U
   let changed = false;
   for (const id of activeProviderIds(config)) {
     if (Object.hasOwn(config.rules.providerSelection ?? {}, id)) continue;
-    const entry = config.rules.installed.modules[CODE_MODULE_ID]?.[PROVIDER_RULE_TIER]?.find(row => row.name === id || row.name === `${id}.md`);
-    if (entry?.source !== 'registry' || !(await fileExists(providerRulePath(projectDir, id)))) continue;
+    const entry = config.rules.installed.modules[CODE_MODULE_ID]?.[PROVIDER_RULE_TIER]?.find(row => row.name === id || row.name === `${id}${PROVIDER_RULE_EXTENSION}`);
+    if (entry?.source !== 'registry' || !(await isFile(providerRulePath(projectDir, id)))) continue;
     config.rules.providerSelection ??= {};
     config.rules.providerSelection[id] = true;
     changed = true;
-    logInfo(PROVIDER_RULE_LOG, `legacy approved ${id}: registry entry and file exist`);
+    logInfo(PROVIDER_RULE_LOG, PROVIDER_RULE_MESSAGES.legacyApproved(id));
   }
   return changed;
 }

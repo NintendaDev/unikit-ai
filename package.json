@@ -85,6 +85,7 @@
       "scripts/test-bridges.mjs",
       "scripts/test-config-tolerance.mjs",
       "scripts/test-provider-rule-selection.mjs",
+      "scripts/test-provider-rule-flow.mjs",
       "scripts/test-extension-points.mjs",
       "scripts/test-extension-selection.mjs",
       "scripts/test-kimi-transform.mjs",

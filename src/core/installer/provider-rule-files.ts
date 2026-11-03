@@ -2,7 +2,7 @@ import fs from 'fs-extra';
 import path from 'path';
 import type { RuleCandidate } from '../registry/rule-candidate.js';
 import { REFERENCES_DIR_NAME } from '../constants.js';
-import { providerRulePath, PROVIDER_RULE_LOG } from '../constants-provider-rules.js';
+import { providerRulePath, PROVIDER_RULE_LOG, PROVIDER_RULE_MESSAGES } from '../constants-provider-rules.js';
 import { logWarn } from '../../utils/log.js';
 
 /** Local rollback for a new body and its reference writes; never rolls back unrelated work. */
@@ -29,7 +29,7 @@ export async function withProviderFileRollback<T>(projectDir: string, id: string
           await fs.writeFile(file, bytes);
         }
       } catch (cause) {
-        logWarn(PROVIDER_RULE_LOG, `${id}: rollback failed for ${file}: ${String(cause)}`);
+        logWarn(PROVIDER_RULE_LOG, PROVIDER_RULE_MESSAGES.rollbackFailed(id, file, String(cause)));
       }
     }
     throw error;

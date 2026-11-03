@@ -74,7 +74,19 @@ Relevant to the dev pipeline:
   no capabilities, so nothing is disabled and nothing becomes manual.
 - `.unikit/bridges.yaml` — the order of the bridges, kept by `init`/`update` (an order you edited is kept);
   `.unikit/bridge-routing.md` — optional routing rules (`/unikit-bridge-route`); the stack rule whose id
-  is the bridge's id comes with the bridge and leaves with it (`init`/`update`). Neither file is a system asset.
+  is the provider's file id is optional registry memory. `init` offers only complete bundles after
+  the provider checkboxes, all checked even on re-init; unchecking every rule is allowed. Choices
+  live separately in `.unikit.json` under `rules.providerSelection` (`true`, `false`, missing =
+  undecided). Terminal `update` asks about new/missing undecided or accepted files; non-TTY leaves
+  them pending and `--force` supplies no consent. A refusal survives update. Dropping a provider
+  or explicitly refusing an offered rule removes only an unchanged registry file with a recorded
+  hash; edited/local/untracked rules and shared references stay. Missing sources preserve earlier
+  choices and files. Body, version, origin and all references come from one source per id, trying
+  primary → official → bundled. Existing accepted provider rules use this resolver in sync,
+  including source/body/reference changes at equal version; missing files are never installed by
+  sync and temporary gaps do not make accepted rules obsolete under prune. Explicit
+  `rules install <id>` still works after refusal. Built-in bridge trees, settings, grants, notes
+  and order keep their own lifecycle. Neither order nor routing is a system asset.
 - `.unikit/bridge-notes/<bridge>.md` — **not** a system asset, and deliberately outside
   `system/`: the project's own findings about that bridge, in the same area-keyed form, read by
   the same greps. `init` / `update` never rewrite them (only rename a file into `archive/` when

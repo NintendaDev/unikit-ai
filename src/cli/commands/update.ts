@@ -43,8 +43,11 @@ import {
 } from './update-helpers.js';
 import { recomputeSelection } from './update-bridges.js';
 import { printInjectionReport } from './injection-report.js';
-import { printProviderRulesReport } from './bridge-rules-report.js';
+import { printProviderRulesReport } from './provider-rules-report.js';
 import { buildNewItemsChooser, formatPendingNotice } from './extension-selection-ui.js';
+import { prepareUpdateProviderRules, type UpdateProviderDependencies } from './update-provider-rules.js';
+import { activeProviderIds } from '../../core/provider-rule-selection.js';
+import { PROVIDER_RULE_CANCELLED } from '../../core/constants-provider-rules.js';
 
 interface UpdateCommandOptions {
   force?: boolean;
@@ -53,7 +56,11 @@ interface UpdateCommandOptions {
 }
 
 export async function updateCommand(options: UpdateCommandOptions = {}): Promise<void> {
-  const projectDir = process.cwd();
+  return runUpdateCommand(process.cwd(), options);
+}
+
+export async function runUpdateCommand(projectDir: string, options: UpdateCommandOptions = {},
+  deps: UpdateProviderDependencies & { createRegistry?: typeof createRegistry } = {}): Promise<void> {
   const force = Boolean(options.force);
   const installNew = Boolean(options.installNew);
   const skipNew = Boolean(options.skipNew);
@@ -117,6 +124,12 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     // bridge from the catalog, which replaced the persisted scalar.
     const { discoveredServers, storedCodes: storedMcpCodes, mcpBridgeCode, enabledIds } = await recomputeSelection(engineId, config);
     const selection = selectionOf(config);
+    const registry = (deps.createRegistry ?? createRegistry)(config.rulesRegistry, engineId);
+    const providerChoice = await prepareUpdateProviderRules(projectDir, config, registry, discoveredServers, deps);
+    if (providerChoice.cancelled) {
+      console.log(chalk.yellow(PROVIDER_RULE_CANCELLED));
+      return;
+    }
 
     // Refresh extensions from sources (check for updates)
     let extensions = config.extensions ?? [];
@@ -285,7 +298,6 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     // the lean `rules sync`.
     console.log(chalk.dim('Syncing rules...\n'));
 
-    const registry = createRegistry(config.rulesRegistry, engineId);
 
     // Bootstrap rules for modules whose FIRST skill was installed this run
     // (close the gap: opting into a module's skills via update must deliver its
@@ -299,13 +311,16 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     const bridgeRules = await syncProviderRules({
       projectDir, config, registry, engineId,
       previousProviderIds: await readPreviousBridgeSet(projectDir),
-      currentProviderIds: Object.keys(config.engineBridges.selected),
+      currentProviderIds: activeProviderIds(config),
+      decisions: providerChoice.decisions,
+      candidates: providerChoice.candidates,
       previousRules: config.rules.installed,
       regenerateIndex: 'none',
     });
     printProviderRulesReport(bridgeRules);
 
     const syncResult = await syncAllModules(projectDir, engineId, config, registry, {
+      providerCandidates: providerChoice.candidates,
       replace: force,
       prune: force,
     });

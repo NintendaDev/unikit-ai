@@ -49,13 +49,14 @@ cd my-game-project
 unikit-ai init
 ```
 
-The `init` wizard asks only about installation concerns - it does **not** generate project context or install rules. Specifically:
+The `init` wizard handles installation and optional MCP / bridge rules. Project context and other starter rules are bootstrapped by `/unikit` afterwards. Specifically:
 
 1. **Agents** - multi-select checkbox with one row per agent. Pick one or more; each selected agent gets its own skills and MCP files written in the correct per-agent format, plus subagents where the agent supports them
 2. **Engine** - Unity / Godot 4 / Godot 4 .NET / Unreal Engine 5. On a repeat `init` the engine is reused from `.unikit.json` and the prompt is skipped
 3. **Skills** - grouped multi-select checkbox (Core, Memory and rules, Code, Game Design, Tools). On a fresh `init` every skill is checked by default; uncheck any you don't want (at least one is required). On a repeat `init` the previously installed set is pre-checked, and de-selecting a skill removes it on save
 4. **Custom rules registry** - confirm Y/N. If yes, enter a URL or local path; invalid registries offer retry / skip (skip falls back to the official registry `NintendaDev/unikit-ai-rules`)
 5. **Engine bridges and MCP servers** - two groups of checkboxes: the universal MCP servers (Context7, optional GitHub) and the engine bridges of the engine you selected; tick any number of bridges. The order of the bridges is not asked here - `/unikit` sets it
+6. **MCP / bridge rules** - one checkbox containing only rules with a readable body and all required references. All rows start checked, even on repeat `init`; uncheck any or all. No available rules means no screen. Declining a memory rule keeps the provider configured and its built-in bridge rules tree installed. See [optional provider rules](configuration.md#bridge-order-routing-and-the-rule-of-a-bridge) for update, restoration and cleanup behavior.
 
 After `init` finishes, open your AI agent and run `/unikit`:
 

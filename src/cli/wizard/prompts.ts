@@ -8,7 +8,10 @@ import { detectBridge, type DetectContext } from '../../core/bridges/detect.js';
 import { getAvailableSkills } from '../../core/installer/skills.js';
 import { groupSkills, findUngrouped, resolveSkillDefaults } from '../../core/skill-groups.js';
 import { normalizeRegistryUrl, validateRegistry, manifestEngineIds } from '../../core/registry/validator.js';
-import { OFFICIAL_REGISTRY_URL } from '../../core/registry/index.js';
+import { OFFICIAL_REGISTRY_URL, createRegistry } from '../../core/registry/index.js';
+import { chooseProviderRules, collectProviderCandidates, providerRuleChoices } from './provider-rules.js';
+import type { ProviderRuleSelection } from '../../core/provider-rule-selection.js';
+import type { RuleCandidateSnapshot } from '../../core/registry/rule-candidate.js';
 import { logInfo } from '../../utils/log.js';
 
 // `inquirer` is ~240ms of module graph, and only the interactive prompts below
@@ -38,6 +41,13 @@ export interface WizardAnswers {
   /** Engine bridges (file ids), any number; the order between them is kept in `.unikit/bridges.yaml`. */
   engineBridges: string[];
   rulesRegistry: string;
+  providerDecisions?: ProviderRuleSelection;
+  providerCandidates?: RuleCandidateSnapshot;
+}
+
+export interface WizardDependencies {
+  prompt?: typeof inquirer.prompt;
+  createRegistry?: typeof createRegistry;
 }
 
 export type EngineResolution =
@@ -151,8 +161,7 @@ function isCustomRegistry(stored: string | null | undefined): boolean {
 // Legacy `null` values (from older projects) still load correctly because
 // `resolveRegistryUrl()` maps them to the official URL at runtime; no
 // migration is needed.
-async function promptRulesRegistry(engineId: string, existingRegistry: string | null): Promise<string> {
-  const inquirer = await loadInquirer();
+async function promptRulesRegistry(engineId: string, existingRegistry: string | null, inquirer: typeof import('inquirer').default): Promise<string> {
   const isCustom = isCustomRegistry(existingRegistry);
 
   const { useCustom } = await inquirer.prompt([
@@ -223,8 +232,10 @@ export async function runWizard(
   existingEngine: string | null = null,
   existingInstalledSkills: string[] | null = null,
   existingSelection: { mcp: string[]; bridges: string[] } | null = null,
+  deps: WizardDependencies = {},
 ): Promise<WizardAnswers> {
-  const inquirer = await loadInquirer();
+  const loaded = await loadInquirer();
+  const inquirer = { ...loaded, prompt: deps.prompt ?? loaded.prompt };
   console.log(chalk.dim('\n\u{1F4A1} Run /unikit after setup to analyze your project and generate project-relevant skills.\n'));
 
   const selectedByDefault = new Set(defaultAgentIds);
@@ -327,7 +338,7 @@ export async function runWizard(
   console.log('');
 
   // Step 4: Rules registry (optional custom source)
-  const rulesRegistry = await promptRulesRegistry(engine, existingRulesRegistry);
+  const rulesRegistry = await promptRulesRegistry(engine, existingRulesRegistry, inquirer);
 
   console.log('');
 
@@ -415,10 +426,11 @@ export async function runWizard(
     }
   }
 
-  // Rules (core + stack) are no longer installed by the wizard — the /unikit
-  // skill Step 9 runs `unikit-ai rules install` (no args) silently for the
-  // core whitelist and then drives stack rule selection through registry
-  // lookup + /unikit-memory generators.
+  const providerIds = [...new Set([...mcpServers, ...engineBridges])];
+  const registry = (deps.createRegistry ?? createRegistry)(rulesRegistry, engine);
+  const providerCandidates = await collectProviderCandidates(registry, engine, providerIds);
+  const providerDecisions = await chooseProviderRules(providerRuleChoices(providerCandidates, engine, providerIds, discoveredServers), inquirer.prompt);
+  // Core and other stack bootstrap still belongs to /unikit Step 9.
 
   return {
     agents: agentSelections,
@@ -427,5 +439,7 @@ export async function runWizard(
     mcpServers,
     engineBridges,
     rulesRegistry,
+    providerCandidates,
+    providerDecisions,
   };
 }

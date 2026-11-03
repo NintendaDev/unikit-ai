@@ -3142,4 +3142,6 @@ SWEPT_FILE_COUNT=$(find "$TMPDIR" \( -name 'SKILL.md' -o -path '*/agents/*.md' \
 echo "  ✓ agent-filter no-leak sweep: 0 leaks across $SWEPT_FILE_COUNT installed files"
 
 echo ""
+node "$ROOT_DIR/scripts/test-provider-rule-flow.mjs"
+
 echo "install smoke tests passed"

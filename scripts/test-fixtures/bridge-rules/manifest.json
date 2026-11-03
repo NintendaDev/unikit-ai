@@ -15,6 +15,12 @@
           ],
           "stack": [
             {
+              "id": "context7",
+              "description": "Fixture rule for a universal MCP server",
+              "version": "1.0.0",
+              "always": false
+            },
+            {
               "id": "unity-biome-mcp",
               "description": "Fixture rule of a bridge, with two reference files",
               "version": "1.0.0",

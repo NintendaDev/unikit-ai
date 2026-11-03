@@ -34,19 +34,6 @@
 // consumers (`getResolvedManifest`, `getEngineRules`, `getResolvedOrigin()`) keep
 // working unchanged.
 //
-// Resolution contract — `module-winner` (per module, first match wins):
-//  1. Walk `chain()` in order, normalizing each reachable manifest.
-//  2. A source whose schema is newer than `LATEST_SCHEMA` is SKIPPED with a
-//     one-shot warning — never silently treated as "module not found".
-//  3. The first normalized manifest that carries the requested module is
-//     adopted and cached.
-//  4. A reachable manifest without the module is kept as `lastSeenManifest` so
-//     callers can tell "module/engine missing" (exit 5) from "chain
-//     unreachable" (exit 2).
-//  5. On exhaustion we return `lastSeenManifest` (possibly null). If every
-//     reachable source was rejected purely because its schema was too new, a
-//     distinct summary warning is emitted instead of the generic one.
-
 import type { RulesRegistry } from './index.js';
 import type { RuleOrigin } from '../config.js';
 import type {
@@ -65,6 +52,7 @@ import { CODE_MODULE_ID } from '../constants.js';
 import { getModule } from '../modules.js';
 import { logInfo, logWarn } from '../../utils/log.js';
 import { RuleCandidateResolver, type RuleCandidate } from './rule-candidate.js';
+import { PROVIDER_RULE_MESSAGES } from '../constants-provider-rules.js';
 
 /** The `core` tier name subject to per-id B-merge (vs custom-only tiers). */
 const MERGE_TIER: Tier = 'core';
@@ -102,10 +90,23 @@ export abstract class ChainedRegistry implements RulesRegistry {
   // One-shot guard: `getResolvedSource` may re-enter `resolveModule`, so the
   // schema-too-new warning is flagged on the instance to fire at most once.
   private schemaWarned = false;
-  private readonly candidates = new RuleCandidateResolver(() => this.chain(), source => this.originOf(source));
+  private readonly sourceManifests = new Map<RulesRegistry, Promise<RegistryManifest | null>>();
+  private readonly candidates = new RuleCandidateResolver(() => this.chain(), source => this.originOf(source), source => this.fetchSourceManifest(source));
 
   resolveRuleCandidate(module: ModuleId, engine: string, tier: Tier, id: string): Promise<RuleCandidate | null> {
     return this.candidates.resolve(module, engine, tier, id);
+  }
+
+  private fetchSourceManifest(source: RulesRegistry): Promise<RegistryManifest | null> {
+    let pending = this.sourceManifests.get(source);
+    if (!pending) {
+      pending = source.fetchManifest().catch(() => {
+        logWarn(this.logTag, PROVIDER_RULE_MESSAGES.manifestFetchFailed(this.originOf(source)));
+        return null;
+      });
+      this.sourceManifests.set(source, pending);
+    }
+    return pending;
   }
 
   protected constructor(engineId: string) {
@@ -289,7 +290,7 @@ export abstract class ChainedRegistry implements RulesRegistry {
 
     for (const source of this.chain()) {
       logInfo(tag, `trying ${source.label} for module ${module}`);
-      const raw = await source.fetchManifest();
+      const raw = await this.fetchSourceManifest(source);
 
       if (!raw) {
         logInfo(tag, `${source.label} unreachable`);
@@ -347,7 +348,7 @@ export abstract class ChainedRegistry implements RulesRegistry {
 
     for (const source of this.chain()) {
       logInfo(tag, `trying ${source.label} for module ${module} (per-id-merge)`);
-      const raw = await source.fetchManifest();
+      const raw = await this.fetchSourceManifest(source);
 
       if (!raw) {
         logInfo(tag, `${source.label} unreachable`);

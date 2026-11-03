@@ -10,6 +10,11 @@ import { syncProviderRules } from '../dist/core/installer/provider-rules.js';
 import extra from 'fs-extra';
 import { syncRulesState } from '../dist/core/installer/rules-sync.js';
 import { getModule } from '../dist/core/modules.js';
+import { runWizard } from '../dist/cli/wizard/prompts.js';
+import { prepareUpdateProviderRules } from '../dist/cli/commands/update-provider-rules.js';
+import { runUpdateCommand } from '../dist/cli/commands/update.js';
+import { setVerbose } from '../dist/utils/log.js';
+import { OfficialRegistry } from '../dist/core/registry/index.js';
 
 const root = await fs.mkdtemp(path.join(os.tmpdir(), 'provider-rules-'));
 const config = () => ({ version: '3.0.0', engine: 'unity', rulesRegistry: null,
@@ -38,6 +43,11 @@ try {
   assert.equal(await adoptLegacyProviderSelection(root, c), false);
   c.rules.providerSelection.context7 = false;
   assert.equal(await adoptLegacyProviderSelection(root, c), false);
+  const directoryConfig = config();
+  directoryConfig.mcp.servers = { 'not-a-file': 'vendor' };
+  directoryConfig.rules.installed.modules.code.stack.push({ name: 'not-a-file', source: 'registry' });
+  await fs.mkdir(providerRulePath(root, 'not-a-file'));
+  assert.equal(await adoptLegacyProviderSelection(root, directoryConfig), false);
   console.log('PASS provider decisions: round-trip, malformed, vendor identity, disk legacy, explicit refusal');
 
   function source(origin, rows, bodies = {}, refs = {}) {
@@ -99,6 +109,12 @@ try {
   assert.equal((await syncProviderRules(input)).lines[0].status, 'pending');
   assert.equal((await syncProviderRules({ ...input, decisions: { biome: true } })).lines[0].status, 'installed');
   assert.equal(lifecycle.rules.installed.modules.code.stack[0].origin, 'official');
+  const resetConfig = config();
+  await fs.appendFile(providerRulePath(lifecycleDir, 'biome'), '\nUser edit');
+  const retained = await syncProviderRules({ ...input, config: resetConfig, decisions: { biome: false } });
+  assert.equal(retained.lines.some(line => line.status === 'kept'), true);
+  assert.deepEqual(resetConfig.rules.installed.modules.code.stack[0], lifecycle.rules.installed.modules.code.stack[0]);
+  await fs.writeFile(providerRulePath(lifecycleDir, 'biome'), bundle.content);
   assert.equal((await syncProviderRules({ ...input, decisions: { biome: false } })).lines.some(line => line.status === 'removed'), true);
   console.log('PASS lifecycle: decision-only, current consent, write rollback, preserved refs, retry and decline cleanup');
 
@@ -112,6 +128,9 @@ try {
   assert.equal(await fs.readFile(providerRulePath(lifecycleDir, 'biome'), 'utf8'), '# remote same version');
   assert.equal(lifecycle.rules.installed.modules.code.stack[0].origin, 'primary');
   assert.equal((await syncRulesState(lifecycleDir, 'unity', module, lifecycle, syncRegistry, { prune: true })).changed, false);
+  lifecycle.rules.installed.modules.code.stack[0].version = '2.0.0';
+  const lowerVersion = { ...syncRegistry, resolveRuleCandidate: async () => ({ ...bundle, rule: { ...bundle.rule, version: '1.0.0' } }) };
+  assert.equal((await syncRulesState(lifecycleDir, 'unity', module, lifecycle, lowerVersion, { replace: true })).events.some(e => e.kind === 'phase2:downgrade'), true);
   await fs.appendFile(providerRulePath(lifecycleDir, 'biome'), '\nuser edit');
   assert.equal((await syncRulesState(lifecycleDir, 'unity', module, lifecycle, syncRegistry)).events.some(e => e.kind === 'phase2:skipped-local-mod'), true);
   await fs.unlink(providerRulePath(lifecycleDir, 'biome'));
@@ -119,6 +138,112 @@ try {
   assert.equal(await fs.stat(providerRulePath(lifecycleDir, 'biome')).catch(() => null), null);
   assert.equal(lifecycle.rules.installed.modules.code.stack.length, 0);
   console.log('PASS provider sync: fallback outside winner/prune, equal-version origin/body refresh, no-op, edited guard, missing replace/prune');
+
+  async function replayWizard({ available = true, picked = [], cancelled = false } = {}) {
+    const questions = [];
+    const fetched = [];
+    const answers = await runWizard(['claude'], null, 'unity', null, null, {
+      createRegistry: () => ({ resolveRuleCandidate: async (_m, _e, _t, id) => {
+        fetched.push(id);
+        return available ? { ...bundle, rule: { ...bundle.rule, id } } : null;
+      } }),
+      prompt: async rows => {
+        const q = rows[0];
+        questions.push(q);
+        if (q.name === 'selectedAgents') return { selectedAgents: ['claude'] };
+        if (q.name === 'selectedSkills') return { selectedSkills: ['unikit-verify'] };
+        if (q.name === 'useCustom') return { useCustom: false };
+        if (q.name === 'selected') return { selected: q.message.startsWith('Configure') ? ['context7'] : ['unity-biome-mcp'] };
+        if (q.name === 'providerRules') {
+          if (cancelled) { const error = new Error('closed'); error.name = 'ExitPromptError'; throw error; }
+          return { providerRules: picked };
+        }
+        throw new Error(`unexpected prompt ${q.name}`);
+      },
+    });
+    return { answers, questions, fetched };
+  }
+  const wizard = await replayWizard();
+  assert.deepEqual(wizard.questions.slice(-3).map(q => q.name), ['selected', 'selected', 'providerRules']);
+  assert.deepEqual(wizard.fetched, ['context7', 'unity-biome-mcp']);
+  assert.equal(wizard.questions.at(-1).choices.every(row => row.checked === true), true);
+  assert.deepEqual(wizard.answers.providerDecisions, { context7: false, 'unity-biome-mcp': false });
+  assert.equal((await replayWizard({ available: false })).questions.some(q => q.name === 'providerRules'), false);
+  await assert.rejects(() => replayWizard({ cancelled: true }), { name: 'ExitPromptError' });
+  console.log('PASS full wizard replay: universal → bridges → rules, checked defaults, deselect-all, unavailable skip, cancellation');
+
+  const pendingConfig = config();
+  pendingConfig.mcp.servers = { biome: 'vendor' };
+  pendingConfig.engineBridges.selected = {};
+  let prompts = 0;
+  const deps = { stdinTTY: true, stdoutTTY: true, prompt: async rows => {
+    prompts++;
+    assert.equal(rows[0].choices.every(row => row.checked), true);
+    return { providerRules: [] };
+  } };
+  for (const [stdinTTY, stdoutTTY] of [[false, true], [true, false], [false, false]]) {
+    const nonTTY = await prepareUpdateProviderRules(path.join(root, 'pending'), pendingConfig, input.registry, new Map(), { ...deps, stdinTTY, stdoutTTY });
+    assert.deepEqual(nonTTY.decisions, {});
+  }
+  assert.equal(prompts, 0);
+  assert.deepEqual((await prepareUpdateProviderRules(path.join(root, 'pending'), pendingConfig, input.registry, new Map(), deps)).decisions, { biome: false });
+  pendingConfig.rules.providerSelection = { biome: false };
+  assert.deepEqual((await prepareUpdateProviderRules(path.join(root, 'pending'), pendingConfig, { resolveRuleCandidate: () => { throw new Error('refused id fetched'); } }, new Map(), deps)).decisions, {});
+
+  const cancelDir = path.join(root, 'update-cancel');
+  pendingConfig.rules.providerSelection = { biome: true };
+  await saveConfig(cancelDir, pendingConfig);
+  const configBefore = await fs.readFile(path.join(cancelDir, '.unikit.json'));
+  await runUpdateCommand(cancelDir, { force: true, skipNew: true }, { ...deps,
+    createRegistry: () => input.registry,
+    prompt: async () => { const error = new Error('User force closed'); throw error; } });
+  assert.deepEqual(await fs.readFile(path.join(cancelDir, '.unikit.json')), configBefore);
+  assert.equal(await fs.stat(providerRulePath(cancelDir, 'biome')).catch(() => null), null);
+  assert.equal(await fs.stat(path.join(cancelDir, '.unikit', 'system')).catch(() => null), null);
+  console.log('PASS update replay: both TTY streams, persistent refusal, confirmed [], cancel before component/config writes');
+
+  const verbose = [];
+  const printer = console.log;
+  setVerbose(true);
+  console.log = (...args) => verbose.push(args.join(' '));
+  try {
+    const absentId = source('primary', []);
+    const broken = source('official', []);
+    broken.fetchManifest = async () => { broken.counts.manifest++; throw new Error('transport failure'); };
+    const complete = source('bundled', [row], { biome: 'bundled' }, { biome: [{ filename: 'biome-ref.md', content: 'bundled reference' }] });
+    const fallback = new RuleCandidateResolver(() => [absentId, broken, complete], s => s.origin);
+    assert.equal((await fallback.resolve('code', 'unity', 'stack', 'biome')).content, 'bundled');
+    await fallback.resolve('code', 'unity', 'stack', 'missing');
+    assert.equal(broken.counts.manifest, 1);
+    const schema2 = source('primary', []);
+    schema2.fetchManifest = async () => ({ schema: 2, modules: { code: { engines: { unity: { core: [], stack: [row] } } } } });
+    schema2.fetchRule = async () => ({ content: 'schema 2' });
+    schema2.fetchReferences = async () => [{ filename: 'biome-ref.md', content: 'schema 2 ref' }];
+    assert.equal((await new RuleCandidateResolver(() => [schema2], s => s.origin).resolve('code', 'unity', 'stack', 'biome')).content, 'schema 2');
+  } finally { console.log = printer; setVerbose(false); }
+  assert.equal(verbose.some(line => line.includes('falling back')), true);
+  assert.equal(verbose.some(line => line.includes('resolved bundled')), true);
+  const snapshotConfig = config();
+  snapshotConfig.mcp.servers = { biome: 'changed-code' };
+  snapshotConfig.engineBridges.selected = {};
+  const snapshotDir = path.join(root, 'snapshot');
+  const snap = new Map([['code\0unity\0stack\0biome', bundle]]);
+  const noFetch = { resolveRuleCandidate: () => { throw new Error('snapshot must prevent refetch'); } };
+  assert.equal((await syncProviderRules({ ...input, projectDir: snapshotDir, config: snapshotConfig,
+    registry: noFetch, previousRules: snapshotConfig.rules.installed, decisions: { biome: true }, candidates: snap })).lines[0].status, 'installed');
+  const noCandidate = new Map([['code\0unity\0stack\0biome', null]]);
+  await syncRulesState(snapshotDir, 'unity', module, snapshotConfig, { ...syncRegistry, ...noFetch }, { providerCandidates: noCandidate, prune: true });
+  assert.equal(await fs.readFile(providerRulePath(snapshotDir, 'biome'), 'utf8'), bundle.content);
+  console.log('PASS resolver transport/schema guards, verbose reasons, positive and negative snapshot reuse without fetch');
+  const unavailable = source('official', []);
+  unavailable.fetchManifest = async () => { unavailable.counts.manifest++; throw new Error('offline'); };
+  const local = source('bundled', [row], { biome: 'local body' }, { biome: [{ filename: 'biome-ref.md', content: 'local ref' }] });
+  const chain = new OfficialRegistry(unavailable, 'unity', local);
+  assert.equal((await chain.resolveRuleCandidate('code', 'unity', 'stack', 'biome')).origin, 'bundled');
+  await chain.fetchModuleManifest('code');
+  assert.equal(chain.getModuleRules('code', 'stack')[0].id, 'biome');
+  assert.deepEqual([unavailable.counts.manifest, local.counts.manifest], [1, 1]);
+  console.log('PASS operation manifest cache shared by picker and generic sync, including failed sources');
 } finally {
   await fs.rm(root, { recursive: true, force: true });
 }

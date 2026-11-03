@@ -1,14 +1,17 @@
 import chalk from 'chalk';
 import type { ProviderRulesReport } from '../../core/installer/provider-rules.js';
 import { BRIDGE_RULE_REPORT, bridgeRuleDisplayPath } from '../../core/constants-bridges.js';
+import { PROVIDER_RULE_LABELS } from '../../core/constants-provider-rules.js';
 
 /**
- * What `init` and `update` tell the user about the rule of a bridge: a rule that arrived, one that left,
- * one that stayed although its bridge went, and one that could not be installed. A rule that is already
- * there, and a bridge the registry has no rule for, are not news and print nothing.
+ * Human output for MCP / bridge memory rules. Unavailable bundles and pending choices are
+ * handled by the picker; the lifecycle reports actual files, decisions and failures here.
  */
 export function printProviderRulesReport(report: ProviderRulesReport): void {
   for (const { id, status, reason } of report.lines) {
+    if (status === 'declined' || status === 'present') {
+      console.log(chalk.dim(`${PROVIDER_RULE_LABELS[status]} ${id}`));
+    }
     if (status === 'installed') {
       console.log(chalk.green(`✓ ${BRIDGE_RULE_REPORT.installed} ${id} (${bridgeRuleDisplayPath(id)})`));
     } else if (status === 'removed') {
