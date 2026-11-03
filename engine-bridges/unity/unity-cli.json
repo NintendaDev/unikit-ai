@@ -4,7 +4,8 @@
   "kind": "cli",
   "is_engine": true,
   "order": 1,
-  "displayName": "Unity CLI (Unity 6000.0+, needs the com.unity.pipeline package)",
+  "fullName": "Unity CLI (Unity 6000.0+, needs the com.unity.pipeline package)",
+  "shortName": "Unity CLI",
   "docs": {
     "context7": "/websites/unity_en-us_unity-cli_unity-cli-reference",
     "repo": "https://docs.unity.com/en-us/unity-cli"

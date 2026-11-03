@@ -1,7 +1,8 @@
 {
   "key": "context7",
   "code": "context7",
-  "displayName": "Context7 (library documentation)",
+  "fullName": "Context7 (library documentation)",
+  "shortName": "Context7",
   "docs": {
     "repo": "https://github.com/upstash/context7"
   },

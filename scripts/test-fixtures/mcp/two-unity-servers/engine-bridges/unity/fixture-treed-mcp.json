@@ -3,7 +3,8 @@
   "code": "FixtureTreed",
   "is_engine": true,
   "order": 1,
-  "displayName": "Fixture MCP with a rules tree",
+  "fullName": "Fixture MCP with a rules tree",
+  "shortName": "Fixture MCP with a rules tree",
   "docs": {
     "context7": "/fixture/treed",
     "repo": "https://example.invalid/fixture-treed"

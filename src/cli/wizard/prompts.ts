@@ -13,6 +13,7 @@ import { chooseProviderRules, collectProviderCandidates, providerRuleChoices } f
 import type { ProviderRuleSelection } from '../../core/provider-rule-selection.js';
 import type { RuleCandidateSnapshot } from '../../core/registry/rule-candidate.js';
 import { logInfo } from '../../utils/log.js';
+import { PROVIDER_RULE_LOADING } from '../../core/constants-provider-rules.js';
 
 // `inquirer` is ~240ms of module graph, and only the interactive prompts below
 // ever touch it -- a non-interactive `unikit-ai update` or `rules *` used to pay
@@ -92,7 +93,7 @@ export function validateAgentSelection(agentIds: string[]): true | string {
 /** One row of the MCP picker — enough to render a choice and to order it. */
 export interface McpChoiceEntry {
   fileId: string;
-  displayName: string;
+  fullName: string;
   isEngine: boolean;
   /** Absent = `mcp`. */
   kind?: BridgeKind;
@@ -127,16 +128,14 @@ export function isMcpPreselected(fileId: string, existingMcpServers: string[] | 
   return existingMcpServers ? existingMcpServers.includes(fileId) : preselect !== false;
 }
 
-// Pure helper -- the bridge checkbox on a fresh install: the first MCP-kind bridge in the package
-// order is checked, the others are not. That is what the radio's `order: 1` used to mean. A bridge of
-// another kind is never checked by position; it is checked when detection found it on this machine
-// (`detected`, from `detectBridge`), and then in addition to the first MCP bridge.
-export function defaultBridgeIds(entries: McpChoiceEntry[], detected: ReadonlySet<string> = new Set()): Set<string> {
-  const first = sortMcpChoices(entries).find(entry => (entry.kind ?? 'mcp') === 'mcp');
-  return new Set([...(first ? [first.fileId] : []), ...detected]);
+// A fresh install checks only the first bridge in package order, regardless of kind.
+// Detection supplies a label; it does not opt the user into additional bridges.
+export function defaultBridgeIds(entries: McpChoiceEntry[]): Set<string> {
+  const first = sortMcpChoices(entries)[0];
+  return new Set(first ? [first.fileId] : []);
 }
 
-/** Added to the label of a bridge that detection found, so the user sees why it is already ticked. */
+/** Added to the label of a bridge that detection found on this machine. */
 const DETECTED_LABEL_SUFFIX = ' — found on this machine';
 
 // Pure helper -- checkbox pre-selection for one bridge. `null` = fresh install (the defaults); an
@@ -360,7 +359,7 @@ export async function runWizard(
     for (const [fileId, server] of discoveredServers) {
       const entry: McpChoiceEntry = {
         fileId,
-        displayName: server.displayName,
+        fullName: server.fullName,
         isEngine: server.isEngine,
         kind: server.kind,
         ...(server.order === undefined ? {} : { order: server.order }),
@@ -383,7 +382,7 @@ export async function runWizard(
           name: 'selected',
           message: 'Configure universal MCP servers:',
           choices: sortMcpChoices(universal).map(entry => ({
-            name: entry.displayName,
+            name: entry.fullName,
             value: entry.fileId,
             checked: isMcpPreselected(entry.fileId, existingSelection?.mcp ?? null, entry.preselect),
           })),
@@ -393,7 +392,7 @@ export async function runWizard(
       mcpServers.push(...(selected as string[]));
     }
 
-    // Engine bridges: checkbox; a fresh install checks the first MCP bridge of the package order
+    // Engine bridges: checkbox; a fresh install checks the first bridge of the package order.
     if (bridges.length > 0) {
       // Detection only reads PATH and the version file of the project; it runs nothing (REQ-5).
       const context: DetectContext = { projectDir: process.cwd(), env: process.env, platform: process.platform };
@@ -404,7 +403,7 @@ export async function runWizard(
       }
       logInfo('wizard:mcp', `detected: ${[...detected].join(', ') || '(none)'}`);
 
-      const defaults = defaultBridgeIds(bridges, detected);
+      const defaults = defaultBridgeIds(bridges);
       logInfo('wizard:mcp', `bridges checked by default: ${[...defaults].join(', ') || '(none)'}`);
       const { selected } = await inquirer.prompt([
         {
@@ -415,7 +414,7 @@ export async function runWizard(
           // ("engine-bridges/unity") is a layout detail and stays out of the prompt.
           message: `Engine bridges for "${getEngineConfig(engine).displayName}" (pick any number; the order is kept in .unikit/bridges.yaml):`,
           choices: sortMcpChoices(bridges).map(entry => ({
-            name: detected.has(entry.fileId) ? `${entry.displayName}${DETECTED_LABEL_SUFFIX}` : entry.displayName,
+            name: detected.has(entry.fileId) ? `${entry.fullName}${DETECTED_LABEL_SUFFIX}` : entry.fullName,
             value: entry.fileId,
             checked: isBridgePreselected(entry.fileId, existingSelection?.bridges ?? null, defaults),
           })),
@@ -428,6 +427,7 @@ export async function runWizard(
 
   const providerIds = [...new Set([...mcpServers, ...engineBridges])];
   const registry = (deps.createRegistry ?? createRegistry)(rulesRegistry, engine);
+  if (providerIds.length) console.log(chalk.dim(PROVIDER_RULE_LOADING));
   const providerCandidates = await collectProviderCandidates(registry, engine, providerIds);
   const providerDecisions = await chooseProviderRules(providerRuleChoices(providerCandidates, engine, providerIds, discoveredServers), inquirer.prompt);
   // Core and other stack bootstrap still belongs to /unikit Step 9.

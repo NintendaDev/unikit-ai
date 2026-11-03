@@ -15,6 +15,8 @@ import { prepareUpdateProviderRules } from '../dist/cli/commands/update-provider
 import { runUpdateCommand } from '../dist/cli/commands/update.js';
 import { setVerbose } from '../dist/utils/log.js';
 import { OfficialRegistry } from '../dist/core/registry/index.js';
+import { collectProviderCandidates, providerRuleChoices } from '../dist/cli/wizard/provider-rules.js';
+import { RULE_FETCH_CONCURRENCY } from '../dist/core/constants.js';
 
 const root = await fs.mkdtemp(path.join(os.tmpdir(), 'provider-rules-'));
 const config = () => ({ version: '3.0.0', engine: 'unity', rulesRegistry: null,
@@ -78,6 +80,29 @@ try {
   newer.fetchManifest = async () => ({ schema: 999, modules: {} });
   assert.equal((await new RuleCandidateResolver(() => [newer, official], s => s.origin).resolve('code', 'unity', 'stack', 'biome')).origin, 'official');
   console.log('PASS candidates: atomic fallback, remote priority, schema 1/2 gate, negative and manifest caches');
+
+  // Slow providers must overlap without an unbounded burst or changing picker order.
+  const providerIds = Array.from({ length: RULE_FETCH_CONCURRENCY + 2 }, (_, i) => `provider-${i}`);
+  let activeFetches = 0;
+  let peakFetches = 0;
+  const fetchedIds = [];
+  const collected = await collectProviderCandidates({ resolveRuleCandidate: async (_m, _e, _t, id) => {
+    fetchedIds.push(id);
+    peakFetches = Math.max(peakFetches, ++activeFetches);
+    await new Promise(resolve => setTimeout(resolve, id === providerIds[0] ? 30 : 5));
+    activeFetches--;
+    return id === providerIds.at(-1) ? null : { ...hit, rule: { ...hit.rule, id } };
+  } }, 'unity', [...providerIds, providerIds[0]]);
+  assert.ok(peakFetches > 1, 'independent provider downloads must overlap');
+  assert.ok(peakFetches <= RULE_FETCH_CONCURRENCY, 'provider downloads must remain bounded');
+  assert.deepEqual(fetchedIds, providerIds, 'duplicate providers are fetched once');
+  assert.deepEqual([...collected.keys()], providerIds.map(id => `code\0unity\0stack\0${id}`));
+  const providerCatalog = new Map([[providerIds[0], { code: 'provider-command', fullName: 'Provider (requirements)', shortName: 'Provider' }]]);
+  const compactChoices = providerRuleChoices(collected, 'unity', providerIds, providerCatalog);
+  assert.deepEqual(compactChoices.map(choice => choice.name), ['Provider', ...providerIds.slice(1, -1)]);
+  assert.deepEqual(compactChoices.map(choice => choice.value), providerIds.slice(0, -1));
+  assert.equal(compactChoices.every(choice => choice.checked), true);
+  console.log('PASS provider picker: bounded overlapping downloads, stable order, deduplication, short names with ID values');
 
   const lifecycle = config();
   lifecycle.mcp.servers = { biome: 'vendor' };
@@ -165,8 +190,12 @@ try {
   }
   const wizard = await replayWizard();
   assert.deepEqual(wizard.questions.slice(-3).map(q => q.name), ['selected', 'selected', 'providerRules']);
+  assert.deepEqual(wizard.questions.at(-2).choices.filter(row => row.checked).map(row => row.value), ['unity-cli']);
   assert.deepEqual(wizard.fetched, ['context7', 'unity-biome-mcp']);
   assert.equal(wizard.questions.at(-1).choices.every(row => row.checked === true), true);
+  assert.deepEqual(wizard.questions.at(-1).choices.map(row => row.name), ['Context7', 'Unity Biome MCP']);
+  assert.equal(wizard.questions.at(-2).choices.find(row => row.value === 'unity-cli').name,
+    'Unity CLI (Unity 6000.0+, needs the com.unity.pipeline package)');
   assert.deepEqual(wizard.answers.providerDecisions, { context7: false, 'unity-biome-mcp': false });
   assert.equal((await replayWizard({ available: false })).questions.some(q => q.name === 'providerRules'), false);
   await assert.rejects(() => replayWizard({ cancelled: true }), { name: 'ExitPromptError' });
@@ -179,16 +208,18 @@ try {
   const deps = { stdinTTY: true, stdoutTTY: true, prompt: async rows => {
     prompts++;
     assert.equal(rows[0].choices.every(row => row.checked), true);
+    assert.deepEqual(rows[0].choices.map(row => row.name), ['Biome']);
     return { providerRules: [] };
   } };
+  const updateCatalog = new Map([['biome', { code: 'vendor', fullName: 'Biome (requirements)', shortName: 'Biome' }]]);
   for (const [stdinTTY, stdoutTTY] of [[false, true], [true, false], [false, false]]) {
-    const nonTTY = await prepareUpdateProviderRules(path.join(root, 'pending'), pendingConfig, input.registry, new Map(), { ...deps, stdinTTY, stdoutTTY });
+    const nonTTY = await prepareUpdateProviderRules(path.join(root, 'pending'), pendingConfig, input.registry, updateCatalog, { ...deps, stdinTTY, stdoutTTY });
     assert.deepEqual(nonTTY.decisions, {});
   }
   assert.equal(prompts, 0);
-  assert.deepEqual((await prepareUpdateProviderRules(path.join(root, 'pending'), pendingConfig, input.registry, new Map(), deps)).decisions, { biome: false });
+  assert.deepEqual((await prepareUpdateProviderRules(path.join(root, 'pending'), pendingConfig, input.registry, updateCatalog, deps)).decisions, { biome: false });
   pendingConfig.rules.providerSelection = { biome: false };
-  assert.deepEqual((await prepareUpdateProviderRules(path.join(root, 'pending'), pendingConfig, { resolveRuleCandidate: () => { throw new Error('refused id fetched'); } }, new Map(), deps)).decisions, {});
+  assert.deepEqual((await prepareUpdateProviderRules(path.join(root, 'pending'), pendingConfig, { resolveRuleCandidate: () => { throw new Error('refused id fetched'); } }, updateCatalog, deps)).decisions, {});
 
   const cancelDir = path.join(root, 'update-cancel');
   pendingConfig.rules.providerSelection = { biome: true };

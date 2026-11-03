@@ -63,6 +63,8 @@ try {
   let config = await loadConfig(project);
   assert.equal(choicesSeen.length, ids.length);
   assert.equal(choicesSeen.every(row => row.checked === true), true);
+  assert.deepEqual(choicesSeen.map(row => row.name), ['Context7', 'Unity Biome MCP', 'Unity CLI']);
+  assert.deepEqual(choicesSeen.map(row => row.value), ids);
   const realFile = path.join(repo, 'rules-registry/code/unity/stack', `${biome}.md`);
   assert.equal(await read(rulePath(project, biome)), await read(realFile));
   assert.equal(entry(config, biome).origin, 'bundled');

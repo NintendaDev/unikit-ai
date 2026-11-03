@@ -8,6 +8,7 @@ export const PROVIDER_RULE_EXTENSION = '.md';
 export const PROVIDER_CANDIDATE_SEPARATOR = '\u0000';
 export const PROVIDER_REFERENCE_PATTERN = /^[^/\\]+\.md$/;
 export const PROVIDER_RULE_PROMPT = 'Which MCP / bridge rules should be installed?';
+export const PROVIDER_RULE_LOADING = 'Loading available MCP / bridge rules...';
 export const PROVIDER_RULE_PENDING = 'New MCP / bridge rules need your choice. Run unikit-ai init to select them.';
 export const PROVIDER_RULE_CANCELLED = 'MCP / bridge rule selection cancelled.';
 export const PROVIDER_RULE_SETUP_SUMMARY = '  MCP / bridge rules: selected during setup. Run /unikit for core and other stack rules.';
@@ -50,7 +51,8 @@ export const PROVIDER_RULE_MESSAGES = {
   confirmed: (decisions: Record<string, boolean>) => `confirmed: ${JSON.stringify(decisions)}`,
   updatePending: (interactive: boolean, count: number) => `update: interactive=${interactive}, pending=${count}`,
   updateCancelled: 'update selection cancelled; no provider changes applied',
-  choice: (name: string, id: string, description: string) => `${name} (${id}) — ${description}`,
+  collecting: (ids: string[]) => `[FIX] loading provider rules: ${ids.join(', ')}`,
+  collected: (count: number, elapsedMs: number) => `[FIX] loaded ${count} provider rule bundles in ${elapsedMs}ms`,
 } as const;
 
 export function providerRulePath(projectDir: string, id: string): string {

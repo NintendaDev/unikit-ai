@@ -2,12 +2,13 @@ import type inquirer from 'inquirer';
 import type { ChainedRegistry } from '../../core/registry/index.js';
 import type { ProviderRuleSelection } from '../../core/provider-rule-selection.js';
 import { candidateKey, type RuleCandidateSnapshot } from '../../core/registry/rule-candidate.js';
-import { CODE_MODULE_ID } from '../../core/constants.js';
+import { CODE_MODULE_ID, RULE_FETCH_CONCURRENCY } from '../../core/constants.js';
 import {
   PROVIDER_RULE_TIER, PROVIDER_RULE_LOG, PROVIDER_RULE_PROMPT, PROVIDER_RULE_CANCELLED,
   PROVIDER_RULE_MESSAGES, PROVIDER_PROMPT_EXIT_ERROR, PROVIDER_PROMPT_CANCEL_MARKER,
 } from '../../core/constants-provider-rules.js';
 import { logInfo } from '../../utils/log.js';
+import { mapWithConcurrency } from '../../utils/concurrency.js';
 
 export class ProviderRuleSelectionCancelled extends Error {
   constructor() { super(PROVIDER_RULE_CANCELLED); }
@@ -19,18 +20,19 @@ export function isPromptCancellation(error: unknown): boolean {
 }
 
 export async function collectProviderCandidates(registry: ChainedRegistry, engine: string, ids: string[]): Promise<RuleCandidateSnapshot> {
-  const snapshot: RuleCandidateSnapshot = new Map();
-  for (const id of new Set(ids)) {
-    snapshot.set(candidateKey(CODE_MODULE_ID, engine, PROVIDER_RULE_TIER, id),
-      await registry.resolveRuleCandidate(CODE_MODULE_ID, engine, PROVIDER_RULE_TIER, id));
-  }
-  return snapshot;
+  const uniqueIds = [...new Set(ids)];
+  const started = Date.now();
+  logInfo(PROVIDER_RULE_LOG, PROVIDER_RULE_MESSAGES.collecting(uniqueIds));
+  const candidates = await mapWithConcurrency(uniqueIds, RULE_FETCH_CONCURRENCY,
+    id => registry.resolveRuleCandidate(CODE_MODULE_ID, engine, PROVIDER_RULE_TIER, id));
+  logInfo(PROVIDER_RULE_LOG, PROVIDER_RULE_MESSAGES.collected(candidates.filter(Boolean).length, Date.now() - started));
+  return new Map(uniqueIds.map((id, index) => [candidateKey(CODE_MODULE_ID, engine, PROVIDER_RULE_TIER, id), candidates[index]]));
 }
 
-export function providerRuleChoices(snapshot: RuleCandidateSnapshot, engine: string, ids: string[], names: ReadonlyMap<string, { displayName: string }>) {
+export function providerRuleChoices(snapshot: RuleCandidateSnapshot, engine: string, ids: string[], catalog: ReadonlyMap<string, { shortName: string }>) {
   return [...new Set(ids)].flatMap(id => {
     const candidate = snapshot.get(candidateKey(CODE_MODULE_ID, engine, PROVIDER_RULE_TIER, id));
-    return candidate ? [{ name: PROVIDER_RULE_MESSAGES.choice(names.get(id)?.displayName ?? id, id, candidate.rule.description), value: id, checked: true }] : [];
+    return candidate ? [{ name: catalog.get(id)?.shortName ?? id, value: id, checked: true }] : [];
   });
 }
 

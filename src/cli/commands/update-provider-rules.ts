@@ -16,14 +16,14 @@ export interface UpdateProviderDependencies {
 
 /** Read-only preparation before extension/skill mutation. Choices are applied by the lifecycle later. */
 export async function prepareUpdateProviderRules(projectDir: string, config: UniKitConfig, registry: ChainedRegistry,
-  names: DiscoveredServers, deps: UpdateProviderDependencies = {}) {
+  catalog: DiscoveredServers, deps: UpdateProviderDependencies = {}) {
   const ids = activeProviderIds(config).filter(id => config.rules.providerSelection?.[id] !== false);
   const candidates = await collectProviderCandidates(registry, config.engine, ids);
   const missing: string[] = [];
   for (const id of ids) {
     if (!(await isFile(providerRulePath(projectDir, id)))) missing.push(id);
   }
-  const choices = providerRuleChoices(candidates, config.engine, missing, names);
+  const choices = providerRuleChoices(candidates, config.engine, missing, catalog);
   const interactive = Boolean(deps.stdinTTY ?? process.stdin.isTTY) && Boolean(deps.stdoutTTY ?? process.stdout.isTTY);
   logInfo(PROVIDER_RULE_LOG, PROVIDER_RULE_MESSAGES.updatePending(interactive, choices.length));
   if (!choices.length) return { cancelled: false, decisions: {}, candidates };

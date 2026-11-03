@@ -2482,7 +2482,7 @@ echo "  ✓ resolveExistingEngine(' unity ') -> action=use, engine=unity (trim a
 # tested through the exported pure helpers instead of the prompt:
 #   sortMcpChoices        — order asc, missing order last, ties by fileId
 #   isMcpPreselected      — universal checkbox: null = fresh (all checked), array = mirror
-#   defaultBridgeIds      — bridge checkbox on a fresh install: the first MCP bridge of the package order
+#   defaultBridgeIds      — bridge checkbox on a fresh install: the first bridge of the package order
 #   isBridgePreselected   — bridge checkbox: null = the defaults, array = mirror (empty = none)
 # The regression this guards: the engine's servers used to be a radio with a Skip, and a blind
 # Enter on re-init would silently swap the engine MCP. They are a checkbox group now, and a
@@ -2493,20 +2493,20 @@ MCP_DEFAULTS=$(cd "$ROOT_DIR" && node --input-type=module -e "
     await import('./dist/cli/wizard/prompts.js');
   const { parseMcpServerEntry } = await import('./dist/core/mcp-schema.js');
   const parsePreselect = (value) => parseMcpServerEntry(
-    { key: 'github', code: 'github', displayName: 'GitHub', config: { type: 'http', url: 'https://example.test' }, preselect: value },
+    { key: 'github', code: 'github', fullName: 'GitHub', shortName: 'GitHub', config: { type: 'http', url: 'https://example.test' }, preselect: value },
     '.', 'github.json');
 
   // Deliberately supplied out of order, with one entry carrying no \`order\`.
   const group = sortMcpChoices([
-    { fileId: 'coplay-unity-mcp', displayName: 'Coplay', isEngine: true, order: 2 },
-    { fileId: 'zz-no-order',      displayName: 'NoOrder', isEngine: true },
-    { fileId: 'unity-biome-mcp',  displayName: 'Biome',  isEngine: true, order: 1 },
+    { fileId: 'coplay-unity-mcp', fullName: 'Coplay', shortName: 'Coplay', isEngine: true, order: 2 },
+    { fileId: 'zz-no-order',      fullName: 'NoOrder', shortName: 'NoOrder', isEngine: true },
+    { fileId: 'unity-biome-mcp',  fullName: 'Biome', shortName: 'Biome',  isEngine: true, order: 1 },
   ]);
 
   process.stdout.write(JSON.stringify({
     sorted:        group.map(e => e.fileId),
     bridgeDefault: [...defaultBridgeIds(group)],
-    cliOnlyDefault: [...defaultBridgeIds([{ fileId: 'cli-a', displayName: 'A', isEngine: true, kind: 'cli', order: 1 }])],
+    cliOnlyDefault: [...defaultBridgeIds([{ fileId: 'cli-a', fullName: 'A', shortName: 'A', isEngine: true, kind: 'cli', order: 1 }])],
     bridgeFresh:       isBridgePreselected('unity-biome-mcp', null, defaultBridgeIds(group)),
     bridgeFreshOther:  isBridgePreselected('coplay-unity-mcp', null, defaultBridgeIds(group)),
     bridgeReinit:      isBridgePreselected('coplay-unity-mcp', ['coplay-unity-mcp'], defaultBridgeIds(group)),
@@ -2527,12 +2527,12 @@ if [[ "$MCP_DEFAULTS" != *'"sorted":["unity-biome-mcp","coplay-unity-mcp","zz-no
   echo "Assertion failed: sortMcpChoices should order by order asc with missing last, got: $MCP_DEFAULTS"
   exit 1
 fi
-# A fresh install checks the first MCP bridge of the package order (the old radio's order:1) and
-# nothing else; a catalog of CLI bridges alone checks nothing. A re-init mirrors the previous choice,
+# A fresh install checks only the first bridge of the package order, including a CLI bridge.
+# A re-init mirrors the previous choice,
 # and an EMPTY previous choice is not a fresh install.
 if [[ "$MCP_DEFAULTS" != *'"bridgeDefault":["unity-biome-mcp"]'* ]] \
-   || [[ "$MCP_DEFAULTS" != *'"cliOnlyDefault":[]'* ]]; then
-  echo "Assertion failed: defaultBridgeIds must give the first MCP bridge only (and nothing for CLI-only), got: $MCP_DEFAULTS"
+   || [[ "$MCP_DEFAULTS" != *'"cliOnlyDefault":["cli-a"]'* ]]; then
+  echo "Assertion failed: defaultBridgeIds must give only the first bridge regardless of kind, got: $MCP_DEFAULTS"
   exit 1
 fi
 if [[ "$MCP_DEFAULTS" != *'"bridgeFresh":true'* ]] \
@@ -2568,7 +2568,7 @@ if [[ "$MCP_DEFAULTS" != *'"parsedJunkHasPreselect":false'* ]] \
   exit 1
 fi
 
-echo "  ✓ MCP picker pre-selection: sorted by order, re-init restores both groups, a fresh install checks the first MCP bridge, preselect:false stays unchecked"
+echo "  ✓ MCP picker pre-selection: sorted by order, re-init restores both groups, a fresh install checks the first bridge, preselect:false stays unchecked"
 
 # ─────────────────────────────────────────────────────
 # Test 14c: configByPlatform resolution writes a token-free command
@@ -2750,10 +2750,10 @@ assert_not_contains "$GH_GRANTS_DIR/.claude/skills/unikit-commit/SKILL.md" 'mcp_
 echo "  ✓ GitHub MCP: eight clients get their own env reference syntax, unchecked by default, only unikit-pr granted"
 
 # ─────────────────────────────────────────────────────
-# Test 14e: the Unity CLI is checked on a fresh install only when it is found AND the project is new enough
+# Test 14e: Unity CLI is the only default; detection independently checks PATH and the engine floor
 # ─────────────────────────────────────────────────────
-# The wizard asks `detectBridge` for every bridge of the engine and checks the ones it finds, in
-# addition to the first MCP bridge. Driven here through the real catalog and the real functions of the
+# The wizard asks `detectBridge` for every bridge to label it, without changing the default selection.
+# Driven here through the real catalog and the real functions of the
 # build, on a fake PATH that holds an empty file called like the binary: nothing is executed, which is
 # exactly what the installer promises (REQ-5).
 
@@ -2781,24 +2781,24 @@ e14_selected_by_default() {
     const choices = [];
     for (const [fileId, entry] of servers) {
       if (!entry.isEngine) continue;
-      choices.push({ fileId, displayName: entry.displayName, isEngine: true, kind: entry.kind, order: entry.order });
+      choices.push({ fileId, fullName: entry.fullName, shortName: entry.fullName, isEngine: true, kind: entry.kind, order: entry.order });
       if (await detectBridge(entry, ctx)) detected.add(fileId);
     }
-    process.stdout.write([...defaultBridgeIds(choices, detected)].sort().join(','));
+    process.stdout.write(JSON.stringify({ selected: [...defaultBridgeIds(choices)], detected: [...detected] }));
   " "$project" "$on_path" 2>/dev/null)
 }
 
 E14_FOUND=$(e14_selected_by_default "$TMPDIR/test-detect-old" "$E14_BIN" "m_EditorVersion: 2022.3.45f1")
-[[ "$E14_FOUND" == "unity-biome-mcp" ]] || { echo "Assertion failed: found binary + Unity 2022.3 must NOT pre-select the CLI, got: $E14_FOUND"; exit 1; }
+[[ "$E14_FOUND" == '{"selected":["unity-cli"],"detected":[]}' ]] || { echo "Assertion failed: old Unity keeps CLI selected without a detection label, got: $E14_FOUND"; exit 1; }
 E14_NEW=$(e14_selected_by_default "$TMPDIR/test-detect-new" "$E14_BIN" "m_EditorVersion: 6000.3.22f1")
-[[ "$E14_NEW" == "unity-biome-mcp,unity-cli" ]] || { echo "Assertion failed: found binary + Unity 6000.3.22f1 must pre-select the CLI beside Biome, got: $E14_NEW"; exit 1; }
+[[ "$E14_NEW" == '{"selected":["unity-cli"],"detected":["unity-cli"]}' ]] || { echo "Assertion failed: supported Unity with the binary selects and detects only CLI, got: $E14_NEW"; exit 1; }
 E14_FLOOR=$(e14_selected_by_default "$TMPDIR/test-detect-floor" "$E14_BIN" "m_EditorVersion: 6000.0.77f1")
-[[ "$E14_FLOOR" == "unity-biome-mcp,unity-cli" ]] || { echo "Assertion failed: found binary + Unity 6000.0.77f1 (the floor) must pre-select the CLI, got: $E14_FLOOR"; exit 1; }
+[[ "$E14_FLOOR" == '{"selected":["unity-cli"],"detected":["unity-cli"]}' ]] || { echo "Assertion failed: Unity at the floor selects and detects only CLI, got: $E14_FLOOR"; exit 1; }
 E14_NOBIN=$(e14_selected_by_default "$TMPDIR/test-detect-nobin" "$TMPDIR/test-detect-empty" "m_EditorVersion: 6000.3.22f1")
-[[ "$E14_NOBIN" == "unity-biome-mcp" ]] || { echo "Assertion failed: no binary on PATH must not pre-select the CLI, got: $E14_NOBIN"; exit 1; }
+[[ "$E14_NOBIN" == '{"selected":["unity-cli"],"detected":[]}' ]] || { echo "Assertion failed: missing binary keeps CLI selected without a detection label, got: $E14_NOBIN"; exit 1; }
 E14_NOFILE=$(e14_selected_by_default "$TMPDIR/test-detect-nofile" "$E14_BIN" "")
-[[ "$E14_NOFILE" == "unity-biome-mcp" ]] || { echo "Assertion failed: a project without a version file must not pre-select the CLI, got: $E14_NOFILE"; exit 1; }
-echo "  ✓ wizard detection: CLI pre-selected only with the binary on PATH and a project at or above the floor"
+[[ "$E14_NOFILE" == '{"selected":["unity-cli"],"detected":[]}' ]] || { echo "Assertion failed: missing version file keeps CLI selected without a detection label, got: $E14_NOFILE"; exit 1; }
+echo "  ✓ wizard detection: only CLI pre-selected in every case; detection requires the binary and a project at or above the floor"
 
 # The summary of `init` prints the preparation lines of a selected bridge and the order line for two.
 E14_SUMMARY=$(cd "$ROOT_DIR" && node --input-type=module -e "
