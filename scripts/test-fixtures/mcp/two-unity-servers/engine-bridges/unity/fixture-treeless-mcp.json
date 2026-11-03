@@ -1,0 +1,16 @@
+{
+  "key": "fixture-treeless-mcp",
+  "code": "FixtureTreeless",
+  "is_engine": true,
+  "order": 2,
+  "fullName": "Fixture MCP without a rules tree",
+  "shortName": "Fixture MCP without a rules tree",
+  "docs": {
+    "context7": "/fixture/treeless",
+    "repo": "https://example.invalid/fixture-treeless"
+  },
+  "config": { "type": "http", "url": "http://127.0.0.1:9102/mcp" },
+  "allowed-tools": {
+    "skills": { "unikit-implement": ["*"], "unikit-verify": ["*"] }
+  }
+}

@@ -15,7 +15,7 @@ The role of a launch — reader, validator or executor — decides which config 
 The model and the effort are settled one after the other, each by the same three steps, and the answer for one never depends on the other. A missing config file, block or key is not an error.
 
 1. **The user's explicit word.** The user has asked for the argument in so many words, in the request that started the skill or earlier in this session: "use opus for the subagents", "launch every subagent with effort high". That value is passed as written, the effort level in lower case, to every launch of the session whatever its role. A remark about depth in general — "think deeper", "be thorough" — is not an instruction.
-2. **The config key.** `subagents.model.<agent>.<role>` or `subagents.effort.<agent>.<role>` holds a value: pass it. It holds `inherit` (in any letter case), or is present and empty: pass nothing — the subagent runs on the model, or the effort, of the agent that launches it. A key that does not hold a map of roles, such as the single value of an earlier release written under `subagents.model.<agent>`, is read as no key; a role missing from the map is no key either.
+2. **The config key.** `subagents.model.<agent>.<role>` or `subagents.effort.<agent>.<role>` holds a value: pass it. It holds `inherit` (in any letter case), or is present and empty: pass no override — the runtime applies its own default for that argument. A key that does not hold a map of roles, such as the single value of an earlier release written under `subagents.model.<agent>`, is read as no key; a role missing from the map is no key either.
 3. **No key.** The model falls back to the built-in default of the role: a reader and a validator use the default named by the pointer — pass it, and when it is `inherit` or an empty string pass nothing — and an executor uses `inherit`: pass nothing. The effort has no built-in default: pass nothing, so a project without the key behaves as it did before.
 
 ## Filling the slots
@@ -28,7 +28,7 @@ An effort level goes into the call in lower case: a level the user or the config
 
 ## A subagent that launches subagents
 
-A launch that passes no effort runs on the effort of the agent that launched it, so a subagent started by a subagent follows its launcher and not the session. A level the user named (step 1) does not reach a nested launch by itself: when the subagent you launch can launch subagents itself — it loads a skill, or it is a file agent that has the `Agent` tool — begin its prompt with one sentence, `The user asked for effort <level> for every subagent.`, and add `The user asked for model <name> for every subagent.` when a model was named. The subagent reads the sentence as the user's explicit word (step 1).
+A launch that passes no model or effort override uses the runtime's default. Where the runtime inherits from the caller, a subagent started by a subagent follows its immediate launcher, not automatically the top-level session. A level the user named (step 1) does not reach a nested launch by itself: when the subagent you launch can launch subagents itself — it loads a skill, or it is a file agent that has the `Agent` tool — begin its prompt with one sentence, `The user asked for effort <level> for every subagent.`, and add `The user asked for model <name> for every subagent.` when a model was named. The subagent reads the sentence as the user's explicit word (step 1).
 
 ## No argument to pass
 
@@ -40,8 +40,8 @@ A value that comes from a config key never prints this line: the template has no
 
 ## A launch that fails
 
-1. A call that carried an effort argument fails to launch: repeat it **once** without the effort and print `WARN [delegation] effort "<value>" rejected — retried on the session effort`. The repeat takes no effort from the request and none from the config.
-2. That repeat fails too and a model argument was passed: repeat once more without the model and print `WARN [delegation] model "<name>" rejected — retried on the session model`.
+1. A call that carried an effort argument fails to launch: repeat it **once** without the effort and print `WARN [delegation] effort "<value>" rejected — retried without the effort override`. The repeat takes no effort from the request and none from the config.
+2. That repeat fails too and a model argument was passed: repeat once more without the model and print `WARN [delegation] model "<name>" rejected — retried without the model override`.
 3. A call that carried only a model fails: repeat it once without the model and print the same model line.
 
 The runtimes refuse differently — one rejects a level outside its list before the subagent starts, another answers with an error that names the value and the model — and the rule is the same for both. A model and an effort that do not fit together (a level the chosen model lacks) is for the user to fix in the config; the repeat drops the effort and keeps the model.

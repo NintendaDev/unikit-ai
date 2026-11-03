@@ -45,6 +45,33 @@ form `YYYY-MM-DD_name`. The on-disk migration merges a folder's contents but nev
 folder itself, so a heading reading `### 2026-03-15_customer-items-on-scene` is exactly as valid
 as a dateless one; the contract does not special-case it.
 
+## `## Finding the folder`
+
+An entry carries a name, not a path, and that is what lets a research move. The address of a
+folder is stored once — where the folder lies — and every reader finds it by the same two
+steps: the live directory first, the archive second. Archiving a research therefore changes
+no plan, open or archived.
+
+Rewriting the entries was rejected for three reasons. It changes the entry format, which four
+skills and their guards depend on. It touches archived plans, which stay history: the archive
+protocol edits nothing in a plan it moves but one line. And it would still leave a window
+between the move and the rewrite in which a link points nowhere. A flag on the research
+(`archived: true` in place) and a stub left at the old place were rejected for the reason the
+move exists at all: neither makes the live folder or `researches/INDEX.md` any smaller.
+
+The archive is reported with `INFO [research]`, not `WARN [research-drift]`. The place of a
+folder says nothing about whether the plan and its source diverged, and `/unikit-verify` raises
+its gate to `warn` on every drift line — a warning for the place would taint the gate of every
+plan that links an archived research, for a fact that is neither a defect nor a decision. The
+two folders existing at once is the one case that does need a rule: the live one is read, because
+the live folder is the one a later save of `/unikit-explore` would update, and a stale copy in
+the archive must never shadow it. The line printed for that case is what lets the user remove
+the extra copy.
+
+`researches/INDEX.md` lists live researches and never the archive. A reader that resolves a
+name does not need the index, and the index exists so `/unikit-plan` and `/unikit-improve` can
+offer researches; offering an archived one would undo the archiving.
+
 ## `## What is hashed`
 
 The rule is a content signal, not a clock: hash the declared requirements, never the append-only
@@ -179,6 +206,7 @@ a period nobody actually examined.
 | `RD-F` | No skill or planner reference surface restates the contract — checked three ways: the four fixed procedure tokens are absent, no derived `WARN [...]: <text>` template is copied whole, and no 9-word run of the contract's substantive sections is reproduced (word-shingle detection, ported from `scripts/test-ultra-plan-contract.mjs`'s T17) |
 | `RD-G` | The one degradation sentence is verbatim-identical and appears exactly once in each of the four skills |
 | `RD-H` | The contract is read only within its research step's own section, never inside Bootstrap; the digest is computed at read/link time (`/unikit-plan` Step 2, `/unikit-improve` Step 1.5), never recomputed at the later write step (`/unikit-plan` Step 5, `/unikit-improve` Step 5.5) |
+| `RD-I` | The name of an entry is resolved in `researches/` first and `archive/researches/` second, in the contract only: `## Finding the folder` sits between `## The entry` and `## What is hashed`, raises no `WARN` for the place of a folder, is pointed at by `## Checking an entry` and by `/unikit-improve`, and no consuming skill names the archive path |
 | `SA-1` | Every `export async function install*` in `system-assets.ts` is called from both `init.ts` and `update.ts` — derived from the source, not a maintained name list |
 | `TC-24` | The literal `the same procedure as \`Summary SHA256\`` — the anchor `tree-sha256` shares with the contract: the digest *step* (stdin, `shasum` → `sha256sum`), never rule 0, which has no meaning for a text that is not an Active Summary |
 | `Test 1b-rl` | `research-link.md` is delivered into `.unikit/system/` (update-path coverage — this project is set up via `run_update`); carries the region marker and the canonical `WARN [research-drift]` label; is a flat copy (no unresolved `{{vars}}`) |

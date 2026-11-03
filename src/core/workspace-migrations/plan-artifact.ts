@@ -209,7 +209,7 @@ async function mergeOnePlan(folder: string): Promise<void> {
   // The three cross-axis sections are re-inserted ABOVE the separator so they
   // keep their `##` level — see PLAN_LIFTED_HEADINGS for what depends on that.
   // (This is NOT a PL-4 requirement: that guard is a pair invariant over the
-  // TEMPLATE — `## MCP Findings` immediately above `## Technical Context`, at
+  // TEMPLATE — `## Engine Bridge Findings` immediately above `## Technical Context`, at
   // most one `## Open Questions` after it — and says nothing about migrated
   // project files.)
   const { lifted, rest } = liftDesignSections(briefBody, manifestBody);

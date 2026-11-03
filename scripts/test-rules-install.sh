@@ -391,7 +391,7 @@ cat > "$S15_DIR/.unikit.json" <<EOF
 {
   "version": "$(current_project_version)",
   "engine": "unreal-engine-6",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [],
   "rulesRegistry": "$(fake_registry_path minimal-valid)",
@@ -453,7 +453,7 @@ cat > "$S16_DIR/.unikit.json" <<EOF
 {
   "version": "$(current_project_version)",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [{"id":"claude","installedSkills":["unikit","unikit-gd-spec"],"installedSubagents":[]}],
   "rulesRegistry": "$(normalize_path_for_json "$S16_FIXTURE")",
@@ -697,7 +697,7 @@ cat > "$S25_DIR/.unikit.json" <<EOF
 {
   "version": "$(current_project_version)",
   "engine": "unity",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": $SKILLS_CODE_ONLY,
   "rulesRegistry": "$(normalize_path_for_json "$S25_FIXTURE")",

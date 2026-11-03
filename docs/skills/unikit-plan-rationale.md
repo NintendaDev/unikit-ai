@@ -33,7 +33,7 @@ explore save pipeline, on the same criterion — see
 
 ## Step 0.5 — Bootstrap
 
-- **What the base section of `engine-mcp/INDEX.md` decides for planning.** It carries access,
+- **What the base section of a bridge's `INDEX.md` (`engine-bridges/<bridge>/`) decides for planning.** It carries access,
   the live failure classes, shape and cost, what is irreversible here, the lane, and what to do
   when the file is silent. An irreversible write decides where a commit boundary falls, the
   lane decides what may never run in parallel, shape and cost decide how the work splits into
@@ -42,8 +42,8 @@ explore save pipeline, on the same criterion — see
   which grep their own task's area plus the cross-cutting ones on every editor task. A plan
   that carries checks forward has started making the executor's decisions with month-old
   information.
-- **An absent `INDEX.md` is a normal path.** A server may ship no rules tree, or the project may
-  have no engine MCP at all; neither is an error.
+- **An absent `INDEX.md` is a normal path.** A bridge may ship no rules tree, or the project may
+  have no engine bridge at all; neither is an error.
 - **An absent `testing.plan.checkpoints` falls back to the mode default silently.** A project
   without a config is a normal case, and a line on every plan would turn the warning into
   wallpaper.

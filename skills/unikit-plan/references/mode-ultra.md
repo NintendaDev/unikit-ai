@@ -186,7 +186,7 @@ phase.**
 | `EDITOR TARGETS` | the phase, `### Required Interfaces and Contracts` of the task carrying the `Editor:` line |
 | `DI BINDINGS` | the phase, the task that creates the binding |
 
-`## MCP Findings`, `## Rule Candidates`, `## Test Runs`, `## Measurements`, `## Commit Plan`, `## Settings` and
+`## Engine Bridge Findings`, `## Rule Candidates`, `## Test Runs`, `## Measurements`, `## Commit Plan`, `## Settings` and
 the checkboxes live **only** in the manifest. Phase files are read-only during execution.
 
 ## Step H: Confirm with the user

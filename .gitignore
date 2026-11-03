@@ -20,3 +20,5 @@ creation-plan.md
 roadmap.md
 /.ai*
 /rules-registry
+/.agents
+/researches

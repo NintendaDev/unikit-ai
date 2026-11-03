@@ -10,6 +10,7 @@ description: >-
   unikit", "set up the project", "configure AI context", "scan my project and set it
   up", "bootstrap the project". It also actualizes the config of a project already set up —
   say "update the config", "add missing settings", "actualize configuration", "fix my config".
+  On a set-up project it offers the actions to choose from.
 argument-hint: "[project description] (optional)"
 allowed-tools:
   - Read
@@ -40,7 +41,7 @@ Set up AI agent context for a game project by:
 The architecture sub-skill is invoked **before** the summary so the summary can honestly list `.unikit/ARCHITECTURE.md` alongside the other artifacts. When `/unikit-architecture` returns, do not stop in between — immediately print the Step 11 summary in the same response.
 
 This skill is the entry point for the unikit ecosystem. It creates the foundational
-context that other unikit skills (`unikit-devcontext`, `unikit-plan`, `unikit-implement`, etc.)
+context that other unikit skills (`unikit-execute`, `unikit-plan`, `unikit-implement`, etc.)
 rely on for informed decision-making, including the canonical `.unikit/config.yaml` they all
 read at the start of every command.
 
@@ -52,10 +53,10 @@ read at the start of every command.
 
 This skill must be executed as a strict workflow, not as guidance.
 
-1. Steps are numbered 0-11; execute in order. Do not skip, merge, reorder, or compress steps unless the step explicitly says it may be skipped. **Carve-out for a mode declared in Step 0:** such a mode is entitled to finish with a STOP before Step 1, and Steps 1-11 then do not run for it at all.
+1. Steps are numbered 0-11; execute in order. Do not skip, merge, reorder, or compress steps unless the step explicitly says it may be skipped. **Carve-out for a mode declared in Step 0:** such a mode is entitled to finish with a STOP before Step 1, and Steps 1-11 then do not run for it at all. **The returning-project menu is the one mode that may hand over instead:** its **Description** branch runs Steps 1-11 in order and its **Rules** branch runs Steps 5, 6 and 9 and ends after Step 9.9; no other step is skipped or reordered inside a branch.
 2. Do not infer user answers from context when the workflow requires a question to the user.
 3. Do not substitute a recommendation, summary, or "seems fine" confirmation for a required question. A generic approval ("yes", "ok", "go ahead") only answers the immediately pending question — it does not retroactively authorize skipped selections or unanswered follow-ups.
-4. Do not create, edit, or install anything outside `.unikit/config.yaml` and `.unikit/system/LANGUAGE_RULES.md` before Step 4 is complete. After Step 4, every write must satisfy its own step's prerequisites (e.g., Step 9 rule installs require the missing-rules list from Step 9.3 and user confirmation from Step 9.4). **Narrowed for the config actualization mode:** its single writable artifact is `.unikit/config.yaml`, and `.unikit/system/LANGUAGE_RULES.md` is excluded from it explicitly — Step 3.1 is marked "Both bootstrap and merge mode" and must not be read as permission for that mode.
+4. Do not create, edit, or install anything outside `.unikit/config.yaml` and `.unikit/system/LANGUAGE_RULES.md` before Step 4 is complete. After Step 4, every write must satisfy its own step's prerequisites (e.g., Step 9 rule installs require the missing-rules list from Step 9.3 and user confirmation from Step 9.4). **Narrowed for the config actualization mode:** its single writable artifact is `.unikit/config.yaml`, and `.unikit/system/LANGUAGE_RULES.md` is excluded explicitly — Step 3.1 is marked "Both bootstrap and merge mode" and must not be read as permission for it. **Widened for two menu branches:** **Rules** writes `.unikit/memory/code/stack/` and **Environment** may install the engine package, each only after the confirmation its own text asks for (Step 9.4; `bridge-setup.md`) — they do not wait for Step 4, because they do not run it.
 5. If the environment prevents a required step (tool unavailable, file missing, subagent unreachable), stop and print `BLOCKED at Step N: <reason>`. Do not silently substitute an approximation. The one exception is the question tool of your agent (`AskUserQuestion`): its absence is not a block, the questions are then asked as `.unikit/system/user-questions.md` says.
 6. Every user-facing output of this skill is plain markdown — no HTML tags, in any step. Step 7 states the contract in full.
 
@@ -82,11 +83,11 @@ and use that model, no effort.
 
 ## Workflow
 
-**Fixed order — always.** Regardless of whether `/unikit` is invoked with or without arguments, the first three user-facing decisions are always language → git → write config. Only after `.unikit/config.yaml` exists on disk do we ask the user for a project description, load engine rules, scan, or do anything else. This guarantees that every subsequent prompt and artifact respects the user's language choice. **This fixed order describes the bootstrap flow only.** A mode declared in Step 0 stops before Step 1 and is therefore not governed by it — the Step 0 dispatch is reached before the first user-facing decision, and treating this preamble as a second gate in front of it is what makes a declared mode unreachable.
+**Fixed order — always.** Regardless of whether `/unikit` is invoked with or without arguments, the first three user-facing decisions are always language → git → write config. Only after `.unikit/config.yaml` exists on disk do we ask the user for a project description, load engine rules, scan, or do anything else. This guarantees that every subsequent prompt and artifact respects the user's language choice. **This fixed order describes the bootstrap flow only.** A mode declared in Step 0 stops before Step 1 and is therefore not governed by it — the Step 0 dispatch is reached before the first user-facing decision, and treating this preamble as a second gate in front of it is what makes a declared mode unreachable. The returning-project menu also runs outside this order: it reads `language.ui` from the existing config, and its **Rules** branch skips Steps 1-4 because language, git and the config already exist.
 
 ### Step 0: Load Existing Config (if any)
 
-Check whether `.unikit/config.yaml` already exists. This step performs **no user interaction** and parses **no arguments**. The one thing it reads besides the file is the **intent** of the prompt, and only to select the mode below: classifying intent picks a branch and never a value, so item 2 of `## Execution Contract` holds literally.
+Check whether `.unikit/config.yaml` already exists. The dispatch below asks nothing itself and parses **no arguments**; the modes it selects ask their own questions, and the menu of the returning-project branch, which lives in its own file, is the one that asks which of them to run. The one thing the dispatch reads besides the file is the **intent** of the prompt, and only to select the mode below: classifying intent picks a branch and never a value, so item 2 of `## Execution Contract` holds literally.
 
 - **If it exists** — Read it. Treat its values as the source of truth for `language.*`, `git.*`, `workflow.*`. Mark Steps 1 / 2 / 3 as "merge mode": prefer existing values, prompt only when a critical field is missing or empty.
 - **If it does not exist** — set "bootstrap mode": Steps 1 / 2 / 3 will collect values from the user / git and write a fresh `config.yaml`.
@@ -99,7 +100,9 @@ Check whether `.unikit/config.yaml` already exists. This step performs **no user
 
 There is no keyword and no argument for this mode; it is chosen by intent alone, which is why `argument-hint` does not mention it. If `.unikit/config.yaml` does **not** exist the mode never applies — there is nothing to actualize, and the ordinary bootstrap is the correct route.
 
-All unikit artifacts live under fixed default paths (`.unikit/DESCRIPTION.md`, `.unikit/ARCHITECTURE.md`, `.unikit/RULES.md`, `.unikit/memory/`, `.unikit/code/plans/`, etc.) — see `{{skills_dir}}/{{self_name}}/references/config-template.yaml` for the canonical `language` / `workflow` / `git` schema.
+**Mode dispatch — returning project.** If `.unikit/config.yaml` **exists** and the intent of the prompt is not to actualize the configuration (the mode above), load `{{skills_dir}}/{{self_name}}/references/mode-menu.md` and follow it: it shows the state of the project and offers the actions to choose from, so the full bootstrap runs only when the user picks it. On entering the mode print `INFO [config] returning-project menu`. The text of the prompt is not parsed here; the menu keeps it as it is. As with the mode above there is no keyword and no argument; if `.unikit/config.yaml` does **not** exist the mode never applies.
+
+All unikit artifacts live under fixed default paths (`.unikit/DESCRIPTION.md`, `.unikit/ARCHITECTURE.md` with its topic files in `.unikit/architecture/`, `.unikit/RULES.md`, `.unikit/memory/`, `.unikit/code/plans/`, etc.) — see `{{skills_dir}}/{{self_name}}/references/config-template.yaml` for the canonical `language` / `workflow` / `git` schema.
 
 ---
 
@@ -460,7 +463,7 @@ Knowledge base rules for the project. Located in `.unikit/memory/`.
 ## Override Priority (highest wins)
 
 1. **`.unikit/RULES.md`** and its topic files in `.unikit/rules/` — project-specific overrides (always win)
-2. **`.unikit/ARCHITECTURE.md`** — project architecture decisions
+2. **`.unikit/ARCHITECTURE.md`** and its topic files in `.unikit/architecture/` — project architecture decisions
 3. **`.unikit/memory/code/core/*.md`** — universal best practices
 4. **`.unikit/memory/code/stack/*.md`** — framework-specific knowledge
 
@@ -764,7 +767,7 @@ Generate `.unikit/DESCRIPTION.md` with content adapted to what was actually disc
 - [Notable patterns: DI lifecycle, factory pattern, event bus, etc.]
 
 ## Architecture
-See `.unikit/ARCHITECTURE.md` for detailed architecture guidelines.
+See `.unikit/ARCHITECTURE.md` (and its topic files in `.unikit/architecture/`) for detailed architecture guidelines.
 
 ## Non-Functional Requirements
 - **Platform:** [target platforms]
@@ -838,7 +841,7 @@ as the basis for the structure section, but only include directories and files t
 
 ### Step 10: Delegate Architecture Generation
 
-After Step 9 finishes, generate `.unikit/ARCHITECTURE.md` by delegating to `/unikit-architecture`. Step 11 (Print Setup Summary) runs in the same response immediately after `/unikit-architecture` returns — do not stop in between.
+After Step 9 finishes, generate or update `.unikit/ARCHITECTURE.md` by delegating to `/unikit-architecture`. Step 11 (Print Setup Summary) runs in the same response immediately after `/unikit-architecture` returns — do not stop in between.
 
 **Invariant — always via subagent:** route `/unikit-architecture` through an `Agent()` call. Never invoke it inline in this skill's own context. Architecture generation is token-heavy (ENGINE_RULES, project scan, DESCRIPTION, RULES, RULES_INDEX, existing ARCHITECTURE) and must not pollute the `/unikit` context before Step 11 runs.
 
@@ -852,7 +855,7 @@ Agent(
 )
 ```
 
-**Wait for the `Agent()` call to return** before proceeding to Step 11.
+**Wait for the `Agent()` call to return** before proceeding to Step 11. The sub-skill may ask the user (the pattern in generate, the layout offer in update); wait for it to return before Step 11.
 
 **Fallback** (only if the `Agent` tool is unavailable in the current environment): invoke `unikit-architecture` with no arguments in this skill's context (`## Skill calls`), wait for it to return, then proceed to Step 11. Unlike Step 9.8, Step 11's summary explicitly lists `.unikit/ARCHITECTURE.md` as a generated artifact — the flow must complete in the same turn, so inline execution is the mandatory fallback here.
 
@@ -864,13 +867,15 @@ After the subagent (or inline invocation) returns, immediately print Step 11 in 
 
 In the **same turn** that `/unikit-architecture` returned, print the setup summary. This is the very last action of the workflow — after it, there is nothing left to do.
 
+**Step 11.0 — bridge environment.** When `.unikit/system/engine-bridges/BRIDGES.md` exists, follow `{{skills_dir}}/{{self_name}}/references/bridge-setup.md` before the summary.
+
 ```
 Project context configured!
 
 Config file:        .unikit/config.yaml (edit to customize language, git, workflow)
 Project description: .unikit/DESCRIPTION.md
 Project map:        AGENTS.md
-Architecture:       .unikit/ARCHITECTURE.md
+Architecture:       .unikit/ARCHITECTURE.md (topic files in .unikit/architecture/, when it has any)
 Memory rules:       .unikit/memory/ (see RULES_INDEX.md)
 
 Next steps:
@@ -923,5 +928,5 @@ instead); do not gate on "gd-skills are installed" — the wizard installs all s
 ## Artifact Ownership
 
 - **Primary:** `.unikit/config.yaml`, `.unikit/DESCRIPTION.md`, `AGENTS.md`
-- **Delegated:** `.unikit/ARCHITECTURE.md` via `/unikit-architecture`
+- **Delegated:** `.unikit/ARCHITECTURE.md` (and `.unikit/architecture/`, when it has topics) via `/unikit-architecture`
 - **Read-only:** `.unikit/RULES.md`, engine project settings (per ENGINE_RULES.md)

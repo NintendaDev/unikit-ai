@@ -3,7 +3,7 @@
 Read by `/unikit-implement`, `unikit-implement-coordinator`, `unikit-implement-worker`,
 `/unikit-verify`, `/unikit-pr`, `/unikit-improve`, `unikit-plan-polisher`, `unikit-plan-coordinator`,
 `/unikit-review`, `unikit-review-sidecar`, `unikit-architecture-sidecar`, `/unikit-fix`,
-`/unikit-devcontext` and `/unikit-commit`. Each reads this file only at its own point — its pointer
+`/unikit-execute` and `/unikit-commit`. Each reads this file only at its own point — its pointer
 names that point — and only the section of its role, plus the common sections that section names.
 Every service line this contract defines carries the tag `[prototype]`.
 
@@ -22,7 +22,7 @@ and is then kept or thrown away; nothing in this contract turns it into producti
 ## Trigger and fallback
 
 - **Trigger.** The manifest has `## Experiment Context`. A role with no manifest of its own
-  (review, fix, devcontext, the sidecars) triggers by hand-off: the session was started from such a
+  (review, fix, execute, the sidecars) triggers by hand-off: the session was started from such a
   plan, or the prompt it received carries the note
   `Prototype plan: read the section for your role in .unikit/system/prototype-profile.md.`
   followed by the plan's `Branch:`, `Base:` and settings.
@@ -41,7 +41,7 @@ These stay in force for a prototype plan:
 - The interface is legible: the key elements the card (or the brief) names are readable at a glance.
 - Data integrity: nothing that already saves, loads or migrates player or project data is broken.
 - Explicit project constraints: the rules of `.unikit/RULES.md` and the written prohibitions of
-  `.unikit/ARCHITECTURE.md` are obeyed.
+  `.unikit/ARCHITECTURE.md` (the root or a loaded topic) are obeyed.
 - The card's (or the brief's) `Out of Scope` is a boundary: what it excludes is not built.
 - Existing behaviour outside the prototype is unchanged.
 - The evidence contract (Layer A of `.unikit/system/dev-principles.md`): a report never declares
@@ -133,22 +133,22 @@ These stay in force for a prototype plan:
 ## Role: quality and the rest
 
 `/unikit-review`, `unikit-review-sidecar`, `unikit-architecture-sidecar`, `/unikit-fix`,
-`/unikit-devcontext`, `/unikit-commit`.
+`/unikit-execute`, `/unikit-commit`.
 
 - **Review and the review sidecar:** report bugs, regressions, data-integrity risks, broken explicit
   constraints and an unreadable interface. Do not report a missing abstraction, missing
   extensibility, the depth of error handling, missing documentation, a `// TODO:` comment or
   roadmap linkage.
 - **The architecture sidecar:** report only a breach of a prohibition written in
-  `.unikit/ARCHITECTURE.md` or `.unikit/RULES.md`; say nothing about missing structure.
+  `.unikit/ARCHITECTURE.md` (the root or a loaded topic) or `.unikit/RULES.md`; say nothing about missing structure.
 - **`/unikit-fix`:** a fix inside a prototype plan follows `## Softened`; `TODO.md` is not ticked
   (Step 7.3); a regression test (Step 5) is suggested only when the plan says `Testing: yes`. The
   prompt of a `develop-agent` it launches carries the same note as the coordinator's workers do.
-- **`/unikit-devcontext`:** applies `## Softened` and skips the documentation-update and TODO parts
+- **`/unikit-execute`:** applies `## Softened` and skips the documentation-update and TODO parts
   of the conventions it reads.
 - **`/unikit-commit`:** skips the roadmap-alignment suggestion of its context check; its architecture
-  check reports only a breach of a prohibition written in `.unikit/ARCHITECTURE.md` or
-  `.unikit/RULES.md`; the message is written as usual.
+  check reports only a breach of a prohibition written in `.unikit/ARCHITECTURE.md` (the root or a
+  loaded topic) or `.unikit/RULES.md`; the message is written as usual.
 
 ## Not this contract
 

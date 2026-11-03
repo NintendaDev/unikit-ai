@@ -65,7 +65,7 @@ await group('R', async () => {
     console.log(`  R: ${keys.length} registry target(s) scanned`);
 
     assertTrue('R1 the registry is not empty', keys.length > 0, 'registry has no skill targets');
-    assertEq('R1 the registry lists 35 skills', keys.length, 35);
+    assertEq('R1 the registry lists 37 skills', keys.length, 37);
     assertTrue(
         'R1 every skill offers exactly the point "bootstrap"',
         keys.every(key => JSON.stringify(registry.skills[key]) === '["bootstrap"]'),
@@ -452,7 +452,7 @@ async function writeExt(tmp, name, injectionsList, files = {}) {
     return { name, source: 'test', version: '1.0.0' };
 }
 
-const runPass = (tmp, agents, extensions) => applyExtensionInjections({ projectDir: tmp, engine: 'unity', engineMcpKey: null, agents, extensions });
+const runPass = (tmp, agents, extensions) => applyExtensionInjections({ projectDir: tmp, engine: 'unity', mcpBridgeCode: null, agents, extensions });
 const pointFor = (id, over = {}) => ({ id, target: 'unikit-plan', point: 'bootstrap', file: `inj/${id}.md`, ...over });
 const outcomeById = (report, id) => report.outcomes.find(o => o.id === id);
 const exists = async (p) => fs.access(p).then(() => true, () => false);
@@ -659,7 +659,7 @@ await group('P', async () => {
 
     // P14 — the renderer on its own.
     {
-        const ctx = { agent: CLAUDE, engine: 'unity', engineMcpKey: null, target: 'unikit-plan', referenceBaseDir: 'x/y', referenceNames: new Set() };
+        const ctx = { agent: CLAUDE, engine: 'unity', mcpBridgeCode: null, target: 'unikit-plan', referenceBaseDir: 'x/y', referenceNames: new Set() };
         const unresolved = renderExtensionText('{{ext_reference:a.md}} and {{ext_reference:b.md}} and {{ext_reference:a.md}}', ctx, 'block');
         assertEq('P14 unresolved names are listed once, in order', unresolved.ok ? 'ok' : `${unresolved.reason}:${unresolved.detail}`, 'reference-unresolved:a.md, b.md');
         const marker = renderExtensionText('x <!-- unikit-ext:a:b:c:d:start --> y', ctx, 'block');
@@ -742,7 +742,7 @@ await group('I', async () => {
         const planFile = await writeSkill(tmp, '.claude/skills', 'unikit-plan');
 
         const input = {
-            projectDir: tmp, engine: 'unity', engineMcpKey: null, agents: [CLAUDE],
+            projectDir: tmp, engine: 'unity', mcpBridgeCode: null, agents: [CLAUDE],
             extensions: [{ name: 'ext-a', source: 'x', version: '1.0.0' }, { name: 'ghost', source: 'x', version: '1.0.0' }],
         };
         const restored = await reinstallExtensionAssets(input);

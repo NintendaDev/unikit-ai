@@ -11,6 +11,8 @@ is behaviourally harmless — every reader carries its own default — so what t
 is **discoverability of the knob**, not broken behaviour. Say so in the report rather than
 implying the project was misconfigured.
 
+When the returning-project menu (mode-menu.md) hands over to this mode it has already carried out Phases A and B: start at Phase C with the result it kept.
+
 ## Capability contract
 
 This mode **writes only `.unikit/config.yaml`**, and only through a targeted `Edit` —

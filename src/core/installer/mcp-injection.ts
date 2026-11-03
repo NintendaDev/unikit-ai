@@ -11,17 +11,23 @@ import { injectToolsIntoSkillFrontmatter, injectToolsIntoAgentFrontmatter } from
 import type { McpAllowedTools } from '../mcp.js';
 import { resolveSkillPaths } from './hashing.js';
 
+/**
+ * @param managedPrefixes the prefixes of the entries the installer owns (`collectManagedGrantPrefixes`):
+ *                        only an entry that starts with one of them is removed when the selection no
+ *                        longer grants it.
+ */
 export async function injectMcpRules(
   projectDir: string,
   installedAgents: AgentInstallation[],
   allowedTools: McpAllowedTools,
+  managedPrefixes: readonly string[],
 ): Promise<void> {
   // Inject into subagent files
   for (const [agentName, tools] of Object.entries(allowedTools.agents)) {
     for (const agent of installedAgents) {
       const filePath = path.join(projectDir, agent.subagentsDir, agentName + '.md');
       if (await fileExists(filePath)) {
-        await injectToolsIntoAgentFrontmatter(filePath, tools);
+        await injectToolsIntoAgentFrontmatter(filePath, tools, managedPrefixes);
       }
     }
   }
@@ -32,7 +38,7 @@ export async function injectMcpRules(
       const sourceSkillDir = path.join(getSkillsDir(), skillName);
       const paths = resolveSkillPaths(projectDir, agent.skillsDir, agent.id, skillName, sourceSkillDir);
       if (await fileExists(paths.targetSkillFile)) {
-        await injectToolsIntoSkillFrontmatter(paths.targetSkillFile, tools);
+        await injectToolsIntoSkillFrontmatter(paths.targetSkillFile, tools, managedPrefixes);
       }
     }
   }

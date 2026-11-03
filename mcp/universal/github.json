@@ -1,7 +1,8 @@
 {
   "key": "github",
   "code": "github",
-  "displayName": "GitHub (pull requests)",
+  "fullName": "GitHub (pull requests)",
+  "shortName": "GitHub",
   "preselect": false,
   "docs": {
     "repo": "https://github.com/github/github-mcp-server"

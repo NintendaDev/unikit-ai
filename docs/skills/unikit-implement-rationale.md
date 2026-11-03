@@ -30,14 +30,14 @@ explore save pipeline, on the same criterion — see
 ## Step 1.5 — Bootstrap
 
 - **The knowledge base is loaded once, before the first task.** This replaced per-task
-  delegation to `/unikit-devcontext` for sequential work.
+  delegation to `/unikit-execute` for sequential work.
 - **A notes header naming another server is a warning, and the entries still apply.** They are
   suspect, not void, and a suspect check still fails safe. Retiring them belongs to
-  `/unikit-mcp-audit`, never to this skill.
+  `/unikit-bridge-audit`, never to this skill.
 
 ## Step 3 — Execute
 
-- **Sequential tasks never go through `Skill(unikit-devcontext)`.** Invoking it per task
+- **Sequential tasks never go through `Skill(unikit-execute)`.** Invoking it per task
   defeats the rules-loading optimization: the rules are already in context from Step 1.5 and
   Step 3.0.
 - **A `⏸️ MANUAL` task is written `- [x]`.** The checkbox must be `[x]` so Step 2 does not pick
@@ -63,6 +63,10 @@ explore save pipeline, on the same criterion — see
   valve, the filter — and a repeat after red recomputes it once over all the changed files. When
   the dependent modules cannot be determined with confidence, one wide run costs less than two
   narrow ones.
+- **A run that a bridge cannot do in one launch is one launch per part, and a part still going
+  is not green.** The boundary is the bridge's, not this file's; the scope is still closed whole
+  first, each part is launched once, and a repeat after red repeats the same launches. A success
+  flag on an answer that names a part running in the background is half a result.
 - **The safety valve is a key, default 30 % of the suites.** A filter that names most of the
   project costs more than one full run, and assembling it is the more error-prone half. The
   skill says the threshold is assigned, not measured, so the next reader does not take it for a
@@ -95,7 +99,7 @@ explore save pipeline, on the same criterion — see
 - **A red run has one reporter — the Step 3.3 blocker.** Two places printing one failure drift
   apart.
 - **A test-checkpoint task is ticked by the `Edit` that records its run.** One write surface,
-  one `Edit` — the rule `## MCP Findings` is written by as well.
+  one `Edit` — the rule `## Engine Bridge Findings` is written by as well.
 - **Why the test-run block is a reference** (`skills/unikit-implement/references/test-runs.md`).
   Its gate, `Testing: yes`, is known at plan load, before the context fills: a plan without
   tests never pays for the ~10 KB, and a plan with tests pays at the cheapest moment of the run.
@@ -147,11 +151,11 @@ explore save pipeline, on the same criterion — see
   deletion.** The folder manifest shares the name `PLAN.md` with the flat fast plan and differs
   from it only by path.
 
-## 5.5 — MCP Findings handoff
+## 5.5 — Engine Bridge Findings handoff
 
 - **No rows means silence.** A run with no findings is the ordinary case, and a line announcing
   it every time is how a signal becomes wallpaper.
-- **The explicit plan path** is what makes `/unikit-mcp-trap` read this plan and nothing else —
+- **The explicit plan path** is what makes `/unikit-bridge-trap` read this plan and nothing else —
   see that skill's `## Input`.
 - **The step sits before review and commit.** The findings are the part of a run's result with
   no other keeper: the code is in git, the tasks are in the plan, and a finding lives only in a

@@ -314,7 +314,7 @@ await group('U', async () => {
 await group('W', async () => {
     const dir = await project({ '.agents/skills/community-skill/SKILL.md': 'community\n' });
     const skills = ['unikit', 'unikit-plan'];
-    const install = (agentId) => installSkills({ projectDir: dir, skillsDir: '.agents/skills', skills, agentId, engineId: 'unity', engineMcpKey: null });
+    const install = (agentId) => installSkills({ projectDir: dir, skillsDir: '.agents/skills', skills, agentId, engineId: 'unity', mcpBridgeCode: null });
     try {
         await install('antigravity');
         assertTrue('W1 setup: Antigravity wrote its guardrails file', await exists(path.join(dir, '.agents/rules/unikit.md')));

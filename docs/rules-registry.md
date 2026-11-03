@@ -258,7 +258,7 @@ Reconcile disk state with `.unikit.json` and regenerate `RULES_INDEX.md`. Run af
 
 Flags are composable:
 
-- `--replace` - overwrite registry-sourced rules at the same version AND rules with local modifications. Without it, same-version and locally-modified rules are skipped with a WARN event.
+- `--replace` - overwrite existing rules at the same version AND rules with local modifications. Ordinary version sync skips equal versions; accepted active provider rules also compare source, body and reference bytes as described below. Local modifications are skipped with a WARN event unless replacement is requested.
 - `--prune` - remove obsolete stack rules that vanished from the registry manifest. Scoped to stack (core rules are whitelist-governed and never pruned automatically).
 
 ```bash
@@ -271,6 +271,8 @@ Sync runs in three phases (shared with `unikit-ai update`):
 
 1. **Phase 1 - disk/state reconciliation.** Untracked `.md` files found under `.unikit/memory/<module>/<tier>/` are tagged `source: local`; entries missing from disk are dropped from state. IDs are compared case-insensitively so legacy `CODE-STYLE` and canonical `code-style` never double-register.
 2. **Phase 2 - registry sync.** Each rule with `source: "registry"` is compared to the manifest version. Newer registry versions replace the installed file; equal versions and locally-modified files are skipped unless `--replace` is set. If the registry version is LOWER than the installed version, sync emits a `phase2:downgrade` log line and still applies the change under `--replace` - so accidental rollbacks are never silent.
+
+   **Accepted MCP / bridge rules.** For active provider ids accepted in `rules.providerSelection`, sync resolves the complete rule bundle per id through primary → official → bundled. It compares origin, version, body hash and reference bytes, so a recovered preferred source can refresh an unchanged rule at the same version. Edited bodies remain protected by the installation hash unless `--replace` is explicit. A missing file or state entry is never installed by sync, even with `--replace --prune`. A temporary missing bundle does not let `--prune` remove an accepted provider rule. Other code/gamedesign resolution is unchanged.
 
    **Override retention.** In a `per-id-merge` module (`gamedesign`), a rule installed with `origin: primary` - a deliberate studio override - is **never** auto-updated back to the canonical official or bundled version, even when the versions differ. Sync logs `phase2:override-retained` and leaves the file alone. Only an explicit `--replace` overwrites it. Overrides do not silently expire.
 3. **Phase 3 - index regeneration.** `.unikit/memory/RULES_INDEX.md` is rebuilt from registry metadata with a disk fallback for user-added rules. Runs on every sync, regardless of flags.
@@ -373,6 +375,8 @@ Tracks every rule installed into `.unikit/memory/`:
 
 Entries are keyed **by module, then by tier** — `modules.code.{core,stack}` and `modules.gamedesign.{core,library}`. A pre-2.0.0 config carrying the flat `installed.core` / `installed.stack` form is still read and wrapped under the `code` module on load.
 
+`rules.providerSelection` is a separate optional `fileId → boolean` map for automatic MCP / bridge rule choices. Missing is undecided, `false` is a persistent refusal, and `true` records acceptance; none of these replaces the installed-file inventory. `init` offers every available row checked, while terminal `update` asks only about new/missing accepted or undecided rules. Non-TTY update leaves them pending. Explicit `rules install <id>` still works after a refusal. See [Configuration](configuration.md#bridge-order-routing-and-the-rule-of-a-bridge) for cleanup and protection of user edits.
+
 **Fields per rule entry:**
 
 | Field | Type | Description |
@@ -408,6 +412,8 @@ Legacy `string[]` entries (e.g. `"core": ["code-style"]`) are automatically norm
 ### During `unikit-ai init`
 
 The wizard interactively asks whether to connect a custom registry (confirm → URL input → validate → retry/skip loop). A confirmed, valid URL is stored in `.unikit.json.rulesRegistry`. If declined or skipped, the official URL is written instead.
+
+After provider selection, a separate checkbox offers only installable MCP / bridge rule bundles. The body, references, version and origin all come from one source, and the checked payload is reused for installation. Cancelling does not record refusals or run rule cleanup; confirming no rows declines the offered rules.
 
 ### After init
 
@@ -470,7 +476,7 @@ scripts/
 │   ├── gamedesign/                      # Game-design module fixtures (incl. the defective-gdd corpus)
 │   ├── cross-module-collision/          # One id present in two modules → ambiguous `rules show`
 │   ├── offline-official/                # Valid but module-less manifest - keeps the official level offline
-│   └── mcp/                             # Fake MCP catalogs for installer behaviour tests (UNIKIT_MCP_DIR)
+│   └── mcp/                             # Fake MCP catalogs for installer behaviour tests (UNIKIT_MCP_DIR, UNIKIT_BRIDGES_DIR)
 ├── test-rules-list.sh                   # `rules list` - all-modules blocks, flat-all/flat-single JSON, exit codes, --engine override
 ├── test-rules-show.sh                   # `rules show` - module-agnostic lookup, id normalization, --references expansion
 ├── test-rules-status.sh                 # `rules status` - populated state, registryKind, --check-updates guard
@@ -557,5 +563,5 @@ bash scripts/test-exit-codes.sh           # Matrix guard (reads the other files)
 ## See Also
 
 - [Configuration](configuration.md) - full `.unikit.json` schema and project config surface
-- [Dynamic Memory](dynamic-memory.md) - how pipeline skills Bootstrap installed rules, and how `/unikit-devcontext` and `/unikit-memory` consume them at runtime
+- [Dynamic Memory](dynamic-memory.md) - how pipeline skills Bootstrap installed rules, and how `/unikit-execute` and `/unikit-memory` consume them at runtime
 - [Extensions](extensions.md) - the sibling mechanism for shipping skill/subagent content outside the npm package

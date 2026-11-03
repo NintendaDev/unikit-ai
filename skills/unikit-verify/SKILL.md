@@ -51,9 +51,7 @@ Do not announce, confirm, or mention the language setting.
 
 ---
 
-## Delegation agents
-
-This skill uses named delegation aliases for `Agent(...)` calls. A skill-loading alias expands to an `Agent(...)` invocation whose prompt makes the subagent load the skill; a reconnaissance alias expands to a read-only dispatch. Each alias is the single place where its delegate's agent type and call arguments are declared — call sites name the alias and never carry a type or a model argument of their own.
+## Subagent launches
 
 **Subagent arguments.** Before the first subagent you launch, read `.unikit/system/subagent-arguments.md`
 and `.unikit/config.yaml` once and settle the model and effort of every launch as that file says.
@@ -63,6 +61,10 @@ If the file cannot be read, print
 `WARN [delegation] subagent-arguments contract missing — built-in model tier used, effort not passed`
 and use that model, no effort.
 
+## Delegation agents
+
+This skill uses named delegation aliases for `Agent(...)` calls. A skill-loading alias expands to an `Agent(...)` invocation whose prompt makes the subagent load the skill; a reconnaissance alias expands to a read-only dispatch. Each alias is the single place where its delegate's agent type and call arguments are declared — call sites name the alias and never carry a type or a model argument of their own.
+
 `develop-agent` carries no model argument.
 
 - **`develop-agent`** — used ONLY for fixes that span many independent files OR require extensive codebase exploration. Default fixes are applied inline by this skill using rules loaded in Step 0.2 Bootstrap. Expands to:
@@ -70,7 +72,7 @@ and use that model, no effort.
   ```
   Agent(
     {{agent_call_worker_quoted}}
-    prompt: "{{agent_skill_call:unikit-devcontext}} <fix details>",
+    prompt: "{{agent_skill_call:unikit-execute}} Delegated hand-off: <fix details>",
     description: "Apply fix"
   )
   ```
@@ -181,7 +183,7 @@ Check if `--strict` is in `$ARGUMENTS`. If yes — enable strict mode (see Stric
 - Read the **plan manifest** — `.unikit/code/plans/<folder>/PLAN.md` for a folder plan, `.unikit/code/PLAN.md` for a flat fast-mode plan. In fast and full one file carries everything: `## Overview`, `## Settings`, the `## Checklist` with phases, dependencies and completion status, and `## Technical Context` (constraints, interfaces, key patterns, dependency graph, files, editor targets, DI bindings). **In an ultra bundle it does not:** the manifest carries the checklist and only the cross-phase part of `## Technical Context`, while every task's own detail lives in its phase file — the reading depth is stated in `.unikit/system/ultra-plan-read.md`. For the full section list see `{{skills_dir}}/unikit-plan/references/TASK-FORMAT.md` → *Plan Manifest Template*; it is not restated here.
 - If the manifest has a `## Based on` section pointing to a research, do **NOT** read that research's `RESEARCH.md` as a substitute for the plan's own context. The plan's `## Technical Context` is authoritative and supersedes the research summary (`/unikit-plan`: it was synthesized from the research and then verified against the code). The research is read for **one** purpose only — the drift check below.
 - Read **`.unikit/DESCRIPTION.md`** — project specification, tech stack
-- Read **`.unikit/ARCHITECTURE.md`** — project structure, dependency rules, modules, namespace conventions
+- Read **`.unikit/ARCHITECTURE.md`** — project structure, dependency rules, modules, namespace conventions. **Architecture topics:** the root now; then the topic files listed under its `## Topics` whose `Load when` matches a file the plan's tasks changed — their `Files:` lines and the diff under verification; when unsure, load (`RULES_INDEX.md` → Step 1). A listed file that is missing is reported in 3.4.
 - Read **`.unikit/ROADMAP.md`** (if present) — strategic milestones for alignment checks
 
 **Research drift check** — only when `## Based on` has at least one entry. Read `.unikit/system/research-link.md` now, and only now, and run its `## Checking an entry` against every entry. Name it and follow it; never restate it here — one contract, one place.
@@ -193,7 +195,7 @@ Check if `--strict` is in `$ARGUMENTS`. If yes — enable strict mode (see Stric
 Every `WARN [research-drift]` line reaches the Step 4 report **and** the `unikit-gate-result` block — otherwise it is lost with the session. The gate level is `warn`, **never** `fail`: source drift does not make the implementation wrong, it makes it debatable, and the decision is the user's.
 
 **Parse `## Settings`** from the plan while it is open here — Step 1 needs it and runs long before the `Docs:` read in Step 3:
-- `Editor tasks: mcp | manual | direct` — the mode `/unikit-implement` used. Context for Step 1: under `manual`, editor targets are expected to be marked `⏸️ MANUAL` rather than implemented.
+- `Editor tasks: engine-bridge | manual | direct` (the 2.x spelling `mcp` is read as the same value) — the mode `/unikit-implement` used. Context for Step 1: under `manual`, editor targets are expected to be marked `⏸️ MANUAL` rather than implemented.
 - `Test checkpoints: task | phase | plan` — the run placement the planner recorded. Context for Step 2.2: under `phase` and `plan` there are no runs among the `### Verification` commands — they live in test-checkpoint tasks. **Line absent under `Testing: yes` → the plan is legacy:** placement was never declared, and runs may sit anywhere in the task text. Under `Testing: no` the line is omitted by design, and there are no runs to place.
 
 **`## Rule Candidates` holds at least one `open` row** → read `{{skills_dir}}/{{self_name}}/references/rule-candidates.md` now, once — Step 5 follows it. No `open` row → do not read it here.
@@ -212,25 +214,25 @@ Bootstrap loads coding rules and principles ONCE upfront so Step 4.3 fixes can b
 
 Stack rules are loaded on-demand if Step 4.3 fixes reveal framework-specific issues.
 
-**Engine-MCP rules (conditional, engine-neutral) — once per session, zero calls:**
+**Engine-bridge rules (conditional, engine-neutral) — once per session, zero calls:**
 
-5. `.unikit/system/engine-mcp/INDEX.md`, **base section only** — the delivery stamp (`server:`) plus every section **except** the `## Check` table — access, the live failure classes, shape and cost, what is irreversible, the lane, and what to do when the file is silent. Those are the exceptions that hold for every target here. **Do not read the `## Check` table now** — it is grepped per editor target, by area (Step 1).
-6. `.unikit/MCP-RECHECK-NOTES.md`, **header only** (`server:` / `audited:`) — this project's own accumulated findings. Compare that header against the delivery stamp from item 5. On a mismatch print exactly one line and **apply the entries anyway**:
+5. `.unikit/system/engine-bridges/BRIDGES.md` — the whole file (one short block per bridge) — and, for **each** bridge whose block names a rules tree, that tree's `.unikit/system/engine-bridges/<bridge>/INDEX.md`, **base section only**: the stamp under the title (the `bridge` row) plus every section **except** the `## Check` table — access, the live failure classes, shape and cost, what is irreversible, the lane, and what to do when the file is silent. Those are the exceptions that hold for every target here. **Do not read the `## Check` table now** — it is grepped per editor target, by area (Step 1). Also read `.unikit/bridges.yaml` (the bridge order) and, when it exists, `.unikit/bridge-routing.md` (the routing rules); a missing order file means the default order `BRIDGES.md` states, a missing routing file means no routing rules.
+6. For each bridge listed in `BRIDGES.md`: `.unikit/bridge-notes/<bridge>.md`, **header only** (`bridge:` / `audited:`) — this project's own accumulated findings, and they apply to that bridge only. Compare the header against the bridge the file is named for. On a mismatch print exactly one line and **apply the entries anyway**:
 
    ```
-   WARN [engine-mcp] notes header ≠ configured server (<notes> ≠ <configured>)
+   WARN [bridges] notes header ≠ bridge (<header> ≠ <bridge>)
    ```
 
-   The entries are *suspect*, not void, and a suspect check still fails safe. Retiring them belongs to `/unikit-mcp-audit`.
-7. `.unikit/system/engine-mcp/verification.md` — **this skill and no other reads it.** It is the per-gate calibration for the configured server: for each gate, whether it is reachable and **what class of evidence closes it**. It grants nothing and lifts nothing (see the gate rule in Step 2); it tells you which observation counts.
+   The entries are *suspect*, not void, and a suspect check still fails safe. Retiring them belongs to `/unikit-bridge-audit`.
+7. For each such bridge, `.unikit/system/engine-bridges/<bridge>/verification.md` — **this skill and no other reads it.** It is the per-gate calibration for that bridge: for each gate, whether it is reachable and **what class of evidence closes it**. It grants nothing and lifts nothing (see the gate rule in Step 2); it tells you which observation counts. When `BRIDGES.md` lists a bridge, also read `{{skills_dir}}/{{self_name}}/references/bridge-gates.md` now, once.
 
 **Any of them absent → skip it, print one line, and continue with every right you had:**
 
 ```
-MCP rules: no INDEX.md — no known exceptions for this server, rights unchanged
+Bridge rules: <bridge> has no INDEX.md — no known exceptions for it, rights unchanged
 ```
 
-No rules means no known exceptions, never no capabilities. Absence never disables the engine MCP and never turns a target into `⏸️ MANUAL` (`.unikit/system/dev-principles.md` → **A9**), and it never lifts a gate — a missing calibration leaves every gate in force.
+No rules means no known exceptions, never no capabilities. Absence never disables an engine bridge and never turns a target into `⏸️ MANUAL` (`.unikit/system/dev-principles.md` → **A9**), and it never lifts a gate — a missing calibration leaves every gate in force.
 
 **Read `.unikit/skill-context/unikit-verify/SKILL.md`** — MANDATORY if the file exists.
 
@@ -306,14 +308,14 @@ Launch one Explore task per audited phase. For each phase, provide:
 - Instructions: find implementing code using Glob/Grep, read key files, confirm completeness (not a stub), report status per task with file paths
 - Instructions: **skip any task carrying an `Editor:` line or a `PR checkpoint:` line, or — in a plan with `## Balance Context` — a `Measure:` line or a `Hand-back:` line — do not mark it `NOT FOUND`.** It is verified in the main context (see below).
 
-**Editor targets are excluded from the Explore fan-out.** A task with an `Editor:` line changed the editor's serialized state; there is nothing in the sources to find, so an Explore agent would honestly return `❌ NOT FOUND` and block correctly completed work. The subagents also have no engine tools — the `allowed-tools` grants in `mcp/*.json` are issued to `unikit-verify`, not to its children. So:
+**Editor targets are excluded from the Explore fan-out.** A task with an `Editor:` line changed the editor's serialized state; there is nothing in the sources to find, so an Explore agent would honestly return `❌ NOT FOUND` and block correctly completed work. The subagents also have no engine tools — the grants of the engine bridge catalog are issued to `unikit-verify`, not to its children. So:
 
-- **Editor tasks stay in this skill's own context** and are verified by **reading the editor state back through the engine MCP**, never with Glob/Grep. The per-kind checks are engine knowledge — see `{{skills_dir}}/{{self_name}}/references/ENGINE_RULES.md` → `## Editor Target Checks`.
-- **The file exists but carries no `## Editor Target Checks` section** → a normal A9 degradation, not a dead end. Verify the target anyway: close it with an evidence class from `.unikit/system/dev-principles.md` (A2, and D3 when the first route is unavailable), reading the project's own rules in `.unikit/system/engine-mcp/` first. This is **never** `Engine MCP unavailable` and **never** `⏸️ MANUAL` — a missing section means the per-kind signals were not written down for this engine yet, never that the affordance is absent.
+- **Editor tasks stay in this skill's own context** and are verified by **reading the editor state back through an engine bridge** (`references/bridge-gates.md` → Editor targets), never with Glob/Grep. The per-kind checks are engine knowledge — see `{{skills_dir}}/{{self_name}}/references/ENGINE_RULES.md` → `## Editor Target Checks`.
+- **The file exists but carries no `## Editor Target Checks` section** → a normal A9 degradation, not a dead end. Verify the target anyway: close it with an evidence class from `.unikit/system/dev-principles.md` (A2, and D3 when the first route is unavailable), reading the project's own rules in `.unikit/system/engine-bridges/` first. This is **never** “no engine bridge available” and **never** `⏸️ MANUAL` — a missing section means the per-kind signals were not written down for this engine yet, never that the affordance is absent.
 - **Verify against the editor, never against the plan.** The acceptance criterion is closed by what the editor reports now, not by what the plan said would happen and not by what the implementation report claimed. Re-reading the plan's own words back is not verification: it makes a planning error invisible, because the two sides of the comparison have the same author.
 - **Per target, before the read-back:** steps 1–3 of `.unikit/system/dev-principles.md` → **D6** — candidates from the live catalog by intent, their schemas, the `## Check` tables grepped by area. No matching line changes nothing: an absent exception is not an absent capability (A9).
-- **A call that misled you is a finding** (`dev-principles.md` → **D7**): a candidate line in the verification report and a row in the plan's `## MCP Findings` table, written on the pass over the target that produced it, never in the verification summary — `observed` is the date you observed it (`Bash(date *)`). **Never write `.unikit/MCP-RECHECK-NOTES.md` from here.**
-- **MCP unavailable** → `⏭️ SKIPPED (editor target, MCP unavailable)`. Not a failure.
+- **A call that misled you is a finding** (`dev-principles.md` → **D7**): a candidate line in the verification report and a row in the plan's `## Engine Bridge Findings` table, written on the pass over the target that produced it, never in the verification summary — `observed` is the date you observed it (`Bash(date *)`), `bridge` the id of the bridge the call went through. A table in the 2.x form is converted first (`TASK-FORMAT.md` → `### Engine bridge findings section`). **Never write `.unikit/bridge-notes/<bridge>.md` from here.**
+- **No engine bridge available** → `⏭️ SKIPPED (editor target, no engine bridge available)`. Not a failure.
 - **Task marked `⏸️ MANUAL` in the plan** → `⏸️ MANUAL`. Not a blocker: the user took it on deliberately. Report the target so it stays visible.
 
 **A PR checkpoint task is excluded from the fan-out too** — it leaves nothing in the project. Its status comes from its checkbox (`{{skills_dir}}/unikit-plan/references/TASK-FORMAT.md` → `### PR checkpoint task grammar`): `[x] … → PR <sha>` → `✅ COMPLETED` (boundary `<sha>`); a `⏭️ MERGED` label → `⏭️ SKIPPED` (merged into task N.M, or — the last one — into the PR after verification); `[ ]` without a label → `⏭️ SKIPPED` (not reached). A PR checkpoint never produces a blocker in the `unikit-gate-result` block — it is a process step, not an implementation.
@@ -348,7 +350,7 @@ Statuses:
 - `✅ COMPLETED` — all requirements confirmed in code
 - `⚠️ PARTIAL` — partially implemented, something missing
 - `❌ NOT FOUND` — implementation not found
-- `⏭️ SKIPPED` — task was intentionally skipped by the user, or an editor target could not be read back (`⏭️ SKIPPED (editor target, MCP unavailable)`)
+- `⏭️ SKIPPED` — task was intentionally skipped by the user, or an editor target could not be read back (`⏭️ SKIPPED (editor target, no engine bridge available)`)
 - `⏸️ MANUAL` — an editor target the user took on themselves (`Editor tasks: manual`); reported, never a blocker
 - `⏳ AWAITING RESULT` — a measurement waiting for its result; pending, never a blocker in normal mode
 - `➖ NOT EXECUTED` — a `- [ ]` task of an unfinished plan; not audited, not a blocker
@@ -357,26 +359,16 @@ Statuses:
 
 ## Step 2: Code Quality Verification
 
-**Gate calibration — `.unikit/system/engine-mcp/verification.md` (read in Step 0).**
-
-Step 2.1 and the strict-mode run of Step 2.2 each have a bail-out branch for "engine MCP unavailable". That is not the only way a gate can fail to close: the tool may be reachable while the *capability* is not — a run that starts and never reports, a validator that answers clean by construction. Three outcomes, and only three:
-
-- **MCP unavailable** — MCP server `{{engine_mcp_tool}}` itself is not reachable → skip with the wording given in the step.
-- **Gate closed** — the gate produced the class of evidence `verification.md` names for it → report it passed, on that evidence and no other.
-- **`GATE LIFTED`** — **a verdict this skill produces, never a line it reads.** `verification.md` pre-declares nothing: it says which gates are reachable and what proves them. A gate is lifted only when you **tried it, found no affordance, and can present the evidence of that absence** — then skip it and note the reason as the observation that established it, not as `engine MCP unavailable`. Do not substitute another tool for a lifted gate, and never report it as passed.
-
-A gate marked **partly** reachable is not lifted in advance either: attempt it, and lift only the half that produced evidence of absence.
-
-If `verification.md` does not exist, **every gate applies in full.** A missing calibration is a missing hint, not a missing obligation (`dev-principles.md` → A9).
+**Gate calibration — the `verification.md` of each bridge (read in Step 0).** Follow `{{skills_dir}}/{{self_name}}/references/bridge-gates.md` for every gate of this step. A gate ends in one of three outcomes, and only these: **closed**, **`GATE LIFTED`** — a verdict this skill produces, never a line it reads, reached only after the gate was tried on every bridge that was available — and **no engine bridge available**. A gate marked **partly** reachable is not lifted in advance either: attempt it, and lift only the half that produced evidence of absence. A bridge with no `verification.md` leaves every gate in full for it (`dev-principles.md` → A9).
 
 ### 2.1 {{engine_name}} Compile Check
 
-Use MCP server `{{engine_mcp_tool}}` to check that the project compiles after implementation:
-- Refresh/recompile the project through MCP server `{{engine_mcp_tool}}`
+Check that the project compiles after implementation — gate **compilation** of `references/bridge-gates.md`, through each available bridge in the D3 order until one closes it:
+- Refresh/recompile the project through that bridge
 - Check the {{engine_name}} console for compilation errors
 - If errors found — display them with `file:line` references
-- If MCP server `{{engine_mcp_tool}}` is unavailable — skip and note: `Compilation check: engine MCP unavailable, skipped`
-- If the compile gate is attempted and no affordance answers it — **GATE LIFTED**, skip and note: `Compilation check: gate lifted — <the observation that established it>`
+- No bridge available — skip and note: `Compilation check: no engine bridge available, skipped`
+- The gate is attempted on every available bridge and no affordance answers it — **GATE LIFTED**, skip and note: `Compilation check: gate lifted — <the observation that established it>`
 
 ### 2.2 {{engine_name}} Test Evidence
 
@@ -416,9 +408,9 @@ Options:
 ```
 
 - A non-interactive run, or a reply that picks neither option → no answer, and no run.
-- **Run the full suite now** → run every test in the project, in one run, through MCP server `{{engine_mcp_tool}}`, and wait for the result. Green — a readable result with a test count above zero, the bar `verification.md` names for this gate — → by one `Edit`, append `<date> · plan · all tests, /unikit-verify --strict · passed N/N · tree-sha256 <hash>` to `## Test Runs` and rewrite its anchor line as `Full run: <date> · all tests · passed N/N · tree-sha256 <hash>`; `<date>` from `Bash(date *)`, `<hash>` by the command of item 3. This edit touches `## Test Runs` and nothing else in the manifest. Red → the failing tests go into the report, and strict verification fails.
+- **Run the full suite now** → run every test in the project, in one run, through the first available bridge that offers a test run (gate **tests**), and wait for the result. Green — a readable result with a test count above zero, the bar `verification.md` names for this gate — → by one `Edit`, append `<date> · plan · all tests, /unikit-verify --strict · passed N/N · tree-sha256 <hash>` to `## Test Runs` and rewrite its anchor line as `Full run: <date> · all tests · passed N/N · tree-sha256 <hash>`; `<date>` from `Bash(date *)`, `<hash>` by the command of item 3. This edit touches `## Test Runs` and nothing else in the manifest. Red → the failing tests go into the report, and strict verification fails.
 - **Leave it**, or no answer → strict verification fails on this finding.
-- MCP server `{{engine_mcp_tool}}` unavailable → skip and note: `Test run: engine MCP unavailable, skipped`. The run is attempted and no affordance answers it → **GATE LIFTED**, skip and note: `Test run: gate lifted — <the observation that established it>`; a run that reports success over zero tests has not closed the gate. In both cases the finding stays a warning, exactly as the compilation gate behaves when it cannot run.
+- No engine bridge available → skip and note: `Test run: no engine bridge available, skipped`. The run is attempted on every available bridge and no affordance answers it → **GATE LIFTED**, skip and note: `Test run: gate lifted — <the observation that established it>`; a run that reports success over zero tests has not closed the gate. In both cases the finding stays a warning, exactly as the compilation gate behaves when it cannot run.
 - Under a phase scope (Step 0.1) nothing is asked.
 
 ### 2.3 Engine-Specific Checks
@@ -473,6 +465,7 @@ Check `.unikit/ARCHITECTURE.md`:
 - New modules or directories → should be in the project tree
 - New module boundaries → should be reflected in dependency rules
 - Changes to folder structure → should be updated
+- Topic table ↔ `.unikit/architecture/`: a listed file missing, or a file no row lists → `WARN [architecture] topic table: <slug or file> …`; growth → `CONTEXT-GATES-AND-OWNERSHIP.md` → `## Architecture growth sign`, reported in 3.6
 
 ### 3.5 Context Gates (Architecture / Rules / Roadmap)
 
@@ -481,7 +474,7 @@ Apply the canonical contract from `{{skills_dir}}/{{self_name}}/references/CONTE
 Evaluate and report each gate explicitly:
 
 - **Architecture gate**
-  - Pass: implementation follows module/layer boundaries, dependency rules, and anti-patterns from `.unikit/ARCHITECTURE.md`
+  - Pass: implementation follows module/layer boundaries, dependency rules, and anti-patterns from the `.unikit/ARCHITECTURE.md` root and the topics loaded for the checked files
   - Warn: architecture document appears stale or mapping is ambiguous
   - Fail: clear boundary/dependency violation (e.g. `Assets/Modules/` → `Assets/Game/`)
 
@@ -516,7 +509,7 @@ Logging/reporting format:
 If you detect that a context artifact is stale, missing, or ambiguous, report it as a drift finding and provide the owner-command remediation:
 
 - `DESCRIPTION.md` drift → suggest `/unikit` (or note that `/unikit-implement` should have updated it)
-- `ARCHITECTURE.md` drift → suggest `/unikit-architecture`
+- `ARCHITECTURE.md` drift → suggest `/unikit-architecture update`; growth or a topic table ↔ files mismatch → suggest `/unikit-architecture optimise` (growth sign: `CONTEXT-GATES-AND-OWNERSHIP.md`)
 - `RULES.md` drift → suggest `/unikit-rules` to add missing conventions
 - `## Topics` table ↔ `.unikit/rules/` drift (a listed file missing, a file not listed) → suggest `/unikit-rules optimise`
 - `ROADMAP.md` drift → suggest `/unikit-roadmap check` (or `/unikit-roadmap <update request>`)
@@ -607,7 +600,7 @@ The `implemented` state is **read-only everywhere else**: GAME.md's `## System M
 | 3.1 | Create CustomerView | ❌ Not found | File missing |
 
 ### Code Quality
-- Compilation: ✅ / ⏭️ engine MCP unavailable
+- Compilation: ✅ <bridge> / ⏭️ no engine bridge available / gate lifted
 - Tests: ✅ passed 3363/3363 — full run of 2026-09-12 by /unikit-implement, tree unchanged / ⚠️ stale — the tree changed since the full run of <date> / ⚠️ no full run recorded / — not part of this plan (Testing: no)
 - Engine checks: ✅ All passed (per ENGINE_RULES.md)
 - Anti-patterns: ⚠️ 2 warnings
@@ -651,17 +644,17 @@ Options:
 ```
 
 Based on choice:
-- Fix now → apply fixes inline using `Read/Edit/Write/Bash` with the rules and principles loaded in Step 0.2. Use `develop-agent` ONLY when fixes span many independent files OR require extensive codebase exploration. Do NOT invoke `/unikit-devcontext` via `Skill(...)` — Bootstrap already covers everything.
+- Fix now → apply fixes inline using `Read/Edit/Write/Bash` with the rules and principles loaded in Step 0.2. Use `develop-agent` ONLY when fixes span many independent files OR require extensive codebase exploration. Do NOT invoke `/unikit-execute` via `Skill(...)` — Bootstrap already covers everything.
 - Fix critical only → same inline approach, but only incomplete tasks — skip warnings
 - Accept as is → mark accepted issues in the report, proceed to Step 5
 
-**Fallback:** If `Agent` tool is unavailable, do NOT invoke `/unikit-devcontext` inline. Implement fixes directly with the rules from Step 0.2 Bootstrap.
+**Fallback:** If `Agent` tool is unavailable, do NOT invoke `/unikit-execute` inline. Implement fixes directly with the rules from Step 0.2 Bootstrap.
 
 For each fix iteration (Fix now / Fix critical only). Fixes are written by this skill directly; rules are already in context from Step 0.2 Bootstrap.
 - For each incomplete/partial task — implement the missing parts
 - For TODO/debug artifacts — clean up
 - For anti-patterns — fix
-- Update the plan manifest after fixes — checkbox lines and the `## MCP Findings` table only. `## Technical Context` is never rewritten from here; it belongs to `/unikit-plan` and `/unikit-improve`
+- Update the plan manifest after fixes — checkbox lines and the `## Engine Bridge Findings` table only. `## Technical Context` is never rewritten from here; it belongs to `/unikit-plan` and `/unikit-improve`
 - After fixes — re-run checks on affected items, Step 2.2 included: a fix changes the tree, so the recorded run becomes stale, and the report says so instead of keeping the earlier ✅. A Step 2.2 finding is never fixed here by starting a run in normal mode — "Fix now" leaves it in the report; under `--strict` the Step 2.2 question is asked once more when a fix made the run it approved stale
 
 ### 4.4 Machine-Readable Gate Result
@@ -686,7 +679,7 @@ After the human-readable report (Step 4.1) and overall status (Step 4.2) — and
 - `"affected_files"`: the `CHANGED_FILES` the gate actually evaluated or cited (not unrelated repo files); empty array when none apply.
 - **Research drift.** Every `WARN [research-drift]` line from Step 0.2 raises `status` to at least `warn` and is named in the human summary. It is **never** a blocker and never enters `blockers`: source drift makes the work debatable, not wrong, and the call is the user's.
 - **A reused run.** A test gate closed by someone else's full run (Step 2.2, the `reused` branch) is a `Gate closed`: it does **not** affect `status`, and it never enters `blockers`. The human summary must name it in one line — `Test run: reused — …` — because "the gate was closed by evidence obtained earlier" and "the gate was not checked" are different statements, and in JSON they look identical.
-- **Test evidence findings.** A Step 2.2 ⚠️ — no full run recorded, a stale or unhashed anchor, a zero count — raises `status` to at least `warn` and is named in the human summary. It enters `blockers` only in strict mode, as `verify-tests` with `file` set to the plan manifest, when the Step 2.2 question did not end in a green run — declined, unanswered, or red. A run that could not happen because the engine MCP is unavailable, or whose gate was lifted, stays a warning (Step 2.2), as the compilation gate does. Under a phase scope Step 2.2 produces none of these findings.
+- **Test evidence findings.** A Step 2.2 ⚠️ — no full run recorded, a stale or unhashed anchor, a zero count — raises `status` to at least `warn` and is named in the human summary. It enters `blockers` only in strict mode, as `verify-tests` with `file` set to the plan manifest, when the Step 2.2 question did not end in a green run — declined, unanswered, or red. A run that could not happen because no engine bridge is available, or whose gate was lifted, stays a warning (Step 2.2), as the compilation gate does. Under a phase scope Step 2.2 produces none of these findings.
 - **`WARN [testing]`** of any origin — git unavailable, an anchor line that would not parse, an inadmissible `checkpoints` value — raises `status` to at least `warn` and is named in the summary. It is never a blocker — except a Step 2.2 one in strict mode that the Step 2.2 question did not end in a green run, which is `verify-tests` like the ⚠️ above, with the same exception: not knowing the state of the tree makes the work debatable rather than wrong, which is the same logic research drift follows.
 - `"suggested_next.command"`: from the allowlist in `gate-result-contract.md` — `/unikit-fix` (task gaps, anti-patterns, failing checks), `/unikit-rules` (rules-gate violation needing a writer update), `/unikit-architecture` (architecture drift), `/unikit-roadmap` (roadmap drift), `/unikit-commit` (clean — natural next step), or `null`.
 
@@ -777,8 +770,8 @@ Normal mode already checks all items below but tolerates partial results and war
 | Check | Normal mode | Strict mode |
 |-------|-------------|-------------|
 | Task completion | `⚠️ PARTIAL` and `⏭️ SKIPPED` allowed | All tasks must be `✅ COMPLETED` — partial, skipped and `➖ NOT EXECUTED` are failures (`verify-task-<id>`, `not executed`). **Carve-out:** `⏭️ SKIPPED (editor target, …)` and `⏸️ MANUAL` are exempt in both modes — the first is an unreachable capability, the second is work the user deliberately took on; failing either would fail correctly completed work |
-| Compilation (MCP server `{{engine_mcp_tool}}`) | Reported if available | **Required** to pass if MCP server `{{engine_mcp_tool}}` is available |
-| Tests (the recorded run, Step 2.2) | The `## Test Runs` record is checked against the current tree; missing, stale or zero-count evidence is a warning, and no test run is started | Under `Testing: yes`, a green run of every test recorded for the current tree is **required**; when it is missing or stale, verify asks once whether to run the full suite now through MCP server `{{engine_mcp_tool}}` — declined, unanswered or red is a failure; an unavailable engine MCP or a lifted gate stays a warning |
+| Compilation (engine bridge) | Reported if available | **Required** to pass if an engine bridge is available |
+| Tests (the recorded run, Step 2.2) | The `## Test Runs` record is checked against the current tree; missing, stale or zero-count evidence is a warning, and no test run is started | Under `Testing: yes`, a green run of every test recorded for the current tree is **required**; when it is missing or stale, verify asks once whether to run the full suite now through an engine bridge — declined, unanswered or red is a failure; no engine bridge available or a lifted gate stays a warning |
 | TODO/FIXME/HACK | Warning | **Failure** — no leftover markers allowed in changed files |
 | Anti-patterns | Warning | **Failure** — async void, missing CancellationToken, etc. |
 | Design acceptance criteria | Unmet `AC` reported as a finding | **Failure** — every cited `AC` must be met (only when the plan has a `## Design` section) |
@@ -801,7 +794,7 @@ Strict mode is recommended before merging to the base branch or creating a PR.
 4. **No false positives** — if unsure, mark as "⚠️ Verify manually"
 5. **Do not modify .unikit/ files** — only report drift and suggest updates. **Single exception:** Step 3.9's all-AC-met writeback to `.unikit/gamedesign/GD-IDS.yaml` (`implemented_version`) — the lone sanctioned code→design write (a single surface; GAME.md's `## System Map [gen]` renders the `implemented` state read-only from it)
 6. **Do not touch engine read-only paths** — see ENGINE_RULES.md for the list of read-only directories; ignore them during checks
-7. **Agent-based delegation** — use the `recon-agent` alias for read-only investigation. Fixes are applied INLINE by this skill using rules loaded in Step 0.2 Bootstrap. Use `develop-agent` for fixes ONLY when they span many independent files or require extensive codebase exploration. Never invoke `/unikit-devcontext` via `Skill(...)`. If Agent tool is unavailable, fall back to inline work for both exploration (Glob/Grep/Read) and fixes (direct Read/Edit/Write/Bash with loaded rules).
+7. **Agent-based delegation** — use the `recon-agent` alias for read-only investigation. Fixes are applied INLINE by this skill using rules loaded in Step 0.2 Bootstrap. Use `develop-agent` for fixes ONLY when they span many independent files or require extensive codebase exploration. Never invoke `/unikit-execute` via `Skill(...)`. If Agent tool is unavailable, fall back to inline work for both exploration (Glob/Grep/Read) and fixes (direct Read/Edit/Write/Bash with loaded rules).
 
 ---
 

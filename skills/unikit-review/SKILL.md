@@ -30,11 +30,7 @@ Do not announce, confirm, or mention the language setting.
 
 **The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
 
-## Delegation agents
-
-This skill uses a named delegation alias for `Agent(...)` calls. The alias is the single
-place where its delegate's agent type and call arguments are declared — call sites name
-the alias and never carry a type or a model argument of their own.
+## Subagent launches
 
 **Subagent arguments.** Before the first subagent you launch, read `.unikit/system/subagent-arguments.md`
 and `.unikit/config.yaml` once and settle the model and effort of every launch as that file says.
@@ -43,6 +39,17 @@ built-in model of a reader and a validator: `"{{agent_model_default}}"`, of an e
 If the file cannot be read, print
 `WARN [delegation] subagent-arguments contract missing — built-in model tier used, effort not passed`
 and use that model, no effort.
+
+It covers every subagent of this review, with `+check` or without it: the `check-agent` below, and also
+one you start yourself, such as a reviewer over part of a large diff, which no step here names.
+Start that one with the call head of `check-agent` below (it is read-only); its role is the
+`/unikit-review` reviewers row of the roles table, and its model and effort are settled the same way.
+
+## Delegation agents
+
+This skill uses a named delegation alias for `Agent(...)` calls. The alias is the single
+place where its delegate's agent type and call arguments are declared — call sites name
+the alias and never carry a type or a model argument of their own.
 
 - **`check-agent`** — fresh-context, read-only findings validator (`+check`). Expands to:
 
@@ -60,7 +67,7 @@ and use that model, no effort.
 ## Step 1: Load rules
 
 Read (they always apply):
-- `.unikit/ARCHITECTURE.md` — module boundaries, dependency rules
+- `.unikit/ARCHITECTURE.md` — module boundaries, dependency rules. **Architecture topics:** the root always; then the topic files listed under its `## Topics` whose `Load when` matches a reviewed file — its path, type or area (Step 3); when unsure, load. A listed file that is missing → `WARN [architecture] topic file missing: .unikit/architecture/<slug>.md`, continue.
 - `.unikit/ROADMAP.md` (if present) — milestone alignment
 - `.unikit/system/gate-result-contract.md` — schema for the machine-readable `unikit-gate-result` block emitted in Step 5. If missing or unreadable, do not block: the Step 5 gate-result section is self-sufficient on the schema and degrades gracefully (see there).
 
@@ -120,11 +127,11 @@ Read `.unikit/skill-context/{{self_name}}/SKILL.md` if it exists — project-lev
 
 Now that target code is available, scan it for framework markers from the **Stack** section of `RULES_INDEX.md`. Each entry lists which keywords/types indicate relevance ("Load When" column). Load only matching rule files. If no markers match — skip stack rules entirely.
 
-**Rule topics.** In the same pass, load the topic files listed under `## Topics` in `.unikit/RULES.md` whose `Load when` matches the reviewed files — their paths, types, area; when unsure, load (`RULES_INDEX.md` → Step 1). They apply in Step 4 together with the root's rules.
+**Rule topics.** In the same pass, load the topic files listed under `## Topics` in `.unikit/RULES.md` **and in `.unikit/ARCHITECTURE.md`** whose `Load when` matches the reviewed files — their paths, types, area; when unsure, load (`RULES_INDEX.md` → Step 1). They apply in Step 4 together with the root's rules.
 
 ## Step 4: Analyze
 
-Apply **all loaded rules** (core + stack + project + ARCHITECTURE.md) uniformly, regardless of mode.
+Apply **all loaded rules** (core + stack + project + the ARCHITECTURE.md root and its loaded topics) uniformly, regardless of mode.
 
 For each file or diff hunk, check:
 - **Rule violations** — every loaded rule against the code
@@ -147,7 +154,7 @@ Record exact line numbers (or commit hash + file:line for diff modes) and releva
 
 ### General checklist
 
-Always run these checks in addition to project rules. If a finding from the checklist contradicts a loaded project/core/stack rule or ARCHITECTURE.md (i.e. the code follows project conventions) — **suppress the finding**, it is not an issue.
+Always run these checks in addition to project rules. If a finding from the checklist contradicts a loaded project/core/stack rule, the ARCHITECTURE.md root or a loaded topic (i.e. the code follows project conventions) — **suppress the finding**, it is not an issue.
 
 **Correctness:**
 - [ ] Logic errors or bugs

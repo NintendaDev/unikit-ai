@@ -53,11 +53,7 @@ Do not announce, confirm, or mention the language setting.
 
 **The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
 
-## Delegation agents
-
-This skill uses a named delegation alias for `Agent(...)` calls. The alias is the single
-place where its delegate's agent type and call arguments are declared — call sites name
-the alias and never carry a type or a model argument of their own.
+## Subagent launches
 
 **Subagent arguments.** Before the first subagent you launch, read `.unikit/system/subagent-arguments.md`
 and `.unikit/config.yaml` once and settle the model and effort of every launch as that file says.
@@ -66,6 +62,12 @@ built-in model of a reader and a validator: `"{{agent_model_default}}"`, of an e
 If the file cannot be read, print
 `WARN [delegation] subagent-arguments contract missing — built-in model tier used, effort not passed`
 and use that model, no effort.
+
+## Delegation agents
+
+This skill uses a named delegation alias for `Agent(...)` calls. The alias is the single
+place where its delegate's agent type and call arguments are declared — call sites name
+the alias and never carry a type or a model argument of their own.
 
 - **`recon-agent`** — read-only parallel reconnaissance. Expands to:
 
@@ -87,7 +89,7 @@ and use that model, no effort.
 
 1. Read `.unikit/config.yaml` — extract `language.ui` and `language.artifacts` (all subsequent output uses these language settings)
 2. Read `.unikit/DESCRIPTION.md` (if exists) — project overview, tech stack
-3. Read `.unikit/ARCHITECTURE.md` (if exists) — architecture decisions, module structure
+3. Read `.unikit/ARCHITECTURE.md` (if exists) — architecture decisions, module structure. **Architecture topics:** read the root and every topic file listed under its `## Topics`; a missing file → `WARN [architecture] topic file missing: .unikit/architecture/<slug>.md`, continue.
 4. Read `.unikit/skill-context/unikit-docs/SKILL.md` — **MANDATORY if exists.** Project-specific overrides. Skill-context rules win over general rules on conflict.
 5. Read `AGENTS.md` (if exists) — current documentation index
 
@@ -540,6 +542,6 @@ Suggest the user to free up context space if needed: `/clear` (full reset) or `/
 5. **Use project language** from `.unikit/config.yaml` (`language.artifacts`) for all prose, headings, navigation, descriptions, and user-facing messages. File names, code identifiers, and framework names stay in English.
 6. **Preserve existing content** — badges, logos, custom sections in README.
 7. **Ownership boundary** — this skill owns `README.md`, the **top-level** `docs/*.md` (the non-design pages), `docs-html/*`, `.unikit/docs-config.json`, and the Documentation section in `AGENTS.md`. It does NOT own `docs/design/**` (the game-design GDD render, owned by `/unikit-gd-docs`), `.unikit/ARCHITECTURE.md`, `.unikit/RULES.md`, or `.unikit/DESCRIPTION.md`.
-8. **Don't duplicate .unikit/ content** — if `ARCHITECTURE.md` or `DESCRIPTION.md` exist in `.unikit/`, use them as source material and enrich, don't copy verbatim.
+8. **Don't duplicate .unikit/ content** — if `ARCHITECTURE.md` (the root and its topic files) or `DESCRIPTION.md` exist in `.unikit/`, use them as source material and enrich, don't copy verbatim.
 9. **NEVER add `Co-Authored-By`** or any AI attribution trailers to commits.
 10. **Agent-based delegation** — use the `recon-agent` alias for deep code analysis. If Agent tool is unavailable, fall back to inline work (Glob/Grep/Read). Lightweight Glob/Grep for quick checks is always allowed without delegation.

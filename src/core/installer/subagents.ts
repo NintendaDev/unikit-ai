@@ -9,6 +9,7 @@ import {
   getSubagentsDir, ensureDir, listFiles, writeTextFile, removeFile, hashFile,
 } from '../../utils/fs.js';
 import type { AgentInstallation, ManagedSkillState } from '../config.js';
+import type { ServerSelection } from '../bridges/selection.js';
 import { DEFAULT_ENGINE_ID } from '../constants.js';
 import {
   isMarkdownFile, stripMdExtension, renderSubagent, warnActionFailed,
@@ -33,14 +34,14 @@ export interface UpdateSubagentsResult {
 export interface UpdateSubagentsOptions {
   force?: boolean;
   engineId?: string;
-  engineMcpKey?: string | null;
+  /** Code of the MCP bridge that `{{engine_bridge_mcp_code}}` is substituted with; derived, never persisted. */
+  mcpBridgeCode?: string | null;
   /**
-   * The project's MCP selection as `key → code` (`config.mcp.servers`). Folded
-   * into every source hash so a changed selection — or a changed vendor code
-   * under an unchanged selection — reinstalls the subagents; MCP tool injection
-   * is additive and would otherwise accumulate dead ids.
+   * The project's selection, both maps (`mcp.servers`, `engineBridges.selected`), as `key → code`.
+   * Folded into every source hash so a changed selection — or a changed vendor code under an
+   * unchanged selection — reinstalls the subagents.
    */
-  mcpServers?: Record<string, string>;
+  selection?: ServerSelection;
 }
 
 // --- Agent installation ---
@@ -48,7 +49,7 @@ export interface UpdateSubagentsOptions {
 export async function installSubagents(
   projectDir: string,
   subagentsDir: string,
-  options: { agentId: string; skipUnchanged?: boolean; engineId?: string; engineMcpKey?: string | null },
+  options: { agentId: string; skipUnchanged?: boolean; engineId?: string; mcpBridgeCode?: string | null },
 ): Promise<string[]> {
   const packageSubagentsDir = getSubagentsDir();
   const targetDir = path.join(projectDir, subagentsDir);
@@ -76,7 +77,7 @@ export async function installSubagents(
       }
 
       const subagentName = stripMdExtension(file);
-      const rendered = await renderSubagent(sourcePath, agentId, subagentName, options?.engineId, options.engineMcpKey);
+      const rendered = await renderSubagent(sourcePath, agentId, subagentName, options?.engineId, options.mcpBridgeCode);
       if (rendered) {
         await writeTextFile(targetPath, rendered);
         installedSubagents.push(subagentName);
@@ -102,15 +103,14 @@ export async function buildManagedSubagentsState(
   agent: AgentInstallation,
   baseSubagents: string[],
   engineId: string,
-  engineMcpKey: string | null | undefined,
-  mcpServers: Record<string, string>,
+  selection: ServerSelection,
 ): Promise<Record<string, ManagedSkillState>> {
   const state: Record<string, ManagedSkillState> = {};
   const packageSubagentsDir = getSubagentsDir();
 
   for (const subagentName of baseSubagents) {
     const sourcePath = path.join(packageSubagentsDir, subagentName + '.md');
-    const sourceHash = await computeSubagentSourceHash(sourcePath, engineId, agent.id, engineMcpKey, mcpServers);
+    const sourceHash = await computeSubagentSourceHash(sourcePath, engineId, agent.id, selection);
     if (!sourceHash) continue;
 
     const targetPath = path.join(projectDir, agent.subagentsDir, subagentName + '.md');
@@ -130,7 +130,7 @@ export async function updateSubagents(
   projectDir: string,
   options: UpdateSubagentsOptions = {},
 ): Promise<UpdateSubagentsResult> {
-  const { force = false, engineId = DEFAULT_ENGINE_ID, engineMcpKey, mcpServers = {} } = options;
+  const { force = false, engineId = DEFAULT_ENGINE_ID, mcpBridgeCode, selection = { mcp: {}, bridges: {} } } = options;
 
   const packageSubagentsDir = getSubagentsDir();
   const availableFiles = await listFiles(packageSubagentsDir);
@@ -164,7 +164,7 @@ export async function updateSubagents(
 
   for (const sa of updatableSubagents) {
     const sourcePath = path.join(packageSubagentsDir, sa + '.md');
-    const sourceHash = await computeSubagentSourceHash(sourcePath, engineId, agent.id, engineMcpKey, mcpServers);
+    const sourceHash = await computeSubagentSourceHash(sourcePath, engineId, agent.id, selection);
     const targetPath = path.join(projectDir, agent.subagentsDir, sa + '.md');
     const installedHash = await hashInstalledSubagent(targetPath);
     const previousState = previousManaged[sa];
@@ -215,7 +215,7 @@ export async function updateSubagents(
     try {
       const sourcePath = path.join(packageSubagentsDir, sa + '.md');
       const targetPath = path.join(targetDir, sa + '.md');
-      const rendered = await renderSubagent(sourcePath, agent.id, sa, engineId, engineMcpKey);
+      const rendered = await renderSubagent(sourcePath, agent.id, sa, engineId, mcpBridgeCode);
 
       if (rendered) {
         await writeTextFile(targetPath, rendered);

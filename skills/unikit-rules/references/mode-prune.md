@@ -1,6 +1,6 @@
 # Mode E — Prune the Rules (`prune`)
 
-`unikit-rules` reads this file only when the whole argument is `prune`, in any letter case (SKILL.md → Step 1, which has already printed the Mode E announcement before this file was read). No other mode and no other skill offers it: pruning is always the user's explicit call.
+`unikit-rules` reads this file only when the request asked for `prune`: the whole argument is `prune` (any letter case), or the request says so in plain words (SKILL.md → Step 1, which has already printed the Mode E announcement before this file was read). No other mode and no other skill offers it: pruning is always the user's explicit call.
 
 This is the one mode of this skill that deletes rules. **Only the rules the user selected are deleted.** It rewords nothing, with one exception the user confirms as well: a contradiction resolved by merging its two rules into one (E.2 → *Resolving a conflict*). It never moves a rule — that is Mode D (`optimise`) — and shortening is Mode C (`compact`). It works the same in every layout state (SKILL.md → Step 3), and it edits files in the user's project, so it runs **only on confirmation**.
 
@@ -74,7 +74,7 @@ Otherwise print, as plain markdown in a block of its own and before any question
   - <the merged rule, in full>
 ```
 
-Deletion candidates are `P1`, `P2`, … in preview order; conflicts are `C1`, `C2`, …, their sides `C<n>a` and `C<n>b`. `Proposed` is `keep C<n>a` / `keep C<n>b` with the reason, `merge` with the new rule in full, or `undecided` with what is missing to decide. A `not-a-rule` line that describes the current code gets one more line under its table: that text belongs in `ARCHITECTURE.md`, through `/unikit-architecture` — this skill never writes that file.
+Deletion candidates are `P1`, `P2`, … in preview order; conflicts are `C1`, `C2`, …, their sides `C<n>a` and `C<n>b`. `Proposed` is `keep C<n>a` / `keep C<n>b` with the reason, `merge` with the new rule in full, or `undecided` with what is missing to decide. A `not-a-rule` line that describes the current code gets one more line under its table: that text belongs in `ARCHITECTURE.md`, through `/unikit-architecture update` with the block as its argument — this skill never writes that file.
 
 ## E.4 Ask
 

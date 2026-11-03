@@ -56,7 +56,7 @@ make_registry_project() {
 {
   "version": "1.0.0",
   "engine": "$engine",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [],
   "rulesRegistry": null,
@@ -70,7 +70,7 @@ EOF
 {
   "version": "1.0.0",
   "engine": "$engine",
-  "engineMcpKey": null,
+  "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [],
   "rulesRegistry": "$registry_value",

@@ -7,7 +7,7 @@
 // and the reconciliation rules that follow — key normalisation, the `env`
 // exception, orphan removal, the version-placeholder detector — do not fit in
 // what was left. Splitting is the same move `mcp-schema.ts`, `mcp-platform.ts`
-// and `mcp-rules.ts` already made, and the dependency runs the same way: this
+// and `bridges/selection.ts` already made, and the dependency runs the same way: this
 // module imports types from `mcp.ts`, never the reverse.
 //
 // The unit of work is the PROJECT, not the agent. `init` used to call
@@ -18,6 +18,7 @@
 
 import path from 'path';
 import { getAgentConfig } from './agents.js';
+import { getBridgeAdapter } from './bridges/adapter.js';
 import { MCP_VERSION_PLACEHOLDER } from './constants.js';
 import type { UniKitConfig } from './config.js';
 import { getExtensionDir, loadExtensionManifest } from './extensions.js';
@@ -97,6 +98,14 @@ function removeDeselectedServers(
 
   for (const [fileId, storedCode] of Object.entries(storedCodes)) {
     if (enabled.has(fileId)) continue;
+
+    // A bridge that never had an entry in the settings file (a command line) left nothing to remove,
+    // and its code (`unity`) may be the name of an entry somebody else wrote there.
+    const known = discoveredServers.get(fileId);
+    if (known && !getBridgeAdapter(known.kind).registersInSettings) {
+      logInfo('mcp', `deselected ${fileId}: kind ${known.kind} is not registered in settings, nothing to remove`);
+      continue;
+    }
 
     if (liveCodes.has(storedCode)) {
       logInfo('mcp', `deselected ${fileId}: code ${storedCode} is still claimed by the selection, kept`);
@@ -190,6 +199,8 @@ export async function configureMcp(
   for (const fileId of enabledFileIds) {
     const server = discoveredServers.get(fileId);
     if (!server) continue;
+    // Adapter point 1: a bridge that is not an MCP server has no entry in the settings file.
+    if (!getBridgeAdapter(server.kind).registersInSettings) continue;
 
     const resolvedConfig = resolvePlatformConfig(server);
     if (!resolvedConfig) {
@@ -316,7 +327,7 @@ export async function configureMcp(
  * It changes nothing in this scope and blocks nothing; it is recorded so
  * "we normalised the only variant there was" is not mistaken for proven.
  *
- * ORDER TRAP — the same one `swapMcpRecheckNotes` already carries: the caller
+ * ORDER TRAP — the same one `swapBridgeNotes` already carries: the caller
  * must read `storedCodes` off the config that is still on disk, run this pass,
  * and only THEN persist the new map. Persist first and `stored === current` for
  * every entry, no swap fires, and the orphan survives. On the `update` path the

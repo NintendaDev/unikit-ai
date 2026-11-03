@@ -1,0 +1,53 @@
+# Optional Kimi Code subagent pool: three role aliases.
+#
+# MANUAL MERGE ONLY. Do not replace your whole config.toml with this file and do
+# not blindly duplicate tables that already exist: TOML rejects duplicate tables.
+# Preserve your providers, credentials, existing [models] entries and settings.
+#
+# EXAMPLE VALUES: verify provider, model, max_context_size, capabilities and
+# support_efforts against the real [models] entries in your config before use and
+# adjust them if they differ. display_name identifies each role alias. Keep every
+# alias standalone: aliases do not inherit metadata from each other.
+# default_effort belongs only under [models.<alias>.overrides]. Assign aliases to
+# subagents.model.kimi.<role> in .unikit/config.yaml.
+#
+# A managed refresh or login may remove custom model entries. Check these aliases
+# afterwards and restore them manually if needed. UniKit never writes global config.
+
+[models.unikit-reader]
+provider = "managed:kimi-code"
+model = "k3.1-pro"
+max_context_size = 1048576
+capabilities = [ "thinking", "always_thinking", "image_in", "video_in", "tool_use", "dynamically_loaded_tools" ]
+support_efforts = ["low", "high", "max"]
+display_name = "unikit-reader"
+[models.unikit-reader.overrides]
+default_effort = "low"
+
+[models.unikit-validator]
+provider = "managed:kimi-code"
+model = "k3.1-pro"
+max_context_size = 1048576
+capabilities = [ "thinking", "always_thinking", "image_in", "video_in", "tool_use", "dynamically_loaded_tools" ]
+support_efforts = ["low", "high", "max"]
+display_name = "unikit-validator"
+[models.unikit-validator.overrides]
+default_effort = "high"
+
+[models.unikit-executor]
+provider = "managed:kimi-code"
+model = "k3.1-pro"
+max_context_size = 1048576
+capabilities = [ "thinking", "always_thinking", "image_in", "video_in", "tool_use", "dynamically_loaded_tools" ]
+support_efforts = ["low", "high", "max"]
+display_name = "unikit-executor"
+[models.unikit-executor.overrides]
+default_effort = "high"
+
+[secondary_model]
+default_model = "unikit-reader"
+
+[secondary_model.models]
+unikit-reader = "Reader model"
+unikit-validator = "Validator model"
+unikit-executor = "Executor model"

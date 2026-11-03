@@ -51,9 +51,7 @@ Do not announce, confirm, or mention the language setting.
 
 ---
 
-## Delegation agents
-
-This skill uses named delegation aliases for `Agent(...)` calls. A skill-loading alias expands to an `Agent(...)` invocation whose prompt makes the subagent load the skill; a reconnaissance alias expands to a read-only dispatch. Each alias is the single place where its delegate's agent type and call arguments are declared — call sites name the alias and never carry a type or a model argument of their own.
+## Subagent launches
 
 **Subagent arguments.** Before the first subagent you launch, read `.unikit/system/subagent-arguments.md`
 and `.unikit/config.yaml` once and settle the model and effort of every launch as that file says.
@@ -63,6 +61,10 @@ If the file cannot be read, print
 `WARN [delegation] subagent-arguments contract missing — built-in model tier used, effort not passed`
 and use that model, no effort.
 
+## Delegation agents
+
+This skill uses named delegation aliases for `Agent(...)` calls. A skill-loading alias expands to an `Agent(...)` invocation whose prompt makes the subagent load the skill; a reconnaissance alias expands to a read-only dispatch. Each alias is the single place where its delegate's agent type and call arguments are declared — call sites name the alias and never carry a type or a model argument of their own.
+
 `develop-agent` carries no model argument.
 
 - **`develop-agent`** — used ONLY for complex fixes requiring extensive codebase exploration or independent multi-file changes. Default fixes are implemented inline by this skill using rules loaded in Bootstrap. Expands to:
@@ -70,7 +72,7 @@ and use that model, no effort.
   ```
   Agent(
     {{agent_call_worker_quoted}}
-    prompt: "{{agent_skill_call:unikit-devcontext}} <fix details>",
+    prompt: "{{agent_skill_call:unikit-execute}} Delegated hand-off: <fix details>",
     description: "Apply fix"
   )
   ```
@@ -175,28 +177,30 @@ Bootstrap loads coding rules and principles ONCE upfront so the fix can be imple
 3. `.unikit/memory/code/RULES_INDEX.md` — index of core/stack rules
 4. For EACH row in the Core table where Required By = `all` or contains `unikit-fix` — read that file from `.unikit/memory/code/core/` using the Read tool.
 
-Stack rules are loaded on-demand later — when investigation reveals which framework is involved (e.g. R3, Zenject, UniTask). At the same point, load the topic files listed under `## Topics` in `.unikit/RULES.md` whose `Load when` matches the area the investigation localized — the files, types or feature the bug lives in; when unsure, load (`RULES_INDEX.md` → Step 1).
+Also read `.unikit/ARCHITECTURE.md` (the root) — Steps 4.4 and 4.5 check the fix against it. **Architecture topics:** the root now; once the error is localized, load the topic files listed under its `## Topics` whose `Load when` matches the files you localized; when unsure, load. A listed file that is missing → `WARN [architecture] topic file missing: .unikit/architecture/<slug>.md`, continue.
+
+Stack rules are loaded on-demand later — when investigation reveals which framework is involved (e.g. R3, Zenject, UniTask). At the same point, load the topic files listed under `## Topics` in `.unikit/RULES.md` and in `.unikit/ARCHITECTURE.md` whose `Load when` matches the area the investigation localized — the files, types or feature the bug lives in; when unsure, load (`RULES_INDEX.md` → Step 1).
 
 **The fix runs against a plan whose manifest has `## Experiment Context`** (the session started from such a plan, or the prompt carries a `Prototype plan:` note) → read `.unikit/system/prototype-profile.md` now, once, and follow its `## Role: quality and the rest` — Steps 5 and 7.3, and the prompt of a delegate, follow it. Missing or unreadable → `WARN [prototype] profile contract missing — fixing as for an ordinary plan; run unikit-ai update`.
 
-**Engine-MCP rules (conditional, engine-neutral) — once per session, zero calls:**
+**Engine bridges (conditional, engine-neutral) — once per session, zero calls:**
 
-5. `.unikit/system/engine-mcp/INDEX.md`, **base section only** — the delivery stamp (`server:`) plus every section **except** the `## Check` table — access, the live failure classes, shape and cost, what is irreversible, the lane, and what to do when the file is silent. Those are the exceptions that hold for every task here. **Do not read the `## Check` table now** — it is grepped per editor task, by area (Step 3).
-6. `.unikit/MCP-RECHECK-NOTES.md`, **header only** (`server:` / `audited:`) — this project's own accumulated findings. Compare that header against the delivery stamp from item 5. On a mismatch print exactly one line and **apply the entries anyway**:
+5. `.unikit/system/engine-bridges/BRIDGES.md` — the whole file (one short block per bridge) — and, for **each** bridge whose block names a rules tree, that tree's `.unikit/system/engine-bridges/<bridge>/INDEX.md`, **base section only**: the stamp under the title (the `bridge` row) plus every section **except** the `## Check` table — access, the live failure classes, shape and cost, what is irreversible, the lane, and what to do when the file is silent. Those are the exceptions that hold for every task here. **Do not read the `## Check` table now** — it is grepped per editor task, by area (Step 3). Also read `.unikit/bridges.yaml` (the bridge order) and, when it exists, `.unikit/bridge-routing.md` (the routing rules); a missing order file means the default order `BRIDGES.md` states, a missing routing file means no routing rules.
+6. For each bridge listed in `BRIDGES.md`: `.unikit/bridge-notes/<bridge>.md`, **header only** (`bridge:` / `audited:`) — this project's own accumulated findings, and they apply to that bridge only. Compare the header against the bridge the file is named for. On a mismatch print exactly one line and **apply the entries anyway**:
 
    ```
-   WARN [engine-mcp] notes header ≠ configured server (<notes> ≠ <configured>)
+   WARN [bridges] notes header ≠ bridge (<header> ≠ <bridge>)
    ```
 
-   The entries are *suspect*, not void, and a suspect check still fails safe. Retiring them belongs to `/unikit-mcp-audit`, never to this skill.
+   The entries are *suspect*, not void, and a suspect check still fails safe. Retiring them belongs to `/unikit-bridge-audit`, never to this skill.
 
-**Either file absent → skip it, print one line, and continue with every right you had:**
+**A file absent → skip it, print one line, and continue with every right you had** (no `BRIDGES.md` reads as "no bridge selected"):
 
 ```
-MCP rules: no INDEX.md — no known exceptions for this server, rights unchanged
+Bridge rules: <bridge> has no INDEX.md — no known exceptions for it, rights unchanged
 ```
 
-No rules means no known exceptions, never no capabilities. Absence never disables the engine MCP and never turns a target into `⏸️ MANUAL` (`.unikit/system/dev-principles.md` → **A9**).
+No rules means no known exceptions, never no capabilities. Absence never disables an engine bridge and never turns a target into `⏸️ MANUAL` (`.unikit/system/dev-principles.md` → **A9**).
 
 **Lifted gates come from a verdict, not from a server profile.**
 
@@ -250,7 +254,7 @@ The question tool of your agent (`AskUserQuestion`):
 
 Investigation splits by where the symptom actually lives. The code-research delegates read the
 **source** — their tools are enough there. The editor rungs below are walked by **the skill body
-itself**: every one of them is a call to the engine MCP, and those grants are held by this skill,
+itself**: every one of them is a call through an engine bridge — the one `.unikit/system/dev-principles.md` → **D3** picks — and the grants for it are held by this skill,
 not by whatever it delegates to. Both modes pass through here, so the ladder is available on the
 planning path and on the immediate-fix path alike.
 
@@ -275,7 +279,7 @@ Three rules hold across the whole ladder:
 **Report every rung you walk.** One line per rung, in the order you took them:
 
 ```
-rung <N> — <signal class> → <raw observation>
+rung <N> — <signal class> via <bridge> → <raw observation>
 ```
 
 A rung skipped on purpose is named with its reason (`rung 6 — frame → skipped, the symptom is not
@@ -429,7 +433,7 @@ nothing was left to guess. Step 3 fixes what this contract established, not what
 
 ## Step 3: Implement the Fix
 
-This skill OWNS code-writing for fixes. Implement inline using `Read/Edit/Write/Bash` with the rules already loaded in Step 0.2 Bootstrap. Do NOT invoke `/unikit-devcontext` via `Skill(...)`.
+This skill OWNS code-writing for fixes. Implement inline using `Read/Edit/Write/Bash` with the rules already loaded in Step 0.2 Bootstrap. Do NOT invoke `/unikit-execute` via `Skill(...)`.
 
 Choose execution mode:
 - **Default (single-file or tightly-scoped fix)** → inline implementation.
@@ -441,11 +445,11 @@ When implementing inline, apply:
 - Expected behavior after the fix
 - The principles from `dev-principles.md` (no inline comments, update docs, etc.)
 
-**Fallback:** If `Agent` tool is unavailable, do NOT invoke `/unikit-devcontext` inline. Implement directly with the loaded rules — Bootstrap already covers everything needed.
+**Fallback:** If `Agent` tool is unavailable, do NOT invoke `/unikit-execute` inline. Implement directly with the loaded rules — Bootstrap already covers everything needed.
 
-**When the fix touches the editor's serialized state** — a scene, a prefab, a component, an asset, UI, VFX, animation, project settings — rather than source text, carry it out through the engine MCP by `.unikit/system/dev-principles.md` → **D6** (its part below the lazy-read boundary is read now if this session has not read it yet). **No rules file, or no check line for this area → nothing changes:** it is never a reason to declare the fix impossible or to mark it `⏸️ MANUAL` (A9).
+**When the fix touches the editor's serialized state** — a scene, a prefab, a component, an asset, UI, VFX, animation, project settings — rather than source text, carry it out through the engine bridges by `.unikit/system/dev-principles.md` → **D6** (route by **D3**; its part below the lazy-read boundary is read now if this session has not read it yet). **No rules file, or no check line for this area → nothing changes:** it is never a reason to declare the fix impossible or to mark it `⏸️ MANUAL` (A9).
 
-**A call that misled you is a finding** (**D7**): a candidate line in the fix report and, when this fix runs against a plan, a row in that plan's `## MCP Findings` table, written on finishing the step that produced it — `observed` is the date you observed it (`Bash(date *)`). **Never write `.unikit/MCP-RECHECK-NOTES.md` from here.** The library reference has two triggers (**D8**).
+**A call that misled you is a finding** (**D7**): a candidate line in the fix report and, when this fix runs against a plan, a row in that plan's `## Engine Bridge Findings` table, written on finishing the step that produced it — `observed` is the date you observed it (`Bash(date *)`), `bridge` the id of the bridge the call went through. A table in the 2.x form is converted first (`TASK-FORMAT.md` → `### Engine bridge findings section`). **Never write `.unikit/bridge-notes/<bridge>.md` from here.** D6 step 2 confirms the command you chose against the live schema; the library reference has two triggers (**D8**).
 
 After the fix is implemented, you MUST continue through ALL remaining steps (4 → 5 → 6 → 7).
 
@@ -455,23 +459,23 @@ After the fix is implemented, you MUST continue through ALL remaining steps (4 �
 
 ### 4.1 {{engine_name}} Compile Check
 
-Use MCP server `{{engine_mcp_tool}}` to check that the project compiles after the fix:
-- Refresh/recompile the project through MCP server `{{engine_mcp_tool}}`
+Check that the project compiles after the fix, through the first available engine bridge that offers diagnostics with coordinates (`.unikit/system/dev-principles.md` → **D3**):
+- Refresh/recompile the project through that bridge
 - Check the {{engine_name}} console for compilation errors
 - If errors found — display them with `file:line` references and fix them
-- If MCP server `{{engine_mcp_tool}}` is unavailable — skip and note: `Compilation check: engine MCP unavailable, skipped`
+- If no bridge is listed in `.unikit/system/engine-bridges/BRIDGES.md`, or none is available — skip and note: `Compilation check: no engine bridge available, skipped`
 
 ### 4.2 {{engine_name}} Test Run
 
 **Inside a review loop** (`dev-principles.md` item 5a — this fix answers a defect in a result handed over in this session, which the user is reviewing) skip this step: print `INFO [testing] review loop: tests deferred until you accept` — once per loop, not again when an earlier edit of this loop already printed it — and go to Step 4.3. Outside a loop, run it as follows.
 
-Run the tests through MCP server `{{engine_mcp_tool}}` at the width the shared run settings give — `{{skills_dir}}/unikit-implement/references/test-runs.md` → `## Run width`. Read **that section alone**, once per session, the first time this step runs: it resolves `testing.run.use_affected_modules` and `testing.run.full_run_threshold_percent` from `.unikit/config.yaml`, says how the affected test suites are found, requires one run, and says what counts as green. A fix has no coverage, so its run follows the section's `phase` row; its changed files are `git status --porcelain` plus the files this fix touched.
+Run the tests through the first available engine bridge that offers a test run with a readable result (**D3**) at the width the shared run settings give — `{{skills_dir}}/unikit-implement/references/test-runs.md` → `## Run width`. Read **that section alone**, once per session, the first time this step runs: it resolves `testing.run.use_affected_modules` and `testing.run.full_run_threshold_percent` from `.unikit/config.yaml`, says how the affected test suites are found, requires one run, and says what counts as green. A fix has no coverage, so its run follows the section's `phase` row; its changed files are `git status --porcelain` plus the files this fix touched.
 - `use_affected_modules: false` (the default) → every test in the project, in one run
 - `true` → the affected test suites in one run — or every test, when that section widens the run
 - The file or the section is missing → run every test in the project in one run, and print `WARN [testing] test-run reference missing — every test is run; run unikit-ai update`
 - Wait for results and display them — highlight any failures. A run that is not green by that section — zero tests, no readable counts — is a failed check, not a pass; the one zero that is not a failure is a run of every test in a project that has no tests yet — note `Test run: no tests in the project` and go on
 - If tests fail because of the fix — investigate and fix the regression. The repeat after the fix is one launch over the scope recomputed once from all the files changed (`{{skills_dir}}/unikit-implement/references/test-runs.md` → `## Run width` → `### One scope, one launch`)
-- If MCP server `{{engine_mcp_tool}}` is unavailable — skip and note: `Test run: engine MCP unavailable, skipped`
+- If no engine bridge is available — skip and note: `Test run: no engine bridge available, skipped`
 
 ### 4.3 Engine Companion Files
 
@@ -484,12 +488,12 @@ If the engine has no companion file mechanism — skip this check.
 
 ### 4.4 Module Boundary Check
 
-Verify the fix doesn't violate module boundaries defined in `.unikit/ARCHITECTURE.md`.
+Verify the fix doesn't violate module boundaries defined in the `.unikit/ARCHITECTURE.md` root and the loaded topics.
 For each modified source file in a module directory: check that imports don't reference forbidden dependency directions (as specified in the architecture doc).
 
 ### 4.5 Naming Convention Check
 
-For any new source files, verify naming/namespace follows the convention table from `.unikit/ARCHITECTURE.md`.
+For any new source files, verify naming/namespace follows the convention table from the `.unikit/ARCHITECTURE.md` root and the loaded topics.
 
 ---
 
@@ -519,7 +523,7 @@ Create the test?
 ```
 
 Based on choice:
-- Yes → write the test inline using `Read/Edit/Write` with the rules and principles loaded in Step 0.2 Bootstrap. Use `develop-agent` only if the test requires extensive codebase exploration. Do NOT invoke `/unikit-devcontext` via `Skill(...)` — Bootstrap already covers everything.
+- Yes → write the test inline using `Read/Edit/Write` with the rules and principles loaded in Step 0.2 Bootstrap. Use `develop-agent` only if the test requires extensive codebase exploration. Do NOT invoke `/unikit-execute` via `Skill(...)` — Bootstrap already covers everything.
 - No → skip, proceed to Step 6 (patch creation)
 
 **The patch in Step 6 is mandatory regardless of the test decision.**
@@ -708,7 +712,7 @@ Suggest the user to free up context space if needed: `/clear` (full reset) or `/
 2. **Plan mode = plan only** — when user chooses "Plan first", create the plan and STOP. Do NOT apply the fix
 3. **Execute mode = follow the plan** — when FIX_PLAN.md exists, follow it step by step. Deletion happens in Step 7.5
 4. **Load patches and skill-context** — learn from past fixes before investigating
-5. **Code-writing is owned by this skill** — fixes are implemented inline using `Read/Edit/Write/Bash` with the rules loaded in Step 0.2 Bootstrap. Delegate to `develop-agent` ONLY for complex fixes requiring extensive codebase exploration. Never invoke `/unikit-devcontext` via `Skill(...)` from this workflow.
+5. **Code-writing is owned by this skill** — fixes are implemented inline using `Read/Edit/Write/Bash` with the rules loaded in Step 0.2 Bootstrap. Delegate to `develop-agent` ONLY for complex fixes requiring extensive codebase exploration. Never invoke `/unikit-execute` via `Skill(...)` from this workflow.
 6. **Suggest a regression test for logic outside a review loop** — never for authored content or tunable data, and none inside a review loop (Step 5)
 7. **ALWAYS create patch** — every fix generates a `.unikit/code/patches/` entry
 8. **Root cause, not symptoms** — fix the actual problem. Don't refactor unrelated code, don't add features

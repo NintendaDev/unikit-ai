@@ -80,7 +80,7 @@ const EXPECTED = {
     opencode: { readerType: 'explore', workerType: 'general', modelDefault: 'inherit', modelArg: '', effortArg: '', skillCall: 'read', spawnArgs: '' },
     // no effort argument in invoke_subagent (probe 2026-10-16, DEC-108)
     antigravity: { readerType: 'research', workerType: 'self', modelDefault: 'flash', modelArg: 'Model', effortArg: '', skillCall: 'read', spawnArgs: '' },
-    kimi: { readerType: 'explore', workerType: 'coder', modelDefault: 'inherit', modelArg: '', effortArg: '', skillCall: 'read', spawnArgs: '' },
+    kimi: { readerType: 'explore', workerType: 'coder', modelDefault: 'inherit', modelArg: 'model', effortArg: '', skillCall: 'read', spawnArgs: '' },
     universal: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: 'inherit', modelArg: '', effortArg: '', skillCall: 'read', spawnArgs: '' },
 };
 
@@ -94,7 +94,7 @@ const HEADS = {
     qwen: { reader: 'subagent_type: Explore,', worker: 'subagent_type: general-purpose,', workerQuoted: 'subagent_type: "general-purpose",' },
     opencode: { reader: 'subagent_type: explore,', worker: 'subagent_type: general,', workerQuoted: 'subagent_type: "general",' },
     antigravity: { reader: 'subagent_type: research, Model: <model>,', worker: 'subagent_type: self, Model: <model>,', workerQuoted: 'subagent_type: "self", Model: <model>,' },
-    kimi: { reader: 'subagent_type: explore,', worker: 'subagent_type: coder,', workerQuoted: 'subagent_type: "coder",' },
+    kimi: { reader: 'subagent_type: explore, model: <model>,', worker: 'subagent_type: coder, model: <model>,', workerQuoted: 'subagent_type: "coder", model: <model>,' },
     universal: { reader: 'subagent_type: Explore,', worker: 'subagent_type: general-purpose,', workerQuoted: 'subagent_type: "general-purpose",' },
 };
 
@@ -168,7 +168,7 @@ await group('V', async () => {
     assertEq(
         'V1 buildTemplateVars(kimi) carries the call heads and the skill-call form',
         JSON.stringify([kimiVars.agent_call_reader, kimiVars.agent_call_worker, kimiVars.agent_call_worker_quoted, kimiVars.agent_skill_call_form]),
-        JSON.stringify(['subagent_type: explore,', 'subagent_type: coder,', 'subagent_type: "coder",', 'read']),
+        JSON.stringify(['subagent_type: explore, model: <model>,', 'subagent_type: coder, model: <model>,', 'subagent_type: "coder", model: <model>,', 'read']),
     );
 
     const probe = '{{agent_id}} {{agent_reader_type}} {{agent_worker_type}} [{{agent_model_default}}]';
@@ -210,7 +210,7 @@ await group('V', async () => {
 
 await group('V4', async () => {
     const skillDir = path.join(ROOT, 'skills', 'unikit-help');
-    const hash = () => computeSourceHashWithTemplate(skillDir, 'unity', 'unikit-help', 'claude', null, {});
+    const hash = () => computeSourceHashWithTemplate(skillDir, 'unity', 'unikit-help', 'claude', { mcp: {}, bridges: {} });
     const profile = AGENT_REGISTRY.claude.subagentProfile;
     const before = await hash();
     assertTrue('V4a the skill hash is computed', typeof before === 'string' && before.length > 0);
@@ -243,7 +243,7 @@ const COMPONENTS = {
     qwen: 'profile:Explore|general-purpose|inherit',
     opencode: 'profile:explore|general|inherit',
     antigravity: 'profile:research|self|flash|args=Model/',
-    kimi: 'profile:explore|coder|inherit',
+    kimi: 'profile:explore|coder|inherit|args=model/',
     universal: 'profile:Explore|general-purpose|inherit',
 };
 
@@ -293,13 +293,13 @@ await group('K', async () => {
 
     assertEq(
         'K2 claude: the Skill tool phrase, arguments in full',
-        processTemplate('prompt: "{{agent_skill_call:unikit-devcontext}} <task details>",', claude),
-        'prompt: "Call the Skill tool with skill "unikit-devcontext" and pass the text after the colon as its args, in full and unchanged. Then follow the skill. Text: <task details>",',
+        processTemplate('prompt: "{{agent_skill_call:unikit-execute}} <task details>",', claude),
+        'prompt: "Call the Skill tool with skill "unikit-execute" and pass the text after the colon as its args, in full and unchanged. Then follow the skill. Text: <task details>",',
     );
     assertEq(
         'K2 codex: the Read phrase with its own skills dir',
-        processTemplate('prompt: "{{agent_skill_call:unikit-devcontext}} <task details>",', codex),
-        `prompt: "Read .codex/skills/unikit-devcontext/SKILL.md ${READ_TAIL} <task details>",`,
+        processTemplate('prompt: "{{agent_skill_call:unikit-execute}} <task details>",', codex),
+        `prompt: "Read .codex/skills/unikit-execute/SKILL.md ${READ_TAIL} <task details>",`,
     );
 
     assertEq(
@@ -367,8 +367,8 @@ await group('R', async () => {
 
     const skillDir = path.join(ROOT, 'skills', 'unikit-help');
     const subagent = path.join(ROOT, 'subagents', 'unikit-implement-worker.md');
-    const skillHash = (agent) => computeSourceHashWithTemplate(skillDir, 'unity', 'unikit-help', agent, null, {});
-    const subagentHash = (agent) => computeSubagentSourceHash(subagent, 'unity', agent, null, {});
+    const skillHash = (agent) => computeSourceHashWithTemplate(skillDir, 'unity', 'unikit-help', agent, { mcp: {}, bridges: {} });
+    const subagentHash = (agent) => computeSubagentSourceHash(subagent, 'unity', agent, { mcp: {}, bridges: {} });
 
     // Raising a revision changes both hashes of that agent and restoring it restores them (the V4 shape).
     for (const id of rewriters) {
@@ -512,7 +512,7 @@ await group('I', async () => {
     for (const agent of agents) {
         const projectDir = await fs.mkdtemp(path.join(os.tmpdir(), `unikit-profile-${agent.id}-`));
         try {
-            await installSkills({ projectDir, skillsDir: agent.skillsDir, skills: INSTALL_SKILLS, agentId: agent.id, engineId: 'unity', engineMcpKey: null });
+            await installSkills({ projectDir, skillsDir: agent.skillsDir, skills: INSTALL_SKILLS, agentId: agent.id, engineId: 'unity', mcpBridgeCode: null });
             const skill = (name, file = 'SKILL.md') => fs.readFile(path.join(projectDir, agent.skillsDir, name, file), 'utf8');
             const texts = {
                 unikit: await skill('unikit'),
@@ -566,7 +566,7 @@ await group('I', async () => {
             // to the install would show as the wrong prefix.
             const viaTool = agent.subagentProfile.skillCall === 'skilltool';
             const call = (skill, text) => (viaTool ? skillToolCall(skill, text) : readCall(agent.skillsDir, skill, text));
-            assertTrue(`I8 ${agent.id}: develop-agent calls the devcontext skill`, texts.implement.includes(call('unikit-devcontext', '<task details>')));
+            assertTrue(`I8 ${agent.id}: develop-agent calls the execute skill`, texts.implement.includes(call('unikit-execute', 'Delegated hand-off: <task details>')));
             assertTrue(`I8 ${agent.id}: docs-agent calls the docs skill`, texts.implement.includes(call('unikit-docs', '<context>')));
             assertTrue(`I8 ${agent.id}: the brainstorm delegation calls the explore skill`, texts.brainstorm.includes(call('unikit-gd-explore', FRAME)));
             assertTrue(`I8 ${agent.id}: its mirror in the delegation contract calls it the same way`, texts.contract.includes(call('unikit-gd-explore', FRAME)));
@@ -578,7 +578,7 @@ await group('I', async () => {
             assertTrue(
                 `I8 ${agent.id}: the other form is absent from the call sites`,
                 viaTool
-                    ? !texts.implement.includes(`Read ${agent.skillsDir}/unikit-devcontext/SKILL.md in full before you do anything else`)
+                    ? !texts.implement.includes(`Read ${agent.skillsDir}/unikit-execute/SKILL.md in full before you do anything else`)
                     : !texts.implement.includes('Call the Skill tool with skill'),
             );
 

@@ -30,7 +30,7 @@ For each `.csproj`, read `<ProjectReference>` entries to build a dependency grap
 
 ### Single-project layout
 
-If only one `.csproj` exists — defer module boundary checks to `.unikit/ARCHITECTURE.md` convention-based rules.
+If only one `.csproj` exists — defer module boundary checks to the convention-based rules of the `.unikit/ARCHITECTURE.md` root and the topic files matched to the changed files.
 
 ## C# Namespace Conventions
 
@@ -82,17 +82,17 @@ Flag changes to third-party addons.
 ## Module Boundary Checks
 
 If multi-project layout: use `.csproj` references (see above).
-If single-project: defer to `.unikit/ARCHITECTURE.md`.
+If single-project: defer to the `.unikit/ARCHITECTURE.md` root and the topic files matched to the changed files.
 
 Godot's native scene tree has no compile-time boundary enforcement beyond `.csproj` references.
 
 ## Editor Target Checks
 
-Applies to plan tasks carrying an `Editor:` line. These targets changed the editor's **serialized state**, so there is nothing in the sources to grep — each is confirmed by **reading the state back through the MCP**, one signal per `kind`.
+Applies to plan tasks carrying an `Editor:` line. These targets changed the editor's **serialized state**, so there is nothing in the sources to grep — each is confirmed by **reading the state back through an engine bridge**, one signal per `kind`.
 
 The right column names the **class of evidence** the signal requires, never the call that produces it. A class survives a server change; a name does not, and a name that has gone stale reads as an instruction to do the wrong thing. Resolve the affordance from the live catalog by intent.
 
-Before you resolve it, read the project's rules for this server: grep the check table in `.unikit/system/engine-mcp/INDEX.md` for your task's `kind` area plus every cross-cutting area, and read `.unikit/system/engine-mcp/verification.md` in full — that file is read by this skill and no other. Both are optional. Their absence means there are no known exceptions for this server, never that there are no capabilities, and it never turns a target into `⏸️ MANUAL`. Report `⏭️ SKIPPED (editor target, MCP unavailable)` only when the affordance is absent and you established that by trying; never substitute a lookalike.
+Before you resolve it, read the project's rules for each bridge listed in `.unikit/system/engine-bridges/BRIDGES.md`: grep the check table in its `INDEX.md` for your task's `kind` area plus every cross-cutting area, and read its `verification.md` in full — that file is read by this skill and no other. Both are optional. Their absence means there are no known exceptions for this server, never that there are no capabilities, and it never turns a target into `⏸️ MANUAL`. Report `⏭️ SKIPPED (editor target, no engine bridge available)` only when the affordance is absent and you established that by trying; never substitute a lookalike.
 
 | kind | signal to confirm | what closes it (`dev-principles.md` → A2) |
 |------|-------------------|-------------------------------------------|

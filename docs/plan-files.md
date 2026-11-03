@@ -16,6 +16,7 @@ Plans are stored in two locations depending on mode:
 | `/unikit-plan add` | Existing plan location | Modifies existing plan in-place |
 | `/unikit-fix` (plan mode) | `.unikit/code/FIX_PLAN.md` | Single file with analysis + fix steps |
 | `/unikit-archive` | `.unikit/code/archive/plans/<feature-name>/` | A completed folder plan (or, on your explicit choice, an unfinished one, marked as such), moved whole; its manifest gains an `Archived:` line |
+| `/unikit-archive researches` | `.unikit/code/archive/researches/<slug>/` | A code research, moved whole; its `RESEARCH.md` gains an `Archived:` line under `Updated:` |
 
 Ultra reuses the full-mode folder and the same `PLAN.md` entry point — moving a plan from full to ultra is purely additive: phase files appear, nothing is renamed, external links stay valid.
 
@@ -45,7 +46,7 @@ Goal: make an item's value readable at a glance without opening its tooltip.
 - Testing: yes
 - Test checkpoints: phase
 - Docs: no
-- Editor tasks: mcp
+- Editor tasks: engine-bridge
 
 ## Checklist
 
@@ -87,7 +88,7 @@ feat(items): add rarity enum and data model
 ### Commit 2: after tasks 2.1-2.2
 feat(items): implement rarity visual effects
 
-## MCP Findings
+## Engine Bridge Findings
 
 | id | area | confirm that | observed | evidence | from |
 |---|---|---|---|---|---|
@@ -141,19 +142,19 @@ What is explicitly not part of this plan.
 
 The manifest is edited in place. `Write` over it is forbidden — the file carries `## Technical Context` alongside the checklist, and a regenerating write silently drops whatever the current pass did not reconstruct.
 
-#### `## MCP Findings` — the executor's handoff surface
+#### `## Engine Bridge Findings` — the executor's handoff surface
 
-A plan that carries at least one `Editor:` task also carries a `## MCP Findings` section. `/unikit-plan` emits the heading and the header row and stops there; the executors fill it in.
+A plan that carries at least one `Editor:` task also carries a `## Engine Bridge Findings` section. `/unikit-plan` emits the heading and the header row and stops there; the executors fill it in.
 
 ```markdown
-## MCP Findings
+## Engine Bridge Findings
 
-| id | area | confirm that | observed | evidence | from |
-|---|---|---|---|---|---|
-| F1 | rollback | the snapshot captured more than zero files | 2026-08-18 | `<call>(paths="...")` → `state=ready files=0` | task 2.3 |
+| id | area | confirm that | observed | evidence | from | bridge |
+|---|---|---|---|---|---|---|
+| F1 | rollback | the snapshot captured more than zero files | 2026-08-18 | `<call>(paths="...")` → `state=ready files=0` | task 2.3 | unity-biome-mcp |
 ```
 
-A row is written when an engine MCP call **misled** you — it reported success while changing nothing, ate an argument, or validated a broken state.
+A row is written when a call through an engine bridge **misled** you — it reported success while changing nothing, ate an argument, or validated a broken state.
 
 | column | what goes in it |
 |--------|-----------------|
@@ -163,14 +164,17 @@ A row is written when an engine MCP call **misled** you — it reported success 
 | `observed` | the date it was observed, written by whoever observed it |
 | `evidence` | the raw call and the raw answer. The one column where a tool name is legitimate |
 | `from` | the task that observed it |
+| `bridge` | the id of the bridge whose call misled, as `BRIDGES.md` lists it, so the row can be filed in the notes of that bridge and no other; `—` when the writer cannot tell (`/unikit-bridge-trap` then takes the only MCP bridge, or asks which) |
+
+A plan from a 2.x project has the heading `## MCP Findings` and six columns; `unikit-ai update` rewrites it (archived plans too) with a `bridge` column - the server the plan had when that was the only one selected for an unfinished plan, `—` otherwise - and the rewrite stays in your working tree, uncommitted. A reader treats a missing column as `—`.
 
 Three rules make this work:
 
 - **The row is written at the task, not at the end of the run** — by the same edit that ticks the checkbox. A table filled only in the closing report is lost to every `/clear`, which is exactly the moment a long run is most likely to end.
-- **Five writers, one table.** `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, plus `unikit-implement-worker` and `unikit-implement-coordinator` when the plan runs in parallel. None of them writes `.unikit/MCP-RECHECK-NOTES.md` directly: one observation is a bad sample, and a bad line lives for months, so the durable surface passes through a human.
-- **The table is read through a window.** `/unikit-mcp-trap` reads from the heading to the next `##` and opens no other part of the plan — so keep the heading at `##`, keep it above `## Technical Context`, and never nest the table inside another section.
+- **Five writers, one table.** `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, plus `unikit-implement-worker` and `unikit-implement-coordinator` when the plan runs in parallel. None of them writes `.unikit/bridge-notes/<bridge>.md` directly: one observation is a bad sample, and a bad line lives for months, so the durable surface passes through a human.
+- **The table is read through a window.** `/unikit-bridge-trap` reads from the heading to the next `##` and opens no other part of the plan — so keep the heading at `##`, keep it above `## Technical Context`, and never nest the table inside another section.
 
-At the end of a run `/unikit-implement` offers to hand the plan to `/unikit-mcp-trap`, which turns accepted rows into entries in `.unikit/MCP-RECHECK-NOTES.md`. See [Engine-MCP rules tree](configuration.md#engine-mcp-rules-tree).
+At the end of a run `/unikit-implement` offers to hand the plan to `/unikit-bridge-trap`, which turns accepted rows into entries in the notes of the bridge each row names (`.unikit/bridge-notes/<bridge>.md`). See [Engine bridge rules trees](configuration.md#engine-bridge-rules-trees).
 
 #### `## Rule Candidates` — a rule proposed, never written behind your back
 
@@ -237,7 +241,7 @@ At that task `/unikit-implement` commits the module and asks one question — ch
 
 While the checklist carries a `PR checkpoint:` line, a run never pushes — every automatic commit passes `no-push`, and the branch reaches the remote through `/unikit-pr` or you. A plan with PR checkpoint tasks but no `PR checkpoints: yes` line (written under a project's own rule) is legacy: its tasks run by their own steps, a `→ skipped` label reads as `⏭️ MERGED`, and a `→ PR` label without a SHA is a boundary found through the commit that added it.
 
-**Section order in the manifest** is a contract, not layout: `## Commit Plan` → `## MCP Findings` → `## Rule Candidates` → `## Test Runs` → `## Measurements` → `## Dependency Graph` → `## Total Estimated Effort` → `---` → `## Technical Context` → `## Open Questions`. `## Measurements` is present only in a plan that has a `Measure:` task ([Balance checkpoint plans](#balance-checkpoint-plans)).
+**Section order in the manifest** is a contract, not layout: `## Commit Plan` → `## Engine Bridge Findings` → `## Rule Candidates` → `## Test Runs` → `## Measurements` → `## Dependency Graph` → `## Total Estimated Effort` → `---` → `## Technical Context` → `## Open Questions`. `## Measurements` is present only in a plan that has a `Measure:` task ([Balance checkpoint plans](#balance-checkpoint-plans)).
 
 ### Ultra bundle — a manifest plus one file per phase
 
@@ -272,14 +276,14 @@ not even under `language.artifacts: ru`:
 ```
 
 **What lives where.** Everything mutable during execution stays in the manifest: the
-checklist checkboxes, `## MCP Findings`, `## Commit Plan`, `## Settings`, and the
+checklist checkboxes, `## Engine Bridge Findings`, `## Commit Plan`, `## Settings`, and the
 cross-phase part of `## Technical Context` (`CONTEXT`, `CONSTRAINTS`, `DEPENDENCY GRAPH`,
 `OUT OF SCOPE`). The manifest also carries an optional `## Architecture and Decisions` for
 decisions that bind **two or more** phases — a module boundary, a shared contract, a chosen
 trade-off. A decision internal to one phase belongs in that task's section instead, and the
 whole section is omitted when there are no cross-phase decisions. The task-scoped detail moves into the phase files, and **phase files are
 read-only during execution** — a skill executing a plan never writes into `phase-*.md`.
-That single write surface is what keeps `F<n>` numbering in `## MCP Findings` from
+That single write surface is what keeps `F<n>` numbering in `## Engine Bridge Findings` from
 branching across phases.
 
 **Three projections.** Every task exists exactly three times: a range line in
@@ -425,7 +429,7 @@ Every field of the brief comes from the source or says `not stated`; the planner
 
 ### What an executor does differently
 
-The section is the trigger. `/unikit-implement` (and its coordinator and worker), `/unikit-verify`, `/unikit-pr`, `/unikit-improve` (and the plan polisher and coordinator), `/unikit-review` (and its sidecars), `/unikit-fix`, `/unikit-devcontext` and `/unikit-commit` read the section of their role in `.unikit/system/prototype-profile.md` and nothing else of it. In short: what stays mandatory is a project that builds and runs, a legible interface, intact data, the written project constraints and the card's `Out of Scope`; architecture, scalability, documentation after a method change, error handling and TODO entries are softened; and the project documents, the roadmap, the TODO list, pull requests and the experiment storage itself are left alone. The profile file is the only owner of these rules. One gap: `/unikit-commit` looks for the section only in `.unikit/code/plans/*/PLAN.md`, so it commits a flat `.unikit/code/PLAN.md` (a `fast` plan) as an ordinary plan.
+The section is the trigger. `/unikit-implement` (and its coordinator and worker), `/unikit-verify`, `/unikit-pr`, `/unikit-improve` (and the plan polisher and coordinator), `/unikit-review` (and its sidecars), `/unikit-fix`, `/unikit-execute` and `/unikit-commit` read the section of their role in `.unikit/system/prototype-profile.md` and nothing else of it. In short: what stays mandatory is a project that builds and runs, a legible interface, intact data, the written project constraints and the card's `Out of Scope`; architecture, scalability, documentation after a method change, error handling and TODO entries are softened; and the project documents, the roadmap, the TODO list, pull requests and the experiment storage itself are left alone. The profile file is the only owner of these rules. One gap: `/unikit-commit` looks for the section only in `.unikit/code/plans/*/PLAN.md`, so it commits a flat `.unikit/code/PLAN.md` (a `fast` plan) as an ordinary plan.
 
 ---
 
@@ -445,26 +449,26 @@ The naming of `<container>` and `<target>` is engine-specific and comes from the
 
 | Setting | Written by | Read by |
 |---------|-----------|---------|
-| `Editor tasks: mcp \| manual \| direct` | `/unikit-plan` | `/unikit-implement` |
+| `Editor tasks: engine-bridge \| manual \| direct` | `/unikit-plan` | `/unikit-implement` |
 
 `Editor tasks` decides how the editor work is actually carried out:
 
-- **`mcp`** — through the engine MCP server. Chosen **silently** when an engine MCP is configured; you are not asked.
+- **`engine-bridge`** — through the engine bridges, in the order the project sets (`.unikit/bridges.yaml`). Chosen **silently** when `BRIDGES.md` lists at least one bridge; you are not asked. A plan that says `mcp` (2.x) is read as `engine-bridge`.
 - **`manual`** — nothing is touched. The task is marked `⏸️ MANUAL` and you get the exact instruction in `[kind] container → target : action` form. `/unikit-verify` reports these but never treats them as blockers.
 - **`direct`** — the serialized file is edited as text. Offered **only** where the engine's format tolerates it, and `/unikit-implement` always makes sure there is a commit to return to first. On Unreal Engine 5 the format tolerates it nowhere except `Config/Default*.ini` — every level and asset is binary — so `direct` is effectively an `.ini`-only route there.
 
-  `/unikit-implement` reads the feasibility ratings out of §6 of the **`/unikit-plan` skill's** installed `ENGINE_RULES.md`, since it has no engine template of its own. If that file is not there — you installed a subset of skills without `/unikit-plan`, or a future engine's slot has no template written for it yet — the gate **fails closed**: every format is treated as 🔴, `direct` is refused, and the task goes back to `manual` with the reason stated. This is the one place an absent file removes a right rather than leaving it untouched, and deliberately so: what is missing is permission for an irreversible text edit of a possibly-binary format, not a rule that would grant a capability. The `mcp` route is unaffected.
+  `/unikit-implement` reads the feasibility ratings out of §6 of the **`/unikit-plan` skill's** installed `ENGINE_RULES.md`, since it has no engine template of its own. If that file is not there — you installed a subset of skills without `/unikit-plan`, or a future engine's slot has no template written for it yet — the gate **fails closed**: every format is treated as 🔴, `direct` is refused, and the task goes back to `manual` with the reason stated. This is the one place an absent file removes a right rather than leaving it untouched, and deliberately so: what is missing is permission for an irreversible text edit of a possibly-binary format, not a rule that would grant a capability. The `engine-bridge` route is unaffected.
 
-When no engine MCP is configured, `/unikit-plan` asks which of `manual` / `direct` you want.
+When no engine bridge is configured, `/unikit-plan` asks which of `manual` / `direct` you want.
 
-### What `mcp` does not promise
+### What an engine bridge does not promise
 
-`Editor tasks: mcp` says the work goes **through** the engine MCP server. It does not promise that every target succeeds, and this file deliberately carries no table of which server can do what: such a table is a claim about six moving servers, and it was measured wrong in every row of its own predecessor within four weeks.
+`Editor tasks: engine-bridge` says the work goes **through** the engine bridges. It does not promise that every target succeeds, and this file deliberately carries no table of which bridge can do what: such a table is a claim about seven moving tools, and it was measured wrong in every row of its own predecessor within four weeks.
 
 What holds instead:
 
 - The candidate affordances come from the **live catalog**, asked per task — never from a stored list of names, and never from memory.
-- A rules tree, where the selected server has one, adds **checks** on top of that: what to confirm, by area. It never removes a right. Its absence means no known exceptions, not no capabilities — see [Engine-MCP rules tree](configuration.md#engine-mcp-rules-tree).
+- A rules tree, where a selected bridge has one, adds **checks** on top of that: what to confirm, by area. It never removes a right. Its absence means no known exceptions, not no capabilities — see [Engine bridge rules trees](configuration.md#engine-bridge-rules-trees).
 - `⏸️ MANUAL` is reached by **trying and finding no route**, with the evidence of that absence to show. Never by an absent rules file, never by an absent table row.
 
 ### `<ENGINE>_RULES.md` — the planning vocabulary
@@ -487,7 +491,7 @@ The boundary against the rules registry is exact: **the registry says HOW to wri
 | Godot 4 .NET | ✅ | §4 is a stub; §2 differs from Godot (C# sources, `.csproj`) |
 | Unreal Engine 5 | ✅ | §4 is a stub; §6 rates every level and asset 🔴, so `direct` is offered for `settings` targets in `.ini` only |
 
-This table is about **the vocabularies this project writes**, not about what an engine MCP server can do — that distinction is the whole reason [What `mcp` does not promise](#what-mcp-does-not-promise) above refuses to carry a per-server capability table, and it is what keeps this one from turning into that one.
+This table is about **the vocabularies this project writes**, not about what an engine bridge can do — that distinction is the whole reason [What an engine bridge does not promise](#what-an-engine-bridge-does-not-promise) above refuses to carry a per-bridge capability table, and it is what keeps this one from turning into that one.
 
 **If a future engine gets a slot before its vocabulary is written**, the degradation is normal, not an error: `/unikit-plan` generates no `Editor:` fields at all, omits the `Editor tasks` setting, and tells you so at confirmation — `Engine rules: ENGINE_RULES.md not found, Editor: fields skipped`.
 
@@ -520,6 +524,8 @@ Discovery is unchanged for bundles. A directory listing cannot tell a bundle fro
 
 An archived plan (`.unikit/code/archive/plans/<folder>/`) is not discovered - it was moved there to stop being offered. An explicit path `@.unikit/code/archive/plans/<folder>` still reaches it in `/unikit-implement` and `/unikit-improve`, and a commit's `Plan: <folder>` trailer names the folder to look for. `/unikit-explore` reads archived plans whose name matches its topic, as the history of how a feature was built.
 
+An archived research (`.unikit/code/archive/researches/<slug>/`) is found by name, not by path: a plan's `## Based on` entry is the folder name, and `/unikit-implement`, `/unikit-verify` and `/unikit-improve` look in `researches/` first and in `archive/researches/` second, printing `INFO [research] <slug> is archived` and no drift warning. Archiving a research therefore changes no plan, open or archived, and its Active Summary hash stays valid.
+
 ## Artifact Ownership
 
 To avoid ownership conflicts, artifact writers are command-scoped:
@@ -528,17 +534,19 @@ To avoid ownership conflicts, artifact writers are command-scoped:
 |----------|--------------|-------|
 | `.unikit/code/PLAN.md` | `/unikit-plan` | Fast-mode plan (temporary, single file) |
 | `.unikit/DESCRIPTION.md` | `/unikit` | Project specification |
-| `.unikit/ARCHITECTURE.md` | `/unikit-architecture` | Architecture guidelines |
+| `.unikit/ARCHITECTURE.md` | `/unikit-architecture` | Architecture guidelines (the root) |
+| `.unikit/architecture/*.md` | `/unikit-architecture` | Architecture topic files, listed under `## Topics` in the root and loaded by `Load when`; the planner and the executors derive them per phase, the `Rules:` line of a phase is not extended |
 | `.unikit/ROADMAP.md` | `/unikit-roadmap` | Milestone tracking |
 | `.unikit/RULES.md` + `.unikit/rules/*.md` | `/unikit-rules` | Convention source of truth: common rules in the root, topic files by `Load when` |
 | `.unikit/code/plans/*/PLAN.md` + `phase-NN-*.md` | `/unikit-plan` | Folder-plan manifest; `/unikit-improve` refines existing. Phase files are written by `/unikit-plan ultra` and `/unikit-improve` — never by an executor |
 | `.unikit/code/archive/plans/*/` | `/unikit-archive` | Completed folder plans (unfinished ones only on your explicit choice), moved unchanged apart from one `Archived:` line |
+| `.unikit/code/archive/researches/*/` | `/unikit-archive researches` | Code researches, moved unchanged apart from one `Archived:` line; `researches restore` moves them back |
 | `.unikit/code/FIX_PLAN.md` | `/unikit-fix` | Bug-fix analysis and steps |
 | `.unikit/code/patches/*.md` | `/unikit-fix` | Self-improvement patches |
 | `.unikit/skill-context/*` | `/unikit-evolve` | Project-specific skill overrides |
 | `.unikit/evolutions/*` | `/unikit-evolve` | Evolution logs + patch cursor |
 
-Quality commands (`/unikit-commit`, `/unikit-review`, `/unikit-verify`) treat these files as read-only context by default; the one exception is the bookkeeping `/unikit-verify` writes into the plan manifest (`## Test Runs`, `## Rule Candidates`, `## MCP Findings`).
+Quality commands (`/unikit-commit`, `/unikit-review`, `/unikit-verify`) treat these files as read-only context by default; the one exception is the bookkeeping `/unikit-verify` writes into the plan manifest (`## Test Runs`, `## Rule Candidates`, `## Engine Bridge Findings`).
 
 ## Self-Improvement Patches
 
@@ -669,7 +677,7 @@ The rule is about the **class** of artifact, not a list of exceptions: a list wo
 
 ### /unikit-plan → /unikit-implement
 
-Plan creates one manifest — `.unikit/code/PLAN.md` for a fast plan, `.unikit/code/plans/<folder>/PLAN.md` for a folder plan — carrying the checklist and `## Technical Context` in the same file. Implement discovers plans via the [Plan Discovery](#plan-discovery) priority order, reads the checklist for task ordering and the technical context alongside it, Bootstraps rules + engine principles once, then executes tasks sequentially inline (`Read/Edit/Write/Bash`). Parallel phases and deep-dive tasks are offloaded to the `develop-agent` alias. After each task, implement marks `- [x]` in the plan file. After phase completion: compilation check (engine MCP), optional tests, commit checkpoint.
+Plan creates one manifest — `.unikit/code/PLAN.md` for a fast plan, `.unikit/code/plans/<folder>/PLAN.md` for a folder plan — carrying the checklist and `## Technical Context` in the same file. Implement discovers plans via the [Plan Discovery](#plan-discovery) priority order, reads the checklist for task ordering and the technical context alongside it, Bootstraps rules + engine principles once, then executes tasks sequentially inline (`Read/Edit/Write/Bash`). Parallel phases and deep-dive tasks are offloaded to the `develop-agent` alias. After each task, implement marks `- [x]` in the plan file. After phase completion: compilation check (engine bridge), optional tests, commit checkpoint.
 
 In an [ultra bundle](#ultra-bundle--a-manifest-plus-one-file-per-phase) the depths differ per consumer: implement reads the manifest plus the phase file of the **active task**; verify reads the manifest plus the phase files of the phases with executed tasks (an unfinished plan is not read past what was done), and improve reads the manifest plus **every** phase file; commit reads the manifest plus the phase files of the current commit group; and `unikit-implement-coordinator` — the parallel execution path, a separate entry point that does its own detection — reads the manifest plus the phase files of the phases it dispatches in the current layer. The full table lives in `.unikit/system/ultra-plan-read.md`.
 

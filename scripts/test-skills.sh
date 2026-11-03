@@ -27,7 +27,7 @@ export UNIKIT_TEST_SKIP_BUILD=1
 # The nested suites each work in their own temp project and only read the package, so they
 # run in the background while the inline guards below go on, and each result is collected at
 # the Part that used to run it (the printed order does not change). A suite must never edit
-# a tracked file in place — copy it and point UNIKIT_MCP_DIR at the copy (test-update.sh,
+# a tracked file in place — copy it and point UNIKIT_MCP_DIR / UNIKIT_BRIDGES_DIR at the copy (test-update.sh,
 # test-migrations.sh do). UNIKIT_TEST_SERIAL=1 runs them one after another, as before.
 CHILD_DIR="$(mktemp -d)"
 trap 'kill $(jobs -p) 2>/dev/null || true; rm -rf "$CHILD_DIR"' EXIT
@@ -62,6 +62,7 @@ child_start install     bash "$SCRIPT_DIR/test-install.sh"
 child_start migrations  bash "$SCRIPT_DIR/test-migrations.sh"
 child_start extsel      bash "$SCRIPT_DIR/test-extension-selection.sh"
 child_start layout      bash "$SCRIPT_DIR/test-rules-layout.sh"
+child_start architecture-layout bash "$SCRIPT_DIR/test-architecture-layout.sh"
 child_start planbundle  bash "$SCRIPT_DIR/test-plan-bundle.sh"
 child_start genres      bash "$SCRIPT_DIR/test-genres.sh"
 child_start skillgroups bash "$SCRIPT_DIR/test-skill-groups.sh"
@@ -187,7 +188,7 @@ for skill_dir in "$ROOT_DIR"/skills/*/; do
     fi
 
     # Check name is lowercase with hyphens only
-    if [[ "$FM_NAME" =~ [A-Z] ]]; then
+    if [[ "$FM_NAME" != "${FM_NAME,,}" ]]; then
         fail "$skill_name — name contains uppercase characters"
         SKILL_ERRORS=$((SKILL_ERRORS + 1))
     fi
@@ -473,8 +474,11 @@ echo -e "\n${BOLD}=== Validate engine is_engine MCP presence ===${NC}\n"
 
 declare -A ENGINE_MCP_DIRS=(["unity"]="unity" ["godot"]="godot" ["godot-net"]="godot" ["unreal-engine-5"]="unreal-engine-5")
 
+# The engine servers live in engine-bridges/<engine>/; mcp/ keeps only the universal ones.
+BRIDGES_DIR="$ROOT_DIR/engine-bridges"
+
 for engine_id in "unity" "godot" "godot-net" "unreal-engine-5"; do
-    mcp_dir="$ROOT_DIR/mcp/${ENGINE_MCP_DIRS[$engine_id]}"
+    mcp_dir="$BRIDGES_DIR/${ENGINE_MCP_DIRS[$engine_id]}"
     ENGINE_MCP_RESULT=$(node -e "
       const fs = require('fs');
       const path = require('path');
@@ -495,7 +499,7 @@ for engine_id in "unity" "godot" "godot-net" "unreal-engine-5"; do
     if [[ "$ENGINE_MCP_RESULT" == "ok" ]]; then
         pass "engine $engine_id has MCP with is_engine=true"
     else
-        fail "engine $engine_id - no MCP file with is_engine=true in mcp/${ENGINE_MCP_DIRS[$engine_id]}/"
+        fail "engine $engine_id - no MCP file with is_engine=true in engine-bridges/${ENGINE_MCP_DIRS[$engine_id]}/"
     fi
 done
 
@@ -511,7 +515,7 @@ if [[ -f "$MCP_DIR/universal/context7.json" ]]; then
     if validate_json "$MCP_DIR/universal/context7.json"; then
         # Validate required fields
         HAS_FIELDS=$(json_field "$MCP_DIR/universal/context7.json" \
-          "m.key && m.displayName && (m.config || m.configByPlatform) ? 'ok' : 'missing'" 2>/dev/null || echo "missing")
+          "m.key && m.fullName && m.shortName && (m.config || m.configByPlatform) ? 'ok' : 'missing'" 2>/dev/null || echo "missing")
         if [[ "$HAS_FIELDS" == "ok" ]]; then
             KEY_VAL=$(json_field "$MCP_DIR/universal/context7.json" "m.key" 2>/dev/null)
             if [[ "$KEY_VAL" == "context7" ]]; then
@@ -520,7 +524,7 @@ if [[ -f "$MCP_DIR/universal/context7.json" ]]; then
                 fail "mcp/universal/context7.json — expected key 'context7', got '$KEY_VAL'"
             fi
         else
-            fail "mcp/universal/context7.json — missing key, displayName, or config/configByPlatform"
+            fail "mcp/universal/context7.json — missing key, fullName, shortName, or config/configByPlatform"
         fi
     else
         fail "mcp/universal/context7.json — invalid JSON"
@@ -532,11 +536,11 @@ fi
 # universal/github.json — the pull-request server, unchecked by default in the wizard
 if [[ -f "$MCP_DIR/universal/github.json" ]] && validate_json "$MCP_DIR/universal/github.json"; then
     GH_FIELDS=$(json_field "$MCP_DIR/universal/github.json" \
-      "m.key === 'github' && m.displayName && m.config && m.preselect === false ? 'ok' : 'bad'" 2>/dev/null || echo "bad")
+      "m.key === 'github' && m.fullName && m.shortName && m.config && m.preselect === false ? 'ok' : 'bad'" 2>/dev/null || echo "bad")
     if [[ "$GH_FIELDS" == "ok" ]]; then
         pass "mcp/universal/github.json (valid structure, key=github, preselect=false)"
     else
-        fail "mcp/universal/github.json — expected key 'github', displayName, config and preselect: false"
+        fail "mcp/universal/github.json — expected key 'github', fullName, shortName, config and preselect: false"
     fi
 else
     fail "mcp/universal/github.json — missing or invalid JSON"
@@ -544,71 +548,71 @@ fi
 
 # unity/ — validate all MCP JSON files
 UNITY_MCP_COUNT=0
-for mcp_file in "$MCP_DIR"/unity/*.json; do
+for mcp_file in "$BRIDGES_DIR"/unity/*.json; do
     [[ -f "$mcp_file" ]] || continue
     UNITY_MCP_COUNT=$((UNITY_MCP_COUNT + 1))
     fname=$(basename "$mcp_file")
     if validate_json "$mcp_file"; then
         HAS_FIELDS=$(json_field "$mcp_file" \
-          "m.key && m.displayName && (m.config || m.configByPlatform) ? 'ok' : 'missing'" 2>/dev/null || echo "missing")
+          "m.key && m.fullName && m.shortName && (m.config || m.configByPlatform || (m.kind === 'cli' && m.cli && m.cli.binary)) ? 'ok' : 'missing'" 2>/dev/null || echo "missing")
         if [[ "$HAS_FIELDS" == "ok" ]]; then
             KEY_VAL=$(json_field "$mcp_file" "m.key" 2>/dev/null)
-            pass "mcp/unity/$fname (valid structure, key=$KEY_VAL)"
+            pass "engine-bridges/unity/$fname (valid structure, key=$KEY_VAL)"
         else
-            fail "mcp/unity/$fname — missing key, displayName, or config/configByPlatform"
+            fail "engine-bridges/unity/$fname — missing key, fullName, shortName, or config/configByPlatform"
         fi
     else
-        fail "mcp/unity/$fname — invalid JSON"
+        fail "engine-bridges/unity/$fname — invalid JSON"
     fi
 done
 if [[ "$UNITY_MCP_COUNT" -eq 0 ]]; then
-    fail "mcp/unity/ — no MCP JSON files found"
+    fail "engine-bridges/unity/ — no MCP JSON files found"
 fi
 
 # godot/ — validate all MCP JSON files
 GODOT_MCP_COUNT=0
-for mcp_file in "$MCP_DIR"/godot/*.json; do
+for mcp_file in "$BRIDGES_DIR"/godot/*.json; do
     [[ -f "$mcp_file" ]] || continue
     GODOT_MCP_COUNT=$((GODOT_MCP_COUNT + 1))
     fname=$(basename "$mcp_file")
     if validate_json "$mcp_file"; then
         HAS_FIELDS=$(json_field "$mcp_file" \
-          "m.key && m.displayName && (m.config || m.configByPlatform) ? 'ok' : 'missing'" 2>/dev/null || echo "missing")
+          "m.key && m.fullName && m.shortName && (m.config || m.configByPlatform || (m.kind === 'cli' && m.cli && m.cli.binary)) ? 'ok' : 'missing'" 2>/dev/null || echo "missing")
         if [[ "$HAS_FIELDS" == "ok" ]]; then
             KEY_VAL=$(json_field "$mcp_file" "m.key" 2>/dev/null)
-            pass "mcp/godot/$fname (valid structure, key=$KEY_VAL)"
+            pass "engine-bridges/godot/$fname (valid structure, key=$KEY_VAL)"
         else
-            fail "mcp/godot/$fname — missing key, displayName, or config/configByPlatform"
+            fail "engine-bridges/godot/$fname — missing key, fullName, shortName, or config/configByPlatform"
         fi
     else
-        fail "mcp/godot/$fname — invalid JSON"
+        fail "engine-bridges/godot/$fname — invalid JSON"
     fi
 done
 if [[ "$GODOT_MCP_COUNT" -eq 0 ]]; then
-    fail "mcp/godot/ — no MCP JSON files found"
+    fail "engine-bridges/godot/ — no MCP JSON files found"
 fi
 
 # unreal-engine-5/ must have chir24-unreal-mcp.json
-if [[ -f "$MCP_DIR/unreal-engine-5/chir24-unreal-mcp.json" ]]; then
-    if validate_json "$MCP_DIR/unreal-engine-5/chir24-unreal-mcp.json"; then
-        HAS_FIELDS=$(json_field "$MCP_DIR/unreal-engine-5/chir24-unreal-mcp.json" \
-          "m.key && m.displayName && (m.config || m.configByPlatform) ? 'ok' : 'missing'" 2>/dev/null || echo "missing")
+if [[ -f "$BRIDGES_DIR/unreal-engine-5/chir24-unreal-mcp.json" ]]; then
+    if validate_json "$BRIDGES_DIR/unreal-engine-5/chir24-unreal-mcp.json"; then
+        HAS_FIELDS=$(json_field "$BRIDGES_DIR/unreal-engine-5/chir24-unreal-mcp.json" \
+          "m.key && m.fullName && m.shortName && (m.config || m.configByPlatform || (m.kind === 'cli' && m.cli && m.cli.binary)) ? 'ok' : 'missing'" 2>/dev/null || echo "missing")
         if [[ "$HAS_FIELDS" == "ok" ]]; then
-            KEY_VAL=$(json_field "$MCP_DIR/unreal-engine-5/chir24-unreal-mcp.json" "m.key" 2>/dev/null)
-            IS_ENGINE=$(json_field "$MCP_DIR/unreal-engine-5/chir24-unreal-mcp.json" "m.is_engine === true ? 'true' : 'false'" 2>/dev/null)
+            KEY_VAL=$(json_field "$BRIDGES_DIR/unreal-engine-5/chir24-unreal-mcp.json" "m.key" 2>/dev/null)
+            IS_ENGINE=$(json_field "$BRIDGES_DIR/unreal-engine-5/chir24-unreal-mcp.json" "m.is_engine === true ? 'true' : 'false'" 2>/dev/null)
             if [[ -n "$KEY_VAL" && "$IS_ENGINE" == "true" ]]; then
-                pass "mcp/unreal-engine-5/chir24-unreal-mcp.json (valid structure, key=$KEY_VAL, is_engine=true)"
+                pass "engine-bridges/unreal-engine-5/chir24-unreal-mcp.json (valid structure, key=$KEY_VAL, is_engine=true)"
             else
-                fail "mcp/unreal-engine-5/chir24-unreal-mcp.json — key='$KEY_VAL', is_engine=$IS_ENGINE (expected non-empty key + is_engine=true)"
+                fail "engine-bridges/unreal-engine-5/chir24-unreal-mcp.json — key='$KEY_VAL', is_engine=$IS_ENGINE (expected non-empty key + is_engine=true)"
             fi
         else
-            fail "mcp/unreal-engine-5/chir24-unreal-mcp.json — missing key, displayName, or config/configByPlatform"
+            fail "engine-bridges/unreal-engine-5/chir24-unreal-mcp.json — missing key, fullName, shortName, or config/configByPlatform"
         fi
     else
-        fail "mcp/unreal-engine-5/chir24-unreal-mcp.json — invalid JSON"
+        fail "engine-bridges/unreal-engine-5/chir24-unreal-mcp.json — invalid JSON"
     fi
 else
-    fail "mcp/unreal-engine-5/chir24-unreal-mcp.json — missing"
+    fail "engine-bridges/unreal-engine-5/chir24-unreal-mcp.json — missing"
 fi
 
 # ─────────────────────────────────────────────
@@ -618,7 +622,7 @@ fi
 # single file in isolation (two by directory loop, two by pinned filename) and
 # keeps no accumulator between files, so `order` uniqueness within a `key` group
 # is not expressible there at all, and the structural checks would have to be
-# written out four times. One node pass over mcp/*/*.json covers both.
+# written out four times. One node pass over mcp/*/*.json and engine-bridges/*/*.json covers both.
 #
 # Checks:
 #   - `order`, when present, is a number
@@ -654,6 +658,7 @@ fi
 MCP_SCHEMA_RESULT=$(node -e "
   const fs=require('fs'), path=require('path');
   const root=process.argv[1];
+  const bridgesRoot=process.argv[2];
   const KNOWN_PLATFORMS=['win32','darwin','linux'];
   const why=[];
   const orderByKey=new Map();   // directory -> Map<order, fileId>
@@ -682,16 +687,25 @@ MCP_SCHEMA_RESULT=$(node -e "
     else if (node&&typeof node==='object') for (const [k,v] of Object.entries(node)) walkEnv(v,trail.concat(k),rel);
   };
 
-  for (const dir of fs.readdirSync(root)) {
-    const dirPath=path.join(root, dir);
-    if (!fs.statSync(dirPath).isDirectory()) continue;
+  // Two roots since the catalog split: mcp/ (universal servers) and engine-bridges/ (the engine's bridges).
+  let scanned=0;
+  const dirs=[];
+  for (const [label, base] of [['mcp', root], ['engine-bridges', bridgesRoot]])
+    for (const d of fs.readdirSync(base))
+      if (fs.statSync(path.join(base, d)).isDirectory()) dirs.push([label+'/'+d, path.join(base, d)]);
+  for (const [dir, dirPath] of dirs) {
     for (const f of fs.readdirSync(dirPath)) {
       if (!f.endsWith('.json')) continue;
+      scanned++;
       const rel=dir+'/'+f;
       let m;
       const rawText=fs.readFileSync(path.join(dirPath,f),'utf8');
       try { m=JSON.parse(rawText); }
       catch { why.push('parse-error:'+rel); continue; }
+
+      // BR-1: a file sits in the root its name says - bridges declare is_engine, universal servers never do.
+      if (dir.startsWith('engine-bridges/') && m.is_engine !== true) why.push('BR-1:bridge-without-is_engine:'+rel);
+      if (dir==='mcp/universal' && m.is_engine === true) why.push('BR-1:universal-declares-is_engine:'+rel);
 
       if (m.preselect !== undefined && typeof m.preselect !== 'boolean') why.push('GH-1:preselect-not-boolean:'+rel);
       if (m.preselect !== undefined && m.is_engine === true) why.push('GH-1:preselect-on-engine:'+rel);
@@ -699,6 +713,8 @@ MCP_SCHEMA_RESULT=$(node -e "
       for (const lit of ['ghp_','github_pat_','gho_']) if (rawText.includes(lit)) why.push('GH-3:literal-token-'+lit+':'+rel);
 
       if (m.order !== undefined && typeof m.order !== 'number') why.push('order-not-number:'+rel);
+      // A bridge is ordered by the catalog (the default order of BRIDGES.md), so order is required there.
+      if (dir.startsWith('engine-bridges/') && typeof m.order !== 'number') why.push('bridge-without-order:'+rel);
 
       for (const dead of ['shards','instruction','verified'])
         if (m[dead] !== undefined) why.push('retired-key-'+dead+':'+rel);
@@ -715,6 +731,23 @@ MCP_SCHEMA_RESULT=$(node -e "
       }
       if (m.is_engine === true && !(m.docs && typeof m.docs.repo==='string' && m.docs.repo))
         why.push('engine-without-docs-repo:'+rel);
+
+      // A bridge of kind cli registers nothing and carries no config: it must name its binary, the flag
+      // that addresses a project, and a call form; and what it grants are verbs, never masks (the
+      // adapter writes the mask itself).
+      if (m.kind !== undefined && m.kind !== 'mcp' && m.kind !== 'cli') why.push('unknown-kind:'+m.kind+':'+rel);
+      if (m.kind === 'cli') {
+        const c=m.cli;
+        if (typeof c!=='object'||c===null||Array.isArray(c)) why.push('cli-block-missing:'+rel);
+        else {
+          for (const k of ['binary','projectFlag']) if (typeof c[k]!=='string'||!c[k]) why.push('cli-'+k+'-missing:'+rel);
+          if (typeof c.forms!=='object'||c.forms===null||typeof c.forms.call!=='string') why.push('cli-forms-call-missing:'+rel);
+        }
+        const grants=m['allowed-tools']||{};
+        for (const bucket of ['agents','skills'])
+          for (const [who,names] of Object.entries(grants[bucket]||{}))
+            for (const n of names) if (String(n).includes('*')) why.push('cli-wildcard-grant:'+who+':'+n+':'+rel);
+      }
 
       if (m.rules !== undefined) {
         if (typeof m.rules!=='string'||!m.rules) why.push('rules-not-string:'+rel);
@@ -752,6 +785,14 @@ MCP_SCHEMA_RESULT=$(node -e "
     }
   }
 
+  // BR-1: mcp/ keeps only universal/, and engine-bridges/ holds exactly the folders the engine registry names.
+  const subdirs=(base)=>fs.readdirSync(base).filter(d=>fs.statSync(path.join(base, d)).isDirectory()).sort();
+  if (subdirs(root).join()!=='universal') why.push('BR-1:mcp-subdirs:'+subdirs(root).join('+'));
+  const engSrc=fs.readFileSync(path.join(root,'..','src','core','engines.ts'),'utf8');
+  const wantDirs=[...new Set(engSrc.split('bridgesDir: ').slice(1).map(s=>s.split(Q)[1]))].sort();
+  if (wantDirs.length===0||wantDirs.join()!==subdirs(bridgesRoot).join()) why.push('BR-1:engine-bridges-subdirs:'+subdirs(bridgesRoot).join('+')+'!='+wantDirs.join('+'));
+  if (scanned<8) why.push('scanned-only-'+scanned);
+
   const ghPath=path.join(root,'universal','github.json');
   if (!fs.existsSync(ghPath)) why.push('GH-4:github-json-missing');
   else {
@@ -766,11 +807,12 @@ MCP_SCHEMA_RESULT=$(node -e "
     for (const bad of ['*','create_branch','create_or_update_file','delete_file']) if (got.includes(bad)) why.push('GH-4:forbidden-grant-'+bad);
   }
   if (envTokens<1) why.push('GH-2:no-env-token-in-catalog');
-  console.log(why.length ? why.join(' ') : 'ok '+envTokens);
-" "$MCP_DIR" 2>/dev/null || echo "pass-error")
+  console.log(why.length ? why.join(' ') : 'ok '+envTokens+' '+scanned);
+" "$MCP_DIR" "$BRIDGES_DIR" 2>/dev/null || echo "pass-error")
 
 if [[ "$MCP_SCHEMA_RESULT" == "ok "* ]]; then
-    pass "MCP schema fields valid across all configs (order/configByPlatform/docs/rules + order unique, shards+instruction+verified gone; GH-1…GH-3 preselect, env tokens (${MCP_SCHEMA_RESULT#ok }), no literal token)"
+    MCP_SCHEMA_COUNTS="${MCP_SCHEMA_RESULT#ok }"
+    pass "MCP schema fields valid across all configs of mcp/ and engine-bridges/ (${MCP_SCHEMA_COUNTS##* } scanned; order/configByPlatform/docs/rules + order unique and required on bridges, shards+instruction+verified gone; BR-1 layout; GH-1…GH-3 preselect, env tokens (${MCP_SCHEMA_COUNTS%% *}), no literal token)"
 else
     fail "MCP schema fields invalid: $MCP_SCHEMA_RESULT"
 fi
@@ -940,7 +982,7 @@ for (const agent of ['claude', 'cursor', 'qwen', 'opencode', 'codex', 'antigravi
 { const e = (await write('universal', tokenEntry())).settings.mcpServers.github;
   if (e.headers.Authorization !== 'Bearer ${GITHUB_PAT}') why.push('universal:syntax'); }
 if (getMcpWriter('universal') !== getMcpWriter('claude')) why.push('universal:not-the-claude-writer');
-const servers = new Map([['github', { displayName: 'GitHub', config: { headers: { Authorization: 'Bearer {{env:GITHUB_PAT}}' } } }]]);
+const servers = new Map([['github', { fullName: 'GitHub', shortName: 'GitHub', config: { headers: { Authorization: 'Bearer {{env:GITHUB_PAT}}' } } }]]);
 const both = getMcpEnvLines(servers, ['github'], ['claude', 'antigravity']);
 if (both.length !== 2 || !both[0].includes('GITHUB_PAT') || !both[1].includes('YOUR_GITHUB_PAT')) why.push('envLines:antigravity');
 if (getMcpEnvLines(servers, ['github'], ['claude']).length !== 1) why.push('envLines:claude-only');
@@ -1812,6 +1854,8 @@ fi
 GD_FLOW_SKILL="$ROOT_DIR/skills/unikit-gd-flow/SKILL.md"
 GD_BRAINSTORM_SKILL="$ROOT_DIR/skills/unikit-gd-brainstorm/SKILL.md"
 UNIKIT_EXPLORE_SKILL="$ROOT_DIR/skills/unikit-explore/SKILL.md"
+# Step 4 of /unikit-explore (the researches index render) lives here; /unikit-archive reads it too.
+EXPLORE_INDEX_RENDER="$ROOT_DIR/skills/unikit-explore/references/index-render.md"
 GD_DEFECTIVE_DIR="$ROOT_DIR/scripts/test-fixtures/gamedesign/defective-gdd"
 
 # (FL-1) The flow-zone skill exists, and the FLOW.md template carries the mode-aware
@@ -2502,7 +2546,7 @@ fi
 # ids straight from engines.ts and assert the test array matches, so a new engine fails HERE
 # first; the dev then updates ENGINES (which cascades into RD-2b's RECON_ENGINE_TOKENS map +
 # the code-recon.md matrix). engines.ts is the source of truth; this is its single mirror-check.
-CANON_ENGINE_IDS=$(grep -oE "id: '[^']+'" "$ROOT_DIR/src/core/engines.ts" | sed "s/^id: '//; s/'$//" | sort | tr '\n' ' ')
+CANON_ENGINE_IDS=$(grep -oE "^    id: '[^']+'" "$ROOT_DIR/src/core/engines.ts" | sed "s/^ *id: '//; s/'$//" | sort | tr '\n' ' ')
 TEST_ENGINE_IDS=$(printf '%s\n' "${ENGINES[@]}" | sort | tr '\n' ' ')
 if [[ "$CANON_ENGINE_IDS" == "$TEST_ENGINE_IDS" ]]; then
     pass "RD-2a engine-list sync: test ENGINES matches src/core/engines.ts ENGINE_REGISTRY ($CANON_ENGINE_IDS)"
@@ -3393,7 +3437,9 @@ grep -qF '<slug>/SOURCE.md' "$SF_SPEC" || SF_WHY+=" SF-3:no-folder-target"
 # The re-render literal `no readable RESEARCH.md` is NOT asserted here on purpose: UR-2 already
 # owns it, in this same file. Two guards on one defect give two failures and the question of
 # which is canonical — the ED-8 precedent. Do not re-add.
-grep -qF 'NOTE [research]' "$SF_SKILL" || SF_WHY+=" SF-3:no-unfinished-branch"
+# The unfinished-exploration branch is part of the index render, which moved out of SKILL.md
+# into references/index-render.md; it is asserted there.
+grep -qF 'NOTE [research]' "$EXPLORE_INDEX_RENDER" || SF_WHY+=" SF-3:no-unfinished-branch"
 if grep -qF '.pin.' "$SF_SKILL" || grep -qF '.pin.' "$SF_SPEC"; then SF_WHY+=" SF-3:scratch-file-returned"; fi
 # The floor is the half that keeps "the agent decides when" from becoming "the agent defers"; it
 # stays in the offer rule of the skill and is restated in the reference.
@@ -4414,7 +4460,7 @@ fi
 # The entry is pinned to the marker `(a pre-merge plan)` on that same line, not
 # to the file — exempting the whole file would re-open the 27 occurrences the
 # merge removed from it.
-# The second site is skills/unikit-archive/SKILL.md Step 2: a completed plan is never
+# The second site is skills/unikit-archive/references/plans.md Step 2: a completed plan is never
 # migrated, so the archive must still recognise the legacy task file to classify it — the
 # same load-bearing reason, on one line, under the same marker.
 PL2_ALLOW='(a pre-merge plan)'
@@ -4436,13 +4482,13 @@ else
     fail "PL-3 nothing scanned — PL-1 and PL-2 would pass vacuously"
 fi
 
-# (PL-4) The manifest section order is a contract, not layout. /unikit-mcp-trap reads
-# its section as "the `## MCP Findings` heading down to the next `##`", so where that
+# (PL-4) The manifest section order is a contract, not layout. /unikit-bridge-trap reads
+# its section as "the `## Engine Bridge Findings` heading down to the next `##`", so where that
 # heading sits decides what the trap transfers into the project's notes. Three
 # assertions over the template block in TASK-FORMAT.md, by LINE ORDER inside the
 # fence rather than by grep -c — a heading named in prose elsewhere in the file must
 # not be able to satisfy this:
-#   1. `## MCP Findings` stands ABOVE `## Technical Context`. Below it, the nine
+#   1. `## Engine Bridge Findings` stands ABOVE `## Technical Context`. Below it, the nine
 #      `###` subsections of the technical brief fall inside the findings window.
 #   2. The findings window is CLOSED by a following `##` — it never runs to the end
 #      of the template. The canonical tail (A4) is `## Dependency Graph` →
@@ -4468,7 +4514,7 @@ else
     END {
         mcp = 0; tech = 0
         for (i = 1; i <= n; i++) {
-            if (head[i] == "## MCP Findings")      mcp  = i
+            if (head[i] == "## Engine Bridge Findings")      mcp  = i
             if (head[i] == "## Technical Context") tech = i
         }
         if (mcp  == 0) printf " no-MCP-Findings-heading-in-template"
@@ -4481,7 +4527,7 @@ else
     }
 ' "$PL_TASKFMT" || true)"
     if [[ -z "$PL4_WHY" ]]; then
-        pass "PL-4 manifest section order — MCP Findings above Technical Context, findings window closed, only Open Questions may follow"
+        pass "PL-4 manifest section order — Engine Bridge Findings above Technical Context, findings window closed, only Open Questions may follow"
     else
         fail "PL-4 manifest section order broken in $PL_TASKFMT:$PL4_WHY"
     fi
@@ -4856,7 +4902,7 @@ done < <(printf '%s\n%s' "$RDF_CHECKING" "$RDF_WRITING" | grep -oE '`WARN \[rese
 #     migrated file). `## Who writes the field` measured 0 at sizes 8-10 and is included —
 #     no section is excluded.
 RDF_SHINGLE_WORDS=9
-RDF_SHINGLE_SECTIONS=('## The entry' '## What is hashed' '## Computing the hash' '## Writing an entry' '## Checking an entry' '## Who writes the field')
+RDF_SHINGLE_SECTIONS=('## The entry' '## Finding the folder' '## What is hashed' '## Computing the hash' '## Writing an entry' '## Checking an entry' '## Who writes the field')
 rdf_normalize() { tr '[:upper:]' '[:lower:]' | tr -d '`*_' | tr '\n' ' ' | tr -s '[:space:]' ' '; }
 rdf_shingles() {
     awk -v n="$1" '{
@@ -4955,6 +5001,52 @@ if [[ -z "$RDH_WHY" ]]; then
     pass "RD-H the contract is read only at its research step, never at Bootstrap, and the digest is computed at read time, not at write time"
 else
     fail "RD-H the contract is read or the digest computed at the wrong point:$RDH_WHY"
+fi
+
+# (RD-I) A linked research is found by NAME: the live folder first, the archive second, and
+# the place of the folder never raises a warning. The rule lives in ONE section of the
+# contract; a skill that spelled the archive path out would be a second copy of it, and
+# RD-F would not see it (its windows are the contract's wording, not the path).
+# Positions are read from the headings, never from a line number. Every $(grep ...) is
+# wrapped: an empty grep under set -e would abort the whole suite instead of failing here.
+RDI_WHY=""
+RDI_SECTION="$(awk 'index($0,"## Finding the folder")==1{f=1;next} f&&/^## /{f=0} f' "$RL_CONTRACT")"
+rdi_line() { { grep -n "^$1\$" "$RL_CONTRACT" || true; } | head -1 | cut -d: -f1; }
+RDI_ENTRY_N="$(rdi_line '## The entry')"
+RDI_FIND_N="$(rdi_line '## Finding the folder')"
+RDI_HASHED_N="$(rdi_line '## What is hashed')"
+if [[ -z "$RDI_SECTION" ]]; then
+    RDI_WHY+=" no-section"
+elif [[ -z "$RDI_ENTRY_N" || -z "$RDI_FIND_N" || -z "$RDI_HASHED_N" ]] \
+    || ! [[ "$RDI_ENTRY_N" -lt "$RDI_FIND_N" && "$RDI_FIND_N" -lt "$RDI_HASHED_N" ]]; then
+    RDI_WHY+=" section-out-of-place"
+fi
+for p in '.unikit/code/archive/researches/<slug>/' 'INFO [research] <slug> is archived' \
+    'exists in researches/ and in archive/researches/' 'reading researches/' 'Neither exists' 'never the archive'; do
+    printf '%s' "$RDI_SECTION" | grep -qF "$p" || RDI_WHY+=" section-lacks:${p// /-}"
+done
+# The place alone is not a finding: INFO in the section, no WARN of any label.
+printf '%s' "$RDI_SECTION" | grep -qF 'WARN [research' && RDI_WHY+=" section-warns-for-the-place"
+# The ladder points at the section and keeps its ONE label (RD-C holds the same from the
+# other side; this is the half that fails when the pointer is the thing that went).
+RDI_CHECKING="$(awk '/^## Checking an entry/{f=1} f&&/^## Who writes the field/{f=0} f' "$RL_CONTRACT")"
+printf '%s' "$RDI_CHECKING" | grep -qF 'Finding the folder' || RDI_WHY+=" checking-does-not-point-at-the-section"
+RDI_LABELS="$(printf '%s' "$RDI_CHECKING" | { grep -oE 'WARN \[research[a-zA-Z-]*\]' || true; } | sort -u | wc -l | tr -d ' ')"
+[[ "$RDI_LABELS" -eq 1 ]] || RDI_WHY+=" checking-labels=$RDI_LABELS"
+grep -qF 'neither folder exists' "$RL_CONTRACT" || RDI_WHY+=" source-missing-lost-the-both-absent-case"
+grep -qF 'Finding the folder' "$UNIKIT_IMPROVE_SKILL" || RDI_WHY+=" improve-no-pointer"
+# No consuming skill names the archive path: the contract is the one place that does.
+RDI_N=0
+for f in "${RD_CONSUMERS[@]}"; do
+    n="$(basename "$(dirname "$f")")"
+    RDI_N=$((RDI_N + 1))
+    grep -qF 'archive/researches' "$f" && RDI_WHY+=" $n-names-the-archive-path"
+done
+[[ "$RDI_N" -gt 0 ]] || RDI_WHY+=" derivation-empty:consumers"
+if [[ -z "$RDI_WHY" ]]; then
+    pass "RD-I a linked research is found by name, live folder first and archive second, in the contract only ($RDI_N consuming skills name no archive path)"
+else
+    fail "RD-I research folder resolution broke:$RDI_WHY"
 fi
 
 # =============================================
@@ -5189,10 +5281,31 @@ if grep -qF 'unikit:research-mode:ultra' "$UR_PLAN_SPEC"; then UR_WHY+=" researc
 # through the surviving mechanism: a folder is skipped for a missing manifest and for nothing
 # else. That is what keeps a folder full of adaptive artifacts from silently dropping out of
 # the registry, which is the failure the retired assert existed to prevent.
-grep -qF 'no readable RESEARCH.md' "$UR_EXPLORE" || UR_WHY+=" rerender-skips-on-anything-but-a-missing-manifest"
+#
+# The re-render itself is in references/index-render.md since /unikit-archive re-renders the
+# same index after it moves a research; the literal is asserted there.
+grep -qF 'no readable RESEARCH.md' "$EXPLORE_INDEX_RENDER" || UR_WHY+=" rerender-skips-on-anything-but-a-missing-manifest"
+
+# (UR-2b) The render has ONE home and SKILL.md loads it. The registry's format is now read by
+# a second skill, so the lines nobody else pinned are pinned here: the index is re-rendered
+# whole, never edited by hand, no folder is skipped in silence, and the order is by Updated.
+# The reference carries no frontmatter (it is not a skill). SKILL.md keeps no copy of the
+# render, and a reference that cannot be read is announced, never skipped in silence.
+if [[ -s "$EXPLORE_INDEX_RENDER" ]]; then
+    [[ "$(head -c 3 "$EXPLORE_INDEX_RENDER")" != '---' ]] || UR_WHY+=" index-render:has-frontmatter"
+    for p in 're-rendered whole' 'Do not edit manually' 'Skipping in silence is forbidden' \
+        'Sort by `Updated` descending' 'Kept:' 'Added:' 'Removed:' '{{skills_dir}}/{{self_name}}/references/continuing.md'; do
+        grep -qF "$p" "$EXPLORE_INDEX_RENDER" || UR_WHY+=" index-render:lacks:${p// /-}"
+    done
+else
+    UR_WHY+=" index-render:no-reference"
+fi
+grep -qF '{{skills_dir}}/{{self_name}}/references/index-render.md' "$UR_EXPLORE" || UR_WHY+=" index-render:skill-does-not-load-it"
+grep -qF 'index-render reference missing' "$UR_EXPLORE" || UR_WHY+=" index-render:no-missing-reference-warning"
+if grep -qF 'Overwrite the file whole.' "$UR_EXPLORE"; then UR_WHY+=" index-render:copy-left-in-skill"; fi
 
 if [[ -z "$UR_WHY" ]]; then
-    pass "UR-1/UR-2 ultra research reference + dispatch; the plan and research markers stay distinct; the re-render skips only a missing manifest"
+    pass "UR-1/UR-2/UR-2b ultra research reference + dispatch; the plan and research markers stay distinct; the re-render (references/index-render.md) skips only a missing manifest"
 else
     fail "UR-1/UR-2 ultra research contract:$UR_WHY"
 fi
@@ -5318,10 +5431,11 @@ else
     # satisfied by deleting the feature, so the positive half asserts the reconciliation
     # SURVIVED: the three counters `init` used to print are printed by the re-render. Scope is
     # deliberately only `unikit-explore` — `unikit-gd-explore` keeps its own `init` (DEC-7).
+    # The counters are printed by the render, which lives in references/index-render.md.
     if grep -q '^## Init' "$RM_SKILL"; then RM_WHY+=" RM-4:init-section-returned"; fi
     if grep -n 'argument-hint' "$RM_SKILL" | grep -q 'init'; then RM_WHY+=" RM-4:init-in-argument-hint"; fi
     for RM_COUNT in 'Kept:' 'Added:' 'Removed:'; do
-        grep -qF "$RM_COUNT" "$RM_SKILL" || RM_WHY+=" RM-4:reconciliation-counter-lost:$RM_COUNT"
+        grep -qF "$RM_COUNT" "$EXPLORE_INDEX_RENDER" || RM_WHY+=" RM-4:reconciliation-counter-lost:$RM_COUNT"
     done
     # The skill body is not the only place the argument was promised. `unikit-help` is read by
     # an agent choosing a route, so a retired argument surviving THERE is worse than in prose a
@@ -5375,10 +5489,11 @@ MF_WORKER="$ROOT_DIR/subagents/unikit-implement-worker.md"
 # the column contract a writer reads. A column present in one and not the other is how a
 # six-column table starts receiving five-column rows.
 MF1_WHY=""
-grep -qF '| id | area | confirm that | observed | evidence | from |' "$CK_TASKFMT" || MF1_WHY+=" template"
+grep -qF '| id | area | confirm that | observed | evidence | from | bridge |' "$CK_TASKFMT" || MF1_WHY+=" template"
 grep -qF '| `observed` |' "$CK_TASKFMT"                                            || MF1_WHY+=" contract-row"
+grep -qF '| `bridge` |' "$CK_TASKFMT"                                              || MF1_WHY+=" bridge-contract-row"
 if [[ -z "$MF1_WHY" ]]; then
-    pass "MF-1 observed column in both the MCP Findings template and its column contract"
+    pass "MF-1 observed and bridge columns in both the Engine Bridge Findings template and its column contract"
 else
     fail "MF-1 observed column missing in TASK-FORMAT.md:$MF1_WHY"
 fi
@@ -5387,17 +5502,17 @@ fi
 # checkbox. Anchored on the heading plus the table name rather than on prose, because this
 # is a structural claim: the section that marks a task also records the finding.
 if awk '/^\*\*3\.4: Mark task as completed\*\*/{f=1} f&&/^\*\*3\.5/{exit} f' "$MF_IMPLEMENT" \
-     | grep -qF '## MCP Findings'; then
+     | grep -qF '## Engine Bridge Findings'; then
     pass "MF-2 unikit-implement Step 3.4 records the finding with the checkbox"
 else
-    fail "MF-2 unikit-implement Step 3.4 has no ## MCP Findings anchor — the write drifted back to the end of the run"
+    fail "MF-2 unikit-implement Step 3.4 has no ## Engine Bridge Findings anchor — the write drifted back to the end of the run"
 fi
 
 # (MF-3) The worker writes the row itself (variant B). BOTH halves are asserted, and the
 # negative one is load-bearing: the cancelled behaviour was "hand it back to the
 # coordinator", and a half-applied edit leaves both instructions standing at once.
 MF3_WHY=""
-grep -qF '## MCP Findings' "$MF_WORKER"                             || MF3_WHY+=" append-missing"
+grep -qF '## Engine Bridge Findings' "$MF_WORKER"                             || MF3_WHY+=" append-missing"
 grep -qF 'return it to the coordinator as a candidate line' "$MF_WORKER" && MF3_WHY+=" handback-survived"
 if [[ -z "$MF3_WHY" ]]; then
     pass "MF-3 implement-worker appends the row itself; the coordinator hand-back is gone"
@@ -5408,7 +5523,7 @@ fi
 # (MF-4) The append scheme borrows an invariant it does not own — one editor phase per
 # execution layer, hence one writer at a time. Written down where the invariant lives, so
 # relaxing the invariant cannot silently break the writers.
-if grep -qF '`## MCP Findings` is written under this invariant' "$CK_TASKFMT"; then
+if grep -qF '`## Engine Bridge Findings` is written under this invariant' "$CK_TASKFMT"; then
     pass "MF-4 TASK-FORMAT.md ties the findings append to the serialization invariant"
 else
     fail "MF-4 TASK-FORMAT.md does not say the findings append depends on one-editor-phase-per-layer"
@@ -5454,16 +5569,16 @@ fi
 # Recording findings per task (MF above) only pays off if somebody offers to move them; a
 # table nobody reads is the same loss one step later. These guards pin the offer, the
 # input form that makes it work, and the two reference surfaces that describe it.
-MH_TRAP="$ROOT_DIR/skills/unikit-mcp-trap/SKILL.md"
+MH_TRAP="$ROOT_DIR/skills/unikit-bridge-trap/SKILL.md"
 MH_COORD="$ROOT_DIR/subagents/unikit-implement-coordinator.md"
 MH_SKILL_MAP="$ROOT_DIR/skills/unikit-help/references/skill-map.md"
 MH_DOCS_SKILLS="$ROOT_DIR/docs/skills.md"
 
 # (MH-1) The handoff step exists in unikit-implement.
-if grep -qF 'MCP Findings handoff' "$MF_IMPLEMENT"; then
-    pass "MH-1 unikit-implement carries the MCP Findings handoff step"
+if grep -qF 'Engine Bridge Findings handoff' "$MF_IMPLEMENT"; then
+    pass "MH-1 unikit-implement carries the Engine Bridge Findings handoff step"
 else
-    fail "MH-1 unikit-implement has no MCP Findings handoff step"
+    fail "MH-1 unikit-implement has no Engine Bridge Findings handoff step"
 fi
 
 # (MH-2) The renumbering was carried through. Inserting a step in the middle of Step 5 means
@@ -5478,9 +5593,9 @@ fi
 # (MH-3) The trap grew an input contract. Before this it had none at all: the body opened
 # straight into the session scan, so the argument shape lived only in the frontmatter hint.
 if grep -qF '## Input' "$MH_TRAP"; then
-    pass "MH-3 unikit-mcp-trap has an ## Input section"
+    pass "MH-3 unikit-bridge-trap has an ## Input section"
 else
-    fail "MH-3 unikit-mcp-trap ## Input missing — the three call forms are undocumented in the body"
+    fail "MH-3 unikit-bridge-trap ## Input missing — the three call forms are undocumented in the body"
 fi
 
 # (MH-4) The load-bearing half of the explicit-path form: the Step 1 shortcut is OFF. The
@@ -5489,7 +5604,7 @@ fi
 if grep -qF 'the Step 1 shortcut is off' "$MH_TRAP"; then
     pass "MH-4 explicit path disables the session shortcut"
 else
-    fail "MH-4 unikit-mcp-trap does not disable the Step 1 shortcut on an explicit path"
+    fail "MH-4 unikit-bridge-trap does not disable the Step 1 shortcut on an explicit path"
 fi
 
 # (MH-5) The stale step reference is gone. Documentation is Step 5.3 and always was; the
@@ -5521,18 +5636,18 @@ fi
 # unikit-implement never runs — so both holes lived here at once: in its single-phase branch
 # it executes tasks itself with no writer, and it ends a run with no offer. One counter
 # catches the return of either.
-if grep -qF '## MCP Findings' "$MH_COORD"; then
-    pass "MH-7 implement-coordinator knows the ## MCP Findings table"
+if grep -qF '## Engine Bridge Findings' "$MH_COORD"; then
+    pass "MH-7 implement-coordinator knows the ## Engine Bridge Findings table"
 else
-    fail "MH-7 implement-coordinator has no ## MCP Findings mention — writer and handoff holes are back"
+    fail "MH-7 implement-coordinator has no ## Engine Bridge Findings mention — writer and handoff holes are back"
 fi
 
 # (MH-8) …and can act on the offer it prints. A recommendation naming a skill the agent may
 # not invoke is a dead end for the user, who has nothing to replace it with.
-if awk '/^skills:/{f=1;next} f&&/^[a-zA-Z]/{f=0} f' "$MH_COORD" | grep -qF 'unikit-mcp-trap'; then
-    pass "MH-8 implement-coordinator lists unikit-mcp-trap in skills:"
+if awk '/^skills:/{f=1;next} f&&/^[a-zA-Z]/{f=0} f' "$MH_COORD" | grep -qF 'unikit-bridge-trap'; then
+    pass "MH-8 implement-coordinator lists unikit-bridge-trap in skills:"
 else
-    fail "MH-8 implement-coordinator recommends /unikit-mcp-trap without listing it in skills:"
+    fail "MH-8 implement-coordinator recommends /unikit-bridge-trap without listing it in skills:"
 fi
 
 # ─────────────────────────────────────────────
@@ -5578,7 +5693,7 @@ fi
 # place to replay — is dirty by default, so it rejected the correct state structurally and
 # passed a configured production scene. The measurement is gone; these guards keep the
 # retired mechanism from surviving in any of the four places it was described.
-MG_AUDIT="$ROOT_DIR/skills/unikit-mcp-audit/SKILL.md"
+MG_AUDIT="$ROOT_DIR/skills/unikit-bridge-audit/SKILL.md"
 MG_SKILL_MAP="$MH_SKILL_MAP"
 MG_DOCS_SKILLS="$MH_DOCS_SKILLS"
 MG_DOCS_CONFIG="$ROOT_DIR/docs/configuration.md"
@@ -5599,9 +5714,9 @@ fi
 # (MG-2) The REFUSE step itself. Named as a step, it is the inverted gate; its absence is
 # the mechanical trace that the envelope was actually rebuilt and not merely renumbered.
 if grep -qF 'REFUSE' "$MG_AUDIT"; then
-    fail "MG-2 the REFUSE step is back in unikit-mcp-audit — the inverted dirty gate returned"
+    fail "MG-2 the REFUSE step is back in unikit-bridge-audit — the inverted dirty gate returned"
 else
-    pass "MG-2 no REFUSE step in unikit-mcp-audit"
+    pass "MG-2 no REFUSE step in unikit-bridge-audit"
 fi
 
 # (MG-3) The promise, in the three places that carried it. NOTE the asymmetry with MG-1,
@@ -5616,12 +5731,12 @@ fi
 # /unikit-commit stages and commits it, /unikit-review already says "Analyzes staged
 # changes (git status + git diff --cached)", /unikit-fix requires a commit before a direct
 # edit. A file-wide negative on three such ordinary words goes red the first time somebody
-# writes a correct sentence about one of THOSE skills, pointing at unikit-mcp-audit, which
+# writes a correct sentence about one of THOSE skills, pointing at unikit-bridge-audit, which
 # their change never touched. The cheapest way to green is then to delete this assert — and
 # it is the only mechanical protection the claim has. A false red that converts into a
 # removed guard is worse than no guard, so the window is what makes the short literal safe.
 # Same technique as MF-2 (awk window over Step 3.4) and MH-8 (over the skills: block).
-MG3_AUDIT_SECTION="$(awk '/^### .*unikit-mcp-audit/{f=1;next} f&&(/^## /||/^### /){exit} f' \
+MG3_AUDIT_SECTION="$(awk '/^### .*unikit-bridge-audit/{f=1;next} f&&(/^## /||/^### /){exit} f' \
     "$MG_DOCS_SKILLS" 2>/dev/null || true)"
 MG3_WHY=""
 grep -qF 'refuses on a dirty scene' "$MG_AUDIT"     && MG3_WHY+=" skill"
@@ -5642,7 +5757,7 @@ fi
 # (MG-4) The grant follows the behaviour. git was read only inside the deleted MEASURE
 # step; a grant outliving its only caller is how a capability quietly stays available.
 if awk '/^allowed-tools:/{f=1;next} f&&/^[a-zA-Z]/{f=0} f' "$MG_AUDIT" | grep -qF 'Bash(git'; then
-    fail "MG-4 unikit-mcp-audit still grants Bash(git *) with no step that uses it"
+    fail "MG-4 unikit-bridge-audit still grants Bash(git *) with no step that uses it"
 else
     pass "MG-4 Bash(git *) grant removed together with the MEASURE step"
 fi
@@ -5653,7 +5768,7 @@ fi
 if grep -qF 'shown, not checked' "$MG_AUDIT"; then
     pass "MG-5 the open-scene line is contracted as shown-not-checked"
 else
-    fail "MG-5 unikit-mcp-audit lost the shown-not-checked contract for the scene line"
+    fail "MG-5 unikit-bridge-audit lost the shown-not-checked contract for the scene line"
 fi
 
 # (MG-6) The no-silent-demotion rule. The REPLAY step says "could not be reproduced in the
@@ -5662,7 +5777,7 @@ fi
 if grep -qF 'A failed replay is not automatically a demotion' "$MG_AUDIT"; then
     pass "MG-6 a replay failure under instability is offered, not written"
 else
-    fail "MG-6 unikit-mcp-audit lost the no-silent-demotion rule"
+    fail "MG-6 unikit-bridge-audit lost the no-silent-demotion rule"
 fi
 
 # (MG-7) Step 1 carves out the one read that precedes the confirmation. Both halves, and
@@ -6126,7 +6241,7 @@ fi
 # EM: engine-MCP rules layer (EM-1…EM-7)
 # ─────────────────────────────────────────────
 # The shard corpus (mcp/*/shards/**) was dropped with the rules-tree cutover; the
-# per-server profile now lives in mcp/<engine>/rules/<server>/{INDEX,verification}.md.
+# per-server profile now lives in engine-bridges/<engine>/rules/<server>/{INDEX,verification}.md.
 # The guards here lock the SOURCE side — the reader lines in the skills, the dead-name
 # sweep on the repaired configs, and the init.ts call site that no runtime test reaches.
 # EM-8 (the fennara .gd doctrine override) died with its shard: the fact it guarded is
@@ -6137,38 +6252,38 @@ fi
 # Path vars: reuse UNIKIT_VERIFY_SKILL; new EM_* for the other three readers.
 EM_IMPLEMENT_SKILL="$ROOT_DIR/skills/unikit-implement/SKILL.md"
 EM_FIX_SKILL="$ROOT_DIR/skills/unikit-fix/SKILL.md"
-EM_DEVCONTEXT_SKILL="$ROOT_DIR/skills/unikit-devcontext/SKILL.md"
+EM_EXECUTE_SKILL="$ROOT_DIR/skills/unikit-execute/SKILL.md"
 EM_DEV_PRINCIPLES="$ROOT_DIR/data/dev-principles.md"
 
-# (EM-1) INDEX.md is the entry point of the delivered rules tree and is read by ALL FOUR
-# pipeline skills. A delivered asset with no reader line is dead weight; this is the only
-# thing that keeps the four in sync. (It replaced capabilities.md with the rules-tree
-# cutover — the shard corpus, and that file with it, no longer exists.)
+# (EM-1) BRIDGES.md is the entry point of the delivered bridge layer and, with the INDEX.md of
+# each bridge's rules tree, is read by ALL FOUR pipeline skills. A delivered asset with no
+# reader line is dead weight; this is the only thing that keeps the four in sync. (It replaced
+# the single engine-mcp/INDEX.md with the per-bridge layout of 3.0.0.)
 EM1_WHY=""
-grep -qF 'engine-mcp/INDEX.md' "$EM_IMPLEMENT_SKILL"  || EM1_WHY+=" implement"
-grep -qF 'engine-mcp/INDEX.md' "$EM_FIX_SKILL"        || EM1_WHY+=" fix"
-grep -qF 'engine-mcp/INDEX.md' "$UNIKIT_VERIFY_SKILL" || EM1_WHY+=" verify"
-grep -qF 'engine-mcp/INDEX.md' "$EM_DEVCONTEXT_SKILL" || EM1_WHY+=" devcontext"
+for em1_skill in "implement:$EM_IMPLEMENT_SKILL" "fix:$EM_FIX_SKILL" "verify:$UNIKIT_VERIFY_SKILL" "execute:$EM_EXECUTE_SKILL"; do
+    grep -qF 'engine-bridges/BRIDGES.md' "${em1_skill#*:}" || EM1_WHY+=" ${em1_skill%%:*}:BRIDGES.md"
+    grep -qF 'engine-bridges/<bridge>/INDEX.md' "${em1_skill#*:}" || EM1_WHY+=" ${em1_skill%%:*}:INDEX.md"
+done
 if [[ -z "$EM1_WHY" ]]; then
-    pass "EM-1 engine-mcp INDEX.md read by all four pipeline skills"
+    pass "EM-1 BRIDGES.md and the INDEX.md of each bridge read by all four pipeline skills"
 else
-    fail "EM-1 engine-mcp INDEX.md reader line MISSING in:$EM1_WHY"
+    fail "EM-1 bridge-layer reader line MISSING in:$EM1_WHY"
 fi
 
-# (EM-2) The rules-tree binding: MCP-RECHECK-NOTES.md → all four readers of the check
+# (EM-2) The rules-tree binding: bridge-notes/<bridge>.md → all four readers of the check
 # tables; verification.md → verify ONLY. The negative half is the load-bearing one:
 # verification.md is the per-gate calibration behind the GATE LIFTED verdict, and that
 # verdict means nothing outside unikit-verify. Splitting the calibration across two
 # readers is how two skills come to disagree about what is lifted.
 EM2_WHY=""
-grep -qF 'MCP-RECHECK-NOTES.md' "$EM_IMPLEMENT_SKILL"  || EM2_WHY+=" notes:implement-missing"
-grep -qF 'MCP-RECHECK-NOTES.md' "$EM_FIX_SKILL"        || EM2_WHY+=" notes:fix-missing"
-grep -qF 'MCP-RECHECK-NOTES.md' "$EM_DEVCONTEXT_SKILL" || EM2_WHY+=" notes:devcontext-missing"
-grep -qF 'MCP-RECHECK-NOTES.md' "$UNIKIT_VERIFY_SKILL" || EM2_WHY+=" notes:verify-missing"
-grep -qF 'engine-mcp/verification.md'    "$UNIKIT_VERIFY_SKILL" || EM2_WHY+=" verification:verify-missing"
-grep -qF 'engine-mcp/verification.md' "$EM_IMPLEMENT_SKILL"  && EM2_WHY+=" verification:leaked-into-implement"
-grep -qF 'engine-mcp/verification.md' "$EM_FIX_SKILL"        && EM2_WHY+=" verification:leaked-into-fix"
-grep -qF 'engine-mcp/verification.md' "$EM_DEVCONTEXT_SKILL" && EM2_WHY+=" verification:leaked-into-devcontext"
+grep -qF 'bridge-notes/<bridge>.md' "$EM_IMPLEMENT_SKILL"  || EM2_WHY+=" notes:implement-missing"
+grep -qF 'bridge-notes/<bridge>.md' "$EM_FIX_SKILL"        || EM2_WHY+=" notes:fix-missing"
+grep -qF 'bridge-notes/<bridge>.md' "$EM_EXECUTE_SKILL" || EM2_WHY+=" notes:execute-missing"
+grep -qF 'bridge-notes/<bridge>.md' "$UNIKIT_VERIFY_SKILL" || EM2_WHY+=" notes:verify-missing"
+grep -qF 'engine-bridges/<bridge>/verification.md' "$UNIKIT_VERIFY_SKILL" || EM2_WHY+=" verification:verify-missing"
+grep -qF '<bridge>/verification.md' "$EM_IMPLEMENT_SKILL"  && EM2_WHY+=" verification:leaked-into-implement"
+grep -qF '<bridge>/verification.md' "$EM_FIX_SKILL"        && EM2_WHY+=" verification:leaked-into-fix"
+grep -qF '<bridge>/verification.md' "$EM_EXECUTE_SKILL" && EM2_WHY+=" verification:leaked-into-execute"
 if [[ -z "$EM2_WHY" ]]; then
     pass "EM-2 rules-tree binding: notes → all four readers · verification → verify ONLY"
 else
@@ -6182,7 +6297,7 @@ fi
 # biome verification.md now that the rules tree is the delivered asset. What that file
 # must say is the NEGATIVE of the convention — the verdict is produced by a run, never
 # pre-declared — so the two halves of EM-3 point in opposite directions on purpose.
-EM_BIOME_VERIFICATION="$ROOT_DIR/mcp/unity/rules/unity-biome-mcp/verification.md"
+EM_BIOME_VERIFICATION="$ROOT_DIR/engine-bridges/unity/rules/unity-biome-mcp/verification.md"
 EM3_WHY=""
 grep -qF 'GATE LIFTED' "$UNIKIT_VERIFY_SKILL" || EM3_WHY+=" verify-skill"
 grep -qF 'GATE LIFTED' "$EM_DEV_PRINCIPLES"   || EM3_WHY+=" dev-principles"
@@ -6203,8 +6318,10 @@ fi
 # passed fs.existsSync and then failed every call with NOT_CONNECTED.
 # The coplay half was removed with the port change: `8085` is what the Unity plugin passes on
 # the launch line, so a guard forbidding it forbade the measured value.
-EM_CHIR24_JSON="$ROOT_DIR/mcp/unreal-engine-5/chir24-unreal-mcp.json"
+EM_CHIR24_JSON="$ROOT_DIR/engine-bridges/unreal-engine-5/chir24-unreal-mcp.json"
 EM4_WHY=""
+# A missing file must fail: grep on it errors out, and `grep … && …` would read that as "not found".
+[[ -f "$EM_CHIR24_JSON" ]] || EM4_WHY+=" chir24-json-missing"
 for dead in manage_pipeline manage_performance manage_game_framework manage_behavior_tree manage_navigation UE_PROJECT_PATH; do
     grep -qF "$dead" "$EM_CHIR24_JSON" && EM4_WHY+=" chir24:$dead"
 done
@@ -6219,31 +6336,32 @@ fi
 # exercises update.ts; a dropped init.ts call would be invisible to lint, knip (still called
 # from update.ts) and every smoke test. These greps are the only coverage of the init side.
 #
-# swapMcpRecheckNotes joins installEngineMcpRules here because its failure mode is worse than
-# a missing delivery and completely silent: the notes of the outgoing server stay active under
-# the incoming one, and every reader then treats another server's findings as evidence.
+# swapBridgeNotes joins installEngineBridges here because its failure mode is worse than
+# a missing delivery and completely silent: the notes of a dropped bridge stay active next to
+# the ones that are left, and every reader then treats another bridge's findings as evidence.
 EM5_WHY=""
-for fn in installEngineMcpRules swapMcpRecheckNotes; do
+for fn in installEngineBridges swapBridgeNotes; do
     grep -qF "$fn(" "$ROOT_DIR/src/cli/commands/init.ts"   || EM5_WHY+=" init.ts:$fn"
     grep -qF "$fn(" "$ROOT_DIR/src/cli/commands/update.ts" || EM5_WHY+=" update.ts:$fn"
 done
 if [[ -z "$EM5_WHY" ]]; then
-    pass "EM-5 installEngineMcpRules + swapMcpRecheckNotes wired in both init.ts and update.ts"
+    pass "EM-5 installEngineBridges + swapBridgeNotes wired in both init.ts and update.ts"
 else
-    fail "EM-5 rules-tree delivery NOT wired in:$EM5_WHY"
+    fail "EM-5 bridge delivery NOT wired in:$EM5_WHY"
 fi
 
 # (SA-1) Every system-asset installer in system-assets.ts and system-contracts.ts is called from BOTH init.ts and
-# update.ts. Derivative, not a name list: a new `export async function installX` is covered
-# by construction, and the overlap with EM-5 above is deliberate — EM-5 pins two specific
-# functions for a stronger reason (silent findings-log corruption on a missed call), SA-1
-# pins the general shape all of today's installers share.
+# update.ts (and installEngineBridges, which lives in installer/engine-bridges.ts). Derivative,
+# not a name list: a new `export async function installX` is covered by construction, and the
+# overlap with EM-5 above is deliberate — EM-5 pins two specific functions for a stronger reason
+# (silent findings-log corruption on a missed call), SA-1 pins the general shape all of today's
+# installers share.
 # Anchored on the call LINE (`await installX(`), not the substring `installX(`: a plain
 # grep -F would count a commented-out `// await installX(` as wiring, missing the most
 # natural way to disable a call. All of today's calls have the form `    await installX(`.
-SA_INSTALLERS="$(sed -n 's/^export async function \(install[A-Za-z]*\)(.*/\1/p' "$ROOT_DIR/src/core/installer/system-assets.ts" "$ROOT_DIR/src/core/installer/system-contracts.ts")"
+SA_INSTALLERS="$(sed -n 's/^export async function \(install[A-Za-z]*\)(.*/\1/p' "$ROOT_DIR/src/core/installer/system-assets.ts" "$ROOT_DIR/src/core/installer/system-contracts.ts" "$ROOT_DIR/src/core/installer/engine-bridges.ts")"
 if [[ -z "$SA_INSTALLERS" ]]; then
-    fail "SA-1 no install* exports found in system-assets.ts and system-contracts.ts — the guard has no object"
+    fail "SA-1 no install* exports found in system-assets.ts, system-contracts.ts and engine-bridges.ts — the guard has no object"
 else
     SA_WHY=""
     SA_COUNT=0
@@ -6260,17 +6378,21 @@ else
     fi
 fi
 
-# (EM-6) No recommendation wording in a Godot displayName. Ranking is expressed by
+# (EM-6) No recommendation wording in a Godot fullName. Ranking is expressed by
 # `order` alone (decision #10/#12) — a `[Recommended]` tag next to a paid server both
 # duplicates the ordering and editorialises it. Directory-scoped so the ban cannot be
 # reintroduced in whichever Godot config is added next.
 EM6_WHY=""
-for godot_json in "$ROOT_DIR"/mcp/godot/*.json; do
+EM6_SEEN=0
+for godot_json in "$ROOT_DIR"/engine-bridges/godot/*.json; do
     [[ -f "$godot_json" ]] || continue
+    EM6_SEEN=$((EM6_SEEN + 1))
     grep -qF '[Recommended]' "$godot_json" && EM6_WHY+=" $(basename "$godot_json")"
 done
-if [[ -z "$EM6_WHY" ]]; then
-    pass "EM-6 no [Recommended] tag in any mcp/godot/*.json displayName"
+if [[ $EM6_SEEN -lt 3 ]]; then
+    fail "EM-6 only $EM6_SEEN config(s) under engine-bridges/godot/*.json — the guard lost its objects"
+elif [[ -z "$EM6_WHY" ]]; then
+    pass "EM-6 no [Recommended] tag in any engine-bridges/godot/*.json fullName ($EM6_SEEN scanned)"
 else
     fail "EM-6 [Recommended] tag survives in:$EM6_WHY"
 fi
@@ -6279,8 +6401,9 @@ fi
 # per OS. Both tokens must be present in the JSON (an accidental absolute path would work
 # on the author's machine and nowhere else) and both must resolve at configure time, which
 # the platform-agnostic install assertion in test-install.sh covers.
-EM_FENNARA_JSON="$ROOT_DIR/mcp/godot/fennara-godot-mcp.json"
+EM_FENNARA_JSON="$ROOT_DIR/engine-bridges/godot/fennara-godot-mcp.json"
 EM7_WHY=""
+[[ -f "$EM_FENNARA_JSON" ]] || EM7_WHY+=" fennara-json-missing"
 grep -qF '{{localappdata}}' "$EM_FENNARA_JSON" || EM7_WHY+=" no-localappdata-token"
 grep -qF '{{home}}' "$EM_FENNARA_JSON"         || EM7_WHY+=" no-home-token"
 if [[ -z "$EM7_WHY" ]]; then
@@ -6525,7 +6648,7 @@ fi
 # itself the day someone moves the tree.
 ED14_WHY=""
 ED14_SEEN=0
-for rt_index in "$ROOT_DIR"/mcp/*/rules/*/INDEX.md; do
+for rt_index in "$ROOT_DIR"/engine-bridges/*/rules/*/INDEX.md; do
     [[ -f "$rt_index" ]] || continue
     ED14_SEEN=$((ED14_SEEN + 1))
     rt_id="$(basename "$(dirname "$rt_index")")"
@@ -6539,7 +6662,7 @@ for rt_index in "$ROOT_DIR"/mcp/*/rules/*/INDEX.md; do
     done < <(rt_table_column "$rt_index" '## Check' 2)
 done
 if [[ $ED14_SEEN -eq 0 ]]; then
-    fail "ED-14 no mcp/*/rules/*/INDEX.md found — the guard has no object left"
+    fail "ED-14 no engine-bridges/*/rules/*/INDEX.md found — the guard has no object left"
 elif [[ -z "$ED14_WHY" ]]; then
     pass "ED-14 every check-table area is one of the 12 ($ED14_SEEN rules tree(s) scanned)"
 else
@@ -6613,11 +6736,11 @@ fi
 # EW: the editor procedures live below it once, not restated per executor (DEC-015).
 LB_READERS=(
     "implement:$EM_IMPLEMENT_SKILL" "fix:$EM_FIX_SKILL" "verify:$UNIKIT_VERIFY_SKILL"
-    "improve:$ROOT_DIR/skills/unikit-improve/SKILL.md" "devcontext:$EM_DEVCONTEXT_SKILL"
+    "improve:$ROOT_DIR/skills/unikit-improve/SKILL.md" "execute:$EM_EXECUTE_SKILL"
     "worker:$ROOT_DIR/subagents/unikit-implement-worker.md"
     "coordinator:$ROOT_DIR/subagents/unikit-implement-coordinator.md"
 )
-LB_MCP_AUDIT="$ROOT_DIR/skills/unikit-mcp-audit/SKILL.md"
+LB_MCP_AUDIT="$ROOT_DIR/skills/unikit-bridge-audit/SKILL.md"
 LB_PATTERN="^<!-- === LAZY-READ BOUNDARY === -->"
 LB_WHY=""
 for lb_pair in "${LB_READERS[@]}"; do
@@ -6666,10 +6789,10 @@ else
     EW_WHY+=" EW-1:boundary-marker-missing"
 fi
 # (EW-2) NEGATIVE — the executors no longer restate them.
-# All five readers of the lower half, not only the two that carried the full procedure: verify
+# All six readers of the lower half, not only the two that carried the full procedure: verify
 # and the worker held shortened retellings, and `candidate affordances` is the phrase both
 # retellings shared — D6 owns it now, so any executor that carries it is restating D6.
-for ew2_f in "$EM_IMPLEMENT_SKILL" "$EM_FIX_SKILL" "$UNIKIT_VERIFY_SKILL" \
+for ew2_f in "$EM_IMPLEMENT_SKILL" "$EM_FIX_SKILL" "$UNIKIT_VERIFY_SKILL" "$EM_EXECUTE_SKILL" \
              "$ROOT_DIR/subagents/unikit-implement-worker.md" "$ROOT_DIR/subagents/unikit-implement-coordinator.md"; do
     for ew2 in 'Candidates from the live catalog, by intent' 'Reference: trigger <1|2>' 'network dependency inside the editor lane' 'candidate affordances'; do
         grep -qF "$ew2" "$ew2_f" && EW_WHY+=" EW-2:restated:${ew2_f#"$ROOT_DIR"/}"
@@ -6679,7 +6802,8 @@ done
 EW3_S32="$(awk '/^\*\*3\.2: Implement the task\*\*/{f=1;next} /^\*\*3\.3/{f=0} f' "$EM_IMPLEMENT_SKILL")"
 printf '%s' "$EW3_S32" | grep -qF '→ **D6**' || EW_WHY+=" EW-3:implement-no-D6"
 grep -qF '→ **D6**' "$EM_FIX_SKILL" || EW_WHY+=" EW-3:fix-no-D6"
-for ew3_f in "$UNIKIT_VERIFY_SKILL" "$ROOT_DIR/subagents/unikit-implement-worker.md" "$ROOT_DIR/subagents/unikit-implement-coordinator.md"; do
+grep -qF '→ **D6**' "$EM_EXECUTE_SKILL" || EW_WHY+=" EW-3:execute-no-D6"
+for ew3_f in "$UNIKIT_VERIFY_SKILL" "$EM_EXECUTE_SKILL" "$ROOT_DIR/subagents/unikit-implement-worker.md" "$ROOT_DIR/subagents/unikit-implement-coordinator.md"; do
     grep -qF '**D7**' "$ew3_f" || EW_WHY+=" EW-3:no-D7:${ew3_f##*/}"
 done
 if [[ -z "$EW_WHY" ]]; then
@@ -6786,7 +6910,7 @@ ED16_RESULT=$(node -e '
   const SECTION="## Editor Target Checks";
   const PLAN_S1="## §1 ";
   const MANUAL_NEGATION="never turns a target into `⏸️ MANUAL`";
-  const ANCHORS=["A2",".unikit/system/engine-mcp/"];
+  const ANCHORS=["A2",".unikit/system/engine-bridges/"];
   const why=[]; let sections=0;
 
   const sectionOf=(text,prefix)=>{
@@ -6839,7 +6963,7 @@ ED16_RESULT=$(node -e '
   "$ROOT_DIR/data/engine-templates/skills/unikit-verify" 2>/dev/null || echo "node-error")
 
 if [[ "$ED16_RESULT" == "ok" ]]; then
-    pass "ED-16 Editor Target Checks in all 4 verify templates: no pre-lifted gate, ⏸️ MANUAL negation stated, A2 + engine-mcp anchors, kind sets match their plan template"
+    pass "ED-16 Editor Target Checks in all 4 verify templates: no pre-lifted gate, ⏸️ MANUAL negation stated, A2 + engine-bridges anchors, kind sets match their plan template"
 else
     fail "ED-16 editor-target-check contract drift: $ED16_RESULT"
 fi
@@ -7225,7 +7349,7 @@ fi
 TS2_WHY=""
 if [[ -s "$TS_DEVPRIN" ]]; then
     grep -qF 'for all functionality' "$TS_DEVPRIN" && TS2_WHY+=" TS-2:blanket-wording-returned"
-    grep -qF 'marks the tests gate **GATE LIFTED** for the configured server' "$TS_DEVPRIN" || TS2_WHY+=" TS-2:gate-lifted-sentence-lost"
+    grep -qF 'If the tests gate is **GATE LIFTED**' "$TS_DEVPRIN" || TS2_WHY+=" TS-2:gate-lifted-sentence-lost"
 else
     TS2_WHY+=" TS-2:dev-principles-missing"
 fi
@@ -7531,10 +7655,23 @@ if [[ -z "$TW_WHY" ]]; then
     tw_has "TW-15:repeat-line-unlinked"  'One scope, one launch'                                   "$tw15_line"
     tw_has "TW-15:search-looks-like-launch" 'no suite is started while it repeats'                 "$(cat "$TC_TESTRUNS")"
     tw_has "TW-15:fix-unlinked"          'One scope, one launch'                                   "$(cat "$EM_FIX_SKILL")"
+    # (TW-16) a result that names a part still going is not green: a bridge can answer a run with a
+    # success flag while one of its parts was only started in the background (measured 2026-10-27).
+    # The run is over when every part has reported, and the one-run line names its own exception.
+    tw_has "TW-16:part-going-is-green"   'part of the run is still going'                          "$TW_SEC"
+    tw_has "TW-16:parts-not-all-reported" 'the run is over when every part has reported'           "$TW_SEC"
+    tw_has "TW-16:one-run-no-exception"  'except where the bridge cannot run the scope in one'     "$TW_SEC"
+    # (TW-17) the only case in which a run is more than one launch: the bridge cannot do the scope
+    # in one, so the scope splits along the bridge's own boundary and each part is launched once.
+    # The narrower check stays forbidden (TW-14) and the suites are still not started one after
+    # another (TW-3); both are pinned above and must survive the new paragraph.
+    tw_has "TW-17:no-split-paragraph"    'splits it along its own boundary'                        "$TW_SEC"
+    tw_has "TW-17:part-launched-twice"   'each part is launched once'                              "$TW_SEC"
+    tw_has "TW-17:split-not-the-only-case" 'This is the only case in which a run is more than one launch' "$TW_SEC"
     (( tw_chk > 0 )) || TW_WHY+=" TW-13:no-anchor-checked"
 fi
 if [[ -z "$TW_WHY" ]]; then
-    pass "TW-1…TW-15 run width: every test by default, affected runs and their threshold are keys, one launch, zero tests is not green, the final run reused on an unchanged tree, fix reads the same section; one content-aware, index-independent tree hash, carried over the executor's commits; tests written before the phase's run; one scope closed before its single launch, a repeat after red is one launch of the whole scope (${tw_chk:-0} new anchors)"
+    pass "TW-1…TW-17 run width: every test by default, affected runs and their threshold are keys, one launch, zero tests is not green, the final run reused on an unchanged tree, fix reads the same section; one content-aware, index-independent tree hash, carried over the executor's commits; tests written before the phase's run; one scope closed before its single launch, a repeat after red is one launch of the whole scope; a part still going is not green, a bridge that cannot run the scope in one launch splits it along its own boundary (${tw_chk:-0} new anchors)"
 else
     fail "TW run-width contract:$TW_WHY"
 fi
@@ -7592,10 +7729,10 @@ PX_VERIFY="$ROOT_DIR/skills/unikit-verify/SKILL.md"
 PX_DEV_PRINCIPLES="$ROOT_DIR/data/dev-principles.md"
 PX_DYNAMIC_MEMORY="$ROOT_DIR/docs/dynamic-memory.md"
 PX_WHY=""
-# (PX-1) the delegate fallback that contradicted "do NOT invoke /unikit-devcontext inline" — closed in
+# (PX-1) the delegate fallback that contradicted "do NOT invoke /unikit-execute inline" — closed in
 # all three skills that declare develop-agent, not only in implement
 for px1_f in "$PX_IMPLEMENT" "$ROOT_DIR/skills/unikit-fix/SKILL.md" "$PX_VERIFY"; do
-    grep -qF 'unavailable, invoke `/unikit-devcontext` inline' "$px1_f" && PX_WHY+=" PX-1:devcontext-inline-fallback:${px1_f##*/skills/}"
+    grep -qF 'unavailable, invoke `/unikit-execute` inline' "$px1_f" && PX_WHY+=" PX-1:execute-inline-fallback:${px1_f##*/skills/}"
 done
 # (PX-2) the findings column contract lives in the planner's reference, not in implement's own.
 # Every surface that names the file, D7 included (the defect-2 line moved there). Any path
@@ -7751,12 +7888,135 @@ if [[ -z "$MC_WHY" ]]; then
         || MC_WHY+=" MC-7:no-deliberate-empty-reading"
     grep -qF 'is left as it is and listed under skipped' "$MC_MODE_CONFIG" \
         || MC_WHY+=" MC-7:scalar-parent-not-named"
+
+    # The bridge order left /unikit: the installer keeps `.unikit/bridges.yaml`, so the skill has no bridge order mode —
+    # no trigger in the description, no dispatch in Step 0, no narrowing of item 4, no body, no exception in the
+    # actualization mode. Item 4 is narrowed for the actualization mode alone.
+    [[ ! -e "$ROOT_DIR/skills/unikit/references/mode-bridge-order.md" ]] \
+        || MC_WHY+=" MC-2:bridge-order-body-still-there"
+    ! printf '%s' "$MC_DESC" | grep -qF 'change the bridge order' \
+        || MC_WHY+=" MC-1:bridge-order-trigger-still-there"
+    ! printf '%s' "$MC_STEP0" | grep -qF 'mode-bridge-order' \
+        || MC_WHY+=" MC-3:bridge-order-dispatch-still-there"
+    ! grep -qF 'the same for the bridge order mode' "$TC_UNIKIT_SKILL" \
+        || MC_WHY+=" MC-4:item-4-still-narrowed-for-bridge-order"
+    grep -qF '**Narrowed for the config actualization mode:**' "$TC_UNIKIT_SKILL" \
+        || MC_WHY+=" MC-4:item-4-not-narrowed-for-actualization"
+    ! grep -qF 'engine_bridges' "$MC_MODE_CONFIG" \
+        || MC_WHY+=" MC-7:bridge-order-exception-still-there"
 fi
 if [[ -z "$MC_WHY" ]]; then
     pass "MC-1…MC-7 /unikit config actualization mode — triggered in the description, dispatched inside Step 0, three contract carve-outs, capability-bounded body"
 else
     fail "MC-1…MC-7 config actualization mode contract:$MC_WHY"
     [[ -n "${MC6_HITS:-}" ]] && echo "$MC6_HITS" | head -5
+fi
+
+# ─────────────────────────────────────────────
+# MN: /unikit on a project that is already set up (MN-1…MN-9)
+# ─────────────────────────────────────────────
+# MN-1…MN-4: the bridge order left /unikit — the installer keeps `.unikit/bridges.yaml`, nothing of it is asked or kept in the skill.
+MN_DIR="$ROOT_DIR/skills/unikit"
+MN_SKILL="$MN_DIR/SKILL.md"
+MN_CONFIG_MODE="$MN_DIR/references/mode-config.md"
+MN_MENU_MODE="$MN_DIR/references/mode-menu.md"
+MN_WHY=""
+MN_CHK=0
+mn_has() {   # <id> <literal> <file>: the file holds the literal
+    MN_CHK=$((MN_CHK + 1))
+    [[ -s "$3" ]] || { MN_WHY+=" $1:missing(${3##*/})"; return 0; }
+    grep -qF "$2" "$3" || MN_WHY+=" $1:no(${2:0:30})"
+}
+mn_lacks() { # <id> <literal> <file>: the file does not hold it
+    MN_CHK=$((MN_CHK + 1))
+    [[ -s "$3" ]] || { MN_WHY+=" $1:missing(${3##*/})"; return 0; }
+    if grep -qF "$2" "$3"; then MN_WHY+=" $1:still(${2:0:30})"; fi
+}
+mn_once() {  # <id> <literal> <file>: exactly one line holds the literal
+    MN_CHK=$((MN_CHK + 1))
+    local n; n="$({ grep -cF "$2" "$3" 2>/dev/null || true; })"
+    [[ "$n" == "1" ]] || MN_WHY+=" $1:count($n)(${2:0:30})"
+}
+MN_TEMPLATE="$MN_DIR/references/config-template.yaml"
+# (MN-1) no trace of the config-side order in the skill, the modes and the template
+for mn_f in "$MN_SKILL" "$MN_CONFIG_MODE" "$MN_MENU_MODE" "$MN_TEMPLATE"; do
+    mn_lacks MN-1 'engine_bridges' "$mn_f"
+    mn_lacks MN-1 'Decide and write' "$mn_f"
+done
+mn_lacks MN-1 '### Step 3.2' "$MN_SKILL"
+mn_lacks MN-1 'bridge order' "$MN_SKILL"
+MN_CHK=$((MN_CHK + 1)); [[ ! -e "$MN_DIR/references/mode-bridge-order.md" ]] || MN_WHY+=" MN-1:mode-bridge-order-still-there"
+# (MN-2) the config mode ends with its report phase right after the write phase
+mn_has   MN-2 '## Phase F — Report, then STOP' "$MN_CONFIG_MODE"
+mn_lacks MN-2 '## Phase G' "$MN_CONFIG_MODE"
+mn_lacks MN-2 '## Phase F — Bridge order' "$MN_CONFIG_MODE"
+mn_has   MN-2 'it has already carried out Phases A and B' "$MN_CONFIG_MODE"
+for mn_f in "$MN_SKILL" "$MN_CONFIG_MODE" "$MN_MENU_MODE"; do
+    mn_lacks MN-2 'Phases 3-5' "$mn_f"
+done
+if [[ -z "$MN_WHY" && "$MN_CHK" -gt 0 ]]; then
+    pass "MN-1…MN-2 the bridge order is not asked anywhere in /unikit and the config mode ends with Phase F ($MN_CHK checks)"
+else
+    fail "MN-1…MN-2 bridge order left /unikit:$MN_WHY"
+fi
+
+# MN-5…MN-8: the returning-project menu
+MN_WHY=""
+MN_CHK=0
+MN_STEP0="$(awk '/^### Step 0: Load Existing Config/{f=1;next} f&&/^---$/{exit} f' "$MN_SKILL")"
+MN_DESC="$(awk '/^description:/{f=1;print;next} f&&/^[a-zA-Z][a-zA-Z0-9_-]*:/{exit} f' "$MN_SKILL")"
+# (MN-5) the body: capability, plain markdown, the four actions plus finishing the setup, the recommendation rule
+mn_has  MN-5 'It writes nothing itself' "$MN_MENU_MODE"
+mn_has  MN-5 'Plain markdown only' "$MN_MENU_MODE"
+for mn_a in '**Config**' '**Environment**' '**Rules**' '**Description**' '**Finish the setup**'; do
+    mn_has MN-5 "$mn_a" "$MN_MENU_MODE"
+done
+mn_lacks MN-5 '**Order**' "$MN_MENU_MODE"
+mn_has  MN-5 'The first of these that applies is the recommended one' "$MN_MENU_MODE"
+mn_has  MN-5 'Steps 7 and 8 are not run' "$MN_MENU_MODE"
+mn_has  MN-5 'is not a description, and Step 4 asks as usual' "$MN_MENU_MODE"
+mn_has  MN-5 'the question tool of your agent (`AskUserQuestion`)' "$MN_MENU_MODE"
+MN_HITS="$({ grep -nE '(Agent|Skill|Bash)\(' "$MN_MENU_MODE" 2>/dev/null || true; })"
+MN_CHK=$((MN_CHK + 1)); [[ -z "$MN_HITS" ]] || MN_WHY+=" MN-5:call-form-in-menu-body"
+MN_HTML="$({ grep -nE '</?(details|summary|b|br|i|p|div)>' "$MN_MENU_MODE" 2>/dev/null || true; })"
+MN_CHK=$((MN_CHK + 1)); [[ -z "$MN_HTML" ]] || MN_WHY+=" MN-5:html-in-menu-body"
+# (MN-6) the dispatch lives inside Step 0 and says when the menu applies
+MN_CHK=$((MN_CHK + 3))
+[[ -n "$MN_STEP0" ]] || MN_WHY+=" MN-6:step-0-window-empty"
+printf '%s' "$MN_STEP0" | grep -qF 'references/mode-menu.md' || MN_WHY+=" MN-6:dispatch-outside-step-0"
+printf '%s' "$MN_STEP0" | grep -qF 'is not to actualize the configuration' || MN_WHY+=" MN-6:no-fallback-condition"
+# (MN-7) the four contract clauses, and the retired absolute sentence
+mn_has   MN-7 'The returning-project menu is the one mode that may hand over instead' "$MN_SKILL"
+mn_has   MN-7 'Widened for two menu branches' "$MN_SKILL"
+mn_has   MN-7 'The returning-project menu also runs outside this order' "$MN_SKILL"
+mn_has   MN-7 'asks nothing itself and parses **no arguments**' "$MN_SKILL"
+mn_has   MN-7 'the modes it selects ask their own questions' "$MN_SKILL"
+mn_lacks MN-7 'the only user interaction Step 0 leads to' "$MN_SKILL"
+mn_lacks MN-7 'performs **no user interaction**' "$MN_SKILL"
+# (MN-8) the trigger in the description
+MN_CHK=$((MN_CHK + 1)); printf '%s' "$MN_DESC" | grep -qF 'it offers the actions to choose from' || MN_WHY+=" MN-8:no-menu-trigger"
+if [[ -z "$MN_WHY" && "$MN_CHK" -gt 0 ]]; then
+    pass "MN-5…MN-8 returning-project menu — four actions, dispatched inside Step 0, four contract clauses, triggered in the description ($MN_CHK checks)"
+else
+    fail "MN-5…MN-8 returning-project menu:$MN_WHY"
+    [[ -n "$MN_HITS" ]] && echo "$MN_HITS" | head -5
+fi
+
+# MN-9: the surfaces that tell the user about the menu
+MN_WHY=""
+MN_CHK=0
+mn_has MN-9 'returning-project menu' "$ROOT_DIR/docs/skills.md"
+mn_has MN-9 'returning-project menu' "$ROOT_DIR/docs/configuration.md"
+mn_has MN-9 'returning-project menu' "$ROOT_DIR/docs/migration-3.0.0.md"
+mn_has MN-9 'returning-project menu' "$ROOT_DIR/docs/workflow.md"
+mn_has MN-9 'returning-project menu' "$ROOT_DIR/docs/getting-started.md"
+mn_has MN-9 'returning-project menu' "$ROOT_DIR/skills/unikit-help/references/scenarios.md"
+mn_has MN-9 'returning-project menu' "$ROOT_DIR/skills/unikit-help/references/skill-map.md"
+mn_has MN-9 'exactly **three** paths' "$ROOT_DIR/docs/configuration.md"
+if [[ -z "$MN_WHY" && "$MN_CHK" -gt 0 ]]; then
+    pass "MN-9 the docs and the help name the returning-project menu ($MN_CHK checks)"
+else
+    fail "MN-9 menu documentation:$MN_WHY"
 fi
 
 # ─────────────────────────────────────────────
@@ -7944,7 +8204,7 @@ fi
 # had. That failure is indistinguishable from a well-behaved server, which is exactly why
 # the shape needs a guard and the content does not.
 # All -qF and file-scoped (MSYS grep aborts on -iF).
-RT_NOTES_SPEC="$ROOT_DIR/skills/unikit-mcp-trap/references/notes-format.md"
+RT_NOTES_SPEC="$ROOT_DIR/skills/unikit-bridge-trap/references/notes-format.md"
 RT_HEADINGS=('## Access' '## Live failure classes' '## Shape and cost' '## Check'
              '## Irreversible' '## Lane' '## When this file is silent')
 
@@ -7953,7 +8213,7 @@ RT_HEADINGS=('## Access' '## Live failure classes' '## Shape and cost' '## Check
 # say about that", which is the one wrong answer this file exists to prevent.
 RT1_WHY=""
 RT1_SEEN=0
-for rt_index in "$ROOT_DIR"/mcp/*/rules/*/INDEX.md; do
+for rt_index in "$ROOT_DIR"/engine-bridges/*/rules/*/INDEX.md; do
     [[ -f "$rt_index" ]] || continue
     RT1_SEEN=$((RT1_SEEN + 1))
     rt_id="$(basename "$(dirname "$rt_index")")"
@@ -7964,7 +8224,7 @@ for rt_index in "$ROOT_DIR"/mcp/*/rules/*/INDEX.md; do
     done
 done
 if [[ $RT1_SEEN -eq 0 ]]; then
-    fail "RT-1 no mcp/*/rules/*/INDEX.md found — the guard has no object left"
+    fail "RT-1 no engine-bridges/*/rules/*/INDEX.md found — the guard has no object left"
 elif [[ -z "$RT1_WHY" ]]; then
     pass "RT-1 all seven INDEX.md headings present ($RT1_SEEN rules tree(s) scanned)"
 else
@@ -7977,8 +8237,10 @@ fi
 # of a class the profile was written to flag. Reuses LA_CLASSES — a second copy of the
 # nine names is exactly the drift a closed taxonomy exists to make impossible.
 RT2_WHY=""
-for rt_index in "$ROOT_DIR"/mcp/*/rules/*/INDEX.md; do
+RT2_SEEN=0
+for rt_index in "$ROOT_DIR"/engine-bridges/*/rules/*/INDEX.md; do
     [[ -f "$rt_index" ]] || continue
+    RT2_SEEN=$((RT2_SEEN + 1))
     rt_id="$(basename "$(dirname "$rt_index")")"
     while IFS= read -r rt_class; do
         [[ -n "$rt_class" ]] || continue
@@ -7989,8 +8251,10 @@ for rt_index in "$ROOT_DIR"/mcp/*/rules/*/INDEX.md; do
         [[ $rt_known -eq 1 ]] || RT2_WHY+=" $rt_id:${rt_class// /-}"
     done < <(rt_table_column "$rt_index" '## Live failure classes' 1)
 done
-if [[ -z "$RT2_WHY" ]]; then
-    pass "RT-2 every Live-failure-classes row is one of the nine taxonomy names"
+if [[ $RT2_SEEN -eq 0 ]]; then
+    fail "RT-2 no engine-bridges/*/rules/*/INDEX.md found — the guard has no object left"
+elif [[ -z "$RT2_WHY" ]]; then
+    pass "RT-2 every Live-failure-classes row is one of the nine taxonomy names ($RT2_SEEN rules tree(s) scanned)"
 else
     fail "RT-2 failure class outside the taxonomy of nine:$RT2_WHY"
 fi
@@ -7999,7 +8263,7 @@ fi
 # on its prose. That example is what both skills copy from, and it is the one object in
 # the repository shaped like a real notes file. Two sections because there are two readers
 # (executors grep the check table, the audit replays the protocol); two header fields
-# because `server:` is what tells a finding about THIS server from one inherited from
+# because `bridge:` is what tells a finding about THIS bridge from one inherited from
 # another, and `audited:` is the cursor trap reads to decide which plans are new. A third
 # field, `version:`, used to sit between them and was dropped: it was copied out of the
 # delivery stamp the package writes, so the comparison it fed had the same constant on
@@ -8012,13 +8276,13 @@ else
     for rt_section in '## Check' '## Observation protocol'; do
         echo "$RT3_SHAPE" | grep -qF "$rt_section" || RT3_WHY+=" section:${rt_section// /-}"
     done
-    for rt_field in 'server:' 'audited:'; do
+    for rt_field in 'bridge:' 'audited:'; do
         echo "$RT3_SHAPE" | grep -qF "$rt_field" || RT3_WHY+=" header:$rt_field"
     done
     echo "$RT3_SHAPE" | grep -qE '^version:' && RT3_WHY+=" header:version-returned"
 fi
 if [[ -z "$RT3_WHY" ]]; then
-    pass "RT-3 notes shape: two sections + server:/audited: header, no version"
+    pass "RT-3 notes shape: two sections + bridge:/audited: header, no version"
 else
     fail "RT-3 notes shape drift in notes-format.md:$RT3_WHY"
 fi
@@ -8057,29 +8321,38 @@ else
 fi
 
 # (RT-5) The notes file is the accumulated knowledge of the project, and the only right
-# the installer has over it is to RENAME it when the selected server changes. The day some
+# the installer has over it is to RENAME it when the set of selected bridges changes. The day some
 # installer module starts writing its content, the contract inverts silently: an `update`
-# would begin overwriting findings that cost a human a live editor to produce. The
-# resolver `mcpRecheckNotesPath(` is the mechanical handle on that — it may appear only
-# where it is declared and inside the swap module that owns the rename.
-RT5_HITS="$(grep -rln 'mcpRecheckNotesPath(' "$ROOT_DIR/src" --include='*.ts' 2>/dev/null || true)"
+# would begin overwriting findings that cost a human a live editor to produce. The resolvers
+# `mcpRecheckNotesPath(` (the 2.x file) and `bridgeNotesPath(` (the 3.0.0 file of one bridge) are
+# the mechanical handle on that — each may appear only where it is declared, inside the swap
+# module that owns the rename, and in the migration that moves the old file to the new place.
+# The set of files found must not be empty: a guard that looked at nothing proves nothing.
 RT5_WHY=""
-while IFS= read -r rt_file; do
-    [[ -n "$rt_file" ]] || continue
-    case "$(basename "$rt_file")$(dirname "$rt_file" | sed 's|.*/||')" in
-        # The declaration, the swap module that owns the rename — and the MCP
-        # MIGRATION, which is the one thing here that is not the installer. It
-        # rewrites the `server:` header when a file id is renamed under the
-        # project's feet; leaving that line stale makes every pipeline skill
-        # print "notes header ≠ configured server" forever, and nothing but a
-        # human can clear it. The exception is narrow by construction: a
-        # migration runs once per project and writes no findings.
-        constants.ts*|mcp-notes.ts*|index.tsmcp-migrations) ;;
-        *) RT5_WHY+=" $(basename "$rt_file")" ;;
-    esac
-done <<< "$RT5_HITS"
-if [[ -z "$RT5_WHY" ]]; then
-    pass "RT-5 mcpRecheckNotesPath( confined to constants.ts + mcp-notes.ts (rename only)"
+RT5_SEEN=0
+for rt5_resolver in 'mcpRecheckNotesPath(' 'bridgeNotesPath('; do
+    RT5_HITS="$(grep -rlF "$rt5_resolver" "$ROOT_DIR/src" --include='*.ts' 2>/dev/null || true)"
+    while IFS= read -r rt_file; do
+        [[ -n "$rt_file" ]] || continue
+        RT5_SEEN=$((RT5_SEEN + 1))
+        rt5_rel="${rt_file#"$ROOT_DIR/src/"}"
+        case "$rt5_resolver:$rt5_rel" in
+            # 2.x resolver: the declaration, and the MCP MIGRATION, which is the one thing here that
+            # is not the installer. It rewrites the `server:` header when a file id is renamed under
+            # the project's feet; leaving that line stale makes every pipeline skill print a notes
+            # header warning forever, and nothing but a human can clear it. The exception is narrow
+            # by construction: a migration runs once per project and writes no findings.
+            'mcpRecheckNotesPath(:core/constants.ts'|'mcpRecheckNotesPath(:core/mcp-migrations/'*) ;;
+            # 3.0.0 resolver: the declaration, the swap module, and the migration that relocates the notes
+            'bridgeNotesPath(:core/constants-bridges.ts'|'bridgeNotesPath(:core/installer/bridge-notes.ts'|'bridgeNotesPath(:core/bridge-migrations/'*|'bridgeNotesPath(:core/installer/engine-bridges.ts') ;;
+            *) RT5_WHY+=" $rt5_rel($rt5_resolver)" ;;
+        esac
+    done <<< "$RT5_HITS"
+done
+if [[ $RT5_SEEN -eq 0 ]]; then
+    fail "RT-5 no use of mcpRecheckNotesPath( or bridgeNotesPath( found in src/ — the guard has no object left"
+elif [[ -z "$RT5_WHY" ]]; then
+    pass "RT-5 the notes resolvers are confined to their declarations, the swap module and the migrations ($RT5_SEEN file(s) scanned)"
 else
     fail "RT-5 the installer reaches the notes file outside the swap step:$RT5_WHY"
 fi
@@ -8090,12 +8363,12 @@ fi
 # linkage, because absence is also what an empty file has, and this rule has to be stated
 # where the decision gets taken. One shared anchor across all five, so drift in any single
 # executor fails rather than quietly leaving four correct files to vouch for a fifth.
-RT6_ANCHOR='never disables the engine MCP and never turns a target into `⏸️ MANUAL`'
+RT6_ANCHOR='never disables an engine bridge and never turns a target into `⏸️ MANUAL`'
 RT6_WHY=""
 grep -qF "$RT6_ANCHOR" "$ED_IMPLEMENT_WORKER" || RT6_WHY+=" implement-worker"
 grep -qF "$RT6_ANCHOR" "$EM_IMPLEMENT_SKILL"  || RT6_WHY+=" implement"
 grep -qF "$RT6_ANCHOR" "$EM_FIX_SKILL"        || RT6_WHY+=" fix"
-grep -qF "$RT6_ANCHOR" "$EM_DEVCONTEXT_SKILL" || RT6_WHY+=" devcontext"
+grep -qF "$RT6_ANCHOR" "$EM_EXECUTE_SKILL" || RT6_WHY+=" execute"
 grep -qF "$RT6_ANCHOR" "$UNIKIT_VERIFY_SKILL" || RT6_WHY+=" verify"
 if [[ -z "$RT6_WHY" ]]; then
     pass "RT-6 invariant 3 (absence never means ⏸️ MANUAL) stated in all four skills + the worker"
@@ -8121,7 +8394,7 @@ RT10_TOKENS=('no silent no-ops' '✅ working' 'Strengths' 'instead of')
 # empty, ids are unique, and the id prefix is the area.
 RT7_WHY=""
 RT7_SEEN=0
-for rt_index in "$ROOT_DIR"/mcp/*/rules/*/INDEX.md; do
+for rt_index in "$ROOT_DIR"/engine-bridges/*/rules/*/INDEX.md; do
     [[ -f "$rt_index" ]] || continue
     RT7_SEEN=$((RT7_SEEN + 1))
     rt_id="$(basename "$(dirname "$rt_index")")"
@@ -8145,7 +8418,7 @@ for rt_index in "$ROOT_DIR"/mcp/*/rules/*/INDEX.md; do
     done
 done
 if [[ $RT7_SEEN -eq 0 ]]; then
-    fail "RT-7 no mcp/*/rules/*/INDEX.md found — the guard has no object left"
+    fail "RT-7 no engine-bridges/*/rules/*/INDEX.md found — the guard has no object left"
 elif [[ -z "$RT7_WHY" ]]; then
     pass "RT-7 check table non-empty, ids unique, id prefix == area ($RT7_SEEN rules tree(s) scanned)"
 else
@@ -8159,15 +8432,19 @@ fi
 # one file is not the absence of a pre-lifted gate in another, which is why this check is
 # separate and points elsewhere.
 RT8_WHY=""
-for rt_index in "$ROOT_DIR"/mcp/*/rules/*/INDEX.md; do
+RT8_SEEN=0
+for rt_index in "$ROOT_DIR"/engine-bridges/*/rules/*/INDEX.md; do
     [[ -f "$rt_index" ]] || continue
+    RT8_SEEN=$((RT8_SEEN + 1))
     rt_id="$(basename "$(dirname "$rt_index")")"
     while IFS= read -r rt_hit; do
         [[ -n "$rt_hit" ]] && RT8_WHY+=" $rt_id:line-${rt_hit%%:*}"
     done < <(grep -nF 'GATE LIFTED' "$rt_index" || true)
 done
-if [[ -z "$RT8_WHY" ]]; then
-    pass "RT-8 no pre-lifted gate in any rules-tree INDEX.md"
+if [[ $RT8_SEEN -eq 0 ]]; then
+    fail "RT-8 no engine-bridges/*/rules/*/INDEX.md found — the guard has no object left"
+elif [[ -z "$RT8_WHY" ]]; then
+    pass "RT-8 no pre-lifted gate in any rules-tree INDEX.md ($RT8_SEEN rules tree(s) scanned)"
 else
     fail "RT-8 GATE LIFTED written in advance:$RT8_WHY"
 fi
@@ -8177,7 +8454,7 @@ fi
 # a time with nothing noticing until it is whole again.
 RT9_WHY=""
 RT9_SEEN=0
-for rt_index in "$ROOT_DIR"/mcp/*/rules/*/INDEX.md; do
+for rt_index in "$ROOT_DIR"/engine-bridges/*/rules/*/INDEX.md; do
     [[ -f "$rt_index" ]] || continue
     RT9_SEEN=$((RT9_SEEN + 1))
     rt_id="$(basename "$(dirname "$rt_index")")"
@@ -8185,7 +8462,7 @@ for rt_index in "$ROOT_DIR"/mcp/*/rules/*/INDEX.md; do
     [[ $RT9_LEN -le $RT9_BUDGET ]] || RT9_WHY+=" $rt_id:${RT9_LEN}>${RT9_BUDGET}"
 done
 if [[ $RT9_SEEN -eq 0 ]]; then
-    fail "RT-9 no mcp/*/rules/*/INDEX.md found — the guard has no object left"
+    fail "RT-9 no engine-bridges/*/rules/*/INDEX.md found — the guard has no object left"
 elif [[ -z "$RT9_WHY" ]]; then
     pass "RT-9 every INDEX.md within the $RT9_BUDGET-line budget ($RT9_SEEN rules tree(s) scanned)"
 else
@@ -8208,11 +8485,11 @@ while IFS= read -r rt_file; do
             RT10_WHY+=" ${rt_file#"$ROOT_DIR/"}:${rt_hit%%:*}(${rt_token// /-})"
         done < <(grep -nF "$rt_token" "$rt_file" || true)
     done
-done < <(find "$ROOT_DIR"/mcp -type f -path '*/rules/*' 2>/dev/null)
+done < <(find "$ROOT_DIR"/engine-bridges -type f -path '*/rules/*' 2>/dev/null)
 if [[ $RT10_SEEN -eq 0 ]]; then
-    fail "RT-10 no files under mcp/*/rules/** — the guard has no object left"
+    fail "RT-10 no files under engine-bridges/*/rules/** — the guard has no object left"
 elif [[ -z "$RT10_WHY" ]]; then
-    pass "RT-10 none of the four measured genre tokens in mcp/*/rules/** ($RT10_SEEN file(s) scanned)"
+    pass "RT-10 none of the four measured genre tokens in engine-bridges/*/rules/** ($RT10_SEEN file(s) scanned)"
 else
     fail "RT-10 genre token in the rules tree:$RT10_WHY"
 fi
@@ -8268,12 +8545,12 @@ nn_scan() {
 # name would be most tempting and shortest-lived — the whole architecture rests on these
 # files carrying checks rather than a catalog.
 NN1_TARGETS=()
-for rt_rule_file in "$ROOT_DIR"/mcp/*/rules/*/*.md; do
+for rt_rule_file in "$ROOT_DIR"/engine-bridges/*/rules/*/*.md; do
     [[ -f "$rt_rule_file" ]] || continue
     NN1_TARGETS+=("$rt_rule_file")
 done
 if [[ ${#NN1_TARGETS[@]} -eq 0 ]]; then
-    fail "NN-1 no mcp/*/rules/**/*.md found — the guard has no object left"
+    fail "NN-1 no engine-bridges/*/rules/**/*.md found — the guard has no object left"
 else
     NN1_HITS="$(nn_scan "${NN1_TARGETS[@]}")"
     if [[ -z "$NN1_HITS" ]]; then
@@ -8515,7 +8792,8 @@ fi
 # cannot collide with content — asserted as the literal the skill spells out, so a rewrite
 # onto a different delimiter has to delete this line first.
 UR1_WHY=""
-grep -qF 'argument-hint: "[rule text or topic | numbered batch | compact | optimise | prune]"' "$EV_RULES_SKILL" || UR1_WHY+=" argument-hint-not-updated"
+# (the hint gained "a request about the rules in plain words" — architecture topics, 2026-10-28; RMI-4 pins that tail)
+grep -qF 'argument-hint: "[rule text or topic | numbered batch | compact | optimise | prune | a request about the rules in plain words]"' "$EV_RULES_SKILL" || UR1_WHY+=" argument-hint-not-updated"
 grep -qF 'numbered batch'  "$EV_RULES_SKILL" || UR1_WHY+=" no-batch-mode"
 grep -qF '`^\d+\. `'       "$EV_RULES_SKILL" || UR1_WHY+=" no-marker-rule"
 if [[ -z "$UR1_WHY" ]]; then
@@ -8801,7 +9079,8 @@ fi
 PRT_PRUNE_REF="$ROOT_DIR/skills/unikit-rules/references/mode-prune.md"
 PRT10_WHY=""
 grep -qF 'references/mode-prune.md' "$EV_RULES_SKILL" || PRT10_WHY+=" dispatch-missing"
-grep -qF 'Exactly `prune`?' "$EV_RULES_SKILL" || PRT10_WHY+=" not-exact-match"
+# (the decision tree now reads "the whole argument is `prune`" under "Parameter (checked first, never interpreted") — RMI-1 pins the rest)
+grep -qF 'the whole argument is `prune`' "$EV_RULES_SKILL" || PRT10_WHY+=" not-exact-match"
 grep -qF 'deletes a rule only in Mode E (`prune`)' "$EV_RULES_SKILL" || PRT10_WHY+=" skill:deletion-not-confined"
 grep -qF 'deletes a rule only in its `prune` mode' "$UNIKIT_VERIFY_CONTRACT" || PRT10_WHY+=" contract:deletion-not-confined"
 if [[ ! -s "$PRT_PRUNE_REF" ]]; then
@@ -9094,59 +9373,69 @@ fi
 # predicate (every mark other than x is unfinished — the coordinator writes [~] and [!]),
 # the follow-up question that replaced both stops, the move rule measured in ADR-0001 and the scope.
 # AR-10…AR-13 pin the readers outside the skill that had to learn about the archive.
+# The skill's plan protocol is in references/plans.md (AR_PLANS); SKILL.md is the router.
 # Anchored on formulations, never on headings.
 AR_SKILL="$ROOT_DIR/skills/unikit-archive/SKILL.md"
+# The plan protocol (scope, classification, the modes' steps, rules) lives in references/plans.md
+# and SKILL.md is the router: what the skill says FIRST (frontmatter, language, step 0, the mode
+# table and its announcements) is read from AR_SKILL, what a plan run DOES from AR_PLANS. A
+# negative check travels with the text it forbids — left on the router it would stay green and blind.
+AR_PLANS="$ROOT_DIR/skills/unikit-archive/references/plans.md"
+# The researches protocol (select, ask, move, restore) is the second reference; its steps are R1…R6.
+AR_RESEARCHES="$ROOT_DIR/skills/unikit-archive/references/researches.md"
+AR_INDEX_RENDER_PATH='{{skills_dir}}/unikit-explore/references/index-render.md'
 AR_DESIGN_CTX="$ROOT_DIR/skills/unikit-plan/references/design-context.md"
 AR_PLAN_SKILL="$ROOT_DIR/skills/unikit-plan/SKILL.md"
 AR_POLISHER="$ROOT_DIR/subagents/unikit-plan-polisher.md"
 AR_IMPLEMENT="$ROOT_DIR/skills/unikit-implement/SKILL.md"
 AR_EXPLORE="$ROOT_DIR/skills/unikit-explore/SKILL.md"
+AR_ULTRA_FMT="$ROOT_DIR/skills/unikit-explore/references/ULTRA-RESEARCH-FORMAT.md"
 AR_WHY=""
-for f in "$AR_SKILL" "$AR_DESIGN_CTX" "$AR_PLAN_SKILL" "$AR_POLISHER" "$AR_IMPLEMENT" "$AR_EXPLORE"; do
+for f in "$AR_SKILL" "$AR_PLANS" "$AR_RESEARCHES" "$AR_DESIGN_CTX" "$AR_PLAN_SKILL" "$AR_POLISHER" "$AR_IMPLEMENT" "$AR_EXPLORE" "$AR_ULTRA_FMT"; do
     [[ -s "$f" ]] || AR_WHY+=" missing:${f#"$ROOT_DIR"/}"
 done
 if [[ -z "$AR_WHY" ]]; then
     # (AR-1) the modes.
-    grep -qF 'argument-hint: "[list | --all | <plan-folder>]"' "$AR_SKILL" || AR_WHY+=" AR-1:no-mode-hint"
-    grep -qF 'is confirmed before anything moves' "$AR_SKILL" || AR_WHY+=" AR-1:substring-match-unconfirmed"
+    grep -qF 'argument-hint: "[plans | researches [<slug> | --all | restore [<slug>]] | list | --all | <plan-folder>]"' "$AR_SKILL" || AR_WHY+=" AR-1:no-mode-hint"
+    grep -qF 'is confirmed before anything moves' "$AR_PLANS" || AR_WHY+=" AR-1:substring-match-unconfirmed"
     # (AR-2) completion: every non-x mark is unfinished; a phase status line is not a task;
     # a plan with no tasks is never archived.
-    grep -qF 'Any other mark is unfinished' "$AR_SKILL" || AR_WHY+=" AR-2:only-open-boxes-count"
-    grep -qF 'is not a checkbox line' "$AR_SKILL" || AR_WHY+=" AR-2:status-line-counted"
-    grep -qF 'An empty plan is not archived' "$AR_SKILL" || AR_WHY+=" AR-2:empty-plan-archivable"
+    grep -qF 'Any other mark is unfinished' "$AR_PLANS" || AR_WHY+=" AR-2:only-open-boxes-count"
+    grep -qF 'is not a checkbox line' "$AR_PLANS" || AR_WHY+=" AR-2:status-line-counted"
+    grep -qF 'An empty plan is not archived' "$AR_PLANS" || AR_WHY+=" AR-2:empty-plan-archivable"
     # (AR-3) the findings check is keyed on the trap's own back-reference, never on a date:
     # audited: is moved only by an audit, so a date rule could not be cleared by running the trap.
     # It asks and never stops: the user may not want the findings kept, and a stop left no way
     # to archive such a plan from the interactive or --all mode at all.
-    grep -qF '`<folder>/<task file name>#F<n>`' "$AR_SKILL" || AR_WHY+=" AR-3:no-back-reference-key"
-    grep -qF 'a question, never a stop' "$AR_SKILL" || AR_WHY+=" AR-3:findings-block"
-    grep -qF 'stop: <k> MCP findings not transferred' "$AR_SKILL" && AR_WHY+=" AR-3:findings-stop-returned"
-    grep -qF '2. Archive anyway' "$AR_SKILL" || AR_WHY+=" AR-3:no-archive-anyway"
-    grep -qF 'a declined row leaves no back-reference' "$AR_SKILL" || AR_WHY+=" AR-3:override-unexplained"
+    grep -qF '`<folder>/<task file name>#F<n>`' "$AR_PLANS" || AR_WHY+=" AR-3:no-back-reference-key"
+    grep -qF 'a question, never a stop' "$AR_PLANS" || AR_WHY+=" AR-3:findings-block"
+    grep -qF 'stop: <k> MCP findings not transferred' "$AR_PLANS" && AR_WHY+=" AR-3:findings-stop-returned"
+    grep -qF '2. Archive anyway' "$AR_PLANS" || AR_WHY+=" AR-3:no-archive-anyway"
+    grep -qF 'a declined row leaves no back-reference' "$AR_PLANS" || AR_WHY+=" AR-3:override-unexplained"
     # A transferred finding can lose its back-reference legitimately: the installer parks the notes
-    # on a server switch, and /unikit-mcp-audit removes a retired note with its from: (review finding).
-    grep -qF '.unikit/MCP-RECHECK-NOTES.archive.*.md' "$AR_SKILL" || AR_WHY+=" AR-3:parked-notes-unread"
-    grep -qF 'removes a note it retires together with its back-reference' "$AR_SKILL" || AR_WHY+=" AR-3:retire-unexplained"
+    # of a bridge that leaves the selection, and /unikit-bridge-audit removes a retired note with its from: (review finding).
+    grep -qF '.unikit/bridge-notes/archive/*.md' "$AR_PLANS" || AR_WHY+=" AR-3:parked-notes-unread"
+    grep -qF 'removes a note it retires together with its back-reference' "$AR_PLANS" || AR_WHY+=" AR-3:retire-unexplained"
     # (AR-4) an open rule candidate is a follow-up like a finding — it asks, never stops — and
     # the question names the skill that actually flips an open candidate.
-    grep -qF 'has the status `open`' "$AR_SKILL" || AR_WHY+=" AR-4:open-candidate-unchecked"
-    grep -qF '/unikit-verify <folder>' "$AR_SKILL" || AR_WHY+=" AR-4:wrong-or-no-command"
-    grep -qF 'stop: <k> open rule candidates' "$AR_SKILL" && AR_WHY+=" AR-4:candidate-stop-returned"
+    grep -qF 'has the status `open`' "$AR_PLANS" || AR_WHY+=" AR-4:open-candidate-unchecked"
+    grep -qF '/unikit-verify <folder>' "$AR_PLANS" || AR_WHY+=" AR-4:wrong-or-no-command"
+    grep -qF 'stop: <k> open rule candidates' "$AR_PLANS" && AR_WHY+=" AR-4:candidate-stop-returned"
     # (AR-5) git mv only for a tracked folder in an enabled git work tree — measured, not assumed.
-    grep -qF '`git.enabled` is not `false`' "$AR_SKILL" || AR_WHY+=" AR-5:ignores-git-enabled"
-    grep -qF 'git rev-parse --is-inside-work-tree' "$AR_SKILL" || AR_WHY+=" AR-5:no-work-tree-check"
-    grep -qF 'git ls-files -- .unikit/code/plans/<folder>' "$AR_SKILL" || AR_WHY+=" AR-5:no-tracked-check"
-    grep -qF 'fatal: source directory is empty' "$AR_SKILL" || AR_WHY+=" AR-5:reason-lost"
-    grep -qF 'Never retry with the other command' "$AR_SKILL" || AR_WHY+=" AR-5:silent-fallback"
+    grep -qF '`git.enabled` is not `false`' "$AR_PLANS" || AR_WHY+=" AR-5:ignores-git-enabled"
+    grep -qF 'git rev-parse --is-inside-work-tree' "$AR_PLANS" || AR_WHY+=" AR-5:no-work-tree-check"
+    grep -qF 'git ls-files -- .unikit/code/plans/<folder>' "$AR_PLANS" || AR_WHY+=" AR-5:no-tracked-check"
+    grep -qF 'fatal: source directory is empty' "$AR_PLANS" || AR_WHY+=" AR-5:reason-lost"
+    grep -qF 'Never retry with the other command' "$AR_PLANS" || AR_WHY+=" AR-5:silent-fallback"
     # (AR-6) no overwrite, no rename, no commit, no staging; one label line.
-    grep -qF 'Never overwrite, never rename' "$AR_SKILL" || AR_WHY+=" AR-6:may-overwrite"
-    grep -qF 'Never commit or push' "$AR_SKILL" || AR_WHY+=" AR-6:may-commit"
-    grep -qF 'git commit' "$AR_SKILL" && AR_WHY+=" AR-6:commits"
-    grep -qF 'git add' "$AR_SKILL" && AR_WHY+=" AR-6:stages"
-    grep -qF '`Archived: <today>`' "$AR_SKILL" || AR_WHY+=" AR-6:no-label"
+    grep -qF 'Never overwrite, never rename' "$AR_PLANS" || AR_WHY+=" AR-6:may-overwrite"
+    grep -qF 'Never commit or push' "$AR_PLANS" || AR_WHY+=" AR-6:may-commit"
+    grep -qF 'git commit' "$AR_PLANS" && AR_WHY+=" AR-6:commits"
+    grep -qF 'git add' "$AR_PLANS" && AR_WHY+=" AR-6:stages"
+    grep -qF '`Archived: <today>`' "$AR_PLANS" || AR_WHY+=" AR-6:no-label"
     # (AR-7) the scope: fast and fix plans, researches and patches are never archived.
-    grep -qF '**Never touched:**' "$AR_SKILL" || AR_WHY+=" AR-7:no-exclusion-list"
-    grep -qF '`.unikit/code/FIX_PLAN.md`' "$AR_SKILL" || AR_WHY+=" AR-7:fix-plan-unmentioned"
+    grep -qF '**Never touched:**' "$AR_PLANS" || AR_WHY+=" AR-7:no-exclusion-list"
+    grep -qF '`.unikit/code/FIX_PLAN.md`' "$AR_PLANS" || AR_WHY+=" AR-7:fix-plan-unmentioned"
     # (AR-8) every command the skill runs is granted, and nothing that deletes — a rule the
     # skill cannot carry out degrades silently (the NM-5 lesson).
     for g in 'Bash(git *)' 'Bash(mv *)' 'Bash(mkdir *)' 'Bash(date *)'; do
@@ -9154,7 +9443,7 @@ if [[ -z "$AR_WHY" ]]; then
     done
     grep -qF 'Bash(rm' "$AR_SKILL" && AR_WHY+=" AR-8:can-delete"
     # (AR-9) the legacy layout is recognised under the PL-2 marker, never by a bare old name.
-    grep -qF '(a pre-merge plan)' "$AR_SKILL" || AR_WHY+=" AR-9:legacy-layout-unrecognised"
+    grep -qF '(a pre-merge plan)' "$AR_PLANS" || AR_WHY+=" AR-9:legacy-layout-unrecognised"
     # (AR-10) the one reader that wants completed plans reads the archive too — a glob that
     # misses returns "no prior plan", never an error, so nothing else would notice.
     grep -qF '`.unikit/code/archive/plans/*/*.md`' "$AR_DESIGN_CTX" || AR_WHY+=" AR-10:fallback-blind-to-archive"
@@ -9171,7 +9460,7 @@ if [[ -z "$AR_WHY" ]]; then
     # an archived plan offered for execution would undo the one thing the archive is for.
     grep -qF '`.unikit/code/archive/plans/`' "$AR_EXPLORE" || AR_WHY+=" AR-13:explore-blind-to-archive"
     grep -qF 'History, never a plan to continue' "$AR_EXPLORE" || AR_WHY+=" AR-13:explore-may-resume"
-    grep -qF '`/unikit-explore` reads archived plans as history' "$AR_SKILL" || AR_WHY+=" AR-13:reader-unlisted"
+    grep -qF '`/unikit-explore` reads archived plans as history' "$AR_PLANS" || AR_WHY+=" AR-13:reader-unlisted"
     # (AR-14) the run says what it is about to do before it reads anything: a real interactive run
     # classified thirty plans for five minutes and opened with a remark about the language.
     grep -qF '**First, announce the mode**' "$AR_SKILL" || AR_WHY+=" AR-14:step0-reads-first"
@@ -9180,37 +9469,168 @@ if [[ -z "$AR_WHY" ]]; then
     grep -qF '**Then say what you are doing, as you do it.**' "$AR_SKILL" || AR_WHY+=" AR-14:silent-steps"
     # (AR-15) the table carries the created and last-change dates the archiving decision rests on,
     # each with its source order, and uncommitted changes win over the last commit.
-    grep -qF 'folder · verdict · created · last change' "$AR_SKILL" || AR_WHY+=" AR-15:no-dates-in-table"
-    grep -qF "the task file's \`Created: YYYY-MM-DD\` header line" "$AR_SKILL" || AR_WHY+=" AR-15:created-source-lost"
-    grep -qF 'has changes no commit holds yet' "$AR_SKILL" || AR_WHY+=" AR-15:last-change-ignores-working-tree"
+    grep -qF 'folder · verdict · created · last change' "$AR_PLANS" || AR_WHY+=" AR-15:no-dates-in-table"
+    grep -qF "the task file's \`Created: YYYY-MM-DD\` header line" "$AR_PLANS" || AR_WHY+=" AR-15:created-source-lost"
+    grep -qF 'has changes no commit holds yet' "$AR_PLANS" || AR_WHY+=" AR-15:last-change-ignores-working-tree"
     grep -qF 'including a remark made while a command runs' "$AR_SKILL" || AR_WHY+=" AR-14:english-remarks-allowed"
     # (AR-16) an unfinished plan has a sanctioned way out: a real user archived eleven abandoned
     # plans and the agent had to break the skill's own rule to do it. It moves only after the
     # user has seen what is left, its label says so, --all never takes it, and the readers that
     # want completed plans (the implemented_version fallback) or history (explore) tell it apart.
-    grep -qF 'Archive them unfinished' "$AR_SKILL" || AR_WHY+=" AR-16:no-unfinished-option"
-    grep -qF '`Archived: <today> — unfinished (<done>/<total>)`' "$AR_SKILL" || AR_WHY+=" AR-16:unfinished-label-lost"
-    grep -qF 'an unfinished plan is archived only by an explicit choice' "$AR_SKILL" || AR_WHY+=" AR-16:all-takes-unfinished"
-    grep -qF 'an `empty`, `broken bundle` or `not a plan` folder never moves' "$AR_SKILL" || AR_WHY+=" AR-16:empty-may-move"
+    grep -qF 'Archive them unfinished' "$AR_PLANS" || AR_WHY+=" AR-16:no-unfinished-option"
+    grep -qF '`Archived: <today> — unfinished (<done>/<total>)`' "$AR_PLANS" || AR_WHY+=" AR-16:unfinished-label-lost"
+    grep -qF 'an unfinished plan is archived only by an explicit choice' "$AR_PLANS" || AR_WHY+=" AR-16:all-takes-unfinished"
+    grep -qF 'an `empty`, `broken bundle` or `not a plan` folder never moves' "$AR_PLANS" || AR_WHY+=" AR-16:empty-may-move"
     grep -qF 'An archived plan whose `Archived:` line ends in' "$AR_DESIGN_CTX" || AR_WHY+=" AR-16:fallback-reads-unfinished"
     grep -qF 'was dropped part-way' "$AR_EXPLORE" || AR_WHY+=" AR-16:explore-reads-unfinished-as-built"
     # (AR-17) the plans are chosen by row number or by a date rule on the table's own columns,
     # written in the user's own answer: no option for typing a choice and no second question with
     # example answers (a user found those examples strange).
-    grep -qF 'write row numbers (3, 5-7) or a date rule' "$AR_SKILL" || AR_WHY+=" AR-17:no-choice-by-date"
-    if grep -qF 'Choose by number or date' "$AR_SKILL"; then AR_WHY+=" AR-17:typing-option-returned"; fi
-    if grep -qF 'two short examples of the answer' "$AR_SKILL"; then AR_WHY+=" AR-17:example-options-returned"; fi
-    grep -qF 'A date rule is matched against the table' "$AR_SKILL" || AR_WHY+=" AR-17:date-rule-unbound"
+    grep -qF 'write row numbers (3, 5-7) or a date rule' "$AR_PLANS" || AR_WHY+=" AR-17:no-choice-by-date"
+    if grep -qF 'Choose by number or date' "$AR_PLANS"; then AR_WHY+=" AR-17:typing-option-returned"; fi
+    if grep -qF 'two short examples of the answer' "$AR_PLANS"; then AR_WHY+=" AR-17:example-options-returned"; fi
+    grep -qF 'A date rule is matched against the table' "$AR_PLANS" || AR_WHY+=" AR-17:date-rule-unbound"
     # (AR-18) the table reaches the screen: a real interactive run classified ten plans with a
     # script, left the table and every INFO line inside the folded tool output, printed one
     # summary sentence, and asked "Archive which plans?" naming rows #4, #5, #7, #9 the user had
     # never seen. Anchored on formulations, as the mode-optimise.md precedent does it.
     grep -qF '**What the user must see, print as your own message.**' "$AR_SKILL" || AR_WHY+=" AR-18:no-visible-output-rule"
     grep -qF 'Tool output is folded away from the user' "$AR_SKILL" || AR_WHY+=" AR-18:tool-output-assumed-visible"
-    grep -qF 'ask it only once the whole table is on screen' "$AR_SKILL" || AR_WHY+=" AR-18:question-before-table"
+    grep -qF 'ask it only once the whole table is on screen' "$AR_PLANS" || AR_WHY+=" AR-18:question-before-table"
+    # (AR-19) /unikit-explore met by the slug of an ARCHIVED research prints the way back and
+    # stops. The negative half is the load-bearing one: explore is given no right to move a
+    # folder, so the way back can only be the archive skill's.
+    grep -qF 'INFO [research] <slug> is archived — bring it back with /unikit-archive researches restore' "$AR_EXPLORE" || AR_WHY+=" AR-19:no-way-back"
+    grep -qF 'This skill has no `mv`' "$AR_EXPLORE" || AR_WHY+=" AR-19:no-statement-that-it-moves-nothing"
+    AR19_FM="$(awk 'NR==1&&/^---$/{f=1;next} f&&/^---$/{exit} f' "$AR_EXPLORE")"
+    [[ -n "$AR19_FM" ]] || AR_WHY+=" AR-19:explore-has-no-frontmatter"
+    if printf '%s' "$AR19_FM" | grep -qF 'Bash(mv'; then AR_WHY+=" AR-19:explore-may-move-a-folder"; fi
+    # (AR-20) an archived slug is never taken by a new or pinned folder: plans that linked the
+    # archived research find it by that name, and a live folder under it would answer to their
+    # links. Checked wherever a slug is settled (first pin, save); no automatic suffix. The
+    # `automatic suffix` ban is read inside the new paragraph: the live-collision rule next to
+    # it carries the same words and would hide a missing ban here.
+    AR20_BLOCK="$(awk 'index($0,"**An archived slug is never taken.**")==1{f=1} f&&index($0,"<!-- Why the folder name")==1{f=0} f' "$AR_EXPLORE")"
+    [[ -n "$AR20_BLOCK" ]] || AR_WHY+=" AR-20:no-archived-slug-rule"
+    for p in 'Use another name' 'Restore it first' 'automatic suffix' 'The check runs wherever a slug is settled' \
+        'WARN [research] <slug> is archived — saving under <new-slug>'; do
+        printf '%s' "$AR20_BLOCK" | grep -qF "$p" || AR_WHY+=" AR-20:rule-lacks:${p// /-}"
+    done
+    grep -qF 'The archived-slug check of *Naming convention* runs on the settled slug first' "$AR_EXPLORE" || AR_WHY+=" AR-20:save-skips-the-check"
+    grep -qF 'is not pinned under' "$AR_ULTRA_FMT" || AR_WHY+=" AR-20:first-pin-skips-the-check"
+    # ── AR-21…AR-27: researches join the archive. The router is SKILL.md, the researches protocol
+    # is references/researches.md (R1…R6). One line per pinned formulation, on the file that says it.
+    ar_has()   { grep -qF "$2" "$3" || AR_WHY+=" $1"; }
+    ar_lacks() { if grep -qF "$2" "$3"; then AR_WHY+=" $1"; fi; }
+    # (AR-21) the words and the menu. AR-1 pins the argument-hint; here the router itself: the mode
+    # table knows each new word, a first word is matched as typed (a plan folder may carry the name
+    # of a command), the menu has four options and offers only an item that has an object, the plan
+    # protocol runs first and its Cancel ends the whole run, and the closing line is printed once.
+    for w in '| empty | **menu**' '| `plans` | **interactive**' '| `researches` | **researches**' \
+        '| `researches <name>` | **one research**' '| `researches --all` | **all researches**' \
+        '| `researches restore [<slug>]` | **restore**' '| `list` | **list** — show the plans and the researches'; do
+        ar_has "AR-21:mode-table-lacks:${w//[^a-z<>]/}" "$w" "$AR_SKILL"
+    done
+    ar_has "AR-21:first-word-not-matched-as-typed" 'The first word is matched as typed' "$AR_SKILL"
+    ar_has "AR-21:conflict-error-lost" 'ERROR [archive] conflicting arguments' "$AR_SKILL"
+    ar_has "AR-21:no-menu-announcement" "I'll ask what you want to archive — plans, researches or both." "$AR_SKILL"
+    ar_has "AR-21:no-menu-question" 'What should be archived?' "$AR_SKILL"
+    for w in '1. Plans' '2. Researches' '3. Plans and researches' '4. Cancel'; do
+        ar_has "AR-21:menu-option-lacks:${w//[^A-Za-z0-9]/-}" "$w" "$AR_SKILL"
+    done
+    ar_has "AR-21:menu-offers-an-empty-item" 'An item whose object does not exist is not offered' "$AR_SKILL"
+    ar_has "AR-21:menu-reads-more-than-folders" 'It looks only at whether folders exist' "$AR_SKILL"
+    ar_has "AR-21:plans-do-not-come-first" 'the plan protocol first' "$AR_SKILL"
+    ar_has "AR-21:cancel-does-not-end-the-run" '"Cancel" inside the plan protocol ends the whole run' "$AR_SKILL"
+    ar_has "AR-21:closing-line-twice" 'is printed once per run' "$AR_SKILL"
+    # Only "Cancel" ends a "Plans and researches" run; any other stop of the plan protocol ends that
+    # protocol and the researches follow. A menu question skipped for lack of an object still gets
+    # the announcement of the protocol that runs instead (the first output said "I'll ask").
+    ar_has "AR-21:other-stops-end-the-run" 'ends that protocol only, and the researches protocol follows' "$AR_SKILL"
+    ar_has "AR-21:skipped-question-unannounced" 'no question: say its announcement, then run its protocol' "$AR_SKILL"
+    # (AR-22) the two protocols are references, loaded by their full path, with no frontmatter (a
+    # reference is not a skill); the researches protocol reads the index render of /unikit-explore
+    # through that skill's own folder and the plan classification through plans.md.
+    for f in "$AR_PLANS" "$AR_RESEARCHES"; do
+        [[ "$(head -c 3 "$f")" != '---' ]] || AR_WHY+=" AR-22:$(basename "$f")-has-frontmatter"
+    done
+    ar_has "AR-22:router-does-not-load-plans" '{{skills_dir}}/{{self_name}}/references/plans.md' "$AR_SKILL"
+    ar_has "AR-22:router-does-not-load-researches" '{{skills_dir}}/{{self_name}}/references/researches.md' "$AR_SKILL"
+    ar_has "AR-22:researches-reads-no-index-render" "$AR_INDEX_RENDER_PATH" "$AR_RESEARCHES"
+    ar_has "AR-22:researches-classifies-without-plans-md" '{{skills_dir}}/{{self_name}}/references/plans.md' "$AR_RESEARCHES"
+    ar_has "AR-22:list-sections-not-routed" 'runs the `### list` section of the plan protocol' "$AR_SKILL"
+    # (AR-23) which researches are offered: all with a readable manifest, minus those a plan that is
+    # still open links through its `## Based on`; an archived, completed, empty or broken plan does
+    # not block; the hidden ones are named under the table; one research named by hand goes ahead
+    # after a confirmation. The rows are ordered by Updated, oldest first.
+    ar_has "AR-23:columns-lost" '`#` · folder · `Status` · `Lifecycle` · `Updated`' "$AR_RESEARCHES"
+    ar_has "AR-23:oldest-not-first" 'the oldest `Updated` first' "$AR_RESEARCHES"
+    ar_has "AR-23:hidden-line-lost" 'hidden <k>: <slug> — plan <folder>' "$AR_RESEARCHES"
+    ar_has "AR-23:link-not-bound-to-based-on" 'inside the `## Based on` section' "$AR_RESEARCHES"
+    ar_has "AR-23:blocking-not-bound-to-incomplete" 'A plan that is `incomplete` blocks the research it links' "$AR_RESEARCHES"
+    ar_has "AR-23:completed-plan-blocks" 'a `completed`, `empty` or `broken bundle` plan does not' "$AR_RESEARCHES"
+    ar_has "AR-23:archived-plan-blocks" 'and neither does any plan in `.unikit/code/archive/plans/`' "$AR_RESEARCHES"
+    ar_has "AR-23:classification-reads-more" 'no dates, no follow-ups, no git' "$AR_RESEARCHES"
+    ar_has "AR-23:named-research-needs-no-confirmation" 'Archive <slug> although <folder> still links it?' "$AR_RESEARCHES"
+    ar_has "AR-23:no-research-no-reason" 'no RESEARCH.md, not offered' "$AR_RESEARCHES"
+    # (AR-24) the question: "All" takes the completed and superseded ones only, the rest go by number
+    # or by a date rule written in the user's own answer; `researches --all` asks once over the same
+    # set; a question never has a single option.
+    ar_has "AR-24:all-button-lost" 'All <n> — the completed and superseded ones' "$AR_RESEARCHES"
+    ar_has "AR-24:all-set-unbound" 'the rows with `Status: completed` or `Lifecycle: superseded`' "$AR_RESEARCHES"
+    ar_has "AR-24:unfinished-not-by-number" 'is chosen by number' "$AR_RESEARCHES"
+    ar_has "AR-24:no-choice-by-date" 'write row numbers (3, 5-7) or a date rule' "$AR_RESEARCHES"
+    ar_has "AR-24:all-flag-lost" 'Archive all <n> researches?' "$AR_RESEARCHES"
+    ar_has "AR-24:single-option-question" 'a question never has one option' "$AR_RESEARCHES"
+    ar_has "AR-24:no-cancel" '2. Cancel' "$AR_RESEARCHES"
+    ar_lacks "AR-24:typing-option-returned" 'Choose by number or date' "$AR_RESEARCHES"
+    # (AR-25) the move: git mv only for a tracked folder in a work tree with git enabled; the label
+    # goes directly below Updated and nothing else of the manifest is touched; the index is
+    # re-rendered once, after the last research, through the reference of /unikit-explore, and a
+    # missing reference is announced and does not undo the move; nothing is overwritten or committed.
+    ar_has "AR-25:git-enabled-ignored" '`git.enabled` is not `false`' "$AR_RESEARCHES"
+    ar_has "AR-25:no-work-tree-check" 'git rev-parse --is-inside-work-tree' "$AR_RESEARCHES"
+    ar_has "AR-25:no-tracked-check" 'git ls-files -- .unikit/code/researches/<slug>' "$AR_RESEARCHES"
+    ar_has "AR-25:silent-fallback" 'never retry with the other command' "$AR_RESEARCHES"
+    ar_has "AR-25:may-overwrite" 'Never overwrite, never rename.' "$AR_RESEARCHES"
+    ar_has "AR-25:no-label" '`Archived: <today>`' "$AR_RESEARCHES"
+    ar_has "AR-25:label-misplaced" 'directly below `Updated:`' "$AR_RESEARCHES"
+    ar_has "AR-25:summary-touched" 'the Active Summary and its two markers are not touched' "$AR_RESEARCHES"
+    ar_has "AR-25:index-not-once" 'once, after the last research of the run' "$AR_RESEARCHES"
+    ar_has "AR-25:missing-render-silent" 'WARN [research] index-render reference missing' "$AR_RESEARCHES"
+    ar_has "AR-25:mentions-unreported" 'is still mentioned by' "$AR_RESEARCHES"
+    ar_lacks "AR-25:commits" 'git commit' "$AR_RESEARCHES"
+    ar_lacks "AR-25:stages" 'git add' "$AR_RESEARCHES"
+    # (AR-26) restore: without a slug the archived researches are listed and asked in the same
+    # form, with a slug it goes ahead; the label is removed by one exact edit; an existing
+    # destination is an error, never an overwrite.
+    ar_has "AR-26:restore-word-lost" '`researches restore [<slug>]`' "$AR_RESEARCHES"
+    ar_has "AR-26:label-not-removed" 'Remove its `Archived:` line with one exact edit' "$AR_RESEARCHES"
+    ar_has "AR-26:destination-may-be-overwritten" 'already exists in researches/ — rename one of the two folders by hand' "$AR_RESEARCHES"
+    ar_has "AR-26:no-list-without-slug" 'Restore all <n>' "$AR_RESEARCHES"
+    ar_has "AR-26:empty-archive-unsaid" 'Archive is empty — no research has been archived yet.' "$AR_RESEARCHES"
+    ar_has "AR-26:index-after-restore" 'The index, as R4 item 6' "$AR_RESEARCHES"
+    # (AR-27) the grants and the boundary: Write is granted (the index is rewritten whole) and rm
+    # still is not; design researches stay untouched, the plan protocol no longer claims that code
+    # researches are, and the router owns both archives. The ownership section is the router's only.
+    AR27_FM="$(awk 'NR==1&&/^---$/{f=1;next} f&&/^---$/{exit} f' "$AR_SKILL")"
+    printf '%s' "$AR27_FM" | grep -qF '  - Write' || AR_WHY+=" AR-27:no-write-grant"
+    if printf '%s' "$AR27_FM" | grep -qF 'Bash(rm'; then AR_WHY+=" AR-27:can-delete"; fi
+    ar_lacks "AR-27:researches-md-deletes" 'Bash(rm' "$AR_RESEARCHES"
+    ar_has "AR-27:design-researches-untouched" 'Design researches (`.unikit/gamedesign/researches/`) are never touched' "$AR_RESEARCHES"
+    ar_has "AR-27:plans-md-never-touched-list" 'design researches (`.unikit/gamedesign/researches/`)' "$AR_PLANS"
+    ar_has "AR-27:plans-md-claims-code-researches-untouched" 'code researches are archived by the researches protocol, never by this one' "$AR_PLANS"
+    ar_lacks "AR-27:old-never-touched-wording" 'open plans and `GD-IDS.yaml` point at them by path' "$AR_PLANS"
+    ar_lacks "AR-27:ownership-twice" '## Artifact Ownership' "$AR_PLANS"
+    ar_has "AR-27:router-owns-both-archives" '**Owns:** `.unikit/code/archive/plans/`, `.unikit/code/archive/researches/`' "$AR_SKILL"
+    ar_has "AR-27:router-boundary-lost" 'Design researches (`.unikit/gamedesign/researches/`), the fast plan, `FIX_PLAN.md` and patches are never touched' "$AR_SKILL"
+    # The retargeted checks are counted from this script's own text, so deleting them (instead of
+    # keeping them on the right file) fails here and does not just look like fewer passes.
+    AR_PLANS_N="$(awk '/^# AR: \/unikit-archive/{f=1} f&&/fail "AR plan archive contract/{exit} f&&/grep -qF/&&index($0,"\"$AR_PLANS\""){n++} END{print n+0}' "${BASH_SOURCE[0]}")"
+    (( AR_PLANS_N >= 40 )) || AR_WHY+=" AR-plans:retargeted-checks=$AR_PLANS_N"
 fi
 if [[ -z "$AR_WHY" ]]; then
-    pass "AR-1…AR-18 unikit-archive: announces itself first, prints the dated table as its own message before asking, archives an unfinished plan only on an explicit choice and says so; non-x marks are unfinished, untransferred findings (keyed on the trap back-reference) and open rule candidates ask and never stop, git mv only for a tracked folder, no overwrite and no commit; the implemented_version fallback and both plan producers see the archive, implement names it, explore reads it as history"
+    pass "AR-1…AR-27 unikit-archive: announces itself first, prints the dated table as its own message before asking, archives an unfinished plan only on an explicit choice and says so; non-x marks are unfinished, untransferred findings (keyed on the trap back-reference) and open rule candidates ask and never stop, git mv only for a tracked folder, no overwrite and no commit; the implemented_version fallback and both plan producers see the archive, implement names it, explore reads it as history and never reuses an archived research's slug (AR-19/AR-20); the router, the menu and the words, the two protocol references, the selection and its question, the move with its label and index, restore and the grants (AR-21…AR-27); $AR_PLANS_N plan-protocol checks read references/plans.md"
 else
     fail "AR plan archive contract:$AR_WHY"
 fi
@@ -9394,7 +9814,7 @@ if [[ -z "$BX_WHY" ]]; then
 
     # (BM-3) regression of anchors this plan must not move
     for f in "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL" "$TC_WORKER"; do
-        bx_has "BM-3:rt6-anchor(${f##*/})" 'never disables the engine MCP and never turns a target into' "$f"
+        bx_has "BM-3:rt6-anchor(${f##*/})" 'never disables an engine bridge and never turns a target into' "$f"
     done
     for l in '**3.4: Mark task as completed**' '**3.5'; do
         BX_CHK=$((BX_CHK + 1))
@@ -9435,7 +9855,12 @@ if [[ -z "$BX_WHY" ]]; then
     for f in "${BAL_GRAMMAR_FORMS[@]}"; do bx_lacks "BC-1:form-restated-in-skill(${f})" "$f" "$UNIKIT_VERIFY_SKILL"; done
     # 65000 -> 65400: unikit-verify gained the 397-byte user-questions pointer and lost its inline text tier
     # 65400 -> 65800: the branch match gained the 380-byte rule that finds an experiment plan by its own record (EXP-K1)
-    bx_max "BC-1:skill-size" 65800 "$UNIKIT_VERIFY_SKILL"
+    # 65800 -> 66100: the 3.0.0 layout (a block per bridge in the Bootstrap); lowered again when the routing prose moves to a reference
+    # 66100 -> 66300 for the 3.0.0 findings table, then 66300 -> 65830: the gate procedure moved into references/bridge-gates.md
+    # 65830 -> 65950: the Bootstrap reads the order file and the routing file in one sentence (XE-2), as implement and execute do
+    # 65950 -> 66690: architecture topics, 2026-10-28 — the Step 0.2 read of the topic files, the 3.4 table check and the 3.6 suggestions (AD-12); the numbers live in the contract
+    # 66690 -> 66710: the Subagent arguments pointer moved out of the alias section into one of its own (AP-22), +14 bytes of heading
+    bx_max "BC-1:skill-size" 66710 "$UNIKIT_VERIFY_SKILL"
 
     # (BC-2) verify's branch: headings, the two level sentences, and the one place of suggested_next
     BX_CHK=$((BX_CHK + 1))
@@ -9485,7 +9910,10 @@ if [[ -z "$BX_WHY" ]]; then
     bx_max "BS-2:size" 9000 "$BS_REF"
 
     # (BS-3) improve's size
-    bx_max "BS-3:skill-size" 62000 "$UNIKIT_IMPROVE_SKILL"
+    # 62000 -> 62560: architecture topics, 2026-10-28 — the Bootstrap read of the topic files and the topic-path slot in the recon prompts (AD-12)
+    # 62560 -> 62580: the Subagent arguments pointer moved out of the alias section into one of its own (AP-22), +15 bytes of heading
+    # 62580 -> 62720: research archive, 2026-10-28 — the linked research is read from the folder the contract's "Finding the folder" returns (+140 bytes)
+    bx_max "BS-3:skill-size" 62720 "$UNIKIT_IMPROVE_SKILL"
 
     # (BX-1) the four branch files: no agent-filter markers, no engine words, all point at the contract
     for f in "$BP_REF" "$BM_REF" "$BC_REF" "$BS_REF"; do
@@ -9518,7 +9946,12 @@ if [[ -z "$BX_WHY" ]]; then
     # 52600 -> 53100: unikit-implement gained the 552-byte subagent-arguments pointer (it had none)
     # 53100 -> 53200: it gained the 397-byte user-questions pointer and lost its inline text tier
     # 53200 -> 53600: the branch match gained the 380-byte rule that finds an experiment plan by its own record (EXP-K1)
-    bx_max "BM-6:implement-skill-size" 53600 "$UNIKIT_IMPLEMENT_SKILL"
+    # 53600 -> 53900: the 3.0.0 layout (a block per bridge in the Bootstrap); lowered again when the routing prose moves to a reference
+    # 53900 -> 54200 for the 3.0.0 findings table, then 54200 -> 53650: the console check moved into references/console-check.md
+    # 53650 -> 53720: the bridge order moved from the config to .unikit/bridges.yaml and the routing file joined it in one Bootstrap sentence (XE-2)
+    # 53720 -> 54520: architecture topics, 2026-10-28 — the Step 1 and Step 3.0 reads of the topic files and the 3.7 delta form (AD-12)
+    # 54520 -> 54540: the Subagent arguments pointer moved out of the alias section into one of its own (AP-22), +14 bytes of heading
+    bx_max "BM-6:implement-skill-size" 54540 "$UNIKIT_IMPLEMENT_SKILL"
     # (BC-4) a measurement the user skipped is a skipped row, not a blocker
     bx_has "BC-4:skipped-measure-is-a-blocker" '⏭️ SKIPPED' "$BC_REF"
     # (BC-5) a name stated in ## Not measured is accounted for — a measurement the user skipped is not a blocker
@@ -11321,7 +11754,7 @@ EXPE_ROWS=(
     "skills/unikit-improve/SKILL.md|planning|manifest"
     "skills/unikit-review/SKILL.md|quality and the rest|both"
     "skills/unikit-fix/SKILL.md|quality and the rest|both"
-    "skills/unikit-devcontext/SKILL.md|quality and the rest|both"
+    "skills/unikit-execute/SKILL.md|quality and the rest|both"
     "skills/unikit-commit/SKILL.md|quality and the rest|manifest"
     "subagents/unikit-implement-coordinator.md|execution|manifest"
     "subagents/unikit-implement-worker.md|execution|note"
@@ -11485,7 +11918,7 @@ exp_ok "EXP-D:X5-03" 'edges: four inputs (`/unikit-gd-recon`' "$ROOT_DIR/docs/ga
 exp_ok "EXP-D:X5-04" '**The route of a checkpoint.**' "$ROOT_DIR/docs/gamedesign.md"
 exp_ok "EXP-D:X5-05" 'adds thirteen `unikit-gd-*` skills' "$ROOT_DIR/docs/skills.md"
 exp_ok "EXP-D:X5-06" '- the experiment record' "$ROOT_DIR/docs/skills.md"
-exp_ok "EXP-D:X5-07" '37 skills (24 code-pipeline + 13 game-design)' "$ROOT_DIR/docs/getting-started.md"
+exp_ok "EXP-D:X5-07" '39 skills (26 code-pipeline + 13 game-design)' "$ROOT_DIR/docs/getting-started.md"
 exp_ok "EXP-D:X5-08" '13 game-design skills, one dir each' "$ROOT_DIR/docs/configuration.md"
 exp_ok "EXP-D:X5-09" '**Experiments** - test a hypothesis about the game on real players' "$ROOT_DIR/README.md"
 exp_ok "EXP-D:X5-10" '**Experiment plan.**' "$ROOT_DIR/docs/workflow.md"
@@ -12039,7 +12472,8 @@ fi
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}=== MCP allowed-tools structure validation ===${NC}\n"
 
-for mcp_json in "$MCP_DIR"/*/; do
+ALLOWED_TOOLS_SEEN=0
+for mcp_json in "$MCP_DIR"/*/ "$BRIDGES_DIR"/*/; do
     for json_file in "$mcp_json"*.json; do
         [[ ! -f "$json_file" ]] && continue
         rel_name="${json_file#"$ROOT_DIR/"}"
@@ -12048,6 +12482,7 @@ for mcp_json in "$MCP_DIR"/*/; do
         if [[ "$HAS_ALLOWED" != "yes" ]]; then
             continue
         fi
+        ALLOWED_TOOLS_SEEN=$((ALLOWED_TOOLS_SEEN + 1))
 
         ALLOWED_VALID=$(node -e "
           const m=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));
@@ -12075,7 +12510,8 @@ for mcp_json in "$MCP_DIR"/*/; do
         # injectToolsIntoSkillFrontmatter returns false when the SKILL.md has no
         # `allowed-tools:` field, and injectToolsIntoAgentFrontmatter the same for a
         # subagent without `tools:` — silently, so a dead recipient is invisible
-        # without this guard. That was exactly the unikit-devcontext bug.
+        # without this guard. That was exactly the bug of the skill now called unikit-execute: it had no
+        # allowed-tools field, so every grant that named it was dead.
         RECIPIENTS_WHY=""
         while IFS= read -r recipient; do
             [[ -z "$recipient" ]] && continue
@@ -12117,6 +12553,9 @@ for mcp_json in "$MCP_DIR"/*/; do
 
     done
 done
+if [[ $ALLOWED_TOOLS_SEEN -eq 0 ]]; then
+    fail "MCP allowed-tools: no config with allowed-tools found under mcp/ or engine-bridges/ — the guard has no object left"
+fi
 
 # ─────────────────────────────────────────────
 # Part 7e: All is_engine=true entries carry DISTINCT codes per engine scope
@@ -12140,7 +12579,7 @@ KEY_UNIQUENESS_ERRORS=0
 for engine in "${!ENGINE_MCP_DIRS[@]}"; do
     mcp_dir="${ENGINE_MCP_DIRS[$engine]}"
     UNIVERSAL_DIR_PATH="$MCP_DIR/universal"
-    ENGINE_DIR_PATH="$MCP_DIR/$mcp_dir"
+    ENGINE_DIR_PATH="$BRIDGES_DIR/$mcp_dir"
 
     # Collect codes from is_engine=true entries across universal + engine directories
     RESULT=$(node -e "
@@ -12193,54 +12632,29 @@ for engine in "${!ENGINE_MCP_DIRS[@]}"; do
 done
 
 # ─────────────────────────────────────────────
-# Part 7e2: MT-1 / MT-2 — the `{{engine_mcp_tool}}` substitution form
+# Part 7e2: MT-3 — no base text carries the variable of the single-server era, nor its successor
 # ─────────────────────────────────────────────
-# The value substituted here is a VENDOR CODE, and the prose around it is read by
-# an agent that has to find that code as a literal key in the settings file. Two
-# counters pin the form:
+# `engine_mcp_tool` was a vendor code printed into skill prose, so that an agent could probe the settings file
+# of its client for it (MT-1/MT-2 pinned the form of that sentence). Since 3.0.0 no reader probes a settings file:
+# the engine bridges are read from BRIDGES.md. The variable survives as `engine_bridge_mcp_code`, a name for
+# EXTENSIONS (public API, pinned by the registry and docs/extensions.md); a base skill, subagent or data text
+# that wrote either name would put a value into prose that nobody should read as a fact about the project.
+# SV-8 forbids only the registry names, and the two fixed names are pinned here instead.
 #
-#   MT-1  every occurrence is wrapped in backticks
-#   MT-2  every wrapped occurrence carries the `MCP server ` label
-#
-# Written as EQUALITIES between counts, not as a search for a negation. The pair
-# mechanically forbids the third form the corpus used to carry — the variable
-# sitting inside a code span or a fenced block together with other words, where
-# backticks cannot be added at all — without needing an allowlist: such an
-# occurrence is unwrapped by construction, so MT-1 catches it.
-#
-# The class-B probe is why this matters beyond tidiness. A skill greps the
-# settings file for the code; a code printed with a neighbouring word inside one
-# span is not found, the skill concludes the engine MCP is not configured, and the
-# whole pipeline degrades to `manual` with the compile and test gates skipped —
-# silently, and looking exactly like a project that has no MCP.
-#
-# Scope: skills/**/*.md, subagents/*.md, data/dev-principles.md.
-# `data/engine-templates/**` is excluded — the Part 9 engine-template sweep bans
-# `{{` across that whole directory outright (ED-8 only ever saw one file of it).
-echo -e "\n${BOLD}Part 7e2: {{engine_mcp_tool}} substitution form (MT-1/MT-2)${NC}"
+# Scope: skills/**/*.md, subagents/*.md, data/**/*.md (the engine templates included: they are written verbatim).
+echo -e "\n${BOLD}Part 7e2: no base text writes the engine bridge code variable (MT-3)${NC}"
 
-MT_SCOPE=("$ROOT_DIR/skills" "$ROOT_DIR/subagents" "$ROOT_DIR/data/dev-principles.md")
+MT_SCOPE=("$ROOT_DIR/skills" "$ROOT_DIR/subagents" "$ROOT_DIR/data")
+MT_FILES=$(grep -rlE --include='*.md' '.' "${MT_SCOPE[@]}" 2>/dev/null | wc -l | tr -d ' ')
+MT_HITS=$({ grep -rlF --include='*.md' -e '{{engine_mcp_tool}}' -e '{{engine_bridge_mcp_code}}' "${MT_SCOPE[@]}" 2>/dev/null || true; })
 
-MT_TOTAL=$(grep -rhoF '{{engine_mcp_tool}}' "${MT_SCOPE[@]}" --include='*.md' 2>/dev/null | wc -l | tr -d ' ')
-MT_WRAPPED=$(grep -rhoF '`{{engine_mcp_tool}}`' "${MT_SCOPE[@]}" --include='*.md' 2>/dev/null | wc -l | tr -d ' ')
-MT_LABELLED=$(grep -rhoF 'MCP server `{{engine_mcp_tool}}`' "${MT_SCOPE[@]}" --include='*.md' 2>/dev/null | wc -l | tr -d ' ')
-
-if [[ "$MT_TOTAL" -eq 0 ]]; then
-    fail "MT-1: no {{engine_mcp_tool}} occurrences found at all — the scope is wrong, not the corpus"
-elif [[ "$MT_TOTAL" -eq "$MT_WRAPPED" ]]; then
-    pass "MT-1: all $MT_TOTAL {{engine_mcp_tool}} occurrences are backtick-wrapped"
+if [[ "$MT_FILES" -eq 0 ]]; then
+    fail "MT-3: no markdown found under skills/, subagents/ and data/ — the guard has no object left"
+elif [[ -z "$MT_HITS" ]]; then
+    pass "MT-3: no base text writes {{engine_mcp_tool}} or {{engine_bridge_mcp_code}} ($MT_FILES files scanned)"
 else
-    fail "MT-1: $MT_TOTAL occurrences of {{engine_mcp_tool}}, only $MT_WRAPPED wrapped in backticks"
-    grep -rn '{{engine_mcp_tool}}' "${MT_SCOPE[@]}" --include='*.md' 2>/dev/null \
-      | grep -vF '`{{engine_mcp_tool}}`' | sed 's/^/      /' | head -10
-fi
-
-if [[ "$MT_WRAPPED" -eq "$MT_LABELLED" ]]; then
-    pass "MT-2: all $MT_WRAPPED wrapped occurrences carry the \`MCP server\` label"
-else
-    fail "MT-2: $MT_WRAPPED wrapped occurrences, only $MT_LABELLED preceded by 'MCP server '"
-    grep -rn '`{{engine_mcp_tool}}`' "${MT_SCOPE[@]}" --include='*.md' 2>/dev/null \
-      | grep -vF 'MCP server `{{engine_mcp_tool}}`' | sed 's/^/      /' | head -10
+    fail "MT-3: a base text writes the engine bridge code variable:"
+    echo "$MT_HITS" | sed 's/^/      /' | head -10
 fi
 
 # ─────────────────────────────────────────────
@@ -12267,13 +12681,19 @@ echo -e "\n${BOLD}Part 7e3: MCP key/code/docs invariants${NC}"
 MCP_IDENTITY_RESULT=$(node -e "
   const fs=require('fs'), path=require('path');
   const root=process.argv[1];
+  const bridgesRoot=process.argv[2];
   const why=[];
 
-  for (const dir of fs.readdirSync(root)) {
-    const dirPath=path.join(root, dir);
-    if (!fs.statSync(dirPath).isDirectory()) continue;
+  // Two roots since the catalog split: mcp/ (universal servers) and engine-bridges/ (the engine's bridges).
+  let scanned=0;
+  const dirs=[];
+  for (const [label, base] of [['mcp', root], ['engine-bridges', bridgesRoot]])
+    for (const d of fs.readdirSync(base))
+      if (fs.statSync(path.join(base, d)).isDirectory()) dirs.push([label+'/'+d, path.join(base, d)]);
+  for (const [dir, dirPath] of dirs) {
     for (const f of fs.readdirSync(dirPath)) {
       if (!f.endsWith('.json')) continue;
+      scanned++;
       const rel=dir+'/'+f;
       const fileId=f.replace(/\.json\$/, '');
       let m;
@@ -12296,11 +12716,12 @@ MCP_IDENTITY_RESULT=$(node -e "
     }
   }
 
-  console.log(why.length ? why.join(' ') : 'ok');
-" "$MCP_DIR" 2>/dev/null || echo "pass-error")
+  if (scanned<8) why.push('scanned-only-'+scanned);
+  console.log(why.length ? why.join(' ') : 'ok '+scanned);
+" "$MCP_DIR" "$BRIDGES_DIR" 2>/dev/null || echo "pass-error")
 
-if [[ "$MCP_IDENTITY_RESULT" == "ok" ]]; then
-    pass "MCP catalog: key == fileId, code present, rules-tree servers declare a context7 id matching their INDEX"
+if [[ "$MCP_IDENTITY_RESULT" == "ok "* ]]; then
+    pass "MCP catalog: key == fileId, code present, rules-tree servers declare a context7 id matching their INDEX (${MCP_IDENTITY_RESULT#ok } scanned)"
 else
     fail "MCP catalog identity invariants violated: $MCP_IDENTITY_RESULT"
 fi
@@ -12359,6 +12780,163 @@ if [[ "$MIGRATION_ANCHOR_RESULT" == "ok" ]]; then
     pass "migration chains: since is valid semver, non-decreasing, never above the package version; no step without since AND detect"
 else
     fail "migration chain anchors violated: $MIGRATION_ANCHOR_RESULT"
+fi
+
+# ─────────────────────────────────────────────
+# Part 7e5: engine bridges (family BR)
+# ─────────────────────────────────────────────
+# The catalog seams, the selection, the hash, the BRIDGES.md renderer and the bridge migrations
+# (scripts/test-bridges.mjs). Pure logic on the compiled build; every project it touches is a
+# temporary directory.
+echo -e "\n${BOLD}Part 7e5: engine bridges (BR-*)${NC}"
+
+set +e
+BRIDGES_OUTPUT=$(node "$ROOT_DIR/scripts/test-bridges.mjs" 2>&1)
+BRIDGES_EXIT=$?
+set -e
+
+if [[ $BRIDGES_EXIT -eq 0 ]]; then
+    pass "Engine bridge guards"
+    echo "$BRIDGES_OUTPUT" | tail -1 | sed 's/^/    /'
+else
+    fail "Engine bridge guards"
+    echo "$BRIDGES_OUTPUT" | sed 's/^/      /'
+fi
+
+# Part 7e6: the bridge order file (family BO)
+# ─────────────────────────────────────────────
+# `.unikit/bridges.yaml`: parse, render, the decision table, the installer on the real catalog and the call
+# sites (scripts/test-bridge-order.mjs). Pure logic on the compiled build; every project it touches is a
+# temporary directory.
+echo -e "\n${BOLD}Part 7e6: bridge order file (BO-*)${NC}"
+
+set +e
+BO_OUTPUT=$(node "$ROOT_DIR/scripts/test-bridge-order.mjs" 2>&1)
+BO_EXIT=$?
+set -e
+
+if [[ $BO_EXIT -eq 0 ]]; then
+    pass "Bridge order file guards"
+    echo "$BO_OUTPUT" | tail -1 | sed 's/^/    /'
+else
+    fail "Bridge order file guards"
+    echo "$BO_OUTPUT" | sed 's/^/      /'
+fi
+
+# Part 7e7: the rule of a bridge arrives and leaves with the bridge (family BRL)
+# ─────────────────────────────────────────────
+# Parse of the reference list, install, the file that is never overwritten, the record init carries over,
+# the removal of an unchanged registry rule only, a failing registry and the call sites
+# (scripts/test-bridge-rules.mjs). The registry is a fixture; every project is a temporary directory.
+echo -e "\n${BOLD}Part 7e7: bridge rules (BRL-*)${NC}"
+
+set +e
+BRL_OUTPUT=$(node "$ROOT_DIR/scripts/test-bridge-rules.mjs" 2>&1)
+BRL_EXIT=$?
+set -e
+
+if [[ $BRL_EXIT -eq 0 ]]; then
+    pass "Bridge rule guards"
+    echo "$BRL_OUTPUT" | tail -1 | sed 's/^/    /'
+else
+    fail "Bridge rule guards"
+    echo "$BRL_OUTPUT" | sed 's/^/      /'
+fi
+
+set +e
+PROVIDER_OUTPUT=$(node "$ROOT_DIR/scripts/test-provider-rule-selection.mjs" 2>&1)
+PROVIDER_EXIT=$?
+set -e
+if [[ $PROVIDER_EXIT -eq 0 ]]; then
+    pass "Provider rule selection and lifecycle"
+else
+    fail "Provider rule selection and lifecycle"
+    echo "$PROVIDER_OUTPUT"
+fi
+
+# Part 7e8: architecture topics (family ART) and the request-driven modes of unikit-rules (family RMI)
+# ─────────────────────────────────────────────
+# The root and its topic files, the modes of unikit-architecture, every reader's way of loading the topics, the
+# growth sign of verify, the one-way border of the design review, the pointers and the docs
+# (scripts/test-architecture-topics.mjs). Pure fs over the sources; the helper itself is Part 13e.
+echo -e "\n${BOLD}Part 7e8: architecture topics (ART-*, RMI-*)${NC}"
+
+set +e
+ART_OUTPUT=$(node "$ROOT_DIR/scripts/test-architecture-topics.mjs" 2>&1)
+ART_EXIT=$?
+set -e
+
+if [[ $ART_EXIT -eq 0 ]]; then
+    pass "Architecture topic guards"
+    echo "$ART_OUTPUT" | tail -1 | sed 's/^/    /'
+else
+    fail "Architecture topic guards"
+    echo "$ART_OUTPUT" | sed 's/^/      /'
+fi
+
+# (BR-8a) The 2.x layout is gone from every text the package ships. Step 1: no literal path of the
+# single-server rules folder under .unikit/system/ in skills/, subagents/ or data/. SV-5 forbids an
+# unknown path under .unikit/system/ already; this names the reason and counts what it looked at.
+# Step 2 does the same for the findings log the 2.x layout kept at the root of .unikit/.
+BR8A_WHY=""
+BR8A_SEEN=0
+while IFS= read -r br8a_file; do
+    [[ -n "$br8a_file" ]] || continue
+    BR8A_SEEN=$((BR8A_SEEN + 1))
+    if grep -qF -e '.unikit/system/engine-mcp' -e '.unikit/MCP-RECHECK-NOTES' "$br8a_file"; then
+        BR8A_WHY+=" ${br8a_file#"$ROOT_DIR/"}"
+    fi
+done < <(find "$ROOT_DIR/skills" "$ROOT_DIR/subagents" "$ROOT_DIR/data" -type f -name '*.md' 2>/dev/null)
+if [[ $BR8A_SEEN -eq 0 ]]; then
+    fail "BR-8a no markdown found under skills/, subagents/ and data/ — the guard has no object left"
+elif [[ -z "$BR8A_WHY" ]]; then
+    pass "BR-8a no shipped text names the 2.x .unikit/system/engine-mcp path or the 2.x notes file ($BR8A_SEEN files scanned)"
+else
+    fail "BR-8a the 2.x engine-mcp path or notes file survives in:$BR8A_WHY"
+fi
+
+# (BR-8b) The wording of the single-server era is gone from every text the package ships: the prose says
+# "engine bridge", and the variable the prose used to carry is not written in any base text (it is a name
+# for extensions, pinned in test-system-vars.mjs and in MT-3). No exceptions are listed.
+BR8B_WHY=""
+BR8B_SEEN=0
+while IFS= read -r br8b_file; do
+    [[ -n "$br8b_file" ]] || continue
+    BR8B_SEEN=$((BR8B_SEEN + 1))
+    for br8b_old in 'engine MCP' 'Engine MCP' 'engine-MCP' 'engine_mcp_tool'; do
+        if grep -qF "$br8b_old" "$br8b_file"; then
+            BR8B_WHY+=" ${br8b_file#"$ROOT_DIR/"}(${br8b_old// /-})"
+        fi
+    done
+done < <(find "$ROOT_DIR/skills" "$ROOT_DIR/subagents" "$ROOT_DIR/data" -type f \( -name '*.md' -o -name '*.json' -o -name '*.yaml' \) 2>/dev/null)
+if [[ $BR8B_SEEN -eq 0 ]]; then
+    fail "BR-8b no text found under skills/, subagents/ and data/ — the guard has no object left"
+elif [[ -z "$BR8B_WHY" ]]; then
+    pass "BR-8b no shipped text says 'engine MCP' or writes the retired variable ($BR8B_SEEN files scanned)"
+else
+    fail "BR-8b single-server wording survives in:$BR8B_WHY"
+fi
+
+# (ED-17) The value of the Editor tasks setting is `engine-bridge | manual | direct`. The owner of the
+# format, both planner modes and the executor that parses it spell the new value; and no text in skills/,
+# subagents/ or data/ writes the 2.x spelling `Editor tasks: mcp` as a value to produce. (The readers
+# accept the old spelling in one parenthesis, which does not contain the colon form.)
+ED17_WHY=""
+for ed17_file in "$ROOT_DIR/skills/unikit-plan/references/TASK-FORMAT.md" "$ROOT_DIR/skills/unikit-plan/references/mode-fast.md" "$ROOT_DIR/skills/unikit-plan/references/mode-full.md" "$ROOT_DIR/skills/unikit-implement/SKILL.md"; do
+    grep -qF 'engine-bridge' "$ed17_file" || ED17_WHY+=" missing-in:$(basename "$ed17_file")"
+done
+ED17_SEEN=0
+while IFS= read -r ed17_file; do
+    [[ -n "$ed17_file" ]] || continue
+    ED17_SEEN=$((ED17_SEEN + 1))
+    grep -qF 'Editor tasks: mcp' "$ed17_file" && ED17_WHY+=" old-value-in:${ed17_file#"$ROOT_DIR/"}"
+done < <(find "$ROOT_DIR/skills" "$ROOT_DIR/subagents" "$ROOT_DIR/data" -type f -name '*.md' 2>/dev/null)
+if [[ $ED17_SEEN -eq 0 ]]; then
+    fail "ED-17 no markdown found under skills/, subagents/ and data/ — the guard has no object left"
+elif [[ -z "$ED17_WHY" ]]; then
+    pass "ED-17 Editor tasks is engine-bridge | manual | direct in the format, both planner modes and the executor ($ED17_SEEN files scanned)"
+else
+    fail "ED-17 Editor tasks value drift:$ED17_WHY"
 fi
 
 # ─────────────────────────────────────────────
@@ -12600,7 +13178,7 @@ fi
 #   AP-9  no `skills: [` key in skills/**/*.md. Anchored at the line start: `Available unikit
 #         skills: [` in unikit-skills-context is legitimate prose.
 #   AP-10 no `prompt: "/unikit…` — only on `prompt:` lines; the many "Do NOT invoke
-#         `/unikit-devcontext` via `Skill(...)`" sentences are legitimate.
+#         `/unikit-execute` via `Skill(...)`" sentences are legitimate.
 #   AP-11 every `{{agent_skill_call:<name>}}` names an existing skills/<name>/.
 #   AP-12 no `{{skills_dir}}` in subagents/ or data/: an agent file renders it EMPTY by design,
 #         so a path built from it would lose its prefix without a sound (like AP-7).
@@ -12803,11 +13381,11 @@ else
         'A slot with nothing to pass is removed from the call together with its comma' \
         'is compared without regard to case' \
         'in lower case' \
-        'runs on the effort of the agent that launched it' \
+        'a subagent started by a subagent follows its immediate launcher' \
         'The user asked for effort <level> for every subagent.' \
         'WARN [delegation] effort "<value>" is not supported by this runtime' \
-        'WARN [delegation] effort "<value>" rejected — retried on the session effort' \
-        'WARN [delegation] model "<name>" rejected — retried on the session model' \
+        'WARN [delegation] effort "<value>" rejected — retried without the effort override' \
+        'WARN [delegation] model "<name>" rejected — retried without the model override' \
         'repeat it **once** without the effort'; do
         APX_CHK=$((APX_CHK + 1))
         grep -qF -- "$apx_lit" "$APX_ARGS_FILE" || APX_WHY+=" AP-16:contract-lacks(${apx_lit:0:28})"
@@ -12851,7 +13429,7 @@ apx_doc "cfg-bucket3" 'an empty `subagents.model.<agent>.<role>` or `subagents.e
 apx_doc "sub-heading" '### Subagent arguments' "$APX_DOC_SUB"
 apx_doc "sub-roles" 'The role of a launch - **reader**, **validator** or **executor** - comes from the table in `.unikit/system/subagent-roles.md`' "$APX_DOC_SUB"
 apx_doc "sub-slots" 'the installer draws them into the call head of every skill as slots' "$APX_DOC_SUB"
-apx_doc "sub-retry" 'WARN [delegation] effort "<value>" rejected - retried on the session effort' "$APX_DOC_SUB"
+apx_doc "sub-retry" 'WARN [delegation] effort "<value>" rejected - retried without the effort override' "$APX_DOC_SUB"
 apx_doc "sub-no-slot" 'a runtime without an effort slot gets `WARN [delegation] effort "<value>" is not supported' "$APX_DOC_SUB"
 apx_doc "sub-nested" '### Nested launches and effort - what is established' "$APX_DOC_SUB"
 apx_doc "sub-nesting-claude" 'launched two subagents itself (depth 2' "$APX_DOC_SUB"
@@ -12863,11 +13441,17 @@ apx_doc "agents-not-measured" 'whether that depends on `/effort` was not measure
 apx_doc "agents-codex" 'The call also takes `model` and `reasoning_effort`' "$APX_DOC_AGENTS"
 apx_doc "agents-codex-nested" 'a subagent started with `reasoning_effort` low started another with `high`' "$APX_DOC_AGENTS"
 apx_doc "agents-nested" '**Nested subagents (client `agy`, probes of 2026-10-18 and 2026-10-19, from the journals).**' "$APX_DOC_AGENTS"
-apx_doc "agents-kimi" 'UniKit passes neither a model nor an effort to Kimi Code subagents' "$APX_DOC_AGENTS"
+apx_doc "agents-kimi" 'UniKit can pass a **model** to Kimi Code subagents' "$APX_DOC_AGENTS"
+apx_doc "agents-kimi-primary" 'The special alias `primary` explicitly inherits the caller' "$APX_DOC_AGENTS"
+apx_doc "agents-kimi-variants" '`[models.<alias>.overrides].default_effort`' "$APX_DOC_AGENTS"
+apx_doc "cfg-kimi-key" '| `model.kimi.<role>` |' "$APX_DOC_CFG"
+apx_doc "cfg-kimi-no-effort" '**Kimi Code has no effort key or call slot.**' "$APX_DOC_CFG"
+apx_doc "cfg-kimi-template" '`.kimi-code/kimi-subagent-models.toml`' "$APX_DOC_CFG"
 # the help index of the system files names the new one (the help test does not guard that list)
 APX_HELP_KB="$ROOT_DIR/skills/unikit-help/references/knowledge-base.md"
 apx_doc "help-kb" '`subagent-arguments.md` — how the model and the effort of a subagent are settled' "$APX_HELP_KB"
 apx_doc "help-kb-roles" '`subagent-roles.md` — which role (reader, validator or executor) each subagent launch has' "$APX_HELP_KB"
+apx_doc "help-kb-kimi" '`.kimi-code/kimi-subagent-models.toml` — three role aliases for Kimi (reader, validator, executor),' "$APX_HELP_KB"
 APX_DOC_OLD=$( { grep -cF '### Model argument' "$APX_DOC_SUB" || true; } )
 APX_CHK=$((APX_CHK + 1))
 [[ "${APX_DOC_OLD:-0}" -eq 0 ]] || APX_WHY+=" AP-18:retired-heading-left"
@@ -12933,7 +13517,7 @@ else
         '| `/unikit` Step 9.8 | executor |' '| `/unikit` Step 10 | executor |' '| `/unikit-gd-brainstorm` Phase 3.5 | executor |' \
         '| `unikit-implement-worker` | executor |' '| `unikit-plan-polisher` | executor |' \
         '| `unikit-review-sidecar` | validator |' '| `unikit-architecture-sidecar` | validator |' '| `unikit-docs-sidecar` | validator |' \
-        '| `unikit-commit-sidecar` | reader |'; do
+        '| `unikit-commit-sidecar` | reader |' '| `/unikit-review` reviewers | validator |'; do
         APX_CHK=$((APX_CHK + 1))
         grep -qF -- "$apx_lit" "$APX_ROLES_FILE" || APX_WHY+=" AP-19:assignment-changed(${apx_lit:0:34})"
     done
@@ -12956,10 +13540,12 @@ for apx_f in "$ROOT_DIR"/subagents/*.md; do
             'as the `model` and `effort` call parameters of the launch' \
             'A parameter with nothing to pass is left out of the call' \
             'WARN [delegation] subagent-arguments contract missing' \
-            'skip this section and pass nothing'; do
+            'On Kimi Code read `subagents.model.kimi.<role>` and pass only the `model` parameter settled by the same contract: there is no effort key or parameter and no per-agent setting.'; do
             APX_CHK=$((APX_CHK + 1))
             grep -qF -- "$apx_lit" "$apx_f" || APX_WHY+=" AP-20:launcher-lacks(${apx_lit:0:28}):${apx_f#"$ROOT_DIR"/}"
         done
+        APX_CHK=$((APX_CHK + 1))
+        ! grep -qF 'skip this section and pass nothing' "$apx_f" || APX_WHY+=" AP-20:stale-kimi-skip:${apx_f#"$ROOT_DIR"/}"
     else
         [[ "${apx_has:-0}" -eq 0 ]] || APX_WHY+=" AP-20:non-launcher-with-section:${apx_f#"$ROOT_DIR"/}"
     fi
@@ -12970,11 +13556,31 @@ APX_CHK=$((APX_CHK + 2))
 grep -qF 'also carries the `model` and `effort` call parameters of its role' "$ROOT_DIR/subagents/unikit-implement-coordinator.md" || APX_WHY+=" AP-20:implement-dispatch-not-parameterised"
 grep -qF 'Pass the `model` and `effort` call parameters of the polisher' "$ROOT_DIR/subagents/unikit-plan-coordinator.md" || APX_WHY+=" AP-20:plan-dispatch-not-parameterised"
 # (AP-21) is added next to the texts it pins — see the tasks of phase 6
+# (AP-22) the pointer is a rule of the whole run, so it never stands inside the section of the aliases. /unikit-review declares
+# one alias, `check-agent`, and that one runs only on `+check`; the reviewers a run starts on its own decision are named by no
+# step, and a pointer in the alias section was read as the alias's own rule: a run that started five reviewers (live run,
+# 2026-10-28) passed them neither the configured effort nor the configured model. Every pointer therefore stands outside the
+# `## Delegation agents` section (the one AP-19 reads the aliases from). /unikit-review also says, right under it, that the rule
+# covers a launch no step names, and the roles table places that launch (pinned in AP-19).
+APX_PTR_SCOPE_N=0
+for apx_f in "$AP_SCOPE"/*/SKILL.md; do
+    grep -qF '**Subagent arguments.**' "$apx_f" || continue
+    APX_PTR_SCOPE_N=$((APX_PTR_SCOPE_N + 1))
+    apx_in=$(awk '/^## Delegation agents/{f=1;next} /^## /{f=0} f && /^\*\*Subagent arguments\.\*\*/{c++} END{print c+0}' "$apx_f")
+    [[ "${apx_in:-0}" -eq 0 ]] || APX_WHY+=" AP-22:pointer-inside-alias-section:${apx_f#"$ROOT_DIR"/}"
+done
+APX_CHK=$((APX_CHK + APX_PTR_SCOPE_N + 2))
+[[ "$APX_PTR_SCOPE_N" -gt 0 ]] || APX_WHY+=" AP-22:no-pointer"
+APX_RV="$AP_SCOPE/unikit-review/SKILL.md"
+APX_RV_SCOPE=$( { grep -cF 'It covers every subagent of this review, with `+check` or without it' "$APX_RV" || true; } )
+[[ "${APX_RV_SCOPE:-0}" -eq 1 ]] || APX_WHY+=" AP-22:review-scope-sentence-count(${APX_RV_SCOPE:-0})"
+APX_RV_OWN=$( { grep -cF 'one you start yourself, such as a reviewer over part of a large diff, which no step here names' "$APX_RV" || true; } )
+[[ "${APX_RV_OWN:-0}" -eq 1 ]] || APX_WHY+=" AP-22:review-own-launch-sentence-count(${APX_RV_OWN:-0})"
 (( APX_CHK > 0 )) || APX_WHY+=" AP-16:nothing-checked"
 if [[ -z "$APX_WHY" ]]; then
-    pass "AP-16…AP-20 subagent arguments and roles: the contract file, the pointers as one text, the docs, the roles table, the coordinators (${APX_CHK} checks)"
+    pass "AP-16…AP-22 subagent arguments and roles: the contract file, the pointers as one text, the docs, the roles table, the coordinators, the pointer outside the alias section (${APX_CHK} checks)"
 else
-    fail "AP-16…AP-20 subagent arguments and roles:$APX_WHY"
+    fail "AP-16…AP-22 subagent arguments and roles:$APX_WHY"
 fi
 
 # >>> UQ block
@@ -13194,8 +13800,8 @@ uq_has "UQ-9:unikit-missing-tool-is-no-block" 'its absence is not a block, the q
 uq_lacks "UQ-9:unikit-tool-named-in-the-rule" 'requires an AskUserQuestion step' "$ROOT_DIR/skills/unikit/SKILL.md"
 uq_has "UQ-9:spec-menu-has-a-recommended-first" '1. Edit GAME.md content — change a pillar / fantasy / loop / stance (Recommended)' "$ROOT_DIR/skills/unikit-gd-spec/SKILL.md"
 uq_lacks "UQ-9:spec-menu-has-five-options" '5. Import a different GDD' "$ROOT_DIR/skills/unikit-gd-spec/SKILL.md"
-uq_has "UQ-9:audit-consent-through-the-tool" '`Editor ready?`, with the options' "$ROOT_DIR/skills/unikit-mcp-audit/SKILL.md"
-uq_has "UQ-9:trap-review-through-the-tool" 'ask once with the question tool of your agent (`AskUserQuestion`): `Review them?`' "$ROOT_DIR/skills/unikit-mcp-trap/SKILL.md"
+uq_has "UQ-9:audit-consent-through-the-tool" '`Editor ready?`, with the options' "$ROOT_DIR/skills/unikit-bridge-audit/SKILL.md"
+uq_has "UQ-9:trap-review-through-the-tool" 'ask once with the question tool of your agent (`AskUserQuestion`): `Review them?`' "$ROOT_DIR/skills/unikit-bridge-trap/SKILL.md"
 uq_has "UQ-9:rules-mode-b-asks-the-open-question" 'What rule or convention would you like to add?' "$ROOT_DIR/skills/unikit-rules/SKILL.md"
 uq_lacks "UQ-9:rules-mode-b-invents-rules" 'Never use var — always declare explicit types' "$ROOT_DIR/skills/unikit-rules/SKILL.md"
 uq_has "UQ-9:roadmap-asks-after-the-report" 'Then the question, with the question tool of your agent (`AskUserQuestion`): `Mark them as completed`' "$ROOT_DIR/skills/unikit-roadmap/SKILL.md"
@@ -13439,6 +14045,130 @@ if [[ -z "$SK_WHY" ]]; then
     pass "SK-1…SK-4 skill-to-skill calls: the recipe in ${#SK_FILES[@]} files, $SK_TARGET_N targets exist and are visible to the model, no retired tier wording, callers carry the Skill tool"
 else
     fail "SK-1…SK-4 skill-to-skill calls weakened:$SK_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# Part 7g7b: XE-1…XE-7 — /unikit-execute, the task skill that works with no plan
+# ─────────────────────────────────────────────
+# unikit-execute does one task from a description: no plan file, a card classified from the text, the bridges
+# in the order D3 gives, an end with a report and one question. EM, RT, LB, EXP-E, PRT-8, UQ, SK and EP reach
+# it by name or by its frontmatter, and EW-2 / EW-3 list it; these guards pin what no other family owns: its
+# rights (XE-1), the reads it shares with the plan executors (XE-2), the card that reads its vocabulary
+# instead of copying it (XE-3), the delegate marker and its three call sites (XE-4), the ban on plan files
+# and the list of skills it may invoke (XE-5), `direct` behind the plan executors' own gate (XE-6) and a
+# rename that leaves no trace (XE-7). Own accumulators XE_*; every grep inside $( … ) is wrapped in
+# { … || true; } — under `set -e` an empty match would abort the suite.
+echo -e "\n${BOLD}Part 7g7b: unikit-execute — the task skill with no plan (XE)${NC}"
+XE_WHY=""
+XE_CHK=0
+XE_SKILL="$ROOT_DIR/skills/unikit-execute/SKILL.md"
+XE_DIRECT="$ROOT_DIR/skills/unikit-execute/references/direct-mode.md"
+XE_IMPLEMENT="$ROOT_DIR/skills/unikit-implement/SKILL.md"
+xe_has() { # <reason key> <literal> <file>
+    XE_CHK=$((XE_CHK + 1))
+    grep -qF -- "$2" "$3" || XE_WHY+=" $1"
+}
+xe_lacks() { # <reason key> <literal> <file>
+    XE_CHK=$((XE_CHK + 1))
+    ! grep -qF -- "$2" "$3" || XE_WHY+=" $1"
+}
+
+# (XE-1) the skill and its rights: the three tools its flow needs, and no Agent — it launches nothing
+if [[ ! -s "$XE_SKILL" ]]; then
+    XE_WHY+=" XE-1:missing-skill"
+else
+    XE_HEAD="$(awk 'NR==1&&/^---/{f=1;next} f&&/^---/{exit} f' "$XE_SKILL")"
+    for xe_tool in '  - Bash(date *)' '  - Skill' '  - AskUserQuestion'; do
+        XE_CHK=$((XE_CHK + 1))
+        grep -qxF -- "$xe_tool" <<< "$XE_HEAD" || XE_WHY+=" XE-1:tool-missing(${xe_tool:4})"
+    done
+    XE_CHK=$((XE_CHK + 1))
+    ! grep -qxF -- '  - Agent' <<< "$XE_HEAD" || XE_WHY+=" XE-1:agent-granted"
+    XE_CHK=$((XE_CHK + 1))
+    grep -qxF -- 'name: unikit-execute' <<< "$XE_HEAD" || XE_WHY+=" XE-1:name"
+fi
+
+# (XE-2) what it shares with the plan executors, by one formulation each: the bridge order and the routing rules are
+# read from their files at load (A10), the order is announced in one line, and the lower half of the principles waits
+# for the first call through a bridge
+XE_ORDER='Also read `.unikit/bridges.yaml` (the bridge order) and, when it exists, `.unikit/bridge-routing.md` (the routing rules); a missing order file means the default order `BRIDGES.md` states, a missing routing file means no routing rules.'
+xe_has "XE-2:order-read(execute)" "$XE_ORDER" "$XE_SKILL"
+xe_has "XE-2:order-read(implement)" "$XE_ORDER" "$XE_IMPLEMENT"
+xe_has "XE-2:order-read(fix)" "$XE_ORDER" "$ROOT_DIR/skills/unikit-fix/SKILL.md"
+xe_has "XE-2:order-read(verify)" "$XE_ORDER" "$ROOT_DIR/skills/unikit-verify/SKILL.md"
+xe_has "XE-2:order-line" 'INFO [bridges] order: <a> > <b> (file|default|prompt)' "$XE_SKILL"
+xe_has "XE-2:lower-half-moment" '**Before the first call through a bridge**' "$XE_SKILL"
+
+# (XE-3) the card reads its vocabulary and does not copy it: A8 owns the kinds and the boundary, the planner's
+# grammar and ENGINE_RULES.md §1 and §3 own the engine's side — the six words are not listed in the skill
+xe_has "XE-3:a8" '(`dev-principles.md` → **A8**)' "$XE_SKILL"
+xe_has "XE-3:grammar" '*Editor task grammar*' "$XE_SKILL"
+xe_has "XE-3:engine-rules" 'ENGINE_RULES.md` — §1 and §3 only' "$XE_SKILL"
+xe_lacks "XE-3:kinds-copied" 'scene · ui · vfx · anim · asset · settings' "$XE_SKILL"
+xe_lacks "XE-3:kinds-copied-pipes" 'scene | ui | vfx | anim | asset | settings' "$XE_SKILL"
+
+# (XE-4) the delegate mode: one marker line, written in the three skills that start the skill through an alias,
+# read by the skill, and honoured by the worker that preloads it; and the four classes of the card
+XE_MARK='Delegated hand-off:'
+xe_has "XE-4:marker(execute)" "The arguments begin with the line \`$XE_MARK\`" "$XE_SKILL"
+XE_ALIAS_N=0
+for xe_pair in "implement:<task details>" "fix:<fix details>" "verify:<fix details>"; do
+    XE_ALIAS_N=$((XE_ALIAS_N + 1))
+    xe_has "XE-4:alias-marker(${xe_pair%%:*})" "prompt: \"{{agent_skill_call:unikit-execute}} $XE_MARK ${xe_pair#*:}\"," "$ROOT_DIR/skills/unikit-${xe_pair%%:*}/SKILL.md"
+done
+xe_has "XE-4:worker-rule" 'A preloaded `unikit-execute` is knowledge, not a start' "$ROOT_DIR/subagents/unikit-implement-worker.md"
+for xe_class in question code editor mixed; do
+    xe_has "XE-4:class($xe_class)" "- \`$xe_class\` — " "$XE_SKILL"
+done
+xe_has "XE-4:card" 'Card: <class>' "$XE_SKILL"
+
+# (XE-5) no plan, and the list of skills it may invoke: the existence probe is the only touch of a plan file, and
+# every skill it invokes — in SKILL.md and in its references — is one of the five it names
+xe_has "XE-5:plan-warn" 'WARN [execute] <path> exists but is ignored: no plan is used' "$XE_SKILL"
+xe_has "XE-5:no-plan-rule" 'are never read, created or edited — the only touch is the existence check of Step 2' "$XE_SKILL"
+xe_has "XE-5:invokable-list" 'The skills this skill invokes** are `unikit-commit`, `unikit-review`, `unikit-todo`, `unikit-docs` and `unikit-bridge-trap`, and no other' "$XE_SKILL"
+XE_ALLOWED=' unikit-commit unikit-review unikit-todo unikit-docs unikit-bridge-trap '
+XE_TARGETS=$( { grep -rhoE '[Ii]nvoke[sd]? `unikit-[a-z0-9-]+`' "$ROOT_DIR/skills/unikit-execute" --include='*.md' 2>/dev/null || true; } | sed -E 's/.*`(unikit-[a-z0-9-]+)`/\1/' | sort -u)
+XE_TARGET_N=0
+for xe_t in $XE_TARGETS; do
+    XE_TARGET_N=$((XE_TARGET_N + 1))
+    XE_CHK=$((XE_CHK + 1))
+    [[ "$XE_ALLOWED" == *" $xe_t "* ]] || XE_WHY+=" XE-5:invokes($xe_t)"
+done
+[[ "$XE_TARGET_N" -gt 0 ]] || XE_WHY+=" XE-5:no-call-site"
+
+# (XE-6) `direct` stands behind the gate the plan executors have, in the same formulations, and the skill only
+# points at the reference that holds it — read when `direct` was asked for, and never a default
+for xe_lit in 'a rollback point must exist before editing' 'Never use `direct` for a format §6 rates 🔴' \
+              '`HEAD` already is the rollback point: no commit is needed' 'no pre-edit commit — direct edit skipped' \
+              '**If that file is not there**, treat every format as 🔴: refuse `direct`'; do
+    xe_has "XE-6:implement-lacks(${xe_lit:0:26})" "$xe_lit" "$XE_IMPLEMENT"
+    xe_has "XE-6:reference-lacks(${xe_lit:0:26})" "$xe_lit" "$XE_DIRECT"
+done
+xe_has "XE-6:pointer" '{{skills_dir}}/{{self_name}}/references/direct-mode.md' "$XE_SKILL"
+xe_has "XE-6:never-default" '**`direct` is never a default** — it is irreversible.' "$XE_SKILL"
+xe_lacks "XE-6:gate-in-skill" 'a rollback point must exist before editing' "$XE_SKILL"
+
+# (XE-7) the old name of the skill is gone from every tracked text but the places that name it on purpose: the
+# rename table, its three tests and the migration note. The word is written in two halves so this file does not
+# match itself; an entry whose file no longer names it is stale and goes red, as in Part 7c.
+XE_OLD="dev""context"
+XE_ALLOW_OLD=("src/core/skill-renames.ts" "scripts/test-bridges.mjs" "scripts/test-update.sh" "scripts/test-extensions.sh" "docs/migration-3.0.0.md")
+XE_OLD_FILES=$( { grep -rIil -- "$XE_OLD" "$ROOT_DIR/skills" "$ROOT_DIR/subagents" "$ROOT_DIR/data" "$ROOT_DIR/docs" "$ROOT_DIR/src" "$ROOT_DIR/scripts" "$ROOT_DIR/engine-bridges" "$ROOT_DIR/mcp" "$ROOT_DIR/README.md" "$ROOT_DIR/AGENTS.md" 2>/dev/null || true; } | sed "s#^$ROOT_DIR/##" | sort)
+for xe_f in $XE_OLD_FILES; do
+    XE_CHK=$((XE_CHK + 1))
+    case " ${XE_ALLOW_OLD[*]} " in *" $xe_f "*) ;; *) XE_WHY+=" XE-7:old-name($xe_f)" ;; esac
+done
+for xe_a in "${XE_ALLOW_OLD[@]}"; do
+    XE_CHK=$((XE_CHK + 1))
+    grep -qi -- "$XE_OLD" "$ROOT_DIR/$xe_a" || XE_WHY+=" XE-7:allowlist-stale($xe_a)"
+done
+
+[[ "$XE_CHK" -gt 0 ]] || XE_WHY+=" XE-0:nothing-checked"
+if [[ -z "$XE_WHY" ]]; then
+    pass "XE-1…XE-7 unikit-execute: rights, shared reads, card, delegate marker at $XE_ALIAS_N call sites, no-plan ban, direct gate, rename with no trace ($XE_CHK checks, $XE_TARGET_N invoked skills)"
+else
+    fail "XE-1…XE-7 unikit-execute:$XE_WHY"
 fi
 
 # ─────────────────────────────────────────────
@@ -14156,6 +14886,18 @@ if [[ $CHILD_EXIT -eq 0 ]]; then
     pass "plan-bundle helper tests passed"
 else
     fail "plan-bundle helper tests failed"
+fi
+
+# ─────────────────────────────────────────────
+# Part 13e: architecture-layout.mjs — the architecture optimise helper, run for real on fixture projects
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 13e: architecture-layout helper tests (TAL-1…TAL-15)${NC}"
+child_wait architecture-layout
+printf '%s\n' "$CHILD_OUTPUT"
+if [[ $CHILD_EXIT -eq 0 ]]; then
+    pass "architecture-layout helper tests passed"
+else
+    fail "architecture-layout helper tests failed"
 fi
 
 # ─────────────────────────────────────────────

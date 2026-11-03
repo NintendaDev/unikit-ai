@@ -1,14 +1,18 @@
 ---
 name: unikit-architecture
 description: >-
-  Generate the architecture guidelines for a game project. Scans the project structure
-  and tech stack, then produces .unikit/ARCHITECTURE.md describing the folder layout,
-  dependency rules, and how modules communicate. Name a specific pattern or let it
-  auto-detect. Use when the user wants to define or document the project architecture,
-  e.g. "generate architecture", "describe the architecture", "which architecture should
-  I use", "set up project architecture", or mentions module structure, module boundaries,
-  project organization, or dependency rules.
-argument-hint: "[architecture pattern name or empty for auto-detect]"
+  Generate, update or reorganize the architecture guidelines of a game project. Scans the
+  project structure and tech stack, then writes .unikit/ARCHITECTURE.md — a root with the
+  module map and the global dependency rules — and, when the file grows, topic files in
+  .unikit/architecture/ that agents load only when the work matches them. Modes: generate
+  (no file yet), update (rescan and add what is missing, removing nothing), optimise (split
+  a large file into a root and topics), chosen by a keyword or from the request in plain
+  words. Name a specific pattern or let it auto-detect. Use when the user wants to define,
+  document, update or slim down the project architecture, e.g. "generate architecture",
+  "update the architecture document", "the architecture file is too big", "split
+  ARCHITECTURE.md", or mentions module structure, module boundaries, project organization,
+  or dependency rules.
+argument-hint: "[update [text] | optimise | generate | a request in plain words | architecture pattern name | empty to follow the state of the file]"
 allowed-tools:
   - Read
   - Write
@@ -19,7 +23,9 @@ allowed-tools:
   - Bash(ls *)
   - Bash(find *)
   - AskUserQuestion
-version: "2.1"
+  - Bash(rm .unikit/architecture/*)
+  - Bash(node *)
+version: "3.0"
 ---
 
 # Architecture — Generate Project Architecture Guidelines
@@ -38,7 +44,87 @@ Do not announce, confirm, or mention the language setting.
 
 **The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
 
+## Layout of the architecture files
+
+`.unikit/ARCHITECTURE.md` is the **root**, and the only file every reader opens. It takes one of two shapes.
+
+**Flat** — every file until its first topic appears, and every older project: the sections of the Step 4 template, no `## Topics`. A reader takes the whole file.
+
+**Topics** — the root holds what every task needs, topic files hold one area each:
+
+```markdown
+# Architecture: <Pattern Name>
+
+> This file is the root: when it has a `## Topics` table, its sections apply to every task, and a topic file in `.unikit/architecture/` applies when the work matches its "Load when" — check again when the work moves to a new phase or area, and when unsure, load it.
+
+## Project
+## Tech Stack
+…the other sections of the Step 4 template, cut down to the map…
+
+## Topics
+
+| Topic | Load when |
+|-------|-----------|
+| [<Title>](architecture/<slug>.md) | <what a task mentions: folders, assemblies, types, frameworks, areas> |
+
+## Detailed Rules
+```
+
+- **What stays in the root:** `## Project`, `## Tech Stack`, `## Documentation Sources`, a short `## Architecture Overview`, the module map in `## Folder Structure` (one line per module), `## Dependency Rules` with the **global** edges and prohibitions, `## Cross-Module Communication` with the common patterns, `## Key Principles`, the global `## Anti-Patterns`, `## Topics`, `## Detailed Rules`. The section names of the template stay: other tools read them by name.
+- **A topic file** is `.unikit/architecture/<slug>.md`: `# Architecture — <Title>`, a blank line, then `## ` sections that carry the whole area — its edges and prohibitions, its contracts (a table), the narrative of its mechanisms. No `Load when` inside it, no `## Topics`.
+- **A table row** is `| [<Title>](architecture/<slug>.md) | <Load when> |`. The slug is English kebab-case, one to three words, unique. `Load when` has no `|`. **`Load when` lives only in the root table.** Topics are cut by **area** (a subsystem, a module, a framework seam), never by kind of text.
+- **`## Topics` and its table exist together or not at all**; the section stands directly above `## Detailed Rules` (last when there is none). The header quote under the title is written whenever the root has a table and removed when it has none.
+- **Where a prohibition lives.** One that touches more than one area stays in the root (`## Dependency Rules`, `## Anti-Patterns`); one that touches a single area may live in its topic. When unsure, the root.
+- **Priority.** The root and its topics are one level (number 2 of `RULES_INDEX.md`). Inside its own area a topic wins over a root section it contradicts.
+- **The `flat` marker** is the line `<!-- unikit:architecture-layout flat -->`, directly under the root's `# Architecture:` line. It records the user's refusal of the topic layout and means nothing to readers. There is no marker for the topic layout: the `## Topics` table is the sign.
+- **Anchors** — `## Topics`, the header row `| Topic | Load when |`, the marker, the slugs, the `# Architecture — ` prefix and the header quote — are English, and so is the rest of the document and of every topic file: architecture documentation always stays in English (LANGUAGE_RULES).
+- **Not to be confused:** `.unikit/architecture/` holds these topic files; `.unikit/code/architecture/` holds maps a user's own skills may write. This skill reads and writes only the first.
+
+## Modes
+
+The mode comes from the user's request together with the state of the file (below), in this order: **(1) an explicit parameter, (2) the intent of free text, (3) the state.** Both ways stay: the parameter is the stable, deterministic interface (other skills and scripts rely on it — `unikit-rules` prune hands a block over as `update <block>`), free text is for people. **The request** is `$ARGUMENTS`; when that is empty or only a pattern name, it is the message that started this run, which is how the mode is found when the skill was picked by its description with no arguments. Free text may be in any language: read its intent, do not match words, so "the architecture file is too big", "slim it down" and `optimise` all mean the same thing. **Announce the mode first:** the announcement is the run's very first output, before Step 0 (a clarifying question, when rule 3 or 4 below needs one, comes first and the announcement follows the answer); mode names stay English, the sentence is in `language.ui`.
+
+```
+1. Parameter — checked first, never interpreted:
+   ├── the whole argument is `optimise` / `optimize` (any letter case)  → Mode C
+   ├── the first word is `update` (the rest of the line is read as the request, see rule 1)  → Mode B
+   └── the whole argument is `generate`  → Mode A
+2. Otherwise the intent of the request, free text in any language:
+   ├── reorganize, optimise, slim down, shorten, split into topics, "the file is too big"  → Mode C: reorganize into a root and topics
+   ├── update, refresh, bring in line with the code, add what is missing, record this fact or block  → Mode B: update
+   └── generate, create, write, set up the architecture document  → Mode A: generate
+3. No parameter and no intent (an empty request, a pattern name, a question about the architecture)
+   → by the state of .unikit/ARCHITECTURE.md: `empty` → Mode A, any other → Mode B — a pattern name is a hint, never an order to regenerate
+```
+
+**Rules of the intent.**
+1. A request that carries a fact or a block to record ("module X may not depend on Y", or the text `unikit-rules` hands over) is Mode B whether it came as `update <block>` or as free text, and that text is the block (`mode-update.md`, U.4); the text after the word `update` that only describes the wish ("the architecture, we added a module") is a request, not a block.
+2. Two intents in one request run in the order given — Mode B before Mode C when both are named, because Mode C restructures what Mode B just wrote.
+3. A request that reads as update or as reorganize ("tidy up the architecture") is asked once, with the question tool of your agent (`AskUserQuestion`): `Update` (recommended) / `Reorganize into topics`. It is never guessed.
+4. A generate intent — or the `generate` parameter — on a file that has content is asked once, with the same tool: `Update instead` (recommended) / `Rewrite from scratch`. Rewriting replaces what is written — the only path of this skill that removes anything — and it runs only on that answer.
+5. `update` on an `empty` file prints `INFO [architecture] update: no file — generating` and runs Mode A; `optimise` on an `empty` file prints `INFO [architecture] optimise: no architecture document — nothing to do` and stops.
+6. Whatever the wording or the parameter, Mode C writes nothing before the user confirms its preview.
+
+| Mode | Announcement | Runs |
+|------|--------------|------|
+| A: generate | `generate: I'll scan the project and write .unikit/ARCHITECTURE.md.` | Steps 0–6 below |
+| B: update | `update: I'll rescan the project and add what is missing to .unikit/ARCHITECTURE.md; nothing already written is removed.` | Steps 0–2, then read `{{skills_dir}}/{{self_name}}/references/mode-update.md` and follow it; Steps 3–4 do not run |
+| C: optimise | `optimise: I'll sort .unikit/ARCHITECTURE.md into a root and topic files and show you the proposed layout before writing anything.` | read `{{skills_dir}}/{{self_name}}/references/mode-optimise.md` and follow it; Steps 0–4 and 6 do not run, Step 5 (the `AGENTS.md` row) runs when that file says so |
+
+**The state** is decided by the file's content, checked in this order, the first match wins:
+
+| State | Sign |
+|-------|------|
+| `topics` | a line `## Topics` followed by the table header row `Topic` / `Load when` |
+| `flat` | the marker line |
+| `empty` | no file, or a file without a single line that starts with `## ` |
+| `legacy` | anything else: content, but neither the table nor the marker |
+
+Drift is reported, never fixed silently: a row whose file is missing → `WARN [architecture] topic table: <slug> is listed, .unikit/architecture/<slug>.md does not exist`; a file in `.unikit/architecture/` no row lists → `WARN [architecture] topic table: .unikit/architecture/<file> is not listed under ## Topics — no reader loads it`; marker and table together → `WARN [architecture] layout: flat marker ignored — the file already has a ## Topics table`. A `flat` file is never offered the reorganization again; only `optimise` reorganizes it, and removes the marker when it does.
+
 ## Workflow
+
+Determine the mode first (`## Modes`) and print its announcement as the run's first output; Steps 0–2 are shared.
 
 ### Step 0: Load Engine Rules
 
@@ -60,7 +146,7 @@ Do NOT read the individual rule files — only the index to understand what's co
 **Read `.unikit/RULES.md`** if it exists — naming conventions, class structure, DI rules. **Rule topics:** its `## Topics` table names the topic files in `.unikit/rules/`; open one only when the architecture work at hand touches its `Load when`.
 Extract key conventions but do NOT duplicate them into ARCHITECTURE.md — reference the file instead.
 
-**Read existing `.unikit/ARCHITECTURE.md`** if it exists — you may be updating, not creating from scratch.
+**Read the root `.unikit/ARCHITECTURE.md`** if it exists — its state (see `## Modes`) decides the mode. **Architecture topics:** open a topic file only when the work at hand places or checks a fact in its area (Mode B), or when `optimise` reads them all.
 
 **Read `.unikit/skill-context/unikit-architecture/SKILL.md`** if it exists — project-specific rules accumulated by `/unikit-evolve`. Treat as overrides: skill-context wins over general rules on conflict.
 
@@ -108,6 +194,8 @@ Look for architectural pattern indicators. These patterns are largely engine-agn
 - DI installer/module files — as specified in `ENGINE_RULES.md`
 
 ### Step 3: Ask About Architecture (if needed)
+
+Mode A only. In Mode B a named pattern is a hint for the rescan, nothing more.
 
 **If `$ARGUMENTS` specifies an architecture pattern** (e.g., `/unikit-architecture modular-monolith`):
 - Use that pattern directly, skip to Step 4
@@ -234,6 +322,7 @@ For framework-specific rules, coding conventions, and implementation details see
 
 - **`.unikit/RULES.md`** — [brief description of what's there; when it has a `## Topics` table, name its topic files in `.unikit/rules/`]
 - **`.unikit/memory/code/RULES_INDEX.md`** — index of all framework-specific rule files
+- **`.unikit/architecture/`** — topic files, listed in `## Topics` (only when the file has topics)
 ```
 
 ---
@@ -249,7 +338,8 @@ For framework-specific rules, coding conventions, and implementation details see
   is the single source of truth for which rule files exist and when to load them
 - Do NOT duplicate content from RULES.md or memory/code/RULES_INDEX.md —
   reference them and describe what each contains in one line
-- Keep ARCHITECTURE.md concise — it's a map, not a manual. Detailed rules live in dedicated files
+- **Topics at generation.** Write one root. A subsystem for which the scan found more than one table row of structure — its own edges and prohibitions, a contract catalogue, or a mechanism that needs a paragraph — becomes a topic file (shape: `## Layout of the architecture files`) listed in `## Topics`; everything that fits one line stays in the root. A project with no such subsystem gets the flat shape: no `## Topics`, no header quote.
+- Keep the root concise — it's a map, not a manual. What explains how one area works lives in that area's topic file, or in `docs/`, not in the root.
 
 ### Step 5: Update AGENTS.md
 
@@ -259,6 +349,8 @@ in the "AI Context Files" table (or equivalent section):
 ```
 | .unikit/ARCHITECTURE.md | Architecture decisions and guidelines |
 ```
+
+When the file has topics, the row reads `| .unikit/ARCHITECTURE.md | Architecture decisions and guidelines; topic files in .unikit/architecture/ load when their "Load when" matches |`. Modes B and C run this step too whenever the file has topics when they finish, or has just lost its last one: the row is checked every time, so a regenerated `AGENTS.md` gets the topic note back.
 
 If the entry already exists, verify it's accurate. If `AGENTS.md` doesn't exist, skip this step silently.
 
@@ -270,6 +362,7 @@ If the entry already exists, verify it's accurate. If `AGENTS.md` doesn't exist,
 Engine: [detected engine]
 Pattern: [chosen pattern]
 File: .unikit/ARCHITECTURE.md
+Topics: [N topic files in .unikit/architecture/ | none — flat]
 
 Discovered:
 - [N] modules in [modules directory]

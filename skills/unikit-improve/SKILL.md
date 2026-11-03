@@ -45,11 +45,7 @@ Do not announce, confirm, or mention the language setting.
 
 **The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
 
-## Delegation agents
-
-This skill uses named delegation aliases for `Agent(...)` calls. Each alias is the single
-place where its delegate's agent type and call arguments are declared — call sites name
-the alias and never carry a type or a model argument of their own.
+## Subagent launches
 
 **Subagent arguments.** Before the first subagent you launch, read `.unikit/system/subagent-arguments.md`
 and `.unikit/config.yaml` once and settle the model and effort of every launch as that file says.
@@ -58,6 +54,12 @@ built-in model of a reader and a validator: `"{{agent_model_default}}"`, of an e
 If the file cannot be read, print
 `WARN [delegation] subagent-arguments contract missing — built-in model tier used, effort not passed`
 and use that model, no effort.
+
+## Delegation agents
+
+This skill uses named delegation aliases for `Agent(...)` calls. Each alias is the single
+place where its delegate's agent type and call arguments are declared — call sites name
+the alias and never carry a type or a model argument of their own.
 
 - **`recon-agent`** — read-only parallel reconnaissance. Expands to:
 
@@ -112,9 +114,9 @@ This skill is a **plan refinement orchestrator**, not a code writer. It loads pr
 
 **For deep code analysis, use the `recon-agent` alias**:
 - Launch 2-3 tasks in parallel for different aspects of the codebase
-- Each task MUST receive references to project doc files in its prompt — paths to `.unikit/ARCHITECTURE.md` and relevant core/stack rule files loaded in Bootstrap
+- Each task MUST receive references to project doc files in its prompt — paths to `.unikit/ARCHITECTURE.md`, the architecture topic files matched to its focus, and relevant core/stack rule files loaded in Bootstrap
 
-**Do NOT use `/unikit-devcontext` or `develop-agent`** — these are for code-writing skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`). Plan refinement needs code reading and analysis, not code writing.
+**Do NOT use `/unikit-execute` or `develop-agent`** — these are for code-writing skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`). Plan refinement needs code reading and analysis, not code writing.
 
 **What you CAN do directly** (without Explore tasks):
 - Read any `.md` documentation files (the plan manifest, `.unikit/*.md`)
@@ -281,7 +283,7 @@ Before any analysis — silently load the project knowledge base. Do NOT narrate
 #### Required reads (always, every time, in parallel)
 
 1. **`.unikit/DESCRIPTION.md`** — project description, tech stack, constraints
-2. **`.unikit/ARCHITECTURE.md`** — architecture decisions, folder structure, module rules, dependency directions
+2. **`.unikit/ARCHITECTURE.md`** — architecture decisions, folder structure, module rules, dependency directions. **Architecture topics:** the root now; then the topic files listed under its `## Topics` whose `Load when` matches any phase of the plan under review — its name and tasks — loaded with the rule topics; when unsure, load. A listed file that is missing → `WARN [architecture] topic file missing: .unikit/architecture/<slug>.md`, continue.
 3. **Read `.unikit/memory/code/RULES_INDEX.md`**. Load rules:
    - **RULES.md**: ALWAYS read `.unikit/RULES.md` first (highest priority) **Rule topics:** once the plan is loaded, load the topic files listed under its `## Topics` whose `Load when` matches any phase of that plan — its phase names and tasks; when unsure, load (`RULES_INDEX.md` → Step 1).
    - **Core**: read the Core table. For EACH row where Required By = `all` or contains `{{self_name}}` — read that file from `.unikit/memory/code/core/` using the Read tool. Do NOT skip any matching row. Always re-read at skill start, never rely on prior conversation cache
@@ -301,7 +303,7 @@ Remember loaded rule file paths — pass them to Explore tasks in Step 2.
 - The plan folder holds `recon/` → read `{{skills_dir}}/{{self_name}}/references/recon-baseline.md` and follow it: it sets the scope of Step 2 from the plan's reconnaissance and adds a report section. No `recon/` → the file is not read.
 - **The manifest has `## Balance Context`** → read `{{skills_dir}}/{{self_name}}/references/balance-sync.md` and follow it: it synchronises the plan with the current Balance Checkpoint and never rewrites it. Missing → `WARN [balance] balance-sync reference missing — plan not synchronised; run unikit-ai update`.
 - **The manifest has `## Experiment Context`** → read `.unikit/system/prototype-profile.md` and follow its `## Role: planning`. Missing or unreadable → `WARN [prototype] profile contract missing — plan improved as an ordinary plan; run unikit-ai update`.
-- If the manifest has a `## Based on` section → parse all linked research entries (folder name + the recorded hash field for each — the form it takes is resolved by the research-link contract's ladder in Step 1.5). Store as `linked_researches` list for Step 1.5. Also read each linked research's `RESEARCH.md` — `## Active Summary` **alongside** the manifest's `## Technical Context` (not instead of it) — both are needed for cross-referencing in Step 3.8.
+- If the manifest has a `## Based on` section → parse all linked research entries (folder name + the recorded hash field for each — the form it takes is resolved by the research-link contract's ladder in Step 1.5). Store as `linked_researches` list for Step 1.5. Also read each linked research's `RESEARCH.md` — `## Active Summary` **alongside** the manifest's `## Technical Context` (not instead of it) — in Step 1.5, once the contract is loaded, from the folder its `## Finding the folder` returns (an archived research is read where it lies); both are needed for cross-referencing in Step 3.8.
 
 Understand:
 - Feature scope and goals
@@ -381,7 +383,7 @@ Follow the delegation rules from **Code Analysis Rules** section above.
 Formulate analysis questions based on the feature plan, then launch Explore tasks in parallel. With a scope set from the plan's reconnaissance (`recon-baseline.md`), they cover only the paths that changed since a recon file's `HEAD` and what the reconnaissance does not cover. Each task MUST receive references to project doc files in its prompt.
 
 **Doc references to include in every Explore task prompt:**
-- `.unikit/ARCHITECTURE.md` — always (module boundaries, dependency rules)
+- `.unikit/ARCHITECTURE.md` root — always (module boundaries, dependency rules); plus the topic paths matched to the task's focus
 - Core rule files loaded in Bootstrap — pass the **paths from RULES_INDEX.md** relevant to the task's focus
 - Stack rule files loaded in Bootstrap — pass if the task's focus involves that framework
 
@@ -392,6 +394,7 @@ Task 1 — Existing code & bindings:
 recon-agent(prompt:
   "Before analysis, read these project docs:
    - .unikit/ARCHITECTURE.md
+   - [architecture topic paths relevant to focus]
    - [core rule paths from RULES_INDEX.md Core table]
 
    Find all existing customer-related classes, interfaces,
@@ -403,6 +406,7 @@ Task 2 — Integration points:
 recon-agent(prompt:
   "Before analysis, read these project docs:
    - .unikit/ARCHITECTURE.md
+   - [architecture topic paths relevant to focus]
    - [core rule paths from RULES_INDEX.md Core table]
 
    Find all SignalBus events (ISignal structs) related to
@@ -414,6 +418,7 @@ Task 3 — Save & controller patterns:
 recon-agent(prompt:
   "Before analysis, read these project docs:
    - .unikit/ARCHITECTURE.md
+   - [architecture topic paths relevant to focus]
    - [core rule paths from RULES_INDEX.md Core table]
 
    Check existing SaveSerializer implementations.
@@ -687,7 +692,7 @@ Based on user's choice, apply changes sequentially.
 
 Use `Edit` for every change. **`Write` over a plan manifest is forbidden** — the file carries `## Technical Context` (and, in an ultra bundle, `## Phase Index`), and a regenerating write silently drops whatever the current pass did not reconstruct. When a change is too large for a single `Edit`, split it into several `Edit` calls; do not fall back to `Write`.
 
-**Executor data is preserved whole.** `## MCP Findings`, `## Rule Candidates`, `## Test Runs` and `## Measurements` are carried over with all their content — rows, candidate statuses and the run log alike. They are not a draft of the plan: they are what execution recorded, and this skill has no authority to edit or drop them. That is one more reason the `Write` ban above is absolute rather than a preference.
+**Executor data is preserved whole.** `## Engine Bridge Findings`, `## Rule Candidates`, `## Test Runs` and `## Measurements` are carried over with all their content — rows, candidate statuses and the run log alike. They are not a draft of the plan: they are what execution recorded, and this skill has no authority to edit or drop them. That is one more reason the `Write` ban above is absolute rather than a preference.
 
 **Editing an ultra bundle.** The manifest and every affected phase file are edited **together** — never regenerate the manifest alone when phase detail changed, and never write a checkbox into a phase file. After the write, re-run the bundle integrity checks named in `.unikit/system/ultra-plan-read.md`; a bundle left inconsistent by an improvement blocks the next consumer that opens it.
 
@@ -698,7 +703,7 @@ For each new task from the report:
 2. Insert the task with `- [ ]` checkbox at the correct position within its phase
 3. Include file paths, class names, and a brief WHY context in the description
 4. If the task has dependencies, note them inline (e.g., `(after Phase 1)`)
-5. Add an `Editor:` line — one per editor target, placed after `Files:`, in the form `Editor: [kind] <container> → <target> : <action>` — **only** when the change touches the editor's **serialized state**. A pure code task omits the field, and when `engine_rules_loaded = false` (no `ENGINE_RULES.md` for this engine) it is not generated at all. Match the form already used by the surrounding tasks in the plan.
+5. Add an `Editor:` line — one per editor target, placed after `Files:`, in the form `Editor: [kind] <container> → <target> : <action>` — **only** when the change touches the editor's **serialized state**. A pure code task omits the field, and when `engine_rules_loaded = false` (no `ENGINE_RULES.md` for this engine) it is not generated at all. Use `TASK-FORMAT.md` → `### Checklist layout` for all task fields.
 6. **Ultra bundle only** — the checklist line is a pointer, so create what it points at: a `## Task N.M:` section in the phase file of that phase, with all seven subsections (`### Intent`, `### Implementation Steps`, `### Required Interfaces and Contracts`, `### Error Handling and Logging`, `### Tests`, `### Acceptance Criteria`, `### Verification`), and append the `([details](phase-NN-<slug>.md#task-nm-<slug>))` link to the checkbox line — the anchor is the GitHub slug of the task heading, per `{{skills_dir}}/unikit-plan/references/ULTRA-PLAN-FORMAT.md`. When the task needs a **new** phase, create `phase-NN-<slug>.md` and register it in the manifest's `## Phase Index` with its task range; an unregistered file is an orphan and blocks every consumer.
 
 **Test-checkpoint tasks.** When adding tasks, honour the policy the plan itself records — the `Test checkpoints:` line in `## Settings`. The grammar and how a run's width is derived are canonical in `{{skills_dir}}/unikit-plan/references/TASK-FORMAT.md` → `### Test checkpoint task grammar`; **do not restate them here**.

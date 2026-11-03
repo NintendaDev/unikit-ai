@@ -19,6 +19,7 @@ import { fileExists, listDirectories } from '../../utils/fs.js';
 import {
   CODE_MODULE_ID, PLANS_DIR_NAME, RESEARCHES_DIR_NAME, UNIKIT_DIR, workspaceDir,
 } from '../constants.js';
+import { PLAN_ARCHIVE_DIR_NAME } from '../constants-bridges.js';
 
 /** Absolute paths of the subfolders of `root`, sorted so logs read alike everywhere. */
 async function foldersUnder(root: string): Promise<string[]> {
@@ -71,6 +72,11 @@ export async function planFolders(projectDir: string): Promise<string[]> {
 /** The plan folders `detect` judges — see {@link detectableWorkspaceFolders}. */
 export async function detectableFolders(projectDir: string): Promise<string[]> {
   return detectableWorkspaceFolders(projectDir, PLANS_DIR_NAME);
+}
+
+/** The folders of the plan archive (`.unikit/code/archive/plans/`): finished plans the archive skill moved out of the way. */
+export async function archivedPlanFolders(projectDir: string): Promise<string[]> {
+  return foldersUnder(path.join(workspaceDir(projectDir, CODE_MODULE_ID), PLAN_ARCHIVE_DIR_NAME, PLANS_DIR_NAME));
 }
 
 /** The research folders `apply` walks. */

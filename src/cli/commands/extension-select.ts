@@ -4,6 +4,7 @@ import { findExtensionRecord, getExtensionDir, loadExtensionManifest } from '../
 import { applyExtensionSelectionChange } from '../../core/extension-select-ops.js';
 import { pendingLabels } from '../../core/extension-refresh.js';
 import { applyExtensionInjections, injectionInputFromConfig } from '../../core/extension-injections.js';
+import { resolveMcpBridgeCodeForConfig } from '../../core/bridges/selection.js';
 import {
   listExtensionItems, priorSelectionOf, allEnabled, decideSelection,
   selectionFromChecked, pendingItems, ExtensionSelectionCancelled, type ExtensionSelection,
@@ -81,7 +82,8 @@ export async function extensionSelectCommand(name: string, options: ExtensionSel
 
     const change = await applyExtensionSelectionChange(projectDir, config, name, next);
     // Order: files (above), then the injection pass, then the config — saved last.
-    const injections = await applyExtensionInjections(injectionInputFromConfig(projectDir, config));
+    const mcpBridgeCode = await resolveMcpBridgeCodeForConfig(config);
+    const injections = await applyExtensionInjections(injectionInputFromConfig(projectDir, config, mcpBridgeCode));
     await saveConfig(projectDir, config);
 
     const labels = (list: readonly string[]): string => list.map(label => sanitizeDisplayText(label)).join(', ');

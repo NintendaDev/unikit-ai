@@ -174,7 +174,7 @@ Open the project in {{engine_name}} Hub. Wait for package resolution. Open `Asse
 - Naming convention
 - Test assembly structure
 
-**Source:** Enrich from `.unikit/ARCHITECTURE.md` if available. Don't copy verbatim — adapt for docs/ format with navigation and See Also. Use Step 1.5 analysis for interaction diagrams and data flow.
+**Source:** Enrich from `.unikit/ARCHITECTURE.md` and its topic files if available. Don't copy verbatim — adapt for docs/ format with navigation and See Also. Use Step 1.5 analysis for interaction diagrams and data flow.
 
 ---
 

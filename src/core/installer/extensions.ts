@@ -23,7 +23,7 @@ export async function installExtensionSkills(
   extensionDir: string,
   skillPaths: string[],
   engineId?: string,
-  engineMcpKey?: string | null,
+  mcpBridgeCode?: string | null,
 ): Promise<string[]> {
   const agentConfig = getAgentConfig(agent.id);
   const installed: string[] = [];
@@ -35,7 +35,7 @@ export async function installExtensionSkills(
     try {
       await installSkillWithTransformer(
         sourceDir, skillName, projectDir, agent.skillsDir,
-        agent.id, agentConfig, engineId, engineMcpKey,
+        agent.id, agentConfig, engineId, mcpBridgeCode,
       );
       installed.push(skillName);
     } catch (error) {
@@ -82,7 +82,7 @@ export async function installExtensionSubagents(
   extensionDir: string,
   subagentPaths: string[],
   engineId?: string,
-  engineMcpKey?: string | null,
+  mcpBridgeCode?: string | null,
 ): Promise<string[]> {
   const agentConfig = getAgentConfig(agent.id);
   if (!agentConfig.supportsSubagents) return [];
@@ -100,7 +100,7 @@ export async function installExtensionSubagents(
 
     try {
       const subagentName = stripMdExtension(fileName);
-      const rendered = await renderSubagent(sourcePath, agent.id, subagentName, engineId, engineMcpKey);
+      const rendered = await renderSubagent(sourcePath, agent.id, subagentName, engineId, mcpBridgeCode);
       if (!rendered) continue;
 
       await writeTextFile(path.join(targetDir, fileName), rendered);

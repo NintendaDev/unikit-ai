@@ -7,10 +7,11 @@
 # (regex, counts, line numbers, stdin, several files, options) to the real one untouched.
 #
 # The fast path is taken only when the answer is provably the same:
-#   - exactly `grep -qF <pattern> <file>` (also `-Fq`), a regular file;
-#   - the pattern is non-empty, has no newline (that would be several patterns), no carriage
-#     return (grep of Git Bash drops the CR of a CRLF file, the shell keeps it) and does
-#     not start with `-` (real grep would read it as an option).
+#   - exactly `grep -qF <pattern> <file>` (also `-Fq`, with optional `--`), a regular file;
+#   - the pattern is non-empty ASCII, has no newline (that would be several patterns), no carriage
+#     return (grep of Git Bash drops the CR of a CRLF file, the shell keeps it) and, without `--`,
+#     does not start with `-` (real grep would read it as an option). Non-ASCII uses Node's exact
+#     UTF-8 matcher: shell pattern matching is not byte-equivalent under every locale.
 # A substring test over the whole file equals the per-line test because the pattern has no
 # newline. A file that is a copy of a tracked source tree is read once and cached; any other
 # file is read again on each call, since suites rewrite their own project files.
@@ -23,13 +24,24 @@ if [[ "${UNIKIT_TEST_REAL_GREP:-0}" != "1" ]]; then
     declare -A GREP_SHIM_CACHE=()
 
     grep() {
-        if [[ $# -eq 3 && ( $1 == -qF || $1 == -Fq ) && -n $2 && $2 != -* \
-              && $2 != *$'\n'* && $2 != *$'\r'* && -f $3 && -r $3 ]]; then
+        local _gs_end_options=0
+        if [[ $# -eq 4 && ( $1 == -qF || $1 == -Fq ) && $2 == -- ]]; then
+            _gs_end_options=1
+            set -- "$1" "$3" "$4"
+        fi
+        if [[ $# -eq 3 && ( $1 == -qF || $1 == -Fq ) && -n $2 && ( $2 != -* || $_gs_end_options -eq 1 ) \
+              && $2 != *$'\n'* && $2 != *$'\r'* && $2 == *[^[:ascii:]]* && -f $3 && -r $3 ]]; then
+            command node -e 'const fs = require("fs"); process.exit(fs.readFileSync(process.argv[1], "utf8").includes(process.argv[2]) ? 0 : 1);' "$3" "$2"
+            return
+        fi
+        if [[ $# -eq 3 && ( $1 == -qF || $1 == -Fq ) && -n $2 && ( $2 != -* || $_gs_end_options -eq 1 ) \
+              && $2 != *$'\n'* && $2 != *$'\r'* && $2 != *[^[:ascii:]]* && -f $3 && -r $3 ]]; then
             local _gs_file="$3" _gs_text
             case "$_gs_file" in
                 "${ROOT_DIR:-/nonexistent}"/skills/* | "${ROOT_DIR:-/nonexistent}"/subagents/* | \
                 "${ROOT_DIR:-/nonexistent}"/data/* | "${ROOT_DIR:-/nonexistent}"/docs/* | \
-                "${ROOT_DIR:-/nonexistent}"/mcp/* | "${ROOT_DIR:-/nonexistent}"/src/*)
+                "${ROOT_DIR:-/nonexistent}"/mcp/* | "${ROOT_DIR:-/nonexistent}"/engine-bridges/* | \
+                "${ROOT_DIR:-/nonexistent}"/src/*)
                     if [[ -z ${GREP_SHIM_CACHE[$_gs_file]+x} ]]; then
                         GREP_SHIM_CACHE[$_gs_file]="$(<"$_gs_file")"
                     fi
@@ -54,12 +66,20 @@ if [[ "${UNIKIT_TEST_REAL_GREP:-0}" != "1" ]]; then
             _gs_in="$(cat; printf x)"
             _gs_in="${_gs_in%x}"
             if [[ ( $1 == -qF || $1 == -Fq ) && -n $2 && $2 != *$'\n'* && $2 != *$'\r'* ]]; then
-                [[ $_gs_in == *"$2"* ]]
+                if [[ $2 == *[^[:ascii:]]* ]]; then
+                    command node -e 'const fs = require("fs"); process.exit(fs.readFileSync(0, "utf8").includes(process.argv[1]) ? 0 : 1);' "$2" < <(printf '%s' "$_gs_in")
+                else
+                    [[ $_gs_in == *"$2"* ]]
+                fi
                 return
             fi
             command grep "$@" < <(printf '%s' "$_gs_in")
             return
         fi
-        command grep "$@"
+        if [[ $_gs_end_options -eq 1 ]]; then
+            command grep "$1" -- "$2" "$3"
+        else
+            command grep "$@"
+        fi
     }
 fi

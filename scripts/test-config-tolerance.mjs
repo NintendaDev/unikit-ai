@@ -12,6 +12,7 @@ import os from 'os';
 import fs from 'fs/promises';
 import { spawnSync } from 'child_process';
 import { fileURLToPath, pathToFileURL } from 'url';
+import { loadConfig } from '../dist/core/config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -41,9 +42,11 @@ function assert(name, cond, detail) {
 const ghostConfig = {
     version: '1.1.0',
     engine: 'unity',
-    engineMcpKey: null,
+    // A key a 2.x file carried and 3.0.0 no longer knows: it must be ignored, not carried into the result.
+    engineMcpKey: 'UnityMCP',
     rulesRegistry: null,
     mcp: { servers: {} },
+    engineBridges: { selected: {} },
     agents: [
         { id: 'gemini', skillsDir: '.gemini/skills', subagentsDir: '.gemini/agents', installedSkills: [], installedSubagents: [] },
         { id: 'claude', skillsDir: '.claude/skills', subagentsDir: '.claude/agents', installedSkills: ['unikit'], installedSubagents: [] },
@@ -60,7 +63,7 @@ try {
     const childSource = [
         `import { loadConfig } from ${JSON.stringify(pathToFileURL(DIST).href)};`,
         `const c = await loadConfig(${JSON.stringify(tmp)});`,
-        `process.stdout.write(JSON.stringify((c?.agents ?? []).map(a => a.id)));`,
+        `process.stdout.write(JSON.stringify({ ids: (c?.agents ?? []).map(a => a.id), scalar: c ? 'engineMcpKey' in c : null }));`,
     ].join('\n');
 
     const res = spawnSync(process.execPath, ['--input-type=module', '-e', childSource], { encoding: 'utf-8' });
@@ -69,8 +72,9 @@ try {
     assert('tolerance/exit-0', res.status === 0, `child exited ${res.status}; stderr: ${res.stderr}`);
 
     let ids = [];
+    let scalar = null;
     try {
-        ids = JSON.parse((res.stdout || '').trim() || '[]');
+        ({ ids = [], scalar = null } = JSON.parse((res.stdout || '').trim() || '{}'));
     } catch {
         // leave ids empty → the both-sides asserts below fail with stdout context
     }
@@ -81,9 +85,19 @@ try {
     // 3. Known agent preserved (both sides of the filter — the drop must not eat neighbors).
     assert('tolerance/claude-preserved', ids.includes('claude'), `known agent claude missing: ${res.stdout}`);
 
-    // 4. WARN emitted on the real stderr stream, naming the dropped agent.
+    // 4. A leftover key of an older shape is ignored: the loaded config does not carry it.
+    assert('tolerance/legacy-scalar-ignored', scalar === false, `engineMcpKey reached the loaded config (scalar=${scalar}): ${res.stdout}`);
+
+    // 5. WARN emitted on the real stderr stream, naming the dropped agent.
     assert('tolerance/warn-on-stderr', res.stderr.includes("unknown agent 'gemini'"),
         `no WARN for gemini on stderr; got: ${res.stderr}`);
+
+    const providerConfig = { ...ghostConfig, agents: [], rules: { ...ghostConfig.rules,
+        providerSelection: { context7: false, biome: true, malformed: 'true', '../escape': true } } };
+    await fs.writeFile(path.join(tmp, '.unikit.json'), JSON.stringify(providerConfig));
+    const loaded = await loadConfig(tmp);
+    assert('tolerance/provider-decisions', JSON.stringify(loaded.rules.providerSelection) === JSON.stringify({ context7: false, biome: true }),
+        'loader must keep explicit false/true and drop malformed entries without reading or adopting disk rules');
 } finally {
     await fs.rm(tmp, { recursive: true, force: true });
 }

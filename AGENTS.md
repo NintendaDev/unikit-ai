@@ -28,7 +28,8 @@ This is the main navigation. Lists and details live in the source of truth — n
 | Transformer adapters | `src/core/transformers/` | code |
 | MCP writers (per settings format) | `src/core/mcp-writers/` | code |
 | Rules registry transports | `src/core/registry/` | code |
-| MCP server templates | `mcp/{universal,unity,godot,unreal-engine-5}/*.json` | filesystem |
+| Universal MCP server templates | `mcp/universal/*.json` | filesystem |
+| Engine bridge catalog (MCP servers, command lines and their rules trees) | `engine-bridges/{unity,godot,unreal-engine-5}/*.json` (+ `rules/<bridge>/`) | filesystem |
 | Memory rules (core/stack per engine) | repo `NintendaDev/unikit-ai-rules` (+ `rules-registry/` snapshot) | external |
 | Tests and validators | `scripts/test-*.sh` (entry: `test-skills.sh`) | bash |
 
@@ -43,7 +44,8 @@ unikit-ai/
 │   └── utils/            #   leaf infra (fs-extra wrappers, hashing)
 ├── skills/               # Built-in skills (unikit-* prefix), copied to user projects
 ├── subagents/            # Built-in subagents (sidecars + coordinators)
-├── mcp/                  # MCP server templates per engine + universal/
+├── mcp/                  # Universal MCP server templates (universal/)
+├── engine-bridges/       # Engine bridge catalog per engine (MCP servers + rules trees)
 ├── data/                 # CLI contract, dev principles, manifests, templates
 ├── rules-registry/       # Bundled snapshot of NintendaDev/unikit-ai-rules
 │                         # (git-ignored, cloned at publish/CI/dev by scripts/download-rules.sh)
@@ -60,9 +62,12 @@ What `unikit-ai init` / `update` produces in the user's project root. Detailed w
 | `.unikit.json` | `init` | Persistent config (agents, engine, `rulesRegistry`, `managedSkills`) |
 | `.unikit/system/cli-contract.md` | `init`/`update` (flat-rewrite) | CLI contract for AI skills |
 | `.unikit/system/dev-principles.md` | `init`/`update` (flat-rewrite) | Engine principles with `{{engine_*}}` substituted |
-| `.unikit/system/engine-mcp/**` | `init`/`update` (recursive copy + orphan-delete over the whole subtree) | Rules tree of the *selected* engine MCP server — **exceptions, not capabilities**; source is the `rules` pointer of the MCP JSON, not `data/`. Every `.md` carries a `server:` provenance stamp — the server id alone, so a delivered file is byte-identical between runs while the tree and the server are unchanged |
-| `.unikit/MCP-RECHECK-NOTES.md` | `/unikit-mcp-trap` (writes) · `/unikit-mcp-audit` (curates) · installer **renames only** | This project's findings about the server it actually runs. The installer never touches the content: switching servers parks it as `MCP-RECHECK-NOTES.archive.<fileId>.md` and switching back restores it. Invariant: one file per server — active **or** archived, never both. Lives outside `system/` so the flat-rewrite cannot reach it |
-| `.unikit/memory/<module>/<tier>/*.md` | `rules install`/`sync` | Knowledge-base rules pulled from registry — `code/{core,stack}`, `gamedesign/{core,library}` |
+| `.unikit/system/engine-bridges/**` | `init`/`update` (`BRIDGES.md` generated; per-bridge trees: recursive copy + orphan-delete over the whole subtree) | `BRIDGES.md` - Markdown tables: the selected bridges, the package's default order (numbered) and one block per bridge; `<bridge>/{INDEX,verification}.md` - the rules tree of each selected bridge - **exceptions, not capabilities**; source is the `rules` pointer of the catalog entry, not `data/`. Every `.md` carries a provenance stamp under its title (a table row `bridge \| <id>`) - the bridge id alone, so a delivered file is byte-identical between runs while the tree and the bridge are unchanged |
+| `.unikit/bridges.yaml` | `unikit-ai init`/`update` (kept in step with the bridges); you may reorder it | The order the agents try the engine bridges in |
+| `.unikit/bridge-routing.md` | `/unikit-bridge-route` or by hand | Optional routing rules per case; no file, no rules |
+| `.unikit/bridge-notes/<bridge>.md` | `/unikit-bridge-trap` (writes) · `/unikit-bridge-audit` (curates) · installer **renames only** | This project's findings about each bridge it uses. The installer never touches the content: a bridge that leaves the selection has its file parked as `bridge-notes/archive/<bridge>.md`, and a bridge that returns gets it back. Invariant: one file per bridge - active **or** archived, never both. Lives outside `system/` so the flat rewrite cannot reach it |
+| `.unikit/references/` | `/unikit-references` (`INDEX.md`, `user/`) | The user's own references; never rewritten by `init`/`update` |
+| `.unikit/memory/<module>/<tier>/*.md` | `rules install`/`sync`; provider rules also `init`/`update` | Knowledge-base rules pulled from registry — `code/{core,stack}`, `gamedesign/{core,library}`. Optional provider choices: `rules.providerSelection`; lifecycle: `src/core/installer/provider-rules.ts` |
 | `.unikit/memory/RULES_INDEX.md` | `rules sync` (regenerated) | Compact rules index — never hand-edit |
 | `<agent-config>/skills/` | `init`/`update` | Installed skills (path varies per agent) |
 | `<agent-config>/agents/` | `init`/`update` | Installed subagents |
@@ -93,7 +98,7 @@ For per-skill details, read the corresponding `skills/unikit-<name>/SKILL.md`.
        /unikit-commit  /unikit-review  /unikit-verify  /unikit-docs
 ```
 
-Pipeline skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-improve`) load `dev-principles.md` once at Bootstrap and operate inline — they no longer delegate to `/unikit-devcontext` per task. `develop-agent` is reserved for true parallel scopes or deep-dive single tasks.
+Pipeline skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-improve`) load `dev-principles.md` once at Bootstrap and operate inline — they no longer delegate to `/unikit-execute` per task. `develop-agent` is reserved for true parallel scopes or deep-dive single tasks.
 
 ## Update mechanism
 

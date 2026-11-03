@@ -60,7 +60,7 @@ feat(trade): players can trade with merchants
 ### Commit 2: after tasks 2.1-2.2
 feat(inventory): bought items land in the inventory
 
-## MCP Findings
+## Engine Bridge Findings
 
 ## Rule Candidates
 

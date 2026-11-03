@@ -72,7 +72,7 @@ would dump a manual. Read only the file(s) the current question needs:
 | `{{skills_dir}}/{{self_name}}/references/skill-map.md` | "which skill", "what does X do", a specific skill's inputs/outputs, what runs before/after a skill |
 | `{{skills_dir}}/{{self_name}}/references/pipelines.md` | "where do I start", "what's the workflow", the code spec-driven pipeline, the game-design workflow, how code and design connect, entry points |
 | `{{skills_dir}}/{{self_name}}/references/scenarios.md` | the diagnostic tree, mapping a vague question to an intent, the fallback when intent is unclear |
-| `{{skills_dir}}/{{self_name}}/references/knowledge-base.md` | rules, memory, the two modules (code + gamedesign), the rules registry, turning books/articles into rules, the `unikit-ai rules` CLI |
+| `{{skills_dir}}/{{self_name}}/references/knowledge-base.md` | rules, memory, optional MCP / bridge rules and their consent/cleanup, the two modules (code + gamedesign), the rules registry, turning books/articles into rules, the `unikit-ai rules` CLI |
 
 The full intent→reference map is the table above. When a question spans several areas,
 read the smallest set that covers it.
@@ -155,9 +155,11 @@ canonical intent list and the full routing table live in
 | Test the code | `/unikit-implement` (test checkpoints), `/unikit-verify` (checks the recorded run), `/unikit-fix` | scenarios.md |
 | Fix a bug | `/unikit-fix` (or `/unikit-explore` first for deep bugs) | scenarios.md |
 | Review code quality | `/unikit-review` → `/unikit-fix` | skill-map.md |
-| Archive finished plans / clean up the plan list | `/unikit-archive` (then `/unikit-commit` the move) | skill-map.md |
+| Archive finished plans or researches / clean up the lists / bring a research back | `/unikit-archive` (then `/unikit-commit` the move) | skill-map.md |
 | Open / describe / merge a PR | `/unikit-pr` | skill-map.md |
-| The engine MCP reported success but nothing changed | `/unikit-mcp-trap` (record the finding) → `/unikit-mcp-audit` (curate later) | skill-map.md |
+| An engine bridge reported success but nothing changed | `/unikit-bridge-trap` (record the finding) → `/unikit-bridge-audit` (curate later) | skill-map.md |
+| Say which bridge a kind of work goes through, or never goes through | `/unikit-bridge-route` | skill-map.md |
+| Keep my own documents or links for the agents | `/unikit-references` | skill-map.md |
 | Add a rule / learn from a book or article | `/unikit-rules`, `/unikit-memory` | knowledge-base.md |
 | Share/publish rules across projects | `/unikit-rules-registry`, `unikit-ai rules ...` | knowledge-base.md |
 | "Which skill do I use?" | answer from skill-map.md | skill-map.md |

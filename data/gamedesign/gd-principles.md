@@ -181,8 +181,8 @@ Code reads design; design knows nothing about code.
   is tagged `provenance: extracted from code` and held to a higher review bar (see
   `gd-provenance`). Authoring zones never reconstruct from code.
 - **Sanctioned exceptions (three, narrow):**
-  - the **feasibility lens** inside `unikit-gd-review` may read `DESCRIPTION.md` /
-    `ARCHITECTURE.md` to flag implementability risks (a design-reads-code-context
+  - the **feasibility lens** inside `unikit-gd-review` may read `DESCRIPTION.md`, the
+    `ARCHITECTURE.md` root and `.unikit/architecture/*.md` to flag implementability risks (a design-reads-code-context
     read, never `.unikit/code/` or source);
   - the **`implemented` writeback** — the lone sanctioned **code→design write**:
     code-side `unikit-verify`, on all-AC-met for a cited `SYS-id`@version, writes

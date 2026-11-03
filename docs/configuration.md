@@ -8,22 +8,22 @@ Main configuration file, created by `unikit-ai init`:
 
 ```json
 {
-  "version": "2.0.0",
+  "version": "3.0.0",
   "engine": "unity",
-  "engineMcpKey": "unity-biome-mcp",
-  "mcp": { "servers": { "unity-biome-mcp": "unity-biome-mcp", "context7": "context7" } },
+  "mcp": { "servers": { "context7": "context7" } },
+  "engineBridges": { "selected": { "unity-biome-mcp": "unity-biome-mcp" } },
   "agents": [
     {
       "id": "claude",
       "skillsDir": ".claude/skills",
       "subagentsDir": ".claude/agents",
       "installedSkills": [
-        "unikit", "unikit-architecture", "unikit-archive", "unikit-commit", "unikit-devcontext",
+        "unikit", "unikit-architecture", "unikit-archive", "unikit-commit", "unikit-execute",
         "unikit-docs", "unikit-evolve", "unikit-explore", "unikit-fix", "unikit-help",
-        "unikit-implement", "unikit-improve", "unikit-mcp-audit", "unikit-mcp-trap",
-        "unikit-memory", "unikit-plan", "unikit-pr", "unikit-review", "unikit-roadmap",
-        "unikit-rules", "unikit-rules-registry", "unikit-skills-context",
-        "unikit-todo", "unikit-verify"
+        "unikit-implement", "unikit-improve", "unikit-bridge-audit", "unikit-bridge-route",
+        "unikit-bridge-trap", "unikit-memory", "unikit-plan", "unikit-pr", "unikit-references",
+        "unikit-review", "unikit-roadmap", "unikit-rules", "unikit-rules-registry",
+        "unikit-skills-context", "unikit-todo", "unikit-verify"
       ],
       "installedSubagents": [
         "unikit-architecture-sidecar", "unikit-commit-sidecar",
@@ -89,9 +89,9 @@ Two shapes worth calling out:
 |-------|-------------|
 | `version` | Package version at time of install |
 | `engine` | Game engine identifier (`unity`, `godot`, `godot-net`, `unreal-engine-5`) |
-| `engineMcpKey` | Vendor code of the selected engine MCP server, or `null`. **Derived** — recomputed from `mcp.servers` on every write, never an independent input. |
+| `engineBridges.selected` | The selected engine bridges as `key → code` (an MCP-kind bridge: the vendor code it is registered under; a CLI-kind bridge: its binary). It is a **set**: any number of bridges. The **order** is not stored here - see [Bridge order, routing and the rule of a bridge](#bridge-order-routing-and-the-rule-of-a-bridge). A 2.x config kept the engine servers inside `mcp.servers`; `unikit-ai update` splits them - see [Migrating to 3.0.0](migration-3.0.0.md). |
 | `rulesRegistry` | Rules registry URL or local path. Defaults to the official `NintendaDev/unikit-ai-rules` URL. See [Rules Registry](rules-registry.md) for details. |
-| `mcp.servers` | Globally selected MCP servers as `key → code`. The **key** is the server's file id — the name of its JSON file under `mcp/`, an internal identity that is never written anywhere else. The **value** is the vendor code UniKit registered that server under in the agent's settings file (`mcpServers.<code>`), stored per project because it is the only record of what was actually written. Configs written before 2.0.0 carry a bare `string[]` of file ids here and are converted on the next `unikit-ai init` / `unikit-ai update`. |
+| `mcp.servers` | Globally selected **universal** MCP servers (Context7, GitHub) as `key → code`. The **key** is the server's file id — the name of its JSON file under `mcp/universal/`, an internal identity that is never written anywhere else. The **value** is the vendor code UniKit registered that server under in the agent's settings file (`mcpServers.<code>`), stored per project because it is the only record of what was actually written. Configs written before 2.0.0 carry a bare `string[]` of file ids here and are converted on the next `unikit-ai init` / `unikit-ai update`. |
 | `agents` | Array of installed agent configurations |
 | `agents[].id` | Agent identifier (`claude`) |
 | `agents[].skillsDir` | Where skills are installed |
@@ -102,6 +102,7 @@ Two shapes worth calling out:
 | `agents[].managedSubagents` | SHA-256 hash-based change tracking for subagent updates |
 | `extensions` | Array of installed extension records (optional): `name`, `source`, `version`, `replacedSkills` (the replacements that are on), `selection` (the user's per-item choices - see [Extensions](extensions.md#config-format)) |
 | `rules.installed` | Currently installed dynamic memory, keyed by module then tier (`modules.code.{core,stack}`, `modules.gamedesign.{core,library}`). Each entry is an object `{ name, source, origin?, version?, installed_hash? }`. See [Rules Registry](rules-registry.md#unikitjson-registry-fields) for field descriptions. Legacy `string[]` entries are normalized to `{ name, source: "installer" }` on load, and the pre-2.0.0 flat `{ core, stack }` form is wrapped under the `code` module. |
+| `rules.providerSelection` | Optional map of MCP / bridge **file ids** to rule choices: `true` = accepted, `false` = declined, missing key = undecided. This controls automatic registry memory installation in `init` / `update`, independently of MCP settings and bridge selection. `rules.installed` records the files actually present. |
 | `genres.installed` | Installed genre profiles as a flat list of `{ id, version }` (optional). Written by `unikit-ai genres install` and by `/unikit-gd-spec`'s best-fit resolve; drives which profiles `installGenreProfiles` delivers into `.unikit/system/gamedesign/genres/`. Orthogonal to `rules.installed` - genres are a seed catalog, not a knowledge module. |
 
 ## `.unikit/config.yaml`
@@ -203,7 +204,7 @@ Where **test runs** are placed in a plan (`plan`), and how wide a run goes when 
 
 **`/unikit-verify` runs no tests of its own.** It checks the run the plan recorded against the current code; only `--strict` offers to run the full suite, when that record is missing or stale. See [Plan files](plan-files.md).
 
-Existing projects receive the key by either of the two paths in [How new keys reach an existing project](#how-new-keys-reach-an-existing-project) — `/unikit` merge mode, which offers it, or the config actualization mode, which appends a template literal silently. Until then the built-in defaults above apply, and nothing warns — a project without a config is a normal case.
+Existing projects receive the key by any of the three paths in [How new keys reach an existing project](#how-new-keys-reach-an-existing-project) — `/unikit` merge mode, which offers it, the config actualization mode, which appends a template literal silently, or the returning-project menu, which hands over to either of them. Until then the built-in defaults above apply, and nothing warns — a project without a config is a normal case.
 
 ### `git` section
 
@@ -222,44 +223,92 @@ Existing projects receive the key by either of the two paths in [How new keys re
 
 **Plans are always sliced into modules**, whatever these keys say: a module is one or more consecutive phases after whose merge the base branch is whole. The keys only decide whether a module ends with a PR checkpoint task — see [Plan files → Modules](plan-files.md#modules--pieces-the-base-branch-can-take-whole).
 
+### Bridge order, routing and the rule of a bridge
+
+Three things decide how the agents use the engine bridges you selected. None of them is in `.unikit/config.yaml`.
+
+**`.unikit/bridges.yaml` - the order.** `unikit-ai init` and `unikit-ai update` create it and keep it in step with the selected bridges:
+
+```yaml
+# Engine bridges, most preferred first. Agents try them in this order.
+# Reorder the list by hand if you want another order: unikit-ai init and update then keep it,
+# dropping a bridge you removed and appending a new one at the end.
+# Delete this file to go back to the package order.
+order:
+  - unity-cli
+  - unity-biome-mcp
+```
+
+The first run writes the **package order** (the `order` field of each bridge card). After that the installer asks one question of the file: is the list the one it would have written for the bridges it knew last time?
+
+| The file is... | A bridge is added | A bridge is dropped |
+|----------------|-------------------|---------------------|
+| as the installer wrote it | the new bridge is placed where its package order says | it leaves the list, the others stay in package order |
+| edited by you (any other order) | the new bridge goes to the end | it leaves the list, your order stays |
+
+A file without an `order:` list is left as it is, with a warning, and the agents use the default order printed in `BRIDGES.md`. With no bridge selected the file is removed. Delete the file to return to the package order. Editing it changes no installed byte: `update` reinstalls nothing and `BRIDGES.md` only points at the file.
+
+**`.unikit/bridge-routing.md` - routing rules (optional).** A table of rows `area | when | rule | bridges | why`: `area` is a word the planner and the verifier already use (a kind of editor task or a gate) or `*`, `when` is the case in your own words, `rule` is `only` (only those bridges, no fallback), `first` (those first, the others follow) or `never` (left out), `bridges` are ids as `BRIDGES.md` prints them. The strongest fitting row decides: a row with a `when` beats an area-wide row, a `*` row is the weakest, rows are never combined. A row decides only the steps of its own area: every other step follows the order in `.unikit/bridges.yaml`, and an agent that takes a bridge other than the first for a step prints one `INFO [bridge-order]` line with the reason (the routing row, no route on the first bridge, or the first bridge unavailable). Write it with [`/unikit-bridge-route`](skills.md#unikit-bridge-route-the-rule-in-your-words--list--remove-row---route-a-kind-of-work-to-chosen-bridges) or by hand; no file means no routing rules. An instruction in your request beats a row.
+
+**Optional MCP / bridge rules.** After the two provider checkboxes, `init` shows one rule checkbox for the selected universal MCP servers and engine bridges. Each rule has the provider's file id (`context7`, `unity-biome-mcp`, `unity-cli`, …) and lives in `.unikit/memory/code/stack/`, with its `references/`. Only complete bundles are offered: the body and every reference listed in that source's manifest must be readable. All offered rules start checked, including on repeat `init`; you may uncheck every rule without disabling the MCP server or bridge.
+
+For each id, UniKit tries the configured primary registry (including a local path), then official, then bundled. An id, body or reference missing from one level causes the **whole bundle** to fall back to the next. Installation uses the exact bundle checked before your choice. Unavailable rules are hidden; hiding one preserves earlier decisions and files. These optional memory rules are independent of the built-in trees in `.unikit/system/engine-bridges/`, which still follow the selected bridges.
+
+```json
+"providerSelection": {
+  "unity-biome-mcp": true,
+  "unity-cli": false
+}
+```
+
+The map belongs inside `rules`. `update` preserves refusals. In a terminal with both stdin and stdout attached, it asks only about available new or missing rule files whose decision is undecided or accepted. Deleting an accepted file therefore asks for restoration; acceptance from an earlier run does not silently restore it. Without a terminal, new installations wait and a warning points to `unikit-ai init`. `--force` and the new-skill flags do not supply consent. Closing a checkbox leaves decisions unchanged; confirming an empty checkbox declines its offered rows.
+
+Dropping a provider, or unchecking an offered rule on `init`, removes only an existing, unchanged registry rule with a recorded installation hash. Edited, local and untracked rules stay, with a reason; their installed records are retained. Shared references stay while another rule uses them. If the body is already missing, only stale state is removed: references are not swept blindly. Repeat `init` preserves unrelated rule state and existing provenance. Legacy projects infer acceptance only for an active provider with a registry installed entry and an actual file.
+
+`rules install <id>` remains an explicit installation even when the saved choice is `false`. `rules sync` refreshes existing files and never creates missing ones. Accepted active provider rules use the same per-id resolver during sync, including equal-version changes in source, body or references; edited bodies stay protected unless `--replace` is requested. Temporary registry gaps do not make these rules obsolete under `--prune`. A bridge without a registry rule works through its ordinary method search; each bridge block in `BRIDGES.md` points at the expected guide location.
+
 ### `subagents` section
 
-Which model, and how much reasoning effort, the subagents that skills and the two coordinators launch use - one value per agent and per **role**, in two blocks, `model` and `effort`. A role says what a launch does: a **reader** collects facts and returns them, a **validator** checks a finished result, an **executor** does work whose result becomes part of the project (code, documents, rules, plans, architecture); which launch has which role is the table in `.unikit/system/subagent-roles.md`. Each block lists the agents whose subagent call takes that argument without any setting of the runtime itself; the other agents have no key.
+Which model, and how much reasoning effort, the subagents that skills and the two coordinators launch use - one value per agent and per **role**, in two blocks, `model` and `effort`. A role says what a launch does: a **reader** collects facts and returns them, a **validator** checks a finished result, an **executor** does work whose result becomes part of the project (code, documents, rules, plans, architecture); which launch has which role is the table in `.unikit/system/subagent-roles.md`. Each block lists the agents whose subagent call can take that argument; any runtime precondition is noted below.
 
 | Key | Description | Default |
 |-----|-------------|---------|
 | `model.claude.<role>` | Claude Code. A tier name: `sonnet`, `opus` or `haiku`. | `sonnet` for `reader` and `validator`, `inherit` for `executor` |
 | `model.codex.<role>` | Codex CLI. A model identifier as the model parameter of Codex's `spawn_agent` accepts it - its schema lists the valid names, and they change, so you write it yourself. | `inherit` |
 | `model.antigravity.<role>` | Antigravity. `inherit`, `flash_lite`, `flash` or `pro` - the values of the `Model` argument of its subagent call; a tier sets the size of the model, not the depth. | `flash` for `reader` and `validator`, `inherit` for `executor` |
+| `model.kimi.<role>` | Kimi Code. An alias from `[secondary_model.models]` in the user's global config, or `primary` to inherit the caller's model and effort. The call has a model parameter only with a configured pool. | `inherit` |
 | `effort.claude.<role>` | Claude Code. A level of the `effort` argument of its subagent call: `low`, `medium`, `high`, `xhigh` or `max`. Which levels a model supports differs. | `medium` for `reader` and `validator`, `inherit` for `executor` |
 | `effort.codex.<role>` | Codex CLI. A level of the `reasoning_effort` argument of `spawn_agent`. The valid levels depend on the model of the subagent, and a wrong one fails with an error that lists them, so no list is kept here. | `medium` for `reader` and `validator`, `inherit` for `executor` |
 
 `<role>` is `reader`, `validator` or `executor`. A value means:
 
 - **a model name** - passed to the subagent with every call of that role, exactly as written;
-- **`inherit`, or an empty value** - nothing is passed: the subagent runs on the model, or the effort, of the agent that launches it. `inherit` is what the template ships for every executor and for the Codex models, whose identifiers go stale; an empty value written by hand means the same, is a deliberate choice and is never filled in again;
-- **no key at all** (including no file, or no `subagents` block) - a model falls back to the built-in model of the role (a reader and a validator: the default noted above; an executor: none, the model of the session); an effort is not passed at all, so a project without the `effort` block behaves as it did before. A single value written directly under an agent, as in earlier releases (`model.claude: sonnet`), is not read: it counts as no key until you move it under `reader`, `validator` or `executor`.
+- **`inherit`, or an empty value** - no override is passed and the runtime applies its own default. For Kimi without a pool this is the caller's model; with a pool it is `secondary_model.default_model`. `inherit` is what the template ships for every executor and for the Codex and Kimi models; an empty value written by hand means the same, is a deliberate choice and is never filled in again;
+- **no key at all** (including no file, or no `subagents` block) - a model falls back to the built-in model of the role (a reader and a validator: the default noted above; an executor: no override); an effort is not passed at all, so a project without the `effort` block behaves as it did before. A single value written directly under an agent, as in earlier releases (`model.claude: sonnet`), is not read: it counts as no key until you move it under `reader`, `validator` or `executor`.
 
-**The skills and the coordinators read this block at run time**, once per run before the first launch, so an edit takes effect on the next command - `unikit-ai update` is not needed, and the installer never reads the file. Every launch is covered: the delegation aliases (`recon-agent`, `check-agent`, `lens-agent`, `recon-writer-agent`, `develop-agent`, `docs-agent`), the launches without an alias (`/unikit` generating stack rules and the architecture, the market validation of `/unikit-gd-brainstorm`), a launch a skill decides on by itself, and the workers, sidecars and polisher that `unikit-implement-coordinator` and `unikit-plan-coordinator` start. What to pass, and in which order, is the rule in `.unikit/system/subagent-arguments.md`, and which role a launch has is the table in `.unikit/system/subagent-roles.md`; `unikit-ai init` and `unikit-ai update` install both whichever skills you chose. The names of the model and effort arguments are not in the config: they are part of the agent profile and stand in the installed skills as slots of the call (`model: <model>`, `effort: <effort>`) - see [Subagents](subagents.md#subagent-profile-per-agent).
+**The skills and the coordinators read this block at run time**, once per run before the first launch, so an edit takes effect on the next command - `unikit-ai update` is not needed, and the installer never reads the file. Every launch is covered: the delegation aliases (`recon-agent`, `check-agent`, `lens-agent`, `recon-writer-agent`, `develop-agent`, `docs-agent`), the launches without an alias (`/unikit` generating stack rules and the architecture, the market validation of `/unikit-gd-brainstorm`), a launch a skill decides on by itself, and the workers, sidecars and polisher that `unikit-implement-coordinator` and `unikit-plan-coordinator` start. What to pass, and in which order, is the rule in `.unikit/system/subagent-arguments.md`, and which role a launch has is the table in `.unikit/system/subagent-roles.md`; `unikit-ai init` and `unikit-ai update` install both whichever skills you chose. The names of the model and effort arguments are not in the config: they are part of the agent profile and stand in the installed skills as slots of the call (`model: <model>`, `effort: <effort>` where supported) - see [Subagents](subagents.md#subagent-profile-per-agent).
 
-**Which value wins** is decided for the model and for the effort separately: what you ask for - in the request that started the skill, or earlier in the session ("use opus for the subagents", "launch every subagent with effort high") - comes first and holds for every launch whatever its role; then the config key of the launch's role; then the built-in model of the role, or nothing for an effort. A remark about depth in general ("think deeper") is not such a request. An effort level is passed in lower case. A subagent that is itself started by a subagent runs on the effort of its launcher unless one is passed, so the launcher repeats a level you named in the prompt of a nested launch that can launch further subagents. If an effort makes the launch fail, the skill repeats the call once without it (`WARN [delegation] effort ...`) and, if that fails too, once without the model.
+**Which value wins** is decided for the model and for the effort separately: what you ask for - in the request that started the skill, or earlier in the session ("use opus for the subagents", "launch every subagent with effort high") - comes first and holds for every launch whatever its role; then the config key of the launch's role; then the built-in model of the role, or nothing for an effort. A remark about depth in general ("think deeper") is not such a request. An effort level is passed in lower case. A launch without an override uses the runtime default; where the runtime inherits, a nested launch follows its immediate launcher, so the launcher repeats a level you named in the prompt of a nested launch that can launch further subagents. If an effort makes the launch fail, the skill repeats the call once without it (`WARN [delegation] effort ...`) and, if that fails too, once without the model.
 
 **What can override the effort (Claude Code, by its documentation - not checked by a probe):** the environment variable `CLAUDE_CODE_EFFORT_LEVEL` overrides the level of a subagent call, and the setting `maxEffortLevel` or a limit of your organisation caps it, so the level written here may not be the one that runs; a level the model does not support falls to the nearest one below it. For a model the documentation does not list, what the argument does is not known. The argument itself is documented from Claude Code v2.1.292 (the probe of 2026-10-16 ran on 2.1.301); what an older client does with it was not checked - the call can fail, and the skill then repeats it without the effort.
 
 **Antigravity has no effort key:** the subagent call of its client takes no effort argument, so what you can set is the effort of the session itself (`/effort` or `--effort`) and the tier in `subagents.model.antigravity.<role>` - see [Agents](agents.md#antigravity).
 
-UniKit keeps no list of model names or effort levels. A value the runtime does not accept makes the launch fail, and the skill repeats the call with a `WARN [delegation]` line. Cursor, OpenCode, Kimi Code, Qwen Code and Universal / Other have no key in the template and UniKit draws no slot for them: nothing is passed, the subagent runs on the model and the effort of the session, and a key added by hand is not read. The reason is that their subagent call takes no model at all (Cursor, OpenCode), takes one only after you set up the client itself (Kimi Code `[secondary_model]`, Qwen Code `agents.modelGrades`), or belongs to a runtime UniKit does not know in advance (Universal / Other); the effort of Kimi Code is a client setting and not an argument of the call. What these clients accept comes from the vendor's documentation and has not been checked in a live session. The agent types the skills launch come from the agent profile, not from this file - see [Subagents](subagents.md#subagent-profile-per-agent).
+**Kimi Code has no effort key or call slot.** Configure `[secondary_model].default_effort` globally, or assign standalone model variants with different `[models.<alias>.overrides].default_effort` values to roles through `model.kimi.<role>`. Every variant is a complete model entry with its own metadata, `capabilities` and `support_efforts`. For Kimi projects, `init` and `update` install `.kimi-code/kimi-subagent-models.toml` and remove it when Kimi is deselected, a manual-merge template with three aliases (`unikit-reader`, `unikit-validator`, `unikit-executor`) and `default_model = "unikit-reader"`; its provider, model, context size and capabilities are examples to verify against your real model entries; UniKit never writes `$KIMI_CODE_HOME/config.toml` (default `~/.kimi-code/config.toml`). Merge the variants without replacing the global file or its providers, credentials and existing models, then assign aliases here. The new `model.kimi` keys reach existing projects through the config actualization / merge flow below.
+
+UniKit keeps no list of model names or effort levels. A value the runtime does not accept makes the launch fail, and the skill repeats the call once without the override with a `WARN [delegation]` line. Cursor, OpenCode, Qwen Code and Universal / Other have no model key in the template and UniKit draws no model slot for them: their call takes no model at all (Cursor, OpenCode), takes one only after you set up the client itself (Qwen Code `agents.modelGrades`), or belongs to a runtime UniKit does not know in advance (Universal / Other). The agent types the skills launch come from the agent profile, not from this file - see [Subagents](subagents.md#subagent-profile-per-agent).
 
 ### How new keys reach an existing project
 
-A key added to this template after your project was bootstrapped does not arrive on its own: `unikit-ai init` only prints a hint about the file and `unikit-ai update` never touches it. `.unikit/config.yaml` is written by the `/unikit` skill and by nothing else, so there are exactly **two** paths, and the difference between them is deliberate.
+A key added to this template after your project was bootstrapped does not arrive on its own: `unikit-ai init` only prints a hint about the file and `unikit-ai update` never touches it. `.unikit/config.yaml` is written by the `/unikit` skill and by nothing else, so there are exactly **three** paths, and the differences between them are deliberate.
 
 | Path | Entered by | What it does with a missing key |
 |------|-----------|--------------------------------|
-| merge mode | a full `/unikit` bootstrap run on a project that already has a config | names the missing keys and **offers** to append them |
+| merge mode | a full `/unikit` bootstrap run on a project that already has a config (the **Description** branch of the menu) | names the missing keys and **offers** to append them |
 | config actualization mode | asking `/unikit` to update / actualize / repair the config on a project already set up | appends a template **literal** silently; **asks** only where the template carries a placeholder, or the current value falls outside a declared domain |
+| returning-project menu | a plain `/unikit` on a project that already has a config | prints the state, offers the config update among its actions and hands over to it |
 
-Both derive the missing set the same way — by comparing `.unikit/config.yaml` against `skills/unikit/references/config-template.yaml` — so neither is more thorough than the other. The `subagents` block reaches an existing project the same way: the actualization mode appends it whole, with its comments. They differ only in whether they ask, and that difference follows from consent: a bootstrap run is not something you started in order to change configuration, so a question is appropriate there; the actualization mode is entered *because* you asked for exactly that, so re-asking about an obvious default is noise.
+All three derive the missing set the same way — by comparing `.unikit/config.yaml` against `skills/unikit/references/config-template.yaml` — so none is more thorough than the others. The `subagents` block reaches an existing project the same way: the actualization mode appends it whole, with its comments. They differ only in whether they ask, and that difference follows from consent: a bootstrap run is not something you started in order to change configuration, so a question is appropriate there; the actualization mode is entered *because* you asked for exactly that, so re-asking about an obvious default is noise.
 
 The actualization mode sorts every leaf key of the template into one of six buckets:
 
@@ -280,17 +329,20 @@ The actualization mode sorts every leaf key of the template into one of six buck
 
 UniKit AI writes MCP server configuration into the file selected per agent: `.mcp.json` (Claude Code), `.codex/config.toml` (Codex CLI), `.cursor/mcp.json` (Cursor), `.qwen/settings.json` (Qwen Code), `opencode.json` (OpenCode), `.agents/mcp_config.json` (Antigravity), `.kimi-code/mcp.json` (Kimi Code), or `.mcp.json` (Universal / Other - the same file Claude Code uses, written by the same writer).
 
+The catalog has two parts. **Universal servers** (Context7, GitHub) live in `mcp/universal/` and are the first group of checkboxes in the wizard. **Engine bridges** live in `engine-bridges/<engine>/` and are the second group: an engine bridge is either an MCP server (kind `mcp`) or a command line (kind `cli`, the Unity CLI today). A bridge of kind `cli` has **no entry** in any settings file; the rest of this page, up to [the Unity CLI](#unity-cli-order-1-kind-cli), is about servers that do.
+
 Every server carries two names, and keeping them apart is what the rest of this section rests on:
 
-- **`key`** — the server's internal identity, always equal to the name of its JSON file under `mcp/`. It is what `.unikit.json` records your selection under, what the delivery stamp and the findings log are named after, and it is never written into an agent's settings file.
-- **`code`** — the **vendor code**: the key the server is actually registered under in your settings file (`mcpServers.<code>`), the middle segment of every `mcp__<code>__*` grant, and the value `{{engine_mcp_tool}}` expands to in skill prose.
+- **`key`** — the server's internal identity, always equal to the name of its JSON file under `mcp/universal/` or `engine-bridges/<engine>/`. It is what `.unikit.json` records your selection under, what the delivery stamp and the findings log are named after, and it is never written into an agent's settings file.
+- **`code`** — the **vendor code**: the key the server is actually registered under in your settings file (`mcpServers.<code>`), the middle segment of every `mcp__<code>__*` grant, and the value `{{engine_bridge_mcp_code}}` expands to in extension text.
 
 Before 2.0.0 there was only `key`, and the engine alternatives of one engine were made to share it — which meant UniKit registered Unity Biome under the name `UnityMCP` while the server itself registers as `unity-biome-mcp`. The two entries coexisted in `.mcp.json`, and the grants followed the one nobody was talking to.
 
-**Engine servers of one engine are alternative implementations** — the wizard offers them as a radio group and you pick exactly one. The group is now the engine's own catalog directory (`mcp/unity/`, `mcp/godot/`, …), not a shared key; `godot` and `godot-net` share `mcp/godot/`, so they share the group. Everything else is additive and is offered as a checkbox.
+**Engine bridges of one engine are not alternatives** - tick any number of them. The group is the engine's own catalog directory (`engine-bridges/unity/`, `engine-bridges/godot/`, …); `godot` and `godot-net` share `engine-bridges/godot/`, so they share the group. Where more than one is selected, the order decides which is used first: a check that has no route on one bridge is tried on the next (see [Bridge order, routing and the rule of a bridge](#bridge-order-routing-and-the-rule-of-a-bridge)).
 
 | Server | `key` (file id) | `code` (settings key, grant prefix) |
 |--------|-----------------|-------------------------------------|
+| Unity CLI (kind `cli`: no settings entry) | `unity-cli` | `unity` (the binary) |
 | Unity Biome MCP | `unity-biome-mcp` | `unity-biome-mcp` |
 | Coplay Unity MCP | `coplay-unity-mcp` | `UnityMCP` |
 | Fennara Godot AI | `fennara-godot-mcp` | `fennara` |
@@ -303,9 +355,23 @@ Each code is the one its vendor uses, so an entry UniKit writes and an entry the
 
 ### Unity
 
-Two engine servers compete here. The wizard lists them in `order`, so **Unity Biome** is the default offer on a fresh install.
+Three engine bridges are offered here, in the order of their `order` field - the **default order** that `BRIDGES.md` prints and that your own `.unikit/bridges.yaml` overrides. On a fresh install the wizard checks only the first bridge (**Unity CLI**); Unity Biome and Coplay are opt-in.
 
-#### Unity Biome MCP (`order: 1`)
+#### Unity CLI (`order: 1`, kind `cli`)
+
+The Unity CLI (`unity`) is a command line, not an MCP server, so UniKit writes **no entry** for it into your agent's settings file. For a CLI bridge `init` / `update` record the selection in `engineBridges.selected`, give the skills that need it narrow shell permissions - `Bash(unity <verb> *)` for `command`, `status`, `recompile`, `test`, `list`, `skill show` and `--version` (and the same verbs as `PowerShell(unity <verb> *)` for the PowerShell tool on Windows - the two tools have separate permission rules), and nothing that installs, closes, signs in or updates - and describe how to call it in `.unikit/system/engine-bridges/BRIDGES.md`. Every call passes `--project-path`: a bare `unity` command can see every editor that is open on the machine. The status form is for diagnosis, not for polling: it contacts every open editor even when it is given a path, and an editor that runs an older Pipeline package logs a harmless "No command named" error line for each call.
+
+Requirements (the floors are printed in `BRIDGES.md`): the CLI at or above `1.0.0-beta.14`, the package `com.unity.pipeline` at or above `0.9.1-exp.1`, Unity at or above `6000.0`. The wizard labels the bridge as found when `unity` is on your `PATH` (the search does not run it) and `ProjectSettings/ProjectVersion.txt` meets the engine floor. The default selection does not depend on detection.
+
+You install the CLI yourself (`winget install Unity.CLI`, `brew install --cask unity-cli`, or the installer script in the Unity documentation). `unity pipeline install --project-path "<project>"` is run by an agent only after you confirm; an editor that is already open loads a new package only after it refreshes the project: bring its window forward and, when Auto Refresh is switched off in the editor (Hot Reload and similar plugins do that), use Assets > Refresh; until then it answers `STATUS_PIPELINE_LOAD_PENDING`. `/unikit` checks all of this at the end of setup and prints what is missing.
+
+On Windows in Git Bash, a scene-object path that begins with one slash (`/Player`) is rewritten into a file path before the CLI sees it and the editor answers that no such object exists; the notes in `BRIDGES.md` tell the agents to write such paths without the leading slash, with two slashes, or to use the instance id.
+
+It ships a small rules tree: checks for behaviour that was measured on a live editor and that Unity's own documentation does not describe. A tree adds **checks**, never removes a right. See [Engine bridge rules trees](#engine-bridge-rules-trees).
+
+**Unity's own agent plugin:** see [Migrating to 3.0.0](migration-3.0.0.md#unitys-own-agent-plugin).
+
+#### Unity Biome MCP (`order: 2`)
 
 ```json
 {
@@ -319,11 +385,11 @@ Backed by [unity-biome-mcp](https://github.com/german-krasnikov/unity-biome-mcp)
 
 It is the deepest of the engine integrations: transactional scene edits, a real console watermark, and authoring across uGUI, UI Toolkit, animation and shaders. What it can do at *your* version is answered by its live catalog, not by a list in this file — which is why you will not find one here.
 
-It is the first server to ship a **rules tree**: see [Engine-MCP rules tree](#engine-mcp-rules-tree) below for what that is, and what it deliberately does not contain.
+It ships a **rules tree**: see [Engine bridge rules trees](#engine-bridge-rules-trees) below for what that is, and what it deliberately does not contain.
 
 **Why UniKit AI sets `env: { "UNITY_MCP_NO_GATING": "1" }`.** Without the flag the catalog arrives gated — the client sees a fraction of it and is expected to unlock the rest per category. That unlock was measured **not to reach the client**, which leaves affordances declared and unreachable at once: the worst possible shape, because the failure is silent. The flag turns the whole set on at connect time. It costs roughly 8-10k tokens of context and buys one honest rule — *a tool that is not in your list does not exist here; it is not hidden*. The flag is written identically for every agent (it is all-or-nothing, not per-agent). The vendor does not document the variable, so this is the only place our reason for setting it is written down.
 
-#### Coplay Unity MCP (`order: 2`)
+#### Coplay Unity MCP (`order: 3`)
 
 ```json
 {
@@ -336,7 +402,7 @@ Backed by the [MCP for Unity](https://github.com/CoplayDev/unity-mcp) package (C
 
 The port above is the one measured on the installation this was written against: the Unity plugin passed it to the server on its launch line rather than letting the vendor default apply. Whether the plugin always picks that number is not established, so if yours differs, edit it in both places — the editor and your agent config.
 
-It ships a rules tree: what UniKit AI has measured about this server and could not learn from the live catalog. A tree adds **checks**, never removes a right. See [Engine-MCP rules tree](#engine-mcp-rules-tree).
+It ships a rules tree: what UniKit AI has measured about this server and could not learn from the live catalog. A tree adds **checks**, never removes a right. See [Engine bridge rules trees](#engine-bridge-rules-trees).
 
 Three caveats worth knowing before you rely on it:
 
@@ -346,7 +412,7 @@ Three caveats worth knowing before you rely on it:
 
 ### Godot
 
-Three engine servers compete here (`godot` and `godot-net` share the same catalog directory, so they are offered the same three); **Fennara** is the default offer on a fresh install.
+Three engine bridges are offered here (`godot` and `godot-net` share the same catalog directory, so they are offered the same three); the wizard checks **Fennara** on a fresh install.
 
 #### Fennara Godot AI (`order: 1`, free)
 
@@ -368,7 +434,7 @@ Backed by [fennara-godot-ai](https://github.com/fennaraOfficial/fennara-godot-ai
 
 All 14 tools are visible immediately (no bootstrap). Its shape is a code executor rather than an operation catalog: one `run_scene_edit_script` covers scene, UI, VFX and animation work. It is the only Godot server with real run feedback (full stdout+stderr behind a cursor) and version-accurate API docs via `get_class_info`.
 
-It ships a rules tree: what UniKit AI has measured about this server and could not learn from the live catalog. A tree adds **checks**, never removes a right. See [Engine-MCP rules tree](#engine-mcp-rules-tree).
+It ships a rules tree: what UniKit AI has measured about this server and could not learn from the live catalog. A tree adds **checks**, never removes a right. See [Engine bridge rules trees](#engine-bridge-rules-trees).
 
 **The editor's approval setting is not a boundary for your agent.** Fennara's dock offers a tool-approval mode, and its default holds project changes for confirmation. That mode governs Fennara's own built-in chat and nothing else: a call arriving over MCP never passes through it, and a project-changing call was measured completing under the default setting with no prompt and no queue entry. Read it as a comfort setting for the editor's own assistant, not as a gate in front of the `unikit-*` skills — and do not go looking for an unlock step for the catalog, because all fourteen tools are already there.
 
@@ -393,7 +459,7 @@ Backed by [gdai-mcp-plugin-godot](https://github.com/3ddelano/gdai-mcp-plugin-go
 - All 35 tools are visible immediately (no bootstrap). Its shape is an operation catalog rather than a code executor: granular, single-purpose tools cover scene, node, script, and editor-inspection work individually — the opposite of Fennara's one script-execution hatch.
 - **No approval mode or permission gate is documented anywhere for this server** — not in its configuration guide, its installation guide, or any other page checked. There is nothing to look for and nothing to disable; the only boundary is the host OS and the process's own permissions — the same conclusion as Fennara's, reached for the opposite reason (Fennara documents an approval setting that turns out not to gate MCP calls; this server never describes one in the first place).
 
-It ships a rules tree: what UniKit AI has measured about this server and could not learn from the live catalog — several of its mutations do not behave the way a synchronous success response implies, even though the catalog itself is honest and complete. A tree adds **checks**, never removes a right. See [Engine-MCP rules tree](#engine-mcp-rules-tree).
+It ships a rules tree: what UniKit AI has measured about this server and could not learn from the live catalog — several of its mutations do not behave the way a synchronous success response implies, even though the catalog itself is honest and complete. A tree adds **checks**, never removes a right. See [Engine bridge rules trees](#engine-bridge-rules-trees).
 
 This is a flat `config`, not [`configByPlatform`](#per-platform-configs) — the launch command has the same shape on every OS, and it carries neither an `env` block nor a `{{home}}`/`{{localappdata}}` token today.
 
@@ -412,25 +478,25 @@ This is a flat `config`, not [`configByPlatform`](#per-platform-configs) — the
 }
 ```
 
-Backed by [godot-mcp](https://github.com/Coding-Solo/godot-mcp). Coding-Solo declares no version threshold at all — its prerequisites say only "Godot Engine installed" — which is why it is the one entry in the Godot radio with no version in brackets. An undeclared threshold, not a forgotten one: a bracketed "Godot 4.x" there would be our inference rather than the vendor claim.
+Backed by [godot-mcp](https://github.com/Coding-Solo/godot-mcp). Coding-Solo declares no version threshold at all — its prerequisites say only "Godot Engine installed" — which is why it is the one entry in the Godot list with no version in brackets. An undeclared threshold, not a forgotten one: a bracketed "Godot 4.x" there would be our inference rather than the vendor claim.
 
 - **`GODOT_PATH` is a literal, untokenized path to your own Godot executable** — the one field of its kind among the three Godot servers. Fennara's and GDAI's install locations are predictable enough to expand from `{{home}}`/`{{localappdata}}`; a Godot install is not, so this one is written in by hand.
 - All 14 tools are visible immediately (no bootstrap), and the vendor's own published tool list matches the live catalog exactly — the first of the three Godot servers measured with zero discrepancy in either direction.
 - **Creating a brand-new scene fails unconditionally on Godot 4.6.x** — a version regression in the vendor's own bundled script, not a project-specific defect, thrown before any file is written. It fails loudly and immediately on the very first attempt, so widening the grant to `["*"]` does not hide this: it just means that one specific operation reliably fails on this engine version, while adding a node to an *existing* scene remains the reliable path.
 
-It ships a rules tree: what UniKit AI has measured about this server and could not learn from the live catalog — most of its calls report success or failure independently of what actually happened on disk. A tree adds **checks**, never removes a right. See [Engine-MCP rules tree](#engine-mcp-rules-tree).
+It ships a rules tree: what UniKit AI has measured about this server and could not learn from the live catalog — most of its calls report success or failure independently of what actually happened on disk. A tree adds **checks**, never removes a right. See [Engine bridge rules trees](#engine-bridge-rules-trees).
 
 This is a flat `config`, not [`configByPlatform`](#per-platform-configs) — the launch command (`npx @coding-solo/godot-mcp`) is the same on every OS; only the `env` block above varies by your own machine.
 
-### Engine-MCP rules tree
+### Engine bridge rules trees
 
-When you select an engine MCP, UniKit AI copies that server's **rules tree** into `.unikit/system/engine-mcp/`. A rules tree records **exceptions, not capabilities** — the places where this particular server behaves differently from what an honest reading of its own catalog would suggest.
+UniKit AI copies the **rules tree** of every selected bridge that ships one into `.unikit/system/engine-bridges/<bridge>/` (`INDEX.md`, `verification.md`) and writes `.unikit/system/engine-bridges/BRIDGES.md` - the set of selected bridges, the **default order** of the package (your own order lives in `config.yaml`), and for each bridge a table of its kind, how to call it, where its catalog comes from, when it is available, its rules tree, notes and collected documentation, and a table of its setup lines. The file is Markdown tables; the default order is a numbered one. A rules tree records **exceptions, not capabilities** — the places where this particular server behaves differently from what an honest reading of its own catalog would suggest.
 
 | File | Read by |
 |------|---------|
-| `INDEX.md`, base section (everything except the `## Check` table) | `/unikit-plan`, `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-devcontext`, `unikit-implement-worker` — once, at Bootstrap |
+| `INDEX.md`, base section (everything except the `## Check` table) | `/unikit-plan`, `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-execute`, `unikit-implement-worker` — once, at Bootstrap |
 | `INDEX.md`, the `## Check` table | `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `unikit-implement-worker` — grepped per editor task, by the task's own area plus the cross-cutting ones |
-| `INDEX.md`, the delivery stamp and the access section | `/unikit-mcp-audit`, `/unikit-mcp-trap` — the stamp (`server:`) is the configured server; the access section says how a project-relative asset path is written for this engine |
+| `INDEX.md`, the delivery stamp and the access section | `/unikit-bridge-audit`, `/unikit-bridge-trap` — the stamp (the `bridge` row of the table under the title) names the bridge the tree belongs to; the access section says how a project-relative asset path is written for this engine |
 | `verification.md` | `/unikit-verify` and no other skill — per-gate calibration: which observation closes which gate |
 
 Three invariants hold over everything in the tree, and they are what makes it safe to ship at all:
@@ -443,33 +509,43 @@ The genre of every entry is a **check to perform**, not a claim about the server
 
 Mechanics worth knowing:
 
-- The tree comes from the [`rules`](#mcp-json-schema-fields) pointer of the MCP JSON you selected, so it changes when your MCP choice changes. A server without the pointer contributes nothing, and a skill that finds no file prints one line and keeps every right it had.
-- It is **copied, not merged**. One engine takes one engine server, so there is nothing to concatenate and no per-contributor heading; subdirectories are copied as they are, so the tree may grow past its two starting files.
-- Every delivered `.md` gets a **provenance stamp** prepended — `server:`, plus a line saying to fix the source rather than the copy. That stamp is your project's only record of *whose* exceptions are on disk, and it is what the header of `.unikit/MCP-RECHECK-NOTES.md` is compared against at Bootstrap. It is the server id and nothing else, which is worth more than it sounds: a delivered file is byte-identical between runs for as long as the tree and the server are unchanged, so an unexpected diff in `.unikit/system/engine-mcp/` is a signal rather than the daily noise a delivery date used to produce.
-- Like `cli-contract.md` and `dev-principles.md`, the tree is a **system asset — not hash-tracked**. Every `init` / `update` rewrites it from source, so local edits are lost. Findings of your own go in `.unikit/MCP-RECHECK-NOTES.md` (below); durable project knowledge goes in `.unikit/memory/`.
-- Orphans are deleted across the **whole subtree**, not just `*.md`. Switching engines (or deselecting a server) clears the stale tree rather than leaving a Unity tree in a Godot project.
+- Each tree comes from the [`rules`](#mcp-json-schema-fields) pointer of a bridge you selected, so the set of trees changes with your selection. A bridge without the pointer contributes nothing, and a skill that finds no file prints one line and keeps every right it had.
+- It is **copied, not merged**. Each bridge gets a folder of its own, so there is nothing to concatenate and no per-contributor heading; subdirectories are copied as they are, so the tree may grow past its two starting files.
+- Every delivered `.md` gets a **provenance stamp** under its title — a small table with one row, `bridge | <id>`, plus a comment saying to fix the source rather than the copy. That stamp is your project's only record of *whose* exceptions are on disk, and it is what the header of `.unikit/bridge-notes/<bridge>.md` is compared against at Bootstrap. It is the bridge id and nothing else, which is worth more than it sounds: a delivered file is byte-identical between runs for as long as the tree and the bridge are unchanged, so an unexpected diff in `.unikit/system/engine-bridges/` is a signal rather than the daily noise a delivery date used to produce.
+- Like `cli-contract.md` and `dev-principles.md`, the tree is a **system asset — not hash-tracked**. Every `init` / `update` rewrites it from source, so local edits are lost. Findings of your own go in `.unikit/bridge-notes/<bridge>.md` (below); durable project knowledge goes in `.unikit/memory/`.
+- Orphans are deleted across the **whole subtree**, not just `*.md`. Switching engines (or deselecting a bridge) clears the stale tree rather than leaving a Unity tree in a Godot project.
 
-### Project findings — `.unikit/MCP-RECHECK-NOTES.md`
+### Project findings - `.unikit/bridge-notes/<bridge>.md`
 
-The rules tree is what UniKit AI shipped. This file is what *your* project found out, against the server it actually runs.
+The rules tree is what UniKit AI shipped. These files are what *your* project found out, against each bridge it actually runs - one file per bridge.
 
-- It sits at the root of `.unikit/`, deliberately **outside** `.unikit/system/` — so the installer's flat-rewrite and orphan sweep cannot reach it by construction.
-- **The installer never writes its content.** The only operation it performs is a rename: switching engine MCP servers parks the active file as `MCP-RECHECK-NOTES.archive.<previous-server>.md`, and switching back restores it. A finding is a statement about *one* server, so carrying it across a switch would be worse than losing it — it would look like evidence.
-- Invariant: **one file per server — active or archived, never both.** An interrupted run can leave a second archive behind; it is kept rather than overwritten and announced with a `WARN`, because merging two sessions' findings is a curation call and not the installer's to make.
-- `/unikit-mcp-trap` writes it, `/unikit-mcp-audit` curates it (re-stamp, replay, retire, upstream). Pipeline skills **read** it and never write it: one observation is a bad sample, and a bad line lives for months, so the durable surface passes through a human.
-- It obeys the same three invariants as the rules tree, with **one carve-out**: the `evidence:` field of an entry is the single place in the whole system where a tool name may be written down. That is what makes an entry evidence rather than an opinion — and it is why `/unikit-mcp-audit` treats every entry as suspect once the server moves.
+- They sit in `.unikit/bridge-notes/`, deliberately **outside** `.unikit/system/` — so the installer's flat-rewrite and orphan sweep cannot reach them by construction.
+- **The installer never writes their content.** The only operation it performs is a rename: a bridge that leaves your selection has its file parked as `.unikit/bridge-notes/archive/<bridge>.md`, and a bridge that returns gets it back (the change is worked out from the previous `BRIDGES.md`, read before it is rewritten). A finding is a statement about *one* bridge, so carrying it to another would be worse than losing it — it would look like evidence.
+- Invariant: **one file per bridge — active or archived, never both.** An interrupted run can leave a second archive behind; it is kept rather than overwritten and announced with a `WARN`, because merging two sessions' findings is a curation call and not the installer's to make.
+- `/unikit-bridge-trap` writes it, `/unikit-bridge-audit` curates it (re-stamp, replay, retire, upstream). Pipeline skills **read** it and never write it: one observation is a bad sample, and a bad line lives for months, so the durable surface passes through a human.
+- It obeys the same three invariants as the rules tree, with **one carve-out**: the `evidence:` field of an entry is the single place in the whole system where a tool name may be written down. That is what makes an entry evidence rather than an opinion — and it is why `/unikit-bridge-audit` treats every entry as suspect once the server moves.
 
 ### MCP JSON schema fields
 
-Every MCP JSON declares `key` / `code` / `displayName` and one of `config` / `configByPlatform`. `key` must equal the file's own basename and `code` must be non-empty — an entry missing either is dropped at scan time, so the server is simply never offered. Beyond those, an MCP JSON may declare five optional fields. All five are backward compatible — a config without them behaves exactly as before.
+Every catalog JSON - under `mcp/universal/` or `engine-bridges/<engine>/` - declares `key`, `code`, `fullName` and `shortName`, plus either one of `config` / `configByPlatform` (kind `mcp`, the default) or a `cli` block (kind `cli`). `key` must equal the file's own basename; `code` and both names must be non-empty strings. An entry missing a required field is dropped at scan time.
+
+`fullName` replaces the former `displayName`: it includes requirements and other bracketed comments and appears when selecting the bridge or MCP server itself. `shortName` is the plain name without those comments, used when selecting its rules in `init` and `update`. Both are stored explicitly in the catalog; the CLI does not derive one by trimming the other. For example, Unity CLI has `fullName: "Unity CLI (Unity 6000.0+, needs the com.unity.pipeline package)"` and `shortName: "Unity CLI"`. Existing project selections still use the same file IDs and vendor codes.
+
+Beyond those required fields, a catalog JSON may declare the optional fields below. A config without them keeps the corresponding default behavior.
 
 | Field | Purpose |
 |-------|---------|
-| `docs` | `{ context7, repo }` — where the server documents *itself*. `repo` generates the single install line printed in the `init` summary (`<displayName> — setup and requirements: <url>`) and is **required** when `is_engine: true`. `context7` is the library id the rules tree names as the server's reference. |
-| `rules` | Directory holding this server's rules tree, resolved relative to the JSON's own directory (`"rules/<server>/"`). Delivered to `.unikit/system/engine-mcp/` — see [Engine-MCP rules tree](#engine-mcp-rules-tree). Absent is a normal state, not a degraded one. |
-| `order` | Presentation order within one engine group — the `is_engine` servers of a single `mcp/<engine>/` directory (ascending, 1-based; missing sorts last). Drives the wizard's radio pre-selection and nothing else — it does **not** affect the order servers are written into a settings file. |
+| `docs` | `{ context7, repo }` — where the server documents *itself*. `repo` generates the single install line printed in the `init` summary (`<fullName> — setup and requirements: <url>`) and is **required** when `is_engine: true`. `context7` is the library id the rules tree names as the server's reference. |
+| `rules` | Directory holding this bridge's rules tree, resolved relative to the JSON's own directory (`"rules/<bridge>/"`, under `engine-bridges/<engine>/rules/`). Delivered to `.unikit/system/engine-bridges/<bridge>/` — see [Engine bridge rules trees](#engine-bridge-rules-trees). Absent is a normal state, not a degraded one. |
+| `order` | The **default order** of the bridges of one engine - the `is_engine` entries of a single `engine-bridges/<engine>/` directory (ascending, 1-based; **required** for a bridge, unique within the directory). It is printed as the numbered table under `default order:` in `BRIDGES.md` and presents the wizard's list; it does **not** affect the order servers are written into a settings file, and your own order (`.unikit/bridges.yaml`) overrides it for the agents. |
+| `kind` | `mcp` (the default; an MCP server the agent's client talks to) or `cli` (a command line the agent runs). |
+| `cli` | For `kind: cli`, instead of `config`: `binary` (searched on `PATH`, the head of every grant), `projectFlag` (the option that names the project, in every form but the version probe), `shells` (the tools the grants are written for: `Bash`, `PowerShell`), `forms` (the command lines: `call`, `groups`, `group`, `tags`, `tag`, `search`, `list`, `schema`, `compile`, `status`, `ready`, `version`), `probes.package` (a project file to read for the installed package version) and `notes`. |
+| `setup[]` | Lines of preparation, printed in the `init` summary and in the bridge's block of `BRIDGES.md`: `by` is `human` or `agent-confirmed` (the agent runs it only after you confirm), `run` the line. |
+| `detect` | What the wizard may look at - without running anything - to label a detected bridge: `binary` (found on `PATH`), `projectVersionFile` and `versionPattern` (a pattern with one capture group that picks the engine version out of it). Detection does not change the selection. |
+| `requires` | The floors below which the bridge is unavailable: `engineVersion`, `cli`, `package`. Printed as `floor:` in `BRIDGES.md`. |
+| `versionProbe` | For `kind: mcp`: where the installed version of the bridge is read - `{ "in": "args", "pattern": … }`, a regular expression with exactly one capture group applied to the `args` of the bridge's entry in each agent's MCP settings file. Printed as the `probe version` row of the block in `BRIDGES.md`; the executors use it to know which release the server runs. |
 | `configByPlatform` | Per-OS config variants keyed by `win32` / `darwin` / `linux`, for servers whose binary path differs per platform. |
-| `preselect` | `false` keeps the server unchecked in the wizard's checkbox list on a fresh install; absent means checked, as before. A re-run of `init` mirrors your previous choice either way. Checkbox list only — an engine server's radio default is `order`'s job, and `preselect` never sits on an `is_engine` entry. |
+| `preselect` | `false` keeps the server unchecked in the wizard's checkbox list on a fresh install; absent means checked, as before. A re-run of `init` mirrors your previous choice either way. Universal servers only - the first engine bridge by `order` is pre-selected regardless of kind or detection, and `preselect` never sits on an `is_engine` entry. |
 
 **A token in a header is a reference, never a value.** A header value in `config.headers` may carry `{{env:NAME}}` — the name of an environment variable, uppercase — and every writer renders it in its own client's syntax, so the settings file you commit never holds the token itself:
 
@@ -486,7 +562,7 @@ Every MCP JSON declares `key` / `code` / `displayName` and one of `config` / `co
 
 The first write has to be right: an entry already standing under our code is kept as it is (rule 3 of [What UniKit writes into your settings file](#what-unikit-writes-into-your-settings-file)), so nothing would ever correct a wrong one.
 
-`config` (and each `configByPlatform` variant) may carry an `env` block, handed to the server process verbatim; the path tokens below expand inside its values too. UniKit AI uses it for exactly one thing today — see [`UNITY_MCP_NO_GATING`](#unity-biome-mcp-order-1) above.
+`config` (and each `configByPlatform` variant) may carry an `env` block, handed to the server process verbatim; the path tokens below expand inside its values too. UniKit AI uses it for exactly one thing today — see [`UNITY_MCP_NO_GATING`](#unity-biome-mcp-order-2) above.
 
 `config` may also carry **`_comment` as its last field**: a one-line hint addressed to whoever opens their own settings file. Every writer carries it through verbatim — Codex because it copies fields it does not recognise, OpenCode through a passthrough naming the key explicitly, since that writer assembles its output from a whitelist and would otherwise drop it. Nothing reads the value: no consumer changes behaviour depending on whether it is present, absent, or says something else entirely. The key is pinned to the `MCP_COMMENT_KEY` constant by a guard in `scripts/test-skills.sh` Part 5b, so the data and the writer cannot drift apart. [Context7](#context7) and [GitHub](#github) use it today.
 
@@ -494,15 +570,16 @@ The first write has to be right: an entry already standing under our code is kep
 
 **`verified` was retired, and the same absent-key guard now keeps it out.** The field carried `{ version, date, toolRegistry }` — the server version a rules tree was measured against, when, and from which registry file — and it died in two steps.
 
-The version half went first, because the comparison it fed was structurally dead: `verified.version` was copied into the delivery stamp, the stamp was copied into the `MCP-RECHECK-NOTES.md` header, and the skills then compared header against stamp — so **both sides came from the same package constant**. The mismatch it was written to catch could only ever be announced by a UniKit release, never by the server on your machine moving, and a comparison that cannot fire for its own reason is worse than none because it reads like a guard. Nor could the version be recovered elsewhere: the MCP protocol carries it in `InitializeResult.serverInfo`, which reaches the client during the handshake with no method to ask for it again, and measurement across the catalog found no tool that reports it — on biome, `mcp_status`, `get_capabilities` and `doctor` return the scene, the *Unity* version and the *Python* version respectively.
+The version half went first, because the comparison it fed was structurally dead: `verified.version` was copied into the delivery stamp, the stamp was copied into the bridge-notes header, and the skills then compared header against stamp — so **both sides came from the same package constant**. The mismatch it was written to catch could only ever be announced by a UniKit release, never by the server on your machine moving, and a comparison that cannot fire for its own reason is worse than none because it reads like a guard. Nor could the version be recovered elsewhere: the MCP protocol carries it in `InitializeResult.serverInfo`, which reaches the client during the handshake with no method to ask for it again, and measurement across the catalog found no tool that reports it — on biome, `mcp_status`, `get_capabilities` and `doctor` return the scene, the *Unity* version and the *Python* version respectively.
 
-The remaining half went with the last consumer that read it. Once the version was gone, nothing in the codebase consumed `date` or `toolRegistry`: they were parsed on every scan into a typed field no code path ever looked at. A hand-maintained date with no reader goes stale in silence, and the same question — *how old are these exceptions* — is answered better by `git log mcp/<engine>/rules/`, which cannot drift from the thing it dates. The `verified` key now sits beside `shards` and `instruction` in the absent-key guard, because all three would come back the same way: someone adds a server, copies the nearest config as a template, and reintroduces a mechanism nothing reads.
+The remaining half went with the last consumer that read it. Once the version was gone, nothing in the codebase consumed `date` or `toolRegistry`: they were parsed on every scan into a typed field no code path ever looked at. A hand-maintained date with no reader goes stale in silence, and the same question — *how old are these exceptions* — is answered better by `git log engine-bridges/<engine>/rules/`, which cannot drift from the thing it dates. The `verified` key now sits beside `shards` and `instruction` in the absent-key guard, because all three would come back the same way: someone adds a server, copies the nearest config as a template, and reintroduces a mechanism nothing reads.
 
 #### Tool grants (`allowed-tools`)
 
-An MCP JSON may name the skills and subagents that receive its tools; the names are injected into the installed frontmatter as `mcp__<code>__<tool>` (or `mcp__<code>__*`) — the **vendor code**, which is what the running server publishes its tools under. Injection is keyed on your **selection**, so changing which MCP you use reinstalls all skills and subagents and clears the old entries; a server whose code changes while your selection stays put has its dead names removed too.
+A catalog JSON may name the skills and subagents that receive its tools. For an MCP bridge the names are injected into the installed frontmatter as `mcp__<code>__<tool>` (or `mcp__<code>__*`) — the **vendor code**, which is what the running server publishes its tools under. For a bridge of kind `cli` the JSON lists **verbs** and the installer writes `Bash(<binary> <verb> *)` for each - and the same as `PowerShell(<binary> <verb> *)` when the card names that shell, because the two tools have separate permission rules. Injection is keyed on your **selection** (the set of bridges, not their order), so changing which bridges you use reinstalls all skills and subagents and clears the old entries; a server whose code changes while your selection stays put has its dead names removed too. The installer removes only entries it owns - those that start with `mcp__` or with `Bash(<binary> ` / `PowerShell(<binary> ` - and never an entry you wrote yourself, such as `Bash(git *)`.
 
-- **Executors get a wildcard.** `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-devcontext` and the implement coordinator / worker / review sidecar are granted `["*"]` rather than a list of names. A stored list is a second catalog that nothing keeps in sync: it goes stale silently, and then it removes a right the agent was supposed to have. The wildcard also removes the last reason for a tool name to be written down anywhere but the live catalog.
+- **Executors get a wildcard.** `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-execute` and the implement coordinator / worker / review sidecar are granted `["*"]` rather than a list of names. A stored list is a second catalog that nothing keeps in sync: it goes stale silently, and then it removes a right the agent was supposed to have. The wildcard also removes the last reason for a tool name to be written down anywhere but the live catalog.
+- **A command-line bridge is granted verbs, not a wildcard.** The executors get `command`, `status`, `recompile`, `test` and `--version`; `/unikit-bridge-audit` gets `command`, `status` and `--version`; `/unikit` gets `--version`, `status` and `self-update --check`. Nothing that installs, closes, signs in or updates is granted to anyone - `unity pipeline install` is run by an agent only after you confirm it.
 - **The planner is the one exception**, and receives discovery names only — as few as the server needs to resolve a target. The discovery protocol is the single layer that does not rot, and a planner physically cannot mutate anything, so a narrow grant costs nothing and documents the boundary. A meta-tool that reports which parts of a catalog are switched on is **not** granted where its state field has been measured to lie.
 - **On the three Godot servers the planner receives nothing at all, and that is the rule above being applied rather than an oversight.** None of `fennara-godot-mcp.json`, `gdai-godot-mcp.json` or `coding-solo-godot-mcp.json` carries a `unikit-plan` key. Fennara's only discovery-shaped candidate is a self-report, and its tool listing was measured naming an affordance the protocol path then refuses to run — a state field that disagrees with what is callable. Granting it would hand the planner a catalog that lies in the direction that costs most: naming what does not work. The other two Godot servers offer no discovery-shaped tool at all, so there is nothing to grant. Since the format has no comments, the asymmetry with the servers that *do* grant the planner is recorded here:
 
@@ -510,10 +587,11 @@ An MCP JSON may name the skills and subagents that receive its tools; the names 
   |--------|---------------|
   | Unity Biome MCP | `discover_tools`, `mcp_status` |
   | Coplay Unity MCP | `find_gameobjects` |
+  | Unity CLI | `list` - one read-only listing of the live catalog (`Bash(unity list *)`) |
   | ChiR24 Unreal MCP | `manage_tools` |
   | All three Godot servers | *(no `unikit-plan` key)* |
-- `/unikit-mcp-audit` gets a wildcard because replaying a finding means re-issuing the exact call recorded in its `evidence:` field. Its restraint lives in a six-step envelope gated on one informed confirmation from you, not in the size of its grant.
-- **`/unikit-mcp-trap` receives no grants at all** — it makes zero MCP calls by construction. This cannot be recorded in the JSON itself: the format has no comments, and an empty array would say something different — that the skill is a recipient whose grant list happens to be empty, which is a state nothing distinguishes from an editing mistake. So it is written down here.
+- `/unikit-bridge-audit` gets a wildcard because replaying a finding means re-issuing the exact call recorded in its `evidence:` field. Its restraint lives in a six-step envelope gated on one informed confirmation from you, not in the size of its grant.
+- **`/unikit-bridge-trap` receives no grants at all** — it makes zero bridge calls by construction. This cannot be recorded in the JSON itself: the format has no comments, and an empty array would say something different — that the skill is a recipient whose grant list happens to be empty, which is a state nothing distinguishes from an editing mistake. So it is written down here.
 - The wildcard on the read-only review sidecar is a **deliberate deferral** — narrowing read-only consumers is a separate question — not an oversight to be tidied away.
 
 #### Per-platform configs
@@ -531,7 +609,7 @@ No existence check is performed on the result — if the binary is not installed
 
 ### What UniKit writes into your settings file
 
-The settings file is shared property: the vendor's editor plugin writes into it, you write into it, extensions write into it. Since 2.0.0 UniKit reconciles rather than overwrites, and it does so on **both** `init` and `update` — `update` used to leave the file alone entirely, which is the wrong half of the cycle to skip, because `init` is run once while a plugin rewrites its own entry between runs.
+The settings file is shared property: the vendor's editor plugin writes into it, you write into it, extensions write into it. Since 2.0.0 UniKit reconciles rather than overwrites, and it does so on **both** `init` and `update` — `update` used to leave the file alone entirely, which is the wrong half of the cycle to skip, because `init` is run once while a plugin rewrites its own entry between runs. A bridge of kind `cli` has no entry in this file; its permissions are in the frontmatter of the skills.
 
 Per selected server, in this order:
 
@@ -549,17 +627,16 @@ The pass is idempotent — it compares the serialized result against what is on 
 
 On a re-init the wizard mirrors what `.unikit.json` already records:
 
-- **Checkbox groups** (universal servers, and any engine directory holding just one) pre-check the servers you had installed.
-- **Radio groups** (the engine alternatives of one catalog directory) pre-select your previous choice.
-- `Skip` is never pre-selected — "you skipped it last time" and "there was no choice last time" are indistinguishable on disk, so the wizard re-offers the recommended server rather than silently disabling an MCP.
+- **Both checkbox groups** (universal servers, and the engine bridges) pre-check what you had installed. There is no radio group and no `Skip`: a bridge is ticked or not.
+- A bridge you install **after** `init` is registered by running `init` again and ticking it. `/unikit` tells you when it finds one on the machine that you did not select.
 
-`order: 1` therefore decides the default only on a **fresh** install.
+The package order (`order`) therefore decides the default selection only on a **fresh** install; your own order lives in `.unikit/bridges.yaml` ([order, routing and rules](#bridge-order-routing-and-the-rule-of-a-bridge)).
 
-Changing your MCP selection reinstalls all skills and subagents: the selection is part of their source hash, which is how stale `mcp__<code>__*` entries get cleared from the installed frontmatter. The hash covers both halves of every `mcp.servers` entry, so a server whose vendor code changes while your selection stays the same still triggers the reinstall.
+Changing your selection reinstalls all skills and subagents: the **set** of selected servers and bridges (not their order) is part of their source hash, which is how stale `mcp__<code>__*` and `Bash(<binary> …)` entries get cleared from the installed frontmatter. The hash covers both halves of every `mcp.servers` and `engineBridges.selected` entry, so a server whose vendor code changes while your selection stays the same still triggers the reinstall.
 
 ### Unreal Engine 5
 
-The single engine server here registers under the code `unreal-engine`.
+The one engine bridge here, an MCP server, registers under the code `unreal-engine`.
 
 ```json
 {
@@ -579,7 +656,7 @@ Setup:
 
 The server exposes 23 distinct top-level tools rather than a single gateway — each is its own catalog entry with its own JSON Schema, and enabling or disabling one for the calling agent through the `manage_tools` tool is real and immediate in both directions, confirmed by a live round trip. Per-tool grants are possible for the first time on this engine; no per-action granularity exists within a single tool, and none of the 23 is purely read-only.
 
-It ships a rules tree: a handful of calls silently drop an argument or report success over a state that did not change. A tree adds **checks**, never removes a right. See [Engine-MCP rules tree](#engine-mcp-rules-tree).
+It ships a rules tree: a handful of calls silently drop an argument or report success over a state that did not change. A tree adds **checks**, never removes a right. See [Engine bridge rules trees](#engine-bridge-rules-trees).
 
 ### Context7
 
@@ -593,9 +670,9 @@ It ships a rules tree: a handful of calls silently drop an argument or report su
 
 Provides up-to-date documentation for any library. It is a hosted HTTP endpoint: nothing is installed and no local process is spawned. Used by `/unikit` and `/unikit-architecture` during setup, by `/unikit-explore` while researching, and by `/unikit-memory` to enrich dynamic memory.
 
-`/unikit-implement` and `/unikit-fix` — the only executors granted it — may also reach for it, by the library-reference procedure of the development principles (`dev-principles.md` → D8), but only on **two triggers**: an unfamiliar area (what approaches the authors propose — once per area per session), and a dead end (the schema is there, the capability is not). Never routinely at Bootstrap: it is a network dependency inside the editor lane, it costs 2-4k tokens per query, and it makes two runs of the same plan diverge. Whatever comes back describes **intent, not behaviour**, so it carries the same evidence obligations as anything else — with heightened attention, because it has been caught presenting a structurally broken path as an exemplary one. `/unikit-verify` is deliberately **not** granted it: verification needs evidence, not advice.
+`/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-execute` and the implement worker and coordinator are granted it (with `unikit-architecture`, `unikit-explore`, `unikit-memory` and `unikit`). The executors read the documentation collected for the bridge for the command they chose (`dev-principles.md` → D6 step 2) and may reach for the library by the library-reference procedure (`dev-principles.md` → D8) only on **two triggers**: an unfamiliar area (what approaches the authors propose — once per area per session), and a dead end (the schema is there, the capability is not). Never routinely at Bootstrap: it is a network dependency inside the editor lane, it costs 2-4k tokens per query, and it makes two runs of the same plan diverge. Whatever comes back describes **intent, not behaviour**, so it carries the same evidence obligations as anything else — with heightened attention, because it has been caught presenting a structurally broken path as an exemplary one. `/unikit-verify` uses it for the dead end only: whatever comes back is advice, never the evidence that closes a gate.
 
-The server is optional in the wizard. Declining it does not disable anything — it removes one fallback, and the degradation ladder in the development principles continues from there.
+The server is optional in the wizard. Declining it does not disable anything — it removes one fallback, and the route ladder in the development principles continues from there.
 
 **The server works anonymously.** A free API key from [context7.com/dashboard](https://context7.com/dashboard) raises your rate limits — it does not unlock access. That is why no `headers` block is shipped: a literal `Bearer YOUR_API_KEY` would answer 401 on every fresh install and, by rule 3 above (an entry standing under our exact code is left alone), would never repair itself.
 
@@ -669,13 +746,14 @@ After initialization (example for Claude Code):
 ```
 your-unity-project/
 ├── .claude/                      # Agent config dir
-│   ├── skills/                   # 24 code-pipeline skills (+ 13 unikit-gd-* if the Game Design group was selected)
+│   ├── skills/                   # 26 code-pipeline skills (+ 13 unikit-gd-* if the Game Design group was selected)
 │   │   ├── unikit/
 │   │   │   └── references/
 │   │   ├── unikit-architecture/
 │   │   ├── unikit-archive/
+│   │   │   └── references/
 │   │   ├── unikit-commit/
-│   │   ├── unikit-devcontext/
+│   │   ├── unikit-execute/
 │   │   ├── unikit-docs/
 │   │   │   ├── references/
 │   │   │   └── templates/
@@ -687,14 +765,18 @@ your-unity-project/
 │   │   │   └── references/
 │   │   ├── unikit-implement/
 │   │   ├── unikit-improve/
-│   │   ├── unikit-mcp-audit/
-│   │   ├── unikit-mcp-trap/
+│   │   ├── unikit-bridge-audit/
+│   │   ├── unikit-bridge-route/
+│   │   │   └── references/
+│   │   ├── unikit-bridge-trap/
 │   │   │   └── references/
 │   │   ├── unikit-memory/
 │   │   ├── unikit-plan/
 │   │   │   ├── references/
 │   │   │   └── scripts/          # plan-bundle.mjs - checks, finalizes or discards an ultra bundle
 │   │   ├── unikit-pr/
+│   │   │   └── references/
+│   │   ├── unikit-references/
 │   │   │   └── references/
 │   │   ├── unikit-review/
 │   │   ├── unikit-roadmap/
@@ -710,6 +792,8 @@ your-unity-project/
 │       └── unikit-architecture-sidecar.md    # 8 subagent files (sidecars, coordinators, workers)
 ├── .unikit/                      # UniKit AI working directory
 │   ├── config.yaml               # User-editable config (language, workflow, git)
+│   ├── bridges.yaml              # The order of the engine bridges - kept by init and update, yours to reorder
+│   ├── bridge-routing.md         # Optional routing rules per case - /unikit-bridge-route or by hand
 │   ├── system/                   # Flat-rewritten on every init/update - never hand-edit
 │   │   ├── cli-contract.md        # CLI exit codes + command contract, for the skills to read
 │   │   ├── dev-principles.md      # Engine principles (the one asset with {{engine_*}} substituted)
@@ -720,7 +804,7 @@ your-unity-project/
 │   │   ├── plan-boundaries.md     # Where a plan, a module and a push start and end - read by verify, implement, commit, pr
 │   │   ├── merge-analysis.md      # How to read a merge before it happens - read by explore and plan when asked to merge a branch
 │   │   ├── balance-handback.md    # The balance hand-back report contract - read by plan, implement, verify and unikit-gd-balance
-│   │   ├── prototype-profile.md   # How a plan built from experiment cards is executed - read by implement, verify, pr, improve, review, fix, devcontext, commit and their subagents
+│   │   ├── prototype-profile.md   # How a plan built from experiment cards is executed - read by implement, verify, pr, improve, review, fix, execute, commit and their subagents
 │   │   ├── subagent-arguments.md  # How the model and the effort of a subagent launch are settled - read by every skill that can launch a subagent and by the two coordinators
 │   │   ├── subagent-roles.md      # Which role (reader, validator, executor) each subagent launch has - read with subagent-arguments.md
 │   │   ├── user-questions.md      # How a skill asks you a question and waits for the answer - read before the first question by every skill and agent file that can ask you one
@@ -734,8 +818,9 @@ your-unity-project/
 │   │   │   ├── gd-critique.md
 │   │   │   ├── design-read.md      # The code-reads-design contract
 │   │   │   └── genres/             # Only the profiles in .unikit.json genres.installed
-│   │   └── engine-mcp/            # Rules tree of the selected engine MCP (INDEX.md, verification.md)
-│   ├── MCP-RECHECK-NOTES.md      # Your findings about that server - /unikit-mcp-trap writes, the installer only renames
+│   │   └── engine-bridges/        # BRIDGES.md and the rules tree of each selected bridge
+│   ├── bridge-notes/             # Your findings, one file per bridge - /unikit-bridge-trap writes, the installer only renames
+│   ├── references/               # user/ and INDEX.md (/unikit-references)
 │   ├── memory/                   # Dynamic memory, partitioned per knowledge module
 │   │   ├── RULES_INDEX.md        # Auto-generated rule index
 │   │   ├── code/
@@ -757,6 +842,7 @@ your-unity-project/
 │   │       └── library/            # empty studio slot for project-specific rules
 │   ├── DESCRIPTION.md            # Project spec (generated by /unikit)
 │   ├── ARCHITECTURE.md           # Architecture guidelines (generated by /unikit-architecture)
+│   ├── architecture/             # .unikit/architecture/ - topic files, listed under ## Topics in ARCHITECTURE.md (managed by /unikit-architecture)
 │   ├── RULES.md                  # Project-specific rules (managed by /unikit-rules)
 │   ├── rules/                    # Project rule topics, listed under ## Topics in RULES.md (managed by /unikit-rules)
 │   ├── ROADMAP.md                # Strategic roadmap (managed by /unikit-roadmap)
@@ -782,3 +868,4 @@ your-unity-project/
 - [Getting Started](getting-started.md) - installation, supported agents, first project
 - [Development Workflow](workflow.md) - how to use the workflow skills
 - [Dynamic Memory](dynamic-memory.md) - how the dynamic memory works
+- [Migrating to 3.0.0](migration-3.0.0.md) - from one engine server to engine bridges

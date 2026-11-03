@@ -52,7 +52,7 @@ Do not announce, confirm, or mention the language setting.
 
 **The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
 
-## Delegation agents
+## Subagent launches
 
 **Subagent arguments.** Before the first subagent you launch, read `.unikit/system/subagent-arguments.md`
 and `.unikit/config.yaml` once and settle the model and effort of every launch as that file says.
@@ -62,12 +62,14 @@ If the file cannot be read, print
 `WARN [delegation] subagent-arguments contract missing — built-in model tier used, effort not passed`
 and use that model, no effort.
 
+## Delegation agents
+
 - **`develop-agent`** — only for a true parallel scope or a deep-dive single task. Expands to:
 
   ```
   Agent(
     {{agent_call_worker_quoted}}
-    prompt: "{{agent_skill_call:unikit-devcontext}} <task details>",
+    prompt: "{{agent_skill_call:unikit-execute}} Delegated hand-off: <task details>",
     description: "Implement <task>"
   )
   ```
@@ -235,7 +237,7 @@ Then reconcile plan state with reality:
 - Read the **plan manifest** — `.unikit/code/plans/<folder>/PLAN.md`, or the flat `.unikit/code/PLAN.md`. Its section list: `{{skills_dir}}/unikit-plan/references/TASK-FORMAT.md` → *Plan Manifest Template*. In an ultra bundle every task's detail lives in its phase file; the reading depth is set by `.unikit/system/ultra-plan-read.md`.
 - `## Based on` names a research → do **NOT** read its `RESEARCH.md` as a substitute for the plan's own context: the plan's `## Technical Context` supersedes it. The research is read for **one** purpose only — the drift check below.
 - Read **`.unikit/DESCRIPTION.md`** — project specification, tech stack, constraints
-- Read **`.unikit/ARCHITECTURE.md`** — project structure, tech stack, and pointers to detailed rules
+- Read **`.unikit/ARCHITECTURE.md`** — project structure, tech stack, and pointers to detailed rules. **Architecture topics:** only the root here; the topic files its `## Topics` table lists load per phase in Step 3.0.
 
 **Research drift check** — only when `## Based on` has at least one entry. Read `.unikit/system/research-link.md` now, and only now, and run its `## Checking an entry` against every entry.
 
@@ -249,11 +251,11 @@ Drift is printed **once**, here at plan load — not before each task. Execution
 - `Testing: yes | no` — whether tests are written (Step 3.8) and run (test-checkpoint tasks, Steps 2.5 and 3.2). Under `Testing: yes` read `{{skills_dir}}/{{self_name}}/references/test-runs.md` now, once — Steps 2.5, 3.2, 3.4 and 3.8 follow it; under `Testing: no` never read it. File missing or unreadable → print `WARN [testing] test-run reference missing — test-checkpoint tasks are reported as blockers; run unikit-ai update` and then: every test-checkpoint task is a Step 3.3 blocker, Step 2.5 asks nothing and marks nothing (the points stay as written), and Step 3.8 writes tests by the Step 3.2 choice.
 - `Test checkpoints: task | phase | plan` → where the test-checkpoint tasks stand (Steps 2.5 and 3.2). **Line absent under `Testing: yes` → the plan is legacy:** its placement was never declared; its run points are run commands in the task text (`### Tests`, `### Verification`, the implementation steps) plus test-checkpoint tasks recognisable only by their heading. Confidence is lower here, and the Step 4 report says so in one line. Under `Testing: no` the line is omitted by design (`{{skills_dir}}/unikit-plan/references/TASK-FORMAT.md`), and such a plan is not legacy.
 - `Docs: yes | no` → the documentation checkpoint of Step 5.3
-- `Editor tasks: mcp | manual | direct` → how tasks carrying an `Editor:` line are carried out (Step 3.2). **Line absent:** `mcp` if MCP server `{{engine_mcp_tool}}` is present in `{{settings_file}}` at the project root (the Step 3.6 probe), otherwise `manual`. Never default to `direct` — it is irreversible and only ever an explicit choice.
+- `Editor tasks: engine-bridge | manual | direct` (the 2.x spelling `mcp` is read as the same value) → how tasks carrying an `Editor:` line are carried out (Step 3.2). **Line absent:** `engine-bridge` if `.unikit/system/engine-bridges/BRIDGES.md` lists at least one bridge, otherwise `manual`. Never default to `direct` — it is irreversible and only ever an explicit choice.
 
 - `PR checkpoints: yes` → the product behaviour of a PR checkpoint task; without the line, a PR checkpoint task is legacy.
 
-No `## Settings` at all → `Testing: no`, `Docs: no`, and `Editor tasks` by the same probe.
+No `## Settings` at all → `Testing: no`, `Docs: no`, and `Editor tasks` by the same rule.
 
 **The checklist carries a `PR checkpoint:` line or the manifest has `## Modules`** → read `{{skills_dir}}/{{self_name}}/references/pr-checkpoints.md` now, once — Steps 2, 3.2, 3.4, 3.9, 4, 5.6, 5.8 and the status display follow it. Missing or unreadable → `WARN [pr] PR checkpoint reference missing — PR checkpoint tasks are reported as blockers; run unikit-ai update`, every PR checkpoint task is a Step 3.3 blocker, and the push rule below still holds.
 
@@ -277,31 +279,31 @@ Load the project knowledge base once, before the first task.
 
 Stack rules and rule topics are NOT loaded here — they are loaded lazily per-phase in Step 3.0.
 
-**Engine-MCP rules (conditional, engine-neutral) — once per session, zero calls:**
+**Engine-bridge rules (conditional, engine-neutral) — once per session, zero calls:**
 
-5. `.unikit/system/engine-mcp/INDEX.md`, **base section only** — the delivery stamp (`server:`) and every section **except** the `## Check` table, which is grepped per task, by area (Step 3.2).
-6. `.unikit/MCP-RECHECK-NOTES.md`, **header only** (`server:` / `audited:`) — this project's own accumulated findings. Compare that header against the delivery stamp from item 5. On a mismatch print exactly one line and **apply the entries anyway**:
+5. `.unikit/system/engine-bridges/BRIDGES.md` — the whole file (one short block per bridge) — and, for **each** bridge whose block names a rules tree, that tree's `.unikit/system/engine-bridges/<bridge>/INDEX.md`, **base section only**: the stamp under the title (the `bridge` row) and every section **except** the `## Check` table, which is grepped per task, by area (Step 3.2). Also read `.unikit/bridges.yaml` (the bridge order) and, when it exists, `.unikit/bridge-routing.md` (the routing rules); a missing order file means the default order `BRIDGES.md` states, a missing routing file means no routing rules.
+6. For each bridge listed in `BRIDGES.md`: `.unikit/bridge-notes/<bridge>.md`, **header only** (`bridge:` / `audited:`) — this project's own accumulated findings, and they apply to that bridge only. Compare the header against the bridge the file is named for. On a mismatch print exactly one line and **apply the entries anyway**:
 
    ```
-   WARN [engine-mcp] notes header ≠ configured server (<notes> ≠ <configured>)
+   WARN [bridges] notes header ≠ bridge (<header> ≠ <bridge>)
    ```
 
-   The entries are suspect, not void; retiring them belongs to `/unikit-mcp-audit`.
+   The entries are suspect, not void; retiring them belongs to `/unikit-bridge-audit`.
 
-**Either file absent → skip it, print one line, and continue with every right you had:**
+**A file absent → skip it, print one line, and continue with every right you had** (no `BRIDGES.md` reads as "no bridge selected"):
 
 ```
-MCP rules: no INDEX.md — no known exceptions for this server, rights unchanged
+Bridge rules: <bridge> has no INDEX.md — no known exceptions for it, rights unchanged
 ```
 
-No rules means no known exceptions, never no capabilities. Absence never disables the engine MCP and never turns a target into `⏸️ MANUAL` (`.unikit/system/dev-principles.md` → **A9**).
+No rules means no known exceptions, never no capabilities. Absence never disables an engine bridge and never turns a target into `⏸️ MANUAL` (`.unikit/system/dev-principles.md` → **A9**).
 
 **Ultra plan bundle reader contract — only for an ultra bundle:**
 
 7. `.unikit/system/ultra-plan-read.md` — **only when Step 0.1 found the marker `<!-- unikit:plan-mode:ultra -->`**: read it once — here, unless Step 0.1 already did — and follow it for detection, per-consumer reading depth, what is mutable during execution, and the blocking integrity checks. A plan without the marker never reads this file.
    **If `.unikit/system/ultra-plan-read.md` is missing or unreadable, do not block:** treat every plan as a single-file plan and continue exactly as before — a project that predates the ultra port has no bundles to read.
 
-Keep an in-memory list of loaded rule file paths (`loaded_rules`). Used in Step 3.0 for delta detection.
+Keep an in-memory list of loaded rule and topic file paths (`loaded_rules`). Used in Step 3.0 for delta detection.
 
 <!-- unikit:extension-point:bootstrap -->
 
@@ -357,9 +359,9 @@ Keep a running list of files you create, modify, or delete during execution — 
 
 Before executing the first task of any phase (including the first phase):
 1. Re-read `.unikit/memory/code/RULES_INDEX.md`.
-2. Match the phase name and its task descriptions against the Stack table's `Load When` column **and against the `Load when` column of the `## Topics` table in `.unikit/RULES.md`** (read at Step 1.5; a root without that table has no topics).
-3. Compute delta: stack rules and topic files needed for this phase that are NOT in `loaded_rules`. A topic whose match is uncertain is needed.
-4. Read each delta rule — a stack rule from `.unikit/memory/code/stack/`, a topic file from `.unikit/rules/` — using the Read tool. A topic file the table lists but the disk lacks → print `WARN [rules] topic file missing: .unikit/rules/<slug>.md` and continue.
+2. Match the phase name and its task descriptions against the Stack table's `Load When` column **and against the `Load when` column of the `## Topics` tables in `.unikit/RULES.md` and in `.unikit/ARCHITECTURE.md`** (both roots read at Steps 1 and 1.5; a root without that table has no topics).
+3. Compute delta: stack rules and topic files (rule and architecture) needed for this phase that are NOT in `loaded_rules`. A topic whose match is uncertain is needed.
+4. Read each delta rule — a stack rule from `.unikit/memory/code/stack/`, a topic file from `.unikit/rules/` or `.unikit/architecture/` — using the Read tool. A topic file the table lists but the disk lacks → print `WARN [rules] topic file missing: .unikit/rules/<slug>.md` (an architecture topic: `WARN [architecture] topic file missing: .unikit/architecture/<slug>.md`) and continue.
 5. Add them to `loaded_rules`.
 
 Inside a phase, do NOT re-check rules between individual tasks — they share the same loaded set.
@@ -378,22 +380,22 @@ Dependencies: {met/unmet}
 
 **3.2: Implement the task**
 
-This skill writes sequential tasks itself, with `Read/Edit/Write/Bash` and the rules already loaded in Step 1.5 + Step 3.0. Do NOT invoke `/unikit-devcontext` via `Skill(...)`.
+This skill writes sequential tasks itself, with `Read/Edit/Write/Bash` and the rules already loaded in Step 1.5 + Step 3.0. Do NOT invoke `/unikit-execute` via `Skill(...)`.
 
 Choose execution mode:
 - **Sequential within phase** (default for tasks that depend on each other or share files) → inline implementation. The skill writes code itself.
-- **Independent across phases** (per the manifest's `## Dependency Graph`, e.g. Phase 3 and Phase 4 can run in parallel) → spawn `develop-agent` (Agent + the `unikit-devcontext` skill) per independent scope. Use ONLY for true parallelism.
+- **Independent across phases** (per the manifest's `## Dependency Graph`, e.g. Phase 3 and Phase 4 can run in parallel) → spawn `develop-agent` (Agent + the `unikit-execute` skill) per independent scope. Use ONLY for true parallelism.
 - **Deep-dive single task** (requires extensive codebase exploration that would bloat parent context) → spawn `develop-agent` to isolate the exploration.
 
 When implementing inline, use the rules from Bootstrap + Phase Rules Refresh, the principles from `dev-principles.md`, the task description from the manifest's `## Checklist`, and the technical context from its `## Technical Context`.
 
 **In an ultra bundle the checklist line is a pointer, not the specification.** The task's specification is its `## Task N.M:` section in the phase file — `### Intent` through `### Verification` — and the manifest's `## Technical Context` supplies only the cross-phase part.
 
-**Fallback:** If `Agent` tool is unavailable, do NOT invoke `/unikit-devcontext` inline (rules and dev-principles are already loaded in Step 1.5 / Step 3.0). Instead, degrade parallel scopes to sequential and continue the inline implementation cycle for ALL tasks. Each phase still triggers Step 3.0 Phase Rules Refresh.
+**Fallback:** If `Agent` tool is unavailable, do NOT invoke `/unikit-execute` inline (rules and dev-principles are already loaded in Step 1.5 / Step 3.0). Instead, degrade parallel scopes to sequential and continue the inline implementation cycle for ALL tasks. Each phase still triggers Step 3.0 Phase Rules Refresh.
 
 **Tasks carrying an `Editor:` line** target the editor's serialized state, not source files. Handle each `Editor:` line — `[kind] <container> → <target> : <action>` — by the `Editor tasks` mode parsed in Step 1:
 
-- **`mcp`** — carry it out through the engine MCP by `.unikit/system/dev-principles.md` → **D6**, on **every** such task; a call that misled you is a finding (**D7**); the library reference has two triggers and none of them is Bootstrap (**D8**). No rules file, or no check line for this area, changes nothing (A9).
+- **`engine-bridge`** — carry it out through the engine bridges by `.unikit/system/dev-principles.md` → **D6**, on **every** such task; a call that misled you is a finding (**D7**); D6 step 2 confirms the command you chose against the live schema, and the library reference has two triggers, none of them Bootstrap (**D8**). No rules file, or no check line for this area, changes nothing (A9). Name the bridge of every call and of every read-back in the task's report line.
 - **`manual`** — do **not** touch any file. Mark the task `⏸️ MANUAL` (Step 3.4) and hand the user the exact instruction in the form `[kind] container → target : action`, one line per target.
 - **`direct`** — **a rollback point must exist before editing** (this is mandatory and the whole reason the mode is gated):
   - Files this run changed and has not committed yet → stage only those and commit them: invoke `unikit-commit`, like every other commit of this run — never with a `git commit` of your own; with auto-commit on (Step 3.9) it passes `auto` too. The user cancels that commit, or it does not complete → do not edit: put the task back on `manual` and print `WARN [editor] <task>: no pre-edit commit — direct edit skipped, task back on manual` — without that commit there is no rollback point.
@@ -443,7 +445,7 @@ After successful implementation, update the manifest:
 **Editor task handed to the user (`Editor tasks: manual`)** — a third outcome, neither done nor pending:
 - Write `- [x]` and append the marker `⏸️ MANUAL` to the task text: `- [x] Task 2.1 — wire the pause button ⏸️ MANUAL`. It counts by the `⏸️ MANUAL` rule of Step 2 and is reported separately (Step 4).
 
-**The task produced an MCP finding (Step 3.2)** — append its row to the plan's `## MCP Findings` table in this same `Edit`, by `dev-principles.md` → **D7**: `F<n>`, `observed` from `Bash(date *)`, semantic dedup. Not at the end of the phase, not at the end of the run. In every case — an `Editor:` task or not (the Step 3.6 console read, a test run) — a misleading call is also a candidate line in the run report (the raw call and the raw answer), and `.unikit/MCP-RECHECK-NOTES.md` is never written from here.
+**The task produced an MCP finding (Step 3.2)** — append its row to the plan's `## Engine Bridge Findings` table in this same `Edit`, by `dev-principles.md` → **D7**: `F<n>`, `observed` from `Bash(date *)`, `bridge` — the id of the bridge the misleading call went through, semantic dedup. A table in the 2.x form is converted first (`TASK-FORMAT.md` → `### Engine bridge findings section`). Not at the end of the phase, not at the end of the run. In every case — an `Editor:` task or not (the Step 3.6 console read, a test run) — a misleading call is also a candidate line in the run report (the raw call and the raw answer), and `.unikit/bridge-notes/<bridge>.md` is never written from here.
 
 **A test-checkpoint task (Step 3.2)** — ticked and recorded by `references/test-runs.md` → `## Step 3.4`.
 
@@ -457,7 +459,7 @@ After successful implementation, update the manifest:
 - `rule` carries **one line, one directive** — exactly what would go into `.unikit/RULES.md`. `full formulation` carries the long version with its rationale, under no length limit.
 - **Dedup is semantic:** a candidate saying the same thing as a row already present — of any status, `declined` included — is not added.
 - **Nothing here reaches `.unikit/RULES.md`.** Step 5.2 proposes the candidates to the user; only `/unikit-rules`, invoked with the batch the user selected, writes that file.
-- The plan carries no `## Rule Candidates` section (a legacy plan) → create it at `##` level under `## MCP Findings`, or above `## Dependency Graph` when that one is absent too, and print `INFO [rules] section ## Rule Candidates created`.
+- The plan carries no `## Rule Candidates` section (a legacy plan) → create it at `##` level under `## Engine Bridge Findings`, or above `## Dependency Graph` when that one is absent too, and print `INFO [rules] section ## Rule Candidates created`.
 
 Use the Edit tool to make these changes surgically.
 
@@ -473,17 +475,7 @@ Progress: {completed}/{total} ({percent}%) · {remaining} remaining in scope
 
 After all tasks in a phase are done, check {{engine_name}} console for compilation errors.
 
-**Prerequisite:** Check if MCP server `{{engine_mcp_tool}}` is configured in `{{settings_file}}` at the project root. If MCP server `{{engine_mcp_tool}}` is not present in MCP settings — skip this step entirely and proceed to 3.7.
-
-**If MCP server `{{engine_mcp_tool}}` is available:**
-
-1. Read the {{engine_name}} console log via MCP server `{{engine_mcp_tool}}`, filtering for errors
-2. Analyze each error:
-   - **Error relates to code created/modified in the current phase** → fix it inline using the same execution mode logic as Step 3.2 (default: inline; develop-agent only for true parallel/deep-dive)
-   - **Error relates to code planned in a future phase** (check remaining tasks in the manifest's `## Checklist`) → skip, note in progress report: `"Known error: {description} — will be resolved in Phase {N}, task {N.M}"`
-   - **Error is pre-existing and unrelated to the current feature** → skip, do not touch
-3. After fixing, re-read the console log to verify fixes didn't introduce new errors
-4. Repeat the check→fix cycle until no errors from the current phase remain
+**Prerequisite:** `.unikit/system/engine-bridges/BRIDGES.md` lists at least one bridge. None — skip this step entirely and proceed to 3.7. Otherwise follow `{{skills_dir}}/{{self_name}}/references/console-check.md`.
 
 **Do NOT proceed to commit (3.9) with compilation errors that belong to the current phase.** Future-phase errors are acceptable.
 
@@ -493,7 +485,7 @@ After completing a phase, check whether the implementation introduced structural
 
 - **If the tech stack changed** (new dependencies, integrations, or tools added) → update `.unikit/DESCRIPTION.md` with factual deltas only. Do not rewrite — add or modify the relevant section.
 - **If new modules, directories, or layers were added** → update `AGENTS.md` — refresh the project structure tree and key entry points table to reflect new directories/files.
-- **If new modules or dependency rules changed** → update `.unikit/ARCHITECTURE.md` — add new modules to the folder structure section and update dependency constraints if needed.
+- **If new modules, directories or layers were added, a dependency rule changed, or a contract or channel between modules was added** → update `.unikit/ARCHITECTURE.md` with one table row or one list line per fact: in the topic file whose `Load when` matches the area of the change, else in the root section that fits the kind (`Folder Structure`, `Dependency Rules`, `Cross-Module Communication`); when unsure, the root. Never a paragraph, a new topic or a moved block. A decision (principle, anti-pattern, pattern choice) or an explanation of how a mechanism works is not a delta: print `INFO [architecture] update suggested: <one line>` and leave the file.
 
 Skip this step if the phase only modified existing files without structural changes.
 
@@ -560,6 +552,8 @@ Completed:
 Manual (editor targets):
 - Task {N.M}: {[kind] container → target : action}
 ...
+
+Bridges used: {ids, in the order used}   (only when a task went by `engine-bridge`)
 
 Awaiting results:
 - Task {N.M} — {instruction}
@@ -651,18 +645,18 @@ Yes → delete `.unikit/code/PLAN.md`; No → leave it.
 
 **If using a folder plan** (`.unikit/code/plans/<folder>/`): keep it. **Never offer to delete `.unikit/code/plans/<folder>/PLAN.md`.** A finished folder plan leaves the active list only through `/unikit-archive`, which Step 5.8 names (not for a balance plan).
 
-**5.5: MCP Findings handoff**
+**5.5: Engine Bridge Findings handoff**
 
-Read the plan's `## MCP Findings` table.
+Read the plan's `## Engine Bridge Findings` table.
 
 - **No rows** (or no such heading) → say nothing at all — not even a "no findings this run" line — and go to 5.6.
 - **Rows present** → offer to move them to the durable surface:
 
 ```
-<n> MCP findings recorded in this plan. Transfer them to .unikit/MCP-RECHECK-NOTES.md?
+<n> MCP findings recorded in this plan. Transfer them to the notes of their bridge (.unikit/bridge-notes/)?
 ```
 
-  On agreement, invoke `unikit-mcp-trap` with the argument `<path to the plan file>` — the explicit path makes it read this plan and nothing else.
+  On agreement, invoke `unikit-bridge-trap` with the argument `<path to the plan file>` — the explicit path makes it read this plan and nothing else.
 
 **5.6: Verify or Commit**
 

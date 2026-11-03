@@ -139,7 +139,7 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsMcp: true,
     supportsSubagents: true,
     skillsCliAgent: 'kimi-code-cli',
-    subagentProfile: { readerType: 'explore', workerType: 'coder', modelDefault: 'inherit', modelArg: '', effortArg: '', skillCall: DEFAULT_SKILL_CALL_FORM, spawnArgs: '' },
+    subagentProfile: { readerType: 'explore', workerType: 'coder', modelDefault: 'inherit', modelArg: 'model', effortArg: '', skillCall: DEFAULT_SKILL_CALL_FORM, spawnArgs: '' },
   },
   // For runtimes UniKit does not name. Skills go to the shared `.agents/skills` — Antigravity's
   // directory too, which is why the two are never selected together (core/agent-skills-dir.ts) —
@@ -173,4 +173,14 @@ export function getAgentChoices(): { name: string; value: string }[] {
     name: `${agent.displayName} (${agent.configDir}/)`,
     value: agent.id,
   }));
+}
+
+/** The project-relative MCP settings files of the given agents, each once, in the order of the agents; an unknown id or an agent without MCP is skipped. */
+export function mcpSettingsFiles(agentIds: string[]): string[] {
+  const files: string[] = [];
+  for (const id of agentIds) {
+    const agent = AGENT_REGISTRY[id];
+    if (agent?.supportsMcp && agent.settingsFile && !files.includes(agent.settingsFile)) files.push(agent.settingsFile);
+  }
+  return files;
 }

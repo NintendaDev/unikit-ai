@@ -31,6 +31,8 @@ The knowledge base is **modular** - partitioned into top-level **modules**, each
 | Bootstrap installs | `core` only | the whole catalog (`core` + `library`) |
 | CLI scope | `--module code` (the default only for `rules install <id>…`; `rules list` and `rules status` cover every module by default, `rules show` searches all of them) | `--module gamedesign` |
 
+Selected MCP / bridge rules are the `code/stack` exception: automatic `init` installation and accepted active-provider sync resolve a **complete bundle per id**, trying primary → official → bundled. Other code rules retain module-winner resolution, and gamedesign keeps its existing merge policy. Choices and lifecycle are described in [Configuration](configuration.md#bridge-order-routing-and-the-rule-of-a-bridge).
+
 Below, "`code` module rules" and "`gamedesign` module rules" break out what each module actually stores. The Bootstrap load sequence ([Dynamic Loading](#dynamic-loading)) and the `RULES.md` staging stages ([Rule Lifecycle](#rule-lifecycle)) are written from the `code` pipeline skills' point of view, since every project installs `code` and those mechanics are easiest to show concretely - but they apply to `gamedesign` identically wherever noted inline, just scoped with `--module gamedesign` and rooted at `.unikit/memory/gamedesign/`. For the full write-up of what each `gamedesign` core rule actually teaches, see [Game-Design Module](gamedesign.md#domain-knowledge-rules).
 
 ### The module registry
@@ -118,7 +120,7 @@ Ships empty. Recurring review/verify conflicts, or house design conventions, lan
 
 ### RULES_INDEX.md
 
-A compact auto-generated index that tells pipeline skills (and `/unikit-devcontext` in standalone mode) when to load each stack rule. **Each module keeps its own index** - `.unikit/memory/code/RULES_INDEX.md` for the `code` module, `.unikit/memory/gamedesign/RULES_INDEX.md` for `gamedesign` - there is no single shared file across modules:
+A compact auto-generated index that tells pipeline skills (and `/unikit-execute`, which works with no plan) when to load each stack rule. **Each module keeps its own index** - `.unikit/memory/code/RULES_INDEX.md` for the `code` module, `.unikit/memory/gamedesign/RULES_INDEX.md` for `gamedesign` - there is no single shared file across modules:
 
 ```markdown
 ## Stack (`.unikit/memory/code/stack/`)
@@ -132,13 +134,13 @@ A compact auto-generated index that tells pipeline skills (and `/unikit-devconte
 
 The column scheme is module-specific: the `code` module's `core` table carries a **Required By** column (which pipeline skills need that rule loaded - see `data/rules-manifest.json`), because its core rules are mandatory-gated. The `gamedesign` module's `core` table carries an **Origin** column instead (`primary` / `official` / `bundled`), because its core tier resolves per rule id (see the `per-id-merge` row above) and there is no mandatory-gate concept there. Non-core tiers (`stack`, `library`) never carry an extra column - they're load-on-demand either way.
 
-Generated automatically by `unikit-ai update`, `unikit-ai rules sync`, `unikit-ai rules install` (every invocation, both the `defaults` bootstrap and the variadic id form), and `/unikit-memory`. `unikit-ai init` does not create it - the first index appears when `/unikit` Step 9 runs `rules install defaults`. Never edit it manually.
+Generated automatically by `unikit-ai update`, `unikit-ai rules sync`, `unikit-ai rules install` (every invocation, both the `defaults` bootstrap and the variadic id form), and `/unikit-memory`. `unikit-ai init` also rebuilds the code index when optional provider-rule state changes; other starter rules arrive through `/unikit` Step 9. Never edit it manually.
 
 ## Dynamic Loading
 
 ### How Workflow Skills Load Rules
 
-Pipeline skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-improve`) Bootstrap the knowledge base once at the start of execution and implement tasks inline against the loaded rules. `/unikit-devcontext` remains available as a standalone skill for one-off work outside a plan.
+Pipeline skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-improve`) Bootstrap the knowledge base once at the start of execution and implement tasks inline against the loaded rules. `/unikit-execute` runs the same Bootstrap for one task with no plan.
 
 ```
 ┌──────────────────────────────────────────────┐
@@ -147,7 +149,7 @@ Pipeline skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-
 │  Step 1.5 Bootstrap:                         │
 │  1. Read dev-principles.md, above the        │  ← .unikit/system/ (every Bootstrap)
 │     LAZY-READ BOUNDARY                       │
-│  2. Read the engine-MCP rules tree + notes   │  ← .unikit/system/engine-mcp/ + .unikit/
+│  2. Read the engine-bridge rules + notes     │  ← .unikit/system/engine-bridges/ + .unikit/bridge-notes/
 │  3. Read RULES.md — the root only            │  ← project overrides (## Common + the topic table)
 │  4. Read RULES_INDEX.md                      │
 │  5. Read core rules                          │  ← .unikit/memory/code/core/ (always)
@@ -163,11 +165,11 @@ Pipeline skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-
 └──────────────────────────────────────────────┘
 ```
 
-Step 1 in detail — `dev-principles.md` is **not** read whole on every Bootstrap. A `<!-- === LAZY-READ BOUNDARY === -->` marker splits it, and the pipeline skills read the file only up to the marker's line (a line-limited read). Everything **above** it is read every time (the evidence contract, the nine failure-class *names*, the discipline rules, phase order, engine workflow, code conventions). Everything **below** it — the deep reference: per-class detectors, the catalog checklist, the degradation ladder, the group-call and read-economy section, derived handles, and the three editor procedures (D6 carrying out an editor change, D7 recording a misleading call as a finding, D8 the library reference) — is read **once per session**: at plan load when the plan carries an `Editor:` task, and otherwise at the first task that touches editor state (`/unikit-verify` also before its first `GATE LIFTED` verdict). It is read unconditionally, never gated on which rules happen to be installed, because otherwise the universal safety net would disappear exactly where no rules exist. A run whose plan has no `Editor:` task pays for the deep half only if it reaches editor state anyway.
+Step 1 in detail — `dev-principles.md` is **not** read whole on every Bootstrap. A `<!-- === LAZY-READ BOUNDARY === -->` marker splits it, and the pipeline skills read the file only up to the marker's line (a line-limited read). Everything **above** it is read every time (the evidence contract, the nine failure-class *names*, the discipline rules, phase order, engine workflow, code conventions). Everything **below** it — the deep reference: per-class detectors, the catalog checklist, the route ladder, the group-call and read-economy section, derived handles, and the three editor procedures (D6 carrying out an editor change, D7 recording a misleading call as a finding, D8 the library reference) — is read **once per session**: at plan load when the plan carries an `Editor:` task, and otherwise at the first task that touches editor state (`/unikit-verify` also before its first `GATE LIFTED` verdict). It is read unconditionally, never gated on which rules happen to be installed, because otherwise the universal safety net would disappear exactly where no rules exist. A run whose plan has no `Editor:` task pays for the deep half only if it reaches editor state anyway.
 
-Step 2 in detail — the engine-MCP rules tree holds **exceptions** for the one server this project is configured against, not capabilities and not knowledge-base rules. At Bootstrap a skill reads the **base section** of `.unikit/system/engine-mcp/INDEX.md` (everything except its `## Check` table) plus the **header** of `.unikit/MCP-RECHECK-NOTES.md`, and compares the two: a mismatch is one `WARN` and the entries still apply, because they are suspect rather than void. The `## Check` table is *not* read here — it is grepped per editor task, by that task's area plus the cross-cutting ones. `/unikit-verify` additionally reads `.unikit/system/engine-mcp/verification.md`, and no other skill does.
+Step 2 in detail — the engine-bridge rules trees hold **exceptions** for the bridges this project uses, not capabilities and not knowledge-base rules. At Bootstrap a skill reads `.unikit/system/engine-bridges/BRIDGES.md` (which bridges the project has), then for each bridge the **base section** of its `INDEX.md` (everything except its `## Check` table) plus the **header** of its notes, `.unikit/bridge-notes/<bridge>.md`, and compares the two: a mismatch is one `WARN` and the entries still apply, because they are suspect rather than void. The `## Check` table is *not* read here — it is grepped per editor task, by that task's area plus the cross-cutting ones. `/unikit-verify` additionally reads `.unikit/system/engine-bridges/<bridge>/verification.md`, and no other skill does.
 
-A missing file is skipped with one printed line, and that is a supported state: no rules means no known exceptions, never fewer rights. See [configuration.md](configuration.md#engine-mcp-rules-tree).
+A missing file is skipped with one printed line, and that is a supported state: no rules means no known exceptions, never fewer rights. See [configuration.md](configuration.md#engine-bridge-rules-trees).
 
 Steps 6-7 in detail:
 - Examines phase name and task descriptions - files involved, frameworks referenced
@@ -180,13 +182,13 @@ Steps 6-7 in detail:
 - `unitask.md` (loaded now)
 - But NOT `aspid-mvvm.md`, `r3.md`, `odin.md`, etc.
 
-`/unikit-devcontext` is a **standalone skill** for one-off file-level work without a plan: a quick review, a single refactor, or answering an architecture question. Pipeline skills no longer delegate every task to it:
+`/unikit-execute` is the skill for **one task with no plan**: a small feature, a refactor, an editor change. It loads the same knowledge base once, builds a task card from your text and carries it out; a pure question is answered in a few lines and the run stops (for a discussion use `/unikit-explore`). Pipeline skills no longer delegate every task to it:
 
 - **`/unikit-implement`** - Bootstraps rules once, then writes each task inline
 - **`/unikit-fix`** - Bootstraps rules in Step 0.2, then applies the fix inline
 - **`/unikit-verify`** - Bootstraps rules in Step 0.2, then applies fixes from Step 4.3 inline
 
-Calling `/unikit-devcontext` directly is still the right move for ad-hoc work, but it does not create patches or track memory improvements.
+Calling `/unikit-execute` directly is still the right move for ad-hoc work, but it does not create patches or track memory improvements.
 
 ### Parallel Execution via the `develop-agent` alias
 
@@ -197,7 +199,7 @@ Workflow skills expose a named delegation alias - `develop-agent` - that expands
 │  /unikit-implement · Phase 3  │    │  /unikit-implement · Phase 4  │
 │  (main context · Bootstrap)   │    │  (main context · Bootstrap)   │
 │                               │    │                               │
-│  Agent(develop-agent) ────────┼───►│  reads unikit-devcontext      │
+│  Agent(develop-agent) ────────┼───►│  reads unikit-execute         │
 │  → Phase 4 runs in parallel   │    │  (loads its own knowledge base)│
 └───────────────────────────────┘    └───────────────────────────────┘
 ```
@@ -300,9 +302,9 @@ One rule per line, one directive per rule. When this file has a `## Topics` tabl
 
 - **No fixed set of topics.** The agent names the topics and writes each `Load when` in the words your tasks use. When it is unsure, a rule stays common: a common rule costs tokens, while a rule in a topic that did not load is silently not applied.
 - **Loading works like stack rules.** Skills that work in phases (`/unikit-plan`, `/unikit-implement`, the implement worker and coordinator) read only the root at Bootstrap and load the matching topic files at the start of each phase, as a delta. `/unikit-verify` and `/unikit-review` always read the root and load the topics that match the changed files; other skills load the topics that match their work. The protocol is written once, in `RULES_INDEX.md` → Step 1, which `unikit-ai update` regenerates.
-- **Priority.** The root and its topic files are one override level, above `ARCHITECTURE.md` and the knowledge base. Inside a topic's area, a topic rule wins over a common rule it contradicts.
+- **Priority.** The root and its topic files are one override level, above `ARCHITECTURE.md` (and its topic files) and the knowledge base. Inside a topic's area, a topic rule wins over a common rule it contradicts.
 - **Old projects keep working.** A `RULES.md` without the table is read whole, exactly as before. When `/unikit-rules` meets such a file and finds rules worth splitting, it offers the reorganization after its report: **Apply**, **Keep the flat format** (a `<!-- unikit:rules-layout flat -->` marker is written and the offer never returns), or **Not now**. `/unikit-rules compact` makes the same offer first.
-- **`/unikit-rules optimise`** runs the reorganization on request - also on a file you once kept flat, and to regroup existing topics. It previews where every rule goes, checks that no rule is lost, and deletes none.
+- **`/unikit-rules optimise`** runs the reorganization on request - also on a file you once kept flat, and to regroup existing topics. It previews where every rule goes, checks that no rule is lost, and deletes none. Each of the three maintenance modes (`compact`, `optimise`, `prune`) is also started by a request in plain words ("split the rules into topics", "shorten RULES.md"); the keyword stays the exact form. A directive about the code that merely contains such a word is still a rule.
 - **`/unikit-rules prune`** lists rules that can go - duplicates, rules the knowledge base already covers, lines that are not rules, references to things that no longer exist - each with its evidence; **Delete everything proposed** removes them in one answer, **Choose by id** only the ids you type. Rules that contradict each other are resolved rather than deleted, in their own question: keep the side that is right, or merge the two into one corrected rule. A rule that is only partly outdated is never deleted - it is listed for you to fix.
 
 ### Stage 2: Auto-extraction from Patches
@@ -377,9 +379,51 @@ The same migration runs for the `gamedesign` module (`/unikit-memory migrate-rul
                            └──────────────────┘
 ```
 
+## Architecture topics
+
+`.unikit/ARCHITECTURE.md` grows the same way `RULES.md` does, and a file read whole at every Bootstrap and in every sub-agent prompt gets expensive. `/unikit-architecture` can therefore split it like the rules: the **root** keeps what every task needs - the module map, the global dependency rules, the common patterns - and **topic files** in `.unikit/architecture/` keep one area each, listed by a `## Topics` table in the root:
+
+```markdown
+# Architecture: Layered Architecture
+
+> This file is the root: when it has a `## Topics` table, its sections apply to every task, and a topic file in `.unikit/architecture/` applies when the work matches its "Load when" — check again when the work moves to a new phase or area, and when unsure, load it.
+
+## Project
+## Tech Stack
+...
+
+## Topics
+
+| Topic | Load when |
+|-------|-----------|
+| [Save system](architecture/save-system.md) | saving and loading, save data, save migrations |
+| [Rendering](architecture/rendering.md) | render passes, the `Render/` folder |
+
+## Detailed Rules
+```
+
+- **Cut by area, not by kind of text.** A topic holds everything one area needs - its edges and prohibitions, its contracts, the narrative of its mechanisms - because a task names an area. A prohibition that touches more than one area stays in the root; when unsure, the root. The section names of the template (`Tech Stack`, `Folder Structure`, `Dependency Rules`) stay in the root, so tools that read them by name keep working.
+- **No fixed set of topics.** The agent names the topics and writes each `Load when` in the words your tasks use. The documents are always English, like the rest of the architecture documentation.
+- **Reading follows the kind of work.** The protocol is written once, in `RULES_INDEX.md` → Step 1, and each reader carries a short clause of its own:
+
+  | Reader | The root | The topic files |
+  |--------|----------|-----------------|
+  | `/unikit-plan`, `/unikit-implement`, `/unikit-execute`, the implement worker and coordinator, the plan polisher | at Bootstrap | at the start of each phase (per task in `/unikit-execute`), as a delta; the sub-agents of the planner get the paths, not "read the file" |
+  | `/unikit-verify`, `/unikit-review`, `/unikit-commit`, `/unikit-fix`, the two sidecars, the `+check` validator | always | those whose `Load when` matches a changed file |
+  | `/unikit-improve` | at Bootstrap | by the phases of the plan under review |
+  | `/unikit-explore`, `/unikit-gd-review` | always | by the subject of the work; more when the work moves to another area |
+  | `/unikit-docs` | always | all of them |
+  | `/unikit-roadmap`, the scope of a commit | always | none |
+
+- **Writing has one owner for structure.** After a phase `/unikit-implement` and `/unikit-execute` add a delta as one table row or one list line in an existing place - the topic whose `Load when` matches, else the fitting root section. A decision or an explanation of a mechanism is only suggested (`INFO [architecture] update suggested`). A new topic, a moved block or a split comes only from `/unikit-architecture`.
+- **Three modes, by keyword or in plain words.** `generate` (no file yet), `update [text]` (rescan and add what is missing - nothing already written is removed; the text after `update` is a block to record word for word, which is how `/unikit-rules prune` hands over a line describing how the code is built) and `optimise` (split into a root and topics). A request such as "the architecture file is too big" or "record: module A does not depend on B" picks the mode too; the keyword stays the exact form.
+- **Old projects keep working.** A file without the table is read whole, exactly as before. After an `update` report on such a file the skill offers the layout when it found topics: **Apply**, **Keep the flat format** (a `<!-- unikit:architecture-layout flat -->` marker is written and the offer never returns), or **Not now**.
+- **`/unikit-architecture optimise`** reorganizes on request - also on a file you once kept flat, and to regroup existing topics. It previews the layout as an outline, checks that every block lands exactly once and word for word, and deletes none; a bundled Node script does the counting and the move.
+- **Growth is noticed, not forced.** `/unikit-verify` suggests `optimise` when a root with neither table nor marker passes 300 lines, a topic passes 300 lines, or the table and the files disagree. It never writes.
+
 ## See Also
 
-- [Skills Reference](skills.md) - full reference for pipeline skills, the standalone `/unikit-devcontext`, and delegation aliases
+- [Skills Reference](skills.md) - full reference for pipeline skills, the plan-free task skill `/unikit-execute`, and delegation aliases
 - [Game-Design Module](gamedesign.md) - the `gamedesign` module's domain-knowledge rules and its own pipeline
 - [Memory & Skill Evolution](evolve.md) - detailed evolve workflow and stale rule cleanup
 - [Rules Registry](rules-registry.md) - the registry chain, schema, CLI commands, and `.unikit.json` state fields

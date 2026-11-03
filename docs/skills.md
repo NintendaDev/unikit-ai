@@ -34,9 +34,11 @@ Scans your game project and sets up AI context:
 - Scans the real tech stack from **engine-specific** sources - the scan list is not hardcoded, it comes from the installed `references/ENGINE_RULES.md` (package manifest, plugin directories, third-party asset folders, project settings). Your own project code is deliberately excluded: on Unity, `Assets/Modules/*/` is *not* treated as a framework
 - Bootstraps `.unikit/config.yaml` - the user-editable source of truth for language, git, and workflow
 - **Also actualizes an existing config.** On a project that is already set up, ask to "update the config", "add missing settings" or "fix my config" and Step 0 dispatches to a config actualization mode instead of bootstrapping: it compares the file against the current template, appends template literals silently, asks about placeholders and out-of-domain values, reports keys it does not recognise without deleting them, and never touches `language.rules` / `language.technical_terms`. Steps 1-11 do not run - see [Configuration](configuration.md#how-new-keys-reach-an-existing-project)
+- **Offers a menu on a project that is already set up.** When `.unikit/config.yaml` exists and your request does not ask for the config update, Step 0 opens a returning-project menu instead of repeating the setup: it prints what the project looks like and offers the actions that fit - update the config, check the bridges' environment, create rules for new frameworks, refresh the description - and runs only the one you pick. The full bootstrap is the last of them. See [Configuration](configuration.md#how-new-keys-reach-an-existing-project)
 - Generates `.unikit/DESCRIPTION.md` (project specification) and `AGENTS.md`
 - Bootstraps the knowledge base under `.unikit/memory/` via the rules registry - the `code` module always, plus the `gamedesign` design library when its skills are installed
 - Invokes `/unikit-architecture` for architecture guidelines
+- At the end of setup checks the engine bridges - for the Unity CLI whether it is installed and the Pipeline package is in the project - and offers `unity pipeline install` only after you confirm.
 - **Does NOT implement** - only sets up context
 
 ### `/unikit-architecture` - architecture analysis
@@ -48,6 +50,8 @@ Generates architecture guidelines:
 - Reads `.unikit/DESCRIPTION.md` for project context
 - Analyzes folder structure, assembly definitions, dependency patterns
 - Generates `.unikit/ARCHITECTURE.md` with folder structure, dependency rules, communication patterns
+- Three modes, chosen by a keyword or by what you ask in plain words: `generate` (no file yet), `update [text]` (rescan and add what is missing; nothing already written is removed, and a fact you name is recorded word for word) and `optimise` (split a large file into a root and topic files in `.unikit/architecture/`, with a preview first and nothing deleted). No mode named: an empty file is generated, a file with content is updated
+- Topic files load only when the work matches their `Load when` - see [Architecture topics](dynamic-memory.md#architecture-topics)
 - Called automatically by `/unikit` during setup, but can also be used standalone
 
 ---
@@ -65,7 +69,7 @@ These skills form the core development loop. See [Development Workflow](workflow
 /unikit-explore ultra save-system trade-offs              # Adds adaptive artifacts and a log written as you talk
 ```
 - Thinking-partner mode for exploring ideas, constraints, and trade-offs without implementing code
-- Reads project context (DESCRIPTION.md, ARCHITECTURE.md, RULES.md) and the knowledge base
+- Reads project context (DESCRIPTION.md, the ARCHITECTURE.md root and its topic files that match the subject, RULES.md) and the knowledge base
 - Saves results to `.unikit/code/researches/<slug>/` with `RESEARCH.md` (the manifest — header, `## Active Summary` between markers, `## Findings`, an append-only `## Sessions`), plus `SOURCE.md` for prompt-based explorations — a **verbatim** log, where your answers are quoted rather than summarised, written when you agree to save (in ultra: as the conversation happens) — and adaptive artifacts in ultra
 - An ordinary exploration writes nothing to disk until you agree to save: you can just talk, and a conversation you never save leaves no trace. Saving writes the log first, then the manifest, the registry and the gate. In **ultra** the log is written as the conversation happens, so the research folder appears on disk **before** you are asked to save, from the moment the conversation has become a research: a requirement was stated, a decision was taken, you corrected the agent. A one-off question leaves nothing behind there either. Writing the log is not saving the research — no manifest, no registry, no coherence gate — and the research is still saved only when you agree to it
 - A folder holding a `SOURCE.md` and no manifest is an **unfinished** research: an ultra session that ended before it was saved, or a save that stopped after the log. It stays out of `researches/INDEX.md`, is announced there by name, and is resumed with `/unikit-explore <folder>`
@@ -97,6 +101,8 @@ Four modes:
 - **Add** - extends an existing plan with new tasks (never creates a branch)
 
 Fast, Full and Ultra modes explore your codebase for patterns, create dependency-ordered tasks with effort estimates and file paths. Includes commit checkpoints for 5+ tasks. Generates one `PLAN.md` manifest carrying both the checklist and `## Technical Context`. Ultra additionally splits the plan into one file per phase, each satisfying a Required Detail Gate, so a smaller model can execute what a stronger one planned; its manifest also carries an optional `## Architecture and Decisions` for decisions that bind two or more phases. Add mode extends an existing plan in place: it explores the codebase only when the change needs it, and refuses an ultra bundle (use `/unikit-improve` for that).
+
+Step 4.6 asks its two questions of the **union** of the catalogs of every selected bridge; a bridge that could not be read makes the answer "unknown", never "no".
 
 - **Modules** - full and ultra plans are always sliced into modules the base branch can take whole, listed under `## Modules` when there are two or more (or one longer than four phases, with a `why long:` note); a module boundary is a layer barrier, and a commit range never crosses one. With `git.pull_requests.checkpoints: true` every module but the last ends with a **PR checkpoint task**. The manifest records `Planned at:`, the commit the plan's work starts from
 - **Two ultra writing protocols** - standard by default, or with saved state in the plan folder's `.planning/` (chosen by the first ultra question; a standard plan over 12 phases is offered the switch); saved state survives a compaction and resumes with `/unikit-plan ultra <name>`
@@ -172,6 +178,7 @@ Fast, Full and Ultra modes explore your codebase for patterns, create dependency
 /unikit-verify Phases 3-5                # Check one module: its tasks and its range only
 ```
 - Goes through every task in the plan and verifies the code actually implements it
+- An engine gate is lifted only after it was tried on every available bridge, in the order the project sets; a bridge that is not available is named in a line
 - Checks build, the test run the plan recorded (it starts no test run itself; `--strict` asks to run the full suite when the record no longer matches the code), leftover TODOs, plan-vs-code drift
 - Context gates: checks architecture/rules alignment
 - If gaps found, suggests `/unikit-fix <issue summary>`
@@ -213,22 +220,31 @@ Creates conventional commits with engine-aware checks:
 - Merges only with a merge commit, and only when merging brings nothing from the base branch, GitHub says the PR can be merged, and you confirm; the test state is shown before the question, never a condition. Otherwise the PR stays open with the reason named
 - Never merges the base branch into yours, never resolves conflicts, never force-pushes, never writes into a plan
 
-### `/unikit-archive [list | --all | <plan-folder>]` - move finished plans out of the active list
+### `/unikit-archive [plans | researches [<slug> | --all | restore [<slug>]] | list | --all | <plan-folder>]` - move finished plans and researches out of the active list
 
 ```
 /unikit-archive
+/unikit-archive plans
+/unikit-archive researches
+/unikit-archive researches customer-items-on-scene
+/unikit-archive researches --all
+/unikit-archive researches restore
 /unikit-archive list
 /unikit-archive --all
 /unikit-archive inventory-system
 ```
-Moves a completed folder plan from `.unikit/code/plans/<folder>/` to `.unikit/code/archive/plans/<folder>/`:
+Moves a completed folder plan from `.unikit/code/plans/<folder>/` to `.unikit/code/archive/plans/<folder>/`, and a code research from `.unikit/code/researches/<slug>/` to `.unikit/code/archive/researches/<slug>/`:
+- With no arguments it first asks what to archive - plans, researches or both; an item with nothing to move is not offered, and `plans` or `researches` skips the question. When you choose both, the plans are done first
 - Says in a sentence what it is about to do before reading anything, starts every step with one short line about what it is doing right now, then shows every plan with its verdict, its **created** date (the manifest's `Created:` line, the folder's date prefix, or the commit that added it) and its **last change** (the last commit touching the folder, or the file date when there are uncommitted changes) - oldest change first
 - A completed plan - every checklist task `[x]` - is the default choice. An unfinished plan moves only when you pick it - by its number or by a date rule such as "created on or before 2026-09-14" - and confirm after seeing its open tasks; its manifest then says `Archived: <date> — unfinished (<done>/<total>)`, so `/unikit-plan` and `/unikit-explore` never take it for finished work. `--all` takes completed plans only, and a plan with no tasks is never archived
-- Nothing else blocks a finished plan. MCP findings never transferred to `.unikit/MCP-RECHECK-NOTES.md` and rule candidates still `open` are shown, and the skill asks whether to handle them first (`/unikit-mcp-trap`, `/unikit-verify`) or archive anyway
+- Nothing else blocks a finished plan. Engine bridge findings never transferred to `.unikit/bridge-notes/` and rule candidates still `open` are shown, and the skill asks whether to handle them first (`/unikit-bridge-trap`, `/unikit-verify`) or archive anyway
 - Uses `git mv` when the folder is tracked by git and plain `mv` otherwise; the folder name never changes, and the manifest gains one `Archived:` line
 - Never deletes, overwrites or commits - commit the move with `/unikit-commit`
-- The fast plan `.unikit/code/PLAN.md`, `.unikit/code/FIX_PLAN.md`, researches and patches are never archived
+- The fast plan `.unikit/code/PLAN.md`, `.unikit/code/FIX_PLAN.md`, patches and game-design researches (`.unikit/gamedesign/researches/`) are never archived; code researches are, by `researches`
 - Plan lookup, `--list` and the "latest plan" choice stop offering an archived plan; `/unikit-plan` still reads archived plans for the `implemented_version` fallback and will not give a new plan an archived plan's name, and `/unikit-explore` reads them as the history of how a feature was built
+- Researches: every research that no unfinished plan links is shown with its `Status`, `Lifecycle` and last `Updated` - oldest first. The ones an unfinished plan links are named in a line under the table and come back as soon as that plan is finished or archived. **All** takes the `completed` and `superseded` ones (`researches --all` takes the same set after one confirmation); an `in-progress`, `needs-follow-up` or `paused` research is picked by its number or by a date rule. `researches <slug>` archives one research, and asks first when an unfinished plan still links it
+- A research moves whole (`git mv` when tracked, `mv` otherwise), its `RESEARCH.md` gains an `Archived:` line under `Updated:`, and `researches/INDEX.md` is re-rendered once at the end, so `/unikit-plan` stops offering it. The Active Summary is not touched, so every plan's recorded `Summary SHA256` still matches. `researches restore [<slug>]` brings a research back and removes the line
+- A plan that links an archived research keeps working: the `## Based on` entry is a folder name, and `/unikit-implement`, `/unikit-verify` and `/unikit-improve` look in `researches/` first and in `archive/researches/` second, with an `INFO [research]` line and no drift warning. `/unikit-explore` never takes the slug of an archived research - it asks for another name, or points to `researches restore`
 
 ### `/unikit-evolve` - learn project rules from past fixes
 
@@ -278,13 +294,24 @@ Reviews code against the project's rule hierarchy. Four modes:
 
 ## Development Skills
 
-### `/unikit-devcontext` - standalone development skill
+### `/unikit-execute <task> [--docs=yes|no|warn] [--editor=engine-bridge|manual|direct]` - one task, no plan
 
-A standalone skill for writing, reviewing, or refactoring a single file or fragment without a plan:
-- Senior engine/language developer persona with full knowledge base access
-- Loads `dev-principles.md`, `RULES.md`, core rules from `RULES_INDEX.md`, and stack rules on demand
-- Used when working outside a pipeline (for example, a one-off file edit)
-- Pipeline skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`) no longer delegate every task here - they Bootstrap the same rules once and implement inline. Use `/unikit-devcontext` when you have no plan, or spawn it through the `develop-agent` alias for true parallel scopes or deep-dive single tasks
+```
+/unikit-execute add a pause button to the main menu and wire it to the pause controller
+/unikit-execute move the save-version check into its own class, with tests
+/unikit-execute register the two collision layers the new enemy needs --editor=manual
+```
+
+`/unikit-implement` without a plan: it carries out **one small task from a description**, the way `/unikit-implement` carries out a plan task, and it reads, creates and ticks no plan file. An existing `.unikit/code/PLAN.md`, `.unikit/code/FIX_PLAN.md` or the plan folder of the current branch is named in one `WARN [execute]` line and otherwise ignored.
+
+- **Bootstraps once** - `dev-principles.md` above its lazy-read boundary, `RULES.md`, the core rules, `BRIDGES.md`, the base part of each bridge's `INDEX.md`, the bridge order from `.unikit/bridges.yaml` and the routing rules from `.unikit/bridge-routing.md` when it exists, and `.unikit/skill-context/unikit-execute/SKILL.md`
+- **Reads the text into a card** and prints it once: the class (`question`, `code`, `editor` or `mixed`), the files to write, and one `Editor: [kind] <container> → <target> : <action>` line per editor change - the planner's own grammar, so the same procedures run as for a plan task. The kinds and the "serialized state" boundary come from the development principles, the engine's part from the `ENGINE_RULES.md` that `unikit-plan` installs. A pure question is answered in a few lines and the run stops
+- **Works in the order** code → compilation (the console read through the first bridge that can) → editor changes through the bridges in your order (live catalog, schema, check lines, read-back) → read-back. The mode is `engine-bridge` when `BRIDGES.md` lists a bridge and `manual` otherwise; `direct` only with `--editor=direct` or plain words asking for it, and only behind a rollback point
+- **Ends** with one report (changed files, editor lines with the bridge and the value read back, manual targets, compilation, tests, findings) and one question: review first (`/unikit-review`, then `/unikit-commit`) or commit now. It stages only the files of the run
+- Writes tests only when you ask or the project plainly requires them, and updates `DESCRIPTION.md`, `ARCHITECTURE.md`, `AGENTS.md` and `TODO.md` only for what the change touched (in `ARCHITECTURE.md` as one table row or list line in the matching topic file or root section - a decision is only suggested, a new topic comes from `/unikit-architecture`); documentation follows `--docs` (default: one `WARN [docs]` line, no checkpoint)
+- It is also the target of the `develop-agent` alias of `/unikit-implement`, `/unikit-fix` and `/unikit-verify` (true parallel scopes or deep-dive single tasks) and is preloaded into `unikit-implement-worker`. A call whose arguments start with `Delegated hand-off:` is the **delegate mode**: nothing is asked, the start and the end of the flow belong to the caller, and the reply is the report
+
+Not for a bug (`/unikit-fix`), not for carrying out an existing plan (`/unikit-implement`), not for a multi-step feature (`/unikit-plan`), not for a discussion (`/unikit-explore`). Pipeline skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`) Bootstrap the same rules once and implement inline - they do not hand every task to this skill.
 
 ---
 
@@ -334,6 +361,7 @@ Also accepts a **numbered batch** - a prompt whose lines start `1. `, `2. `, …
 - **`compact`** — `/unikit-rules compact` retro-fits an existing file: it shortens what reduces, keeps what does not, and flattens away the old sections — file by file, never touching `## Topics` or `## Common`. Non-destructive and confirmed first — no rule is ever deleted, and the order you chose is preserved
 - **`optimise`** — `/unikit-rules optimise` (or `optimize`) moves rules into topics or regroups existing ones: a preview first, the rule count checked, nothing deleted. The agent only decides where each rule goes; reading, counting and moving the rules word for word is done by a bundled Node script (`skills/unikit-rules/scripts/rules-layout.mjs`), which refuses to write anything if a single rule would be lost, doubled or changed. Text it does not recognise - a paragraph, a table, a line added to the old header - is shown to the agent to place, never dropped
 - **`prune`** — `/unikit-rules prune` lists deletion candidates (duplicate, covered by the knowledge base, not a rule, conflict, stale reference) with evidence. One answer, **Delete everything proposed**, removes them all; **Choose by id** takes the ids you type. Two rules that contradict each other are not deleted but **resolved**, in a separate question: the skill works out which is right and proposes to keep one side or to merge both into one corrected rule. A rule that is only partly outdated is never deleted - it is listed for you to fix
+- **By keyword or in plain words:** each mode is also started by a request in plain words ("shorten RULES.md", "split the rules into topics", "clean up the rules"); the keyword stays the exact form. A directive about the code that merely contains such a word is still a rule, and a request whose kind is unclear ("tidy up the rules") is asked once, with `optimise` recommended
 - **Every mode says what it is doing:** before it reads anything, the skill says in a sentence which mode is on and what it is about to do; then each step starts with one short line about what is happening right now, such as `Read 180 rules from 4 files — grouping them into topics now`
 
 ### `/unikit-rules-registry` - external registry orchestrator
@@ -593,34 +621,53 @@ unikit-ai genres install <id|alias…>  # selectively install profile(s)
 - Add tasks (deduplicates, refines verbose descriptions), mark complete, view status
 - Also triggered by "remind me to...", "don't forget to...", "we need to..."
 
-### `/unikit-mcp-trap [finding | plan path]` - record an MCP finding
+### `/unikit-bridge-trap [finding | plan path]` - record an engine bridge finding
 
 ```
-/unikit-mcp-trap                                 # Harvest findings from the current session
-/unikit-mcp-trap the snapshot reported ready with zero files
-/unikit-mcp-trap .unikit/code/plans/rarity-ui/PLAN.md       # Take this plan's table, nothing else
+/unikit-bridge-trap                                 # Harvest findings from the current session
+/unikit-bridge-trap the snapshot reported ready with zero files
+/unikit-bridge-trap .unikit/code/plans/rarity-ui/PLAN.md       # Take this plan's table, nothing else
 ```
-- Writes `.unikit/MCP-RECHECK-NOTES.md` - the project's log of what has to be re-checked about the **engine MCP server it actually talks to**
-- Zero MCP calls, no editor required: a finding was already observed, and re-observing it could record the wrong thing
-- Three input forms. **A finding in one line** is recorded directly. **A path to a plan file** harvests that plan's `## MCP Findings` table and nothing else — the session is not consulted at all, which matters because the caller is usually the run that just produced those rows. **No argument** takes findings from the session first, then offers to scan the tables of plans touched since the last audit
+- Writes `.unikit/bridge-notes/<bridge>.md` - the project's log of what has to be re-checked about **each engine bridge it actually talks to**, one file per bridge. A plan row names its bridge in the `bridge` column; a row with `—` goes to the only MCP bridge, or you are asked which
+- Zero bridge calls, no editor required: a finding was already observed, and re-observing it could record the wrong thing
+- Three input forms. **A finding in one line** is recorded directly. **A path to a plan file** harvests that plan's `## Engine Bridge Findings` table and nothing else — the session is not consulted at all, which matters because the caller is usually the run that just produced those rows. **No argument** takes findings from the session first, then offers to scan the tables of plans touched since the last audit
 - Reads **the table only**, never the plan body: a window from the heading to the next `##`, with a 30-line cap that applies only to the multi-plan scan — and a table outgrowing it is announced, not truncated in silence
 - `/unikit-implement` offers the transfer at the end of a run (Step 5.5), passing the plan path, so findings recorded per task reach the durable log while the context is still there
 - Every note is written in one genre - **a check to perform**. A lifted gate or a "use Y instead of X" is refused: a stale check costs one call and fails safe, a lifted obligation never comes back
 - The executor that hit the trap does not write here - one observation is a bad sample, and a bad line lives for months, so the durable surface passes through a human
 
-### `/unikit-mcp-audit [R2 | stamp | replay | retire | upstream]` - curate the MCP notes
+### `/unikit-bridge-audit [R2 | stamp | replay | retire | upstream]` - curate the bridge notes
 
 ```
-/unikit-mcp-audit                                # Full pass: stamp, replay, retire, upstream
-/unikit-mcp-audit R2                             # One note
-/unikit-mcp-audit upstream                       # Only print the diff for the packaged rules tree
+/unikit-bridge-audit                                # Full pass: stamp, replay, retire, upstream
+/unikit-bridge-audit R2                             # One note
+/unikit-bridge-audit upstream                       # Only print the diff for the packaged rules tree
 ```
-- Four jobs: **re-stamp** (the server moved → every entry is suspect, and offered first), **replay** (`replay: safe` rows reproduced in a disposable sandbox), **retire** (offer to drop what was fixed or went upstream), **upstream** (print a ready diff for the packaged `INDEX.md`)
+- Four jobs: **re-stamp** (the bridge moved → every entry is suspect, and offered first), **replay** (`replay: safe` rows reproduced in a disposable sandbox, through the same bridge that saw them; a replay the skill holds no permission for is skipped with a `WARN`), **retire** (offer to drop what was fixed or went upstream), **upstream** (print a ready diff for the packaged `INDEX.md`)
 - Replaying mutates a live editor, so it runs behind a six-step envelope whose only gate is **you**: it opens by telling you how to prepare the editor (save your scene, open an empty one, no compile and no Play Mode), names every object it will create, and asks once. It works only inside a `UNIKIT_AUDIT_<runid>` sandbox, deletes it in one action, and **never saves the scene** - so even a failed sweep leaves nothing on disk
 - **It takes no pre-flight measurements, on purpose.** The previous gate refused on a dirty scene - and a fresh empty untitled scene, the one safe place to run this, is dirty by default, so the gate rejected the only correct state every time while a configured production scene passed. Such a check is not portable either: across the catalog, one server reports no scene-dirty state, one does not document editor state, and one runs an engine with no concept of compiling
 - The sweep is proved, not announced: a prefix search returning zero plus a clean console delta, or a loud `ERROR` listing what remains - never a blind repeat of the deletion
 - Deletes only what it created in this run. Leftovers from an aborted earlier run are recognisable by their `<runid>` and swept only under a separate confirmation
 - A **project** tool, not a release tool: it never edits the packaged rules tree (`init`/`update` rewrite it), it prints a PR diff instead
+
+### `/unikit-bridge-route [the rule in your words | list | remove <row>]` - route a kind of work to chosen bridges
+
+```
+/unikit-bridge-route run the tests only through bridge-a
+/unikit-bridge-route never use bridge-c for UI work
+/unikit-bridge-route list
+/unikit-bridge-route put bridge-b first
+```
+- Writes the rows of `.unikit/bridge-routing.md`: `area | when | rule | bridges | why`. It asks in your own words, picks the `area` word from the vocabulary the planner and the verifier already use (or `*`), asks which of `only`, `first` and `never` you mean, offers the installed bridges as options, shows the whole table and writes only after you agree.
+- Checks only that the bridge ids are installed (`BRIDGES.md`); it does not judge the `when` text. Two rows of the same area and `when` with different rules are never written.
+- "Put that bridge first" moves a bridge in the `order:` list of `.unikit/bridges.yaml` with one edit; the comment lines at the top of the file stay.
+- Makes no bridge call, runs no command and needs no editor. How the agents use the rows is described in [Configuration](configuration.md#bridge-order-routing-and-the-rule-of-a-bridge).
+
+### `/unikit-references [add <path|url> | list | show <name> | refresh <name> | delete <name>]` - your own references
+
+- Keeps your own reference material for the agents in `.unikit/references/` with an index: a local file or folder is copied word for word, a plain text or Markdown address is downloaded as a copy, any other page is recorded as a link with a note on when to read it. Nothing is summarised or rewritten.
+- It never touches a `.unikit/references/bridges/` folder left by an earlier build.
+- To make agents use an entry, name it in your request or point to it from a project rule (`/unikit-rules`).
 
 ---
 
@@ -636,5 +683,5 @@ For the full reference - frontmatter, launch commands, design principles, sideca
 
 - [Subagents](subagents.md) - coordinators, workers, sidecars, delegation aliases
 - [Development Workflow](workflow.md) - how workflow skills connect end-to-end
-- [Dynamic Memory](dynamic-memory.md) - Bootstrap pattern, how pipeline skills load rules, standalone unikit-devcontext
+- [Dynamic Memory](dynamic-memory.md) - Bootstrap pattern, how pipeline skills load rules, and `/unikit-execute`, the task skill with no plan
 - [Plan Files](plan-files.md) - where workflow artifacts are stored

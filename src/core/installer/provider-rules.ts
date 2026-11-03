@@ -1,0 +1,276 @@
+// --- Consent-aware registry rules of MCP servers and engine bridges ---
+//
+// New files need a confirmed decision in this operation and a complete candidate bundle.
+// Removal requires a registry entry, a matching installed hash and a real file; user work stays.
+// Both commands retain installed state. This mutates config in place; callers own printing/saving.
+
+import path from 'path';
+import { getModuleTier } from '../config.js';
+import type { InstalledRuleEntry, RulesInstallation, UniKitConfig } from '../config.js';
+import { CODE_MODULE_ID, REFERENCES_DIR_NAME, moduleTierDir } from '../constants.js';
+import {
+  BRIDGE_ID_PATTERN, BRIDGE_RULE_KEPT_REASONS, BRIDGE_RULE_TIER, BRIDGE_RULES_LOG_COMPONENT,
+} from '../constants-bridges.js';
+import { getModule } from '../modules.js';
+import type { ChainedRegistry } from '../registry/index.js';
+import { candidateKey, type RuleCandidateSnapshot } from '../registry/rule-candidate.js';
+import { adoptLegacyProviderSelection, normalizeProviderSelection, type ProviderRuleSelection } from '../provider-rule-selection.js';
+import { PROVIDER_RULE_MESSAGES } from '../constants-provider-rules.js';
+import { withProviderFileRollback } from './provider-rule-files.js';
+import { installOneRule } from './rules-bootstrap.js';
+import { generateRulesIndex, loadRequiredByMap, normalizeRuleId } from './rules-index.js';
+import { computeContentHash } from './shared.js';
+import { fileExists, listFiles, readTextFile, removeFile } from '../../utils/fs.js';
+import { logInfo, logWarn } from '../../utils/log.js';
+
+export type ProviderRuleStatus = 'installed' | 'present' | 'removed' | 'kept' | 'not-in-registry' | 'failed' | 'declined' | 'pending';
+
+export interface ProviderRuleLine {
+  id: string;
+  status: ProviderRuleStatus;
+  reason?: string;
+}
+
+export interface ProviderRulesReport {
+  lines: ProviderRuleLine[];
+  stateChanged: boolean;
+}
+
+export interface ProviderRulesInput {
+  projectDir: string;
+  /** Mutated: entries are pushed and spliced. `init` saves it afterwards; `update` saves it at the end of the command. */
+  config: UniKitConfig;
+  registry: ChainedRegistry;
+  engineId: string;
+  /** `null` = no record of a previous set. */
+  previousProviderIds: string[] | null;
+  currentProviderIds: string[];
+  /** Only choices confirmed in this operation authorize a new installation. */
+  decisions?: ProviderRuleSelection;
+  candidates?: RuleCandidateSnapshot;
+  /** The rule state as it was BEFORE this run: `update` passes `config.rules.installed` itself, `init` passes `existingConfig?.rules.installed ?? null`. */
+  previousRules: RulesInstallation | null;
+  /** `disk` = rebuild the code index from disk (`init`); `none` = caller does it (`update`, Phase 3). */
+  regenerateIndex: 'disk' | 'none';
+}
+
+const NOT_A_BRIDGE_ID = 'not a valid bridge id';
+const RULE_FILE_EXTENSION = '.md';
+const REFERENCES_HEADER_MARK = '**References**';
+/** A reference file named in the header of a rule: a bare file name, never a path. */
+const REFERENCE_FILE_PATTERN = /references\/([^`\s,)/\\]+\.md)/g;
+
+/** The reference files a rule lists in its `**References**` header, or `null` when it has no such header. */
+export function parseRuleReferenceFiles(ruleText: string): string[] | null {
+  const header = ruleText.split(/\r?\n/).find(line => line.includes(REFERENCES_HEADER_MARK));
+  if (header === undefined) return null;
+  return [...new Set([...header.matchAll(REFERENCE_FILE_PATTERN)].map(match => match[1]))];
+}
+
+/** True only for a rule that came from the registry and is byte-identical to what was installed. */
+export function isInstalledRegistryRuleUnchanged(entry: InstalledRuleEntry | undefined, diskText: string | null): boolean {
+  return entry?.source === 'registry'
+    && entry.installed_hash !== undefined
+    && diskText !== null
+    && computeContentHash(diskText) === entry.installed_hash;
+}
+
+function findStackEntry(rules: RulesInstallation | null, id: string): InstalledRuleEntry | undefined {
+  const entries = rules?.modules[CODE_MODULE_ID]?.[BRIDGE_RULE_TIER] ?? [];
+  return entries.find(entry => normalizeRuleId(entry.name) === normalizeRuleId(id));
+}
+
+function dropEntry(config: UniKitConfig, id: string): boolean {
+  const list = getModuleTier(config, CODE_MODULE_ID, BRIDGE_RULE_TIER);
+  const index = list.findIndex(entry => normalizeRuleId(entry.name) === normalizeRuleId(id));
+  if (index < 0) return false;
+  list.splice(index, 1);
+  return true;
+}
+
+const stackDir = (projectDir: string): string => moduleTierDir(projectDir, CODE_MODULE_ID, BRIDGE_RULE_TIER);
+const ruleFile = (projectDir: string, id: string): string => path.join(stackDir(projectDir), `${id}${RULE_FILE_EXTENSION}`);
+
+/** The reference files that other installed rules list: a file two rules share stays when one of them goes. */
+async function referencesOfOtherRules(projectDir: string, exceptId: string): Promise<Set<string>> {
+  const shared = new Set<string>();
+  for (const name of await listFiles(stackDir(projectDir))) {
+    if (!name.endsWith(RULE_FILE_EXTENSION) || name === `${exceptId}${RULE_FILE_EXTENSION}`) continue;
+    for (const ref of parseRuleReferenceFiles(await readTextFile(path.join(stackDir(projectDir), name)) ?? '') ?? []) shared.add(ref);
+  }
+  return shared;
+}
+
+/**
+ * A rule with no `**References**` header: the files of its folder that carry the id as a prefix, as `installOneRule` names them.
+ * A file that carries the prefix of another installed rule whose id extends this one (`a` and `a-extras`) is that rule's, not ours.
+ */
+async function prefixedReferences(projectDir: string, id: string): Promise<string[]> {
+  const prefix = id.toLowerCase();
+  const longerIds = (await listFiles(stackDir(projectDir)))
+    .filter(name => name.endsWith(RULE_FILE_EXTENSION))
+    .map(name => name.slice(0, -RULE_FILE_EXTENSION.length).toLowerCase())
+    .filter(other => other.startsWith(`${prefix}-`));
+  const names = await listFiles(path.join(stackDir(projectDir), REFERENCES_DIR_NAME));
+  return names.filter(name => {
+    const lower = name.toLowerCase();
+    const ours = lower.startsWith(`${prefix}-`) || lower === `${prefix}${RULE_FILE_EXTENSION}`;
+    return ours && !longerIds.some(other => lower.startsWith(`${other}-`));
+  });
+}
+
+async function removeBridgeRule(input: ProviderRulesInput, id: string, report: ProviderRulesReport): Promise<void> {
+  const { projectDir, config, previousRules } = input;
+  const file = ruleFile(projectDir, id);
+  if (!(await fileExists(file))) {
+    if (dropEntry(config, id)) report.stateChanged = true;
+    return;
+  }
+  const text = await readTextFile(file);
+  const entry = findStackEntry(previousRules, id);
+  if (!isInstalledRegistryRuleUnchanged(entry, text)) {
+    if (entry && !findStackEntry(config.rules.installed, id)) {
+      getModuleTier(config, CODE_MODULE_ID, BRIDGE_RULE_TIER).push({ ...entry });
+      report.stateChanged = true;
+    }
+    const reason = entry === undefined ? BRIDGE_RULE_KEPT_REASONS.untracked
+      : entry.source !== 'registry' ? BRIDGE_RULE_KEPT_REASONS.local : BRIDGE_RULE_KEPT_REASONS.modified;
+    report.lines.push({ id, status: 'kept', reason });
+    logInfo(BRIDGE_RULES_LOG_COMPONENT, PROVIDER_RULE_MESSAGES.kept(id, reason));
+    return;
+  }
+  const listed = parseRuleReferenceFiles(text ?? '') ?? await prefixedReferences(projectDir, id);
+  const sharedWithOthers = await referencesOfOtherRules(projectDir, id);
+  let removedReferences = 0;
+  for (const ref of listed.filter(name => !sharedWithOthers.has(name))) {
+    const refPath = path.join(stackDir(projectDir), REFERENCES_DIR_NAME, ref);
+    if (await fileExists(refPath)) { await removeFile(refPath); removedReferences++; }
+  }
+  await removeFile(file);
+  dropEntry(config, id);
+  report.lines.push({ id, status: 'removed' });
+  report.stateChanged = true;
+  logInfo(BRIDGE_RULES_LOG_COMPONENT, PROVIDER_RULE_MESSAGES.removed(id, removedReferences));
+}
+
+/** The id of a wanted rule is on disk already (never overwritten) or has to come from the registry. */
+async function classifyWanted(input: ProviderRulesInput, id: string, report: ProviderRulesReport): Promise<boolean> {
+  const { projectDir, config, previousRules } = input;
+  const inConfig = findStackEntry(config.rules.installed, id);
+  if (await fileExists(ruleFile(projectDir, id))) {
+    const previous = findStackEntry(previousRules, id);
+    if (!inConfig && previous) {
+      getModuleTier(config, CODE_MODULE_ID, BRIDGE_RULE_TIER).push({ ...previous });
+      report.stateChanged = true;
+    }
+    report.lines.push({ id, status: 'present' });
+    return false;
+  }
+  if (inConfig && dropEntry(config, id)) report.stateChanged = true;
+  return true;
+}
+
+async function installWantedRules(input: ProviderRulesInput, ids: string[], report: ProviderRulesReport): Promise<void> {
+  const codeModule = getModule(CODE_MODULE_ID);
+  if (!codeModule || ids.length === 0) return;
+  for (const id of ids) {
+    try {
+      if (input.decisions?.[id] !== true) {
+        report.lines.push({ id, status: 'pending' });
+        logInfo(BRIDGE_RULES_LOG_COMPONENT, PROVIDER_RULE_MESSAGES.needsConsent(id));
+        continue;
+      }
+      const key = candidateKey(CODE_MODULE_ID, input.engineId, BRIDGE_RULE_TIER, id);
+      const candidate = input.candidates?.has(key) ? input.candidates.get(key)
+        : await input.registry.resolveRuleCandidate(CODE_MODULE_ID, input.engineId, BRIDGE_RULE_TIER, id);
+      if (!candidate) {
+        report.lines.push({ id, status: 'not-in-registry' });
+        logInfo(BRIDGE_RULES_LOG_COMPONENT, PROVIDER_RULE_MESSAGES.notInRegistry(id));
+        continue;
+      }
+      const line = await withProviderFileRollback(input.projectDir, id, candidate, () =>
+        installOneRule(input.projectDir, input.config, input.registry, codeModule,
+          [{ tier: BRIDGE_RULE_TIER, rule: candidate.rule, origin: candidate.origin }], input.engineId, id,
+          { preferredTier: BRIDGE_RULE_TIER, prefetched: candidate }));
+      if (line.status === 'installed') {
+        report.lines.push({ id, status: 'installed' });
+        report.stateChanged = true;
+        logInfo(BRIDGE_RULES_LOG_COMPONENT, PROVIDER_RULE_MESSAGES.installed(id));
+      } else {
+        report.lines.push({ id, status: 'failed', reason: line.reason ?? line.status });
+      }
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      report.lines.push({ id, status: 'failed', reason });
+      logWarn(BRIDGE_RULES_LOG_COMPONENT, PROVIDER_RULE_MESSAGES.installFailed(id, reason));
+    }
+  }
+}
+
+/**
+ * Reconcile provider rules with explicit choices: retain present files, install only with current
+ * consent, remove unchanged managed files after provider removal or explicit refusal.
+ * Without providers (selected or dropped), the registry is never asked.
+ */
+export async function syncProviderRules(input: ProviderRulesInput): Promise<ProviderRulesReport> {
+  const report: ProviderRulesReport = { lines: [], stateChanged: false };
+  const codeModule = getModule(CODE_MODULE_ID);
+  if (!codeModule) return report;
+  if (await adoptLegacyProviderSelection(input.projectDir, input.config)) report.stateChanged = true;
+  const decisions = normalizeProviderSelection(input.decisions) ?? {};
+  const selection = input.config.rules.providerSelection ?? {};
+  for (const [id, enabled] of Object.entries(decisions)) {
+    if (!input.currentProviderIds.includes(id)) continue;
+    if (!Object.hasOwn(selection, id) || selection[id] !== enabled) {
+      input.config.rules.providerSelection ??= selection;
+      selection[id] = enabled;
+      report.stateChanged = true;
+      logInfo(BRIDGE_RULES_LOG_COMPONENT, PROVIDER_RULE_MESSAGES.explicitDecision(id, enabled));
+    }
+  }
+  const previousIds = [...new Set([...(input.previousProviderIds ?? []), ...Object.keys(selection)])];
+  const dropped = previousIds.filter(id => !input.currentProviderIds.includes(id));
+  const refused = input.currentProviderIds.filter(id => decisions[id] === false);
+  if (input.currentProviderIds.length === 0 && dropped.length === 0) return report;
+
+  const usable = (id: string): boolean => {
+    if (BRIDGE_ID_PATTERN.test(id)) return true;
+    report.lines.push({ id, status: 'failed', reason: NOT_A_BRIDGE_ID });
+    return false;
+  };
+  for (const id of [...new Set([...dropped, ...refused])].filter(usable)) {
+    try {
+      await removeBridgeRule(input, id, report);
+      if (dropped.includes(id) && Object.hasOwn(selection, id)) {
+        delete selection[id];
+        report.stateChanged = true;
+      }
+      if (refused.includes(id)) report.lines.push({ id, status: 'declined' });
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      report.lines.push({ id, status: 'failed', reason });
+      logWarn(BRIDGE_RULES_LOG_COMPONENT, PROVIDER_RULE_MESSAGES.removeFailed(id, reason));
+    }
+  }
+  const wanted: string[] = [];
+  for (const id of input.currentProviderIds.filter(usable)) {
+    if (selection[id] === false) continue;
+    try {
+      if (await classifyWanted(input, id, report)) wanted.push(id);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      report.lines.push({ id, status: 'failed', reason });
+      logWarn(BRIDGE_RULES_LOG_COMPONENT, PROVIDER_RULE_MESSAGES.readFailed(id, reason));
+    }
+  }
+  await installWantedRules(input, wanted, report);
+
+  if (input.regenerateIndex === 'disk' && (report.stateChanged || report.lines.some(line => line.status === 'installed' || line.status === 'removed'))) {
+    try {
+      await generateRulesIndex(input.projectDir, codeModule, {}, await loadRequiredByMap(), {});
+    } catch (error) {
+      logWarn(BRIDGE_RULES_LOG_COMPONENT, PROVIDER_RULE_MESSAGES.indexFailed(error instanceof Error ? error.message : String(error)));
+    }
+  }
+  return report;
+}

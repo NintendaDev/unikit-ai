@@ -170,7 +170,7 @@ make_project() {
   mkdir -p "$dir"
   cat > "$dir/.unikit.json" << EOF
 {
-  "version": "1.0.0", "language": "en", "engine": "unity", "engineMcpKey": null,
+  "version": "1.0.0", "language": "en", "engine": "unity", "engineBridges": {"selected": {}},
   "mcp": { "servers": {} },
   "agents": [ { "id": "$agent", "skillsDir": "$skills", "subagentsDir": "$agents",
                 "installedSkills": ["unikit", "unikit-commit"], "installedSubagents": [] } ],

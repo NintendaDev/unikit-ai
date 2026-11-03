@@ -17,7 +17,7 @@ Rules live under `.unikit/memory/<module>/<tier>/` and are listed in a per-modul
 with the **highest priority**. A long `RULES.md` can be split into common rules and topic files
 in `.unikit/rules/` that load only when the work matches their `Load when`.
 
-Priority (highest wins): `.unikit/RULES.md` (+ its topic files) → `.unikit/ARCHITECTURE.md` →
+Priority (highest wins): `.unikit/RULES.md` (+ its topic files) → `.unikit/ARCHITECTURE.md` (+ its topic files) →
 module `core` rules → module `stack`/`library` rules.
 
 ---
@@ -57,24 +57,41 @@ time**. Editing these by hand is pointless. The user does not curate them; the C
 Relevant to the dev pipeline:
 
 - `dev-principles.md` — the canonical engine development principles + workflow. Read on Bootstrap
-  by `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-improve`, `/unikit-devcontext`,
-  `/unikit-mcp-audit`, and the `unikit-implement-coordinator` and `unikit-implement-worker` agents.
-- `engine-mcp/{INDEX,verification}.md` — the **rules tree of the engine MCP server the project
-  actually selected**, delivered verbatim from the package with a provenance stamp. It records
+  by `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-improve`, `/unikit-execute`,
+  `/unikit-bridge-audit`, and the `unikit-implement-coordinator` and `unikit-implement-worker` agents.
+- `engine-bridges/BRIDGES.md` and `engine-bridges/<bridge>/{INDEX,verification}.md` — `BRIDGES.md` lists the **engine bridges the project actually selected**
+  (the package's default order and one block per bridge); next to it, **one rules tree per
+  bridge**, delivered verbatim from the package with a provenance stamp. A tree records
   **exceptions, not capabilities**: no tool names, no inventory of what the server cannot do —
   only checks to perform. `INDEX.md` carries a base section (read in full, once, at Bootstrap by
-  everyone using the engine MCP) plus a check table keyed by **area**, which implement / fix /
-  devcontext / verify read by grep — their own work kind's area, plus every cross-cutting area.
+  everyone using an engine bridge) plus a check table keyed by **area**, which implement / fix /
+  execute / verify read by grep — their own work kind's area, plus every cross-cutting area.
   `verification.md` is read by `/unikit-verify` **only**, and calibrates which gates are
   reachable; **GATE LIFTED** is a runtime verdict verify reaches by trying and producing the
-  evidence of absence — it is never pre-written into the file. Switching MCP or engine replaces
-  the tree (stale files are deleted). Not every MCP server ships one, and a missing file changes
-  nothing: no known exceptions is not the same as no capabilities, so nothing is disabled and
-  nothing becomes manual.
-- `.unikit/MCP-RECHECK-NOTES.md` — **not** a system asset, and deliberately outside
-  `system/`: the project's own findings about that server, in the same area-keyed form, read by
-  the same greps. `init` / `update` never rewrite it (only rename it when the server changes).
-  Written by `/unikit-mcp-trap`, curated by `/unikit-mcp-audit`.
+  evidence of absence — it is never pre-written into the file. Changing the selection or the engine
+  replaces the trees (stale files are deleted, and so is the 2.x `engine-mcp/` folder). Not every
+  bridge ships a tree, and a missing file changes nothing: no known exceptions is not the same as
+  no capabilities, so nothing is disabled and nothing becomes manual.
+- `.unikit/bridges.yaml` — the order of the bridges, kept by `init`/`update` (an order you edited is kept);
+  `.unikit/bridge-routing.md` — optional routing rules (`/unikit-bridge-route`); the stack rule whose id
+  is the provider's file id is optional registry memory. `init` offers only complete bundles after
+  the provider checkboxes, all checked even on re-init; unchecking every rule is allowed. Choices
+  live separately in `.unikit.json` under `rules.providerSelection` (`true`, `false`, missing =
+  undecided). Terminal `update` asks about new/missing undecided or accepted files; non-TTY leaves
+  them pending and `--force` supplies no consent. A refusal survives update. Dropping a provider
+  or explicitly refusing an offered rule removes only an unchanged registry file with a recorded
+  hash; edited/local/untracked rules and shared references stay. Missing sources preserve earlier
+  choices and files. Body, version, origin and all references come from one source per id, trying
+  primary → official → bundled. Existing accepted provider rules use this resolver in sync,
+  including source/body/reference changes at equal version; missing files are never installed by
+  sync and temporary gaps do not make accepted rules obsolete under prune. Explicit
+  `rules install <id>` still works after refusal. Built-in bridge trees, settings, grants, notes
+  and order keep their own lifecycle. Neither order nor routing is a system asset.
+- `.unikit/bridge-notes/<bridge>.md` — **not** a system asset, and deliberately outside
+  `system/`: the project's own findings about that bridge, in the same area-keyed form, read by
+  the same greps. `init` / `update` never rewrite them (only rename a file into `archive/` when
+  its bridge leaves the selection, and back). Written by `/unikit-bridge-trap`, curated by `/unikit-bridge-audit`.
+- `.unikit/references/` — **not** a system asset and never rewritten by `init` / `update`: `INDEX.md` and `user/` hold your own references (`/unikit-references`). A `bridges/` folder left by an earlier build is not used any more; delete it by hand.
 - `cli-contract.md`, `gate-result-contract.md`, `modules.yml`, `gamedesign/` — contracts read on
   demand by the skills that need them.
 - `ultra-plan-read.md` — the ultra plan bundle reader contract, read by `/unikit-implement`,
@@ -94,12 +111,17 @@ Relevant to the dev pipeline:
 - `prototype-profile.md` — how a plan built from experiment cards or another experiment source is executed (what stays
   mandatory, what is softened, what is switched off, the branch check), read by `/unikit-implement`,
   `/unikit-verify`, `/unikit-pr`, `/unikit-improve`, `/unikit-review`, `/unikit-fix`,
-  `/unikit-devcontext`, `/unikit-commit` and their subagents, only when the plan has `## Experiment Context`.
+  `/unikit-execute`, `/unikit-commit` and their subagents, only when the plan has `## Experiment Context`.
 - `subagent-arguments.md` — how the model and the effort of a subagent are settled (your word in the
-  request or earlier in the session, then the config key of the launch's role, then the built-in value),
-  read by the skills that launch a subagent, and by the two coordinators, before their first launch.
+  request or earlier in the session, then the config key of the launch's role, then the built-in value);
+  `inherit` means no override and the runtime's own default, not necessarily the session model. Read by
+  the skills that launch a subagent, and by the two coordinators, before their first launch.
 - `subagent-roles.md` — which role (reader, validator or executor) each subagent launch has, so that its
   model and effort are read from the right config key; read together with `subagent-arguments.md`.
+- `.kimi-code/kimi-subagent-models.toml` — three role aliases for Kimi (reader, validator, executor),
+  delivered only for Kimi and removed with it, for manual merging into the user's global Kimi config;
+  example model metadata must be verified against real entries. Role assignments live in
+  `.unikit/config.yaml`, and UniKit never writes that global config.
 - `user-questions.md` — how a skill asks you a question (what is chosen and what each option changes
   printed first, then the question tool of your agent, the run waiting in the same turn for your
   answer); read by the skills that ask you a question, before their first question.
@@ -113,7 +135,8 @@ Relevant to the dev pipeline:
    one line, one directive. A growing file can be split into topics that load only when the
    work matches — `/unikit-rules optimise`, which the skill also offers by itself;
    `/unikit-rules compact` shortens rules in place, and `/unikit-rules prune` deletes the ones
-   you pick from an evidenced candidate list.
+   you pick from an evidenced candidate list. Each mode is also started by a request in plain
+   words; the keyword stays the exact form.
 2. **Promote** — `/unikit-memory migrate-rules` moves a matured `RULES.md` entry into the proper
    `core`/`stack`/`library` rule file (with conflict handling and a `no-migrate` tag option).
 3. **Generate / research** — `/unikit-memory <description or source>` creates a full rule. It

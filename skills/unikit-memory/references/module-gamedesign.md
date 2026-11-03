@@ -94,7 +94,7 @@ sanctioned slot for everything a studio authors itself.
   the `unikit-rules` skill, or the pillars section of
   `.unikit/gamedesign/GAME.md`.
 - **Code rules** (framework usage, code style, testing) → the `code` module.
-- **Architecture decisions** → `.unikit/ARCHITECTURE.md`.
+- **Architecture decisions** → `.unikit/ARCHITECTURE.md` and its topic files in `.unikit/architecture/`.
 - **Lessons from recurring design-verify / design-review conflicts** → a studio
   `library` rule, authored through this skill (`/unikit-memory --module gamedesign`).
   The `unikit-gd-*` skills do not read `skill-context`, so the evolve flow does

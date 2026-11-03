@@ -68,7 +68,7 @@ Procedure: {{skills_dir}}/{{self_name}}/references/ultra-stateful.md
 Skill: {{skills_dir}}/{{self_name}}/SKILL.md
 Mode: {{skills_dir}}/{{self_name}}/references/mode-ultra.md
 Format: {{skills_dir}}/{{self_name}}/references/ULTRA-PLAN-FORMAT.md
-Settings: Testing: <yes|no> · Test checkpoints: <task|phase|plan> · Docs: <yes|no> · Editor tasks: <mcp|manual|direct> · PR checkpoints: <yes|no> · branch: <branch> · base: <base>
+Settings: Testing: <yes|no> · Test checkpoints: <task|phase|plan> · Docs: <yes|no> · Editor tasks: <engine-bridge|manual|direct> · PR checkpoints: <yes|no> · branch: <branch> · base: <base>
 Rules: <path> · <path> · …
 
 ## Decisions

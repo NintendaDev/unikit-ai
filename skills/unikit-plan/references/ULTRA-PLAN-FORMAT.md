@@ -71,11 +71,11 @@ Rules:
   `## Phase Index`, a checkbox in `## Checklist`, and a `## Task N.M:` section in exactly
   one phase file.
 - **Everything mutable during execution lives in the manifest**: checkboxes,
-  `## MCP Findings`, `## Rule Candidates`, `## Test Runs`, `## Measurements`, `## Commit Plan`,
+  `## Engine Bridge Findings`, `## Rule Candidates`, `## Test Runs`, `## Measurements`, `## Commit Plan`,
   `## Settings`. Phase files are **read-only during
   execution**. The consequence has to be stated, because it is what the split buys: the
   executor has one write surface, `F<n>` numbering in the findings table never branches
-  across phases, and the `/unikit-mcp-trap` window stays single-file (`plans/*/PLAN.md`).
+  across phases, and the `/unikit-bridge-trap` window stays single-file (`plans/*/PLAN.md`).
 
 ## Manifest Template
 
@@ -126,10 +126,15 @@ Planned at: <short sha>
 **Status:** [ ] Not started
 
 - [ ] Task 1.1 — {deliverable} ([details](phase-01-{slug}.md#task-11-deliverable))
+
   WHY: …
+
   Files: `…`
+
 - [ ] Task 1.2 — {deliverable} ([details](phase-01-{slug}.md#task-12-deliverable))
+
   WHY: …
+
   Files: `…`
 
 ### Phase 2: {name}
@@ -138,20 +143,31 @@ Planned at: <short sha>
 **Status:** [ ] Not started
 
 - [ ] Task 2.1 — {deliverable} ([details](phase-02-{slug}.md#task-21-deliverable))
+
   WHY: …
+
   Files: `…`
+
 - [ ] Task 2.2 — {deliverable} ([details](phase-02-{slug}.md#task-22-deliverable))
+
   WHY: …
+
   Files: `…`
+
 - [ ] Task 2.3 — test checkpoint for phases 1-2 ([details](phase-02-{slug}.md#task-23-test-checkpoint-for-phases-1-2))
+
   WHY: …
+
   Test checkpoint: phases 1-2
+
 - [ ] Task 2.4 — full test run ([details](phase-02-{slug}.md#task-24-full-test-run))
+
   WHY: …
+
   Test checkpoint: plan
 
 ## Commit Plan
-## MCP Findings
+## Engine Bridge Findings
 ## Rule Candidates
 ## Test Runs
 ## Measurements   (only with a `Measure:` task)
@@ -178,7 +194,8 @@ Rules:
   numbering scheme. The link anchor is the GitHub-style slug of the phase file's task
   heading (`## Task 1.1: Foo` → `#task-11-foo`).
 - The checkbox line stays short and **must** carry its `([details](…))` link. `WHY:` and
-  `Files:` are kept from the base format, unchanged.
+  `Files:` are kept from the base format, unchanged. All task fields follow
+  `TASK-FORMAT.md` → `### Checklist layout`.
 - **`## Architecture and Decisions` holds decisions that bind two or more phases** — a module
   boundary, a shared contract, a chosen trade-off. A decision internal to one phase belongs in
   that task's `### Required Interfaces and Contracts` and is not lifted here. The section is
@@ -201,8 +218,8 @@ Rules:
   `INTERFACES`, `KEY PATTERNS`, `FILES`, `EDITOR TARGETS`, `DI BINDINGS` — are distributed
   into the phase files. There is one rule, and it decides every case:
   **cross-phase goes in the manifest, task-scoped goes in the phase.**
-- **`## MCP Findings` stays at `##` level and above `## Technical Context`**, for the same
-  reason as in the base format: `/unikit-mcp-trap` reads the heading down to the next `##`,
+- **`## Engine Bridge Findings` stays at `##` level and above `## Technical Context`**, for the same
+  reason as in the base format: `/unikit-bridge-trap` reads the heading down to the next `##`,
   and a technical context that drifted above the findings would silently widen that window
   onto prose.
 - **`## Open Questions` is where a blocking question goes.** If a choice genuinely cannot

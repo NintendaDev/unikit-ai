@@ -2,6 +2,7 @@ import type { AgentTransformer, TransformResult } from '../transformer.js';
 import { AGENT_REGISTRY } from '../agents.js';
 import { logInfo, logWarn } from '../../utils/log.js';
 import { toKimiAgentFile } from './kimi-agent-file.js';
+import { KIMI_SUBAGENT_POOL_HINT } from '../constants-kimi.js';
 
 /**
  * Kimi Code (v2, `kimi`) — own `.kimi-code/` directory; `/unikit-*` is accepted as a shorthand
@@ -39,6 +40,7 @@ export class KimiTransformer implements AgentTransformer {
       '2. Trust the folder when Kimi Code asks - project MCP servers in .kimi-code/mcp.json are enabled only after that',
       '3. Run /unikit to analyze project and generate project-relevant skills (shorthand for /skill:unikit)',
       '4. Coordinators start as the main agent: kimi --agent unikit-implement-coordinator (or unikit-plan-coordinator)',
+      KIMI_SUBAGENT_POOL_HINT,
     ];
   }
 

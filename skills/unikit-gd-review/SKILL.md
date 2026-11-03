@@ -76,11 +76,7 @@ field values stay English. Do not announce the language setting.
 
 **The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
 
-## Delegation agents
-
-This skill uses a named delegation alias for `Agent(...)` calls. The alias is the single
-place where its delegate's agent type and call arguments are declared — call sites name
-the alias and never carry a type or a model argument of their own.
+## Subagent launches
 
 **Subagent arguments.** Before the first subagent you launch, read `.unikit/system/subagent-arguments.md`
 and `.unikit/config.yaml` once and settle the model and effort of every launch as that file says.
@@ -89,6 +85,12 @@ built-in model of a reader and a validator: `"{{agent_model_default}}"`, of an e
 If the file cannot be read, print
 `WARN [delegation] subagent-arguments contract missing — built-in model tier used, effort not passed`
 and use that model, no effort.
+
+## Delegation agents
+
+This skill uses a named delegation alias for `Agent(...)` calls. The alias is the single
+place where its delegate's agent type and call arguments are declared — call sites name
+the alias and never carry a type or a model argument of their own.
 
 - **`lens-agent`** — one adversarial review lens, read-only, findings only. Expands to:
 
@@ -136,11 +138,15 @@ Silently load — do not narrate:
 
 **One-way boundary:** never read `.unikit/code/`, project source, or build
 artifacts. **Single sanctioned exception:** the **feasibility lens** may read
-**only** `.unikit/DESCRIPTION.md` and `.unikit/ARCHITECTURE.md` (two files, exact
-paths) to flag implementability risks. It must NOT read `.unikit/code/`, `Assets/`,
-or any source/build artifact — doing so violates the one-way boundary. A
-feasibility finding cites the line it relied on in DESCRIPTION/ARCHITECTURE as its
-evidence.
+**only** `.unikit/DESCRIPTION.md`, the `.unikit/ARCHITECTURE.md` root and the topic
+files `.unikit/architecture/*.md` that its `## Topics` lists (a fixed set of
+paths, no other project file) to flag implementability risks. **Architecture
+topics:** the root; then the topic files whose `Load when` matches the subject of
+the assessment; when unsure, load; a missing file → `WARN [architecture] topic file
+missing: .unikit/architecture/<slug>.md`, continue. It must NOT read `.unikit/code/`,
+`Assets/`, or any source/build artifact — doing so violates the one-way boundary. A
+feasibility finding cites the line and the file it relied on (DESCRIPTION, the
+root or a topic file) as its evidence.
 
 <!-- unikit:extension-point:bootstrap -->
 
@@ -414,8 +420,8 @@ the called skill does next.
   (research-bucket mode) — so the pipeline `review → [explore] → apply` runs on the one
   file. That cross-skill write is explore's only write to this folder.
 - **Read-only:** every design document (sections A–K, `GAME.md`, all of `GD-IDS.yaml`
-  including `doc_status`); plus `DESCRIPTION.md`/`ARCHITECTURE.md` for the feasibility
-  lens only. review makes **no** design-surface write — only the report file.
+  including `doc_status`); plus `DESCRIPTION.md`, the `ARCHITECTURE.md` root and
+  `.unikit/architecture/*.md` for the feasibility lens only. review makes **no** design-surface write — only the report file.
 - **Not this skill:** consistency/impact checks → `unikit-gd-verify`; **applying** the
   apply-ready bucket → `unikit-gd-apply`; **developing** the research bucket →
   `unikit-gd-explore`; authoring → `unikit-gd-system` (systems) / `unikit-gd-spec`

@@ -61,11 +61,7 @@ Do not announce, confirm, or mention the language setting.
 
 **The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
 
-## Delegation agents
-
-This skill uses named delegation aliases for `Agent(...)` calls. Each alias is the single
-place where its delegate's agent type and call arguments are declared — call sites name
-the alias and never carry a type or a model argument of their own.
+## Subagent launches
 
 **Subagent arguments.** Before the first subagent you launch, read `.unikit/system/subagent-arguments.md`
 and `.unikit/config.yaml` once and settle the model and effort of every launch as that file says.
@@ -74,6 +70,12 @@ built-in model of a reader and a validator: `"{{agent_model_default}}"`, of an e
 If the file cannot be read, print
 `WARN [delegation] subagent-arguments contract missing — built-in model tier used, effort not passed`
 and use that model, no effort.
+
+## Delegation agents
+
+This skill uses named delegation aliases for `Agent(...)` calls. Each alias is the single
+place where its delegate's agent type and call arguments are declared — call sites name
+the alias and never carry a type or a model argument of their own.
 
 - **`recon-agent`** — read-only parallel reconnaissance. Expands to:
 
@@ -194,7 +196,7 @@ Silently load the project knowledge base before any exploration — do not narra
 #### Required reads (always, every time, in parallel)
 
 1. **`.unikit/DESCRIPTION.md`** — project description, tech stack, constraints
-2. **`.unikit/ARCHITECTURE.md`** — architecture decisions, folder structure, module rules, dependency directions
+2. **`.unikit/ARCHITECTURE.md`** — architecture decisions, folder structure, module rules, dependency directions. **Architecture topics:** only the root here; the topic files its `## Topics` table lists load per phase in Step 5 (**Rule refresh per phase**) and, for the recon tasks below, by their focus.
 3. **Read `.unikit/memory/code/RULES_INDEX.md`**. Load rules:
    - **RULES.md**: ALWAYS read `.unikit/RULES.md` first (highest priority). **Rule topics:** only the root here — its topic files load per phase in Step 5 (**Rule refresh per phase**), or earlier when the Step 4 exploration needs one.
    - **Core**: read the Core table. For EACH row where Required By = `all` or contains `{{self_name}}` — read that file from `.unikit/memory/code/core/` using the Read tool. Do NOT skip any matching row. Always re-read at skill start, never rely on prior conversation cache
@@ -204,17 +206,17 @@ Silently load the project knowledge base before any exploration — do not narra
 
    **If the file is absent** — a **normal path**, not an error (an engine whose planning vocabulary has not shipped yet): set `engine_rules_loaded = false`. Every step that writes an `Editor:` field, the `Editor tasks` setting or a confirmation line reads that flag (Step 5, Step 6, `mode-full.md`, `mode-fast.md`, `mode-add.md`). `add` mode runs this step too.
 
-6. **Read `.unikit/system/engine-mcp/INDEX.md` — the base section only**: the delivery stamp plus every section **except** the `## Check` table — the exceptions that shape planning: where a commit boundary falls, what may never run in parallel, how the work splits into phases. Set `mcp_index_loaded = true`.
+6. **Read `.unikit/system/engine-bridges/BRIDGES.md`, and for each bridge whose block names a rules tree its `.unikit/system/engine-bridges/<bridge>/INDEX.md` — the base section only**: the stamp under the title plus every section **except** the `## Check` table — the exceptions that shape planning: where a commit boundary falls, what may never run in parallel, how the work splits into phases. Set `bridge_rules_loaded = true`.
 
    **Do not read the `## Check` table** — it is the executors', grepped per task by area.
 
-   **If the file is absent** — a normal path: set `mcp_index_loaded = false`, print exactly one line, and continue with the same rights:
+   **If the file is absent** — a normal path: set `bridge_rules_loaded = false`, print exactly one line, and continue with the same rights:
 
    ```
-   MCP rules: no INDEX.md — no known exceptions for this server, rights unchanged
+   Bridge rules: <bridge> has no INDEX.md — no known exceptions for it, rights unchanged
    ```
 
-   Absence never switches a task to `⏸️ MANUAL`, never suppresses an `Editor:` field, and never disables the engine MCP (`.unikit/system/dev-principles.md` → **A9 · no rules ≠ no rights**).
+   Absence never switches a task to `⏸️ MANUAL`, never suppresses an `Editor:` field, and never disables an engine bridge (`.unikit/system/dev-principles.md` → **A9 · no rules ≠ no rights**).
 
 7. **`.unikit/config.yaml` → `testing.plan.checkpoints`** — the test-run placement policy, resolved per mode by `mode-full.md` / `mode-fast.md` / `mode-ultra.md`; here it is only read. File or key absent → the mode file's default, silently.
 
@@ -409,6 +411,7 @@ Every task gets the same prompt shape; only the focus and the rule paths change:
 recon-agent(prompt:
   "Before analysis, read these project docs:
    - .unikit/ARCHITECTURE.md
+   - [architecture topic paths relevant to <focus> — from the root's `## Topics`]
    - [core rule paths relevant to <focus> — from the RULES_INDEX.md Core table]
    - [stack rule paths, when <focus> involves a specific framework]
 
@@ -419,7 +422,7 @@ Foci: (1) **architecture & affected modules** — the files and modules related 
 
 After the tasks return, synthesize: files to create/modify, patterns to follow, dependencies, risks.
 
-Code analysis in this skill is read-only: never `/unikit-devcontext`, never a code-writing delegate.
+Code analysis in this skill is read-only: never `/unikit-execute`, never a code-writing delegate.
 
 #### Phase B: Technical Deep-Dive (Explore agent)
 
@@ -429,7 +432,7 @@ When `research_linked = true`: use the research's `## Active Summary` — and `C
 
 When `research_linked = false`: perform full technical analysis from scratch.
 
-Launch an Explore task for detailed technical analysis using findings from Phase A. Include doc references (ARCHITECTURE.md + all core/stack rules from Bootstrap). The task should:
+Launch an Explore task for detailed technical analysis using findings from Phase A. Include doc references (the ARCHITECTURE.md root, the topic files matched to the phases found in Phase A, and all core/stack rules from Bootstrap). The task should:
 1. Read source code of existing similar features found in Phase A
 2. Extract interface signatures, constructor dependencies, DI bindings from installers
 3. Identify patterns the new feature must follow (naming, structure, registration)
@@ -473,23 +476,30 @@ An experiment plan skips this step (`references/experiment-plan.md`) even when `
 
 ### Step 4.6: Read the Catalog Negatively (only when the plan carries editor work)
 
-**Gate.** Runs only when Step 4 established that the feature touches the editor's **serialized state** *and* an engine MCP is configured (MCP server `{{engine_mcp_tool}}` present in `{{settings_file}}`). A pure-code plan skips this step and makes no call at all.
+**Gate.** Runs only when Step 4 established that the feature touches the editor's **serialized state** *and* `.unikit/system/engine-bridges/BRIDGES.md` lists at least one bridge. A pure-code plan skips this step and makes no call at all.
 
-Whatever engine-MCP grants this skill's frontmatter carries are read-only discovery and nothing else — that is the whole of the planner's contact with the engine MCP. Use them **once**, to answer exactly two questions:
+Whatever discovery this skill's frontmatter carries is read-only and is the whole of the planner's contact with the bridges. Per bridge listed, in the package order `BRIDGES.md` states (a plan never names a bridge, so the user's order does not matter here):
+
+- a bridge of kind mcp: the discovery names the frontmatter grants, once;
+- a bridge of kind cli: the whole live listing, once, by the `catalog list` row of its block - one read-only call that gives the name, group and description of every command. The call fails (no editor answered) → this bridge is **not read**; print once `INFO [plan] <bridge>: the editor did not answer; this bridge is not read` and go on.
+
+From the catalogs read, answer exactly two questions about their **union**:
 
 1. **Which kinds of editor work have no route here at all** — so the plan does not schedule an intent this project cannot carry out. The six-word `kind` vocabulary is in `.unikit/system/dev-principles.md` → A8.
 2. **Which evidence classes are reachable** — so no acceptance criterion is written against evidence nobody can produce. The claim-class → evidence-class lattice is A2 of the same file.
 
 That is the entire question — **not** which tool does it, **not** how it is called, **not** a strategy — and neither the question nor its answer is written into the plan.
 
+**A bridge that was not read makes the union incomplete.** Then "no route" is not a finding (unknown is not no — A9): print each such answer as a note — `NOTE [plan] <kind or class> is not reachable in the bridges read; <bridge> was not read` — and change nothing in the plan. Only when every listed bridge was read do the outcomes below apply.
+
 **What the outcome may change, and what it may not:**
 
-- a kind of work with no route → do not schedule it as engine-MCP work: express the change in a form that has a route, or keep the task and name the missing capability in its `WHY:`. **Do not pre-write `⏸️ MANUAL` into the task** — it is a runtime verdict (A9);
-- an evidence class that is not reachable → rewrite the acceptance criterion against a class that is, or say plainly in `## Overview` that it cannot be closed here. Never silently downgrade it to the cheapest observation available.
+- a kind of work with no route in any bridge → do not schedule it as bridge work: express the change in a form that has a route, or keep the task and name the missing capability in its `WHY:`. **Do not pre-write `⏸️ MANUAL` into the task** — it is a runtime verdict (A9);
+- an evidence class that no bridge reaches → rewrite the acceptance criterion against a class that is, or say plainly in `## Overview` that it cannot be closed here. Never silently downgrade it to the cheapest observation available.
 
-**The planner never:** calls anything that changes state, reads the `## Check` table, reads `.unikit/MCP-RECHECK-NOTES.md`, or opens Context7.
+**The planner never:** calls anything that changes state, reads the `## Check` table, reads the notes of a bridge (`.unikit/bridge-notes/`), or opens Context7.
 
-**No engine MCP configured, or discovery yields nothing → skip.** Plan against the base principles, unchanged.
+**No bridge listed, or discovery yields nothing → skip.** Plan against the base principles, unchanged.
 
 ### Step 5: Create the Plan
 
@@ -527,7 +537,7 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
    - `Testing: yes/no` — whether tests are written at all: tests for logic and system values (`dev-principles.md` item 5)
    - `Test checkpoints: task | phase | plan` — where the test-checkpoint tasks stand; resolved in the mode file, omitted when `Testing: no`, `task` only in ultra.
    - `Docs: yes/no` — whether to show documentation checkpoint (invokes `/unikit-docs`)
-   - `Editor tasks: mcp | manual | direct` — read by `/unikit-implement`: how tasks carrying an `Editor:` line are carried out. Resolved in `mode-full.md` / `mode-fast.md`. **Omit this line entirely when `engine_rules_loaded = false`**.
+   - `Editor tasks: engine-bridge | manual | direct` — read by `/unikit-implement`: how tasks carrying an `Editor:` line are carried out. Resolved in `mode-full.md` / `mode-fast.md`. Default when the line is not asked: `engine-bridge` if `BRIDGES.md` lists a bridge, otherwise `manual`. **Omit this line entirely when `engine_rules_loaded = false`**.
    - `PR checkpoints: yes` — only when this plan carries at least one PR checkpoint task (`pr_checkpoints = true` in the mode file and two or more modules); otherwise the line is absent.
 
 4. **`## Roadmap Linkage`** (optional, only if `.unikit/ROADMAP.md` exists):
@@ -546,11 +556,11 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
 
    **PR checkpoint task.** When `pr_checkpoints = true` and there are two or more modules, the last task of every module but the last is a PR checkpoint task carrying `PR checkpoint: <module name> → <base>` in the position `Files:` occupies; under `Testing: yes` and `Test checkpoints: phase | task` the module's test-checkpoint task stands right before it. Grammar, labels and placement: `TASK-FORMAT.md` → `### PR checkpoint task grammar`.
 
-   **Rule refresh per phase.** Before you draft the tasks of each phase — in ultra, before you write each phase file (`mode-ultra.md` Step F) — match the phase's name and the tasks you are about to write against the `Load when` column of the `## Topics` table in `.unikit/RULES.md` and the Stack table of `.unikit/memory/code/RULES_INDEX.md`. Read only the topic files and stack rules not loaded yet — keep their paths in `loaded_rules`, the same delta `/unikit-implement` Step 3.0 computes; when unsure, load. A listed topic file that is missing → `WARN [rules] topic file missing: .unikit/rules/<slug>.md`, continue. Nothing is re-read between the tasks of one phase.
+   **Rule refresh per phase.** Before you draft the tasks of each phase — in ultra, before you write each phase file (`mode-ultra.md` Step F) — match the phase's name and the tasks you are about to write against the `Load when` column of the `## Topics` tables in `.unikit/RULES.md` and in `.unikit/ARCHITECTURE.md` (read at Step 0.5; a root without that table has no topics) and the Stack table of `.unikit/memory/code/RULES_INDEX.md`. Read only the topic files and stack rules not loaded yet — keep their paths in `loaded_rules`, the same delta `/unikit-implement` Step 3.0 computes; when unsure, load. A listed topic file that is missing → `WARN [rules] topic file missing: .unikit/rules/<slug>.md` (an architecture topic: `WARN [architecture] topic file missing: .unikit/architecture/<slug>.md`), continue. Nothing is re-read between the tasks of one phase.
 
 6. **`## Commit Plan`** — when 5+ tasks, checkpoints every 3-5 tasks, each mirrored by a decorative `<!-- Commit checkpoint: tasks X-Y -->` marker in `## Checklist`; `/unikit-implement` does not parse it (`TASK-FORMAT.md`). A range never crosses a module boundary.
 
-7. **`## MCP Findings`** — emitted **empty** (heading and header row) whenever the plan carries at least one `Editor:` task, omitted otherwise; filled by the executor. Contract: `TASK-FORMAT.md` → `### MCP findings section`.
+7. **`## Engine Bridge Findings`** — emitted **empty** (heading and header row) whenever the plan carries at least one `Editor:` task, omitted otherwise; filled by the executor. Contract: `TASK-FORMAT.md` → `### MCP findings section`.
 
 8. **`## Rule Candidates`** — emitted **always, and empty** (heading and header row). Contract: `TASK-FORMAT.md` → `### Rule candidates section`.
 
@@ -612,5 +622,5 @@ Beyond Step 5 item 5 and `references/TASK-FORMAT.md`: name a dependency on anoth
 1. **NO report tasks** — don't create summary/report tasks at the end of a plan
 2. **Right granularity** — not too big (overwhelming), not too small (noise). A task should be completable in one focused session
 3. **Dependencies matter** — order tasks so they can be done sequentially without blockers
-4. **Respect module boundaries** — follow the dependency rules of `.unikit/ARCHITECTURE.md`; never invent a direction it does not state
-5. **A plan is intent, not inventory — no tool name ever reaches it.** Names live in the live catalog and in the `evidence` column of a findings row, and nowhere else. The planner never lifts an obligation on the executor's behalf — no pre-declared gate, no "this server cannot do X", no `⏸️ MANUAL` written in advance
+4. **Respect module boundaries** — follow the dependency rules of the `.unikit/ARCHITECTURE.md` root and of the topic loaded for the phase; never invent a direction it does not state
+5. **A plan is intent, not inventory — no tool name ever reaches it.** Names live in the live catalog and in the `evidence` column of a findings row, and nowhere else. No bridge id reaches the plan either: the `bridge` cell of a findings row is written by an executor. The planner never lifts an obligation on the executor's behalf — no pre-declared gate, no "this server cannot do X", no `⏸️ MANUAL` written in advance

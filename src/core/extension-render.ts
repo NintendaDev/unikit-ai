@@ -14,7 +14,7 @@ import { getTransformer } from './transformer.js';
 export interface RenderContext {
   agent: AgentInstallation;
   engine: string;
-  engineMcpKey: string | null | undefined;
+  mcpBridgeCode: string | null | undefined;
   /** Becomes `{{self_name}}`: the skill the text is delivered to. */
   target: string;
   /** Project-relative, `/`-separated directory the extension's reference copies live in. */
@@ -69,7 +69,7 @@ export function renderExtensionText(raw: string, ctx: RenderContext, mode: 'bloc
   try {
     const vars = buildTemplateVars(getAgentConfig(ctx.agent.id));
     try {
-      Object.assign(vars, buildEngineVars(ctx.engine, ctx.engineMcpKey));
+      Object.assign(vars, buildEngineVars(ctx.engine, ctx.mcpBridgeCode));
     } catch {
       // An unknown engine id: the agent variables alone, as the skill installer does without an engine.
     }

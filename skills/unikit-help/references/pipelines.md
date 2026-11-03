@@ -35,7 +35,7 @@ commit:     /unikit-commit          (optional terminal) conventional commit (+ p
               │
 pr:         /unikit-pr              (optional) the branch's PR — text, open/update, safe merge
               │
-archive:    /unikit-archive         (optional) move a finished folder plan out of the active list
+archive:    /unikit-archive         (optional) move a finished plan or a research out of the active list
               │
 learn:      /unikit-evolve          (optional) turn fix-patches into project rules
 ```
@@ -262,9 +262,10 @@ Pick the row that matches what the user already has:
 | **A clear feature** | `/unikit-plan [fast\|full\|ultra] <feature>` | `/unikit-improve` → `/unikit-implement` |
 | **A research brief already** | `/unikit-plan` (it finds the latest research) | `/unikit-implement` |
 | **A plan, wants code** | `/unikit-implement` | `/unikit-verify` → `/unikit-commit` |
+| **A small task, no plan wanted** | `/unikit-execute <task>` | `/unikit-review` → `/unikit-commit` |
 | **Written code to check** | `/unikit-review` and/or `/unikit-verify` | `/unikit-fix` |
 | **A bug** | `/unikit-fix <bug>` (deep bug → `/unikit-explore` first) | `/unikit-verify` → `/unikit-commit` |
-| **Finished plans piling up** | `/unikit-archive` (no args — it shows which plans qualify) | `/unikit-commit` the move |
+| **Finished plans or researches piling up** | `/unikit-archive` (no args — it asks what to archive and shows what qualifies; `researches restore` brings one back) | `/unikit-commit` the move |
 | **Rules to capture / books to learn from** | `/unikit-rules` (one-liner) or `/unikit-memory` (sources) | — |
 
 If the user can't place themselves in this table, fall back to the diagnostic in

@@ -33,6 +33,8 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   dispatched in Step 0: it appends template literals silently, asks about placeholders and
   out-of-domain values, never touches `language.rules` / `language.technical_terms`, and
   stops before the bootstrap steps, so nothing else about the project is re-run.
+  Also checks the environment of the engine bridges.
+  On a project already set up it opens with a returning-project menu of those actions instead of repeating the bootstrap.
 - **In:** optional project description (a sentence, or a path to a design doc). Needs the
   installer to have run first (engine chosen).
 - **Out:** the `.unikit/` context files + `AGENTS.md` + `.unikit/memory/code/{core,stack}/`.
@@ -40,13 +42,16 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   or `/unikit-gd-brainstorm` / `/unikit-gd-spec` for the design track.
 
 ### unikit-architecture
-- **Purpose:** Generate / update `.unikit/ARCHITECTURE.md` — folder layout, dependency rules,
-  module communication, chosen architecture pattern.
-- **When:** "describe the architecture", "which architecture should I use", or to refresh it.
-- **In:** an optional pattern name (else auto-detect). Reads DESCRIPTION.md + the project scan.
-- **Out:** `.unikit/ARCHITECTURE.md`.
+- **Purpose:** Generate / update / reorganize `.unikit/ARCHITECTURE.md` — folder layout, dependency
+  rules, module communication, chosen architecture pattern. A large file is split into a root and topic
+  files in `.unikit/architecture/` that load only when the work matches them.
+- **When:** "describe the architecture", "which architecture should I use", "update the architecture",
+  "the architecture file is too big", or to refresh it.
+- **In:** a mode — `generate`, `update [text]` or `optimise` — by its keyword or by a request in plain
+  words; an optional pattern name (else auto-detect). Reads DESCRIPTION.md + the project scan.
+- **Out:** `.unikit/ARCHITECTURE.md`, and the topic files in `.unikit/architecture/` when it has topics.
 - **Required-context, auto-run by `/unikit`.** Standalone editor afterward. Before: `/unikit`.
-  After: read by almost every skill's bootstrap.
+  After: read by almost every skill's bootstrap — the root, and the topic files by the work.
 
 ---
 
@@ -204,15 +209,23 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 ### unikit-archive
 - **Purpose:** Move a completed folder plan — or, on your explicit choice, an unfinished one,
   labelled as such — from `.unikit/code/plans/<folder>/` to `.unikit/code/archive/plans/<folder>/`,
-  so plan lookup and the plan lists stop offering it.
-  Never deletes, never commits.
-- **When:** "archive the plan", "archive completed plans", "clean up plans".
-- **In:** a plan folder name, `--all`, `list`, or nothing (interactive — a table of every plan with
-  its verdict, created date and last change, oldest change first; pick by number or by date).
-- **Out:** the moved folder + one `Archived:` line in its manifest.
+  and a code research from `.unikit/code/researches/<slug>/` to
+  `.unikit/code/archive/researches/<slug>/`, so plan lookup, the plan lists and `/unikit-plan`
+  stop offering them. A plan that links a research still finds it by its folder name; a research
+  that an unfinished plan links is not offered. Never deletes, never commits.
+- **When:** "archive the plan", "archive completed plans", "clean up plans", "archive researches",
+  "clean up researches", "restore a research".
+- **In:** nothing (it asks what to archive — plans, researches or both), `plans`, `researches`
+  (a table of the researches that can go, oldest first; pick by number or by date),
+  `researches <slug>`, `researches --all`, `researches restore [<slug>]`, a plan folder name,
+  `--all`, or `list` (both archives). A plan is classified with its verdict, created date and last
+  change, oldest change first.
+- **Out:** the moved folder + one `Archived:` line in its manifest; for a research also a
+  re-rendered `.unikit/code/researches/INDEX.md`.
 - **Optional (after commit).** Untransferred MCP findings and `open` rule candidates never
-  block: it asks whether to handle them first (`/unikit-mcp-trap`, `/unikit-verify`) or
-  archive anyway. `/unikit-explore` reads archived plans as history.
+  block: it asks whether to handle them first (`/unikit-bridge-trap`, `/unikit-verify`) or
+  archive anyway. `/unikit-explore` reads archived plans as history and never takes the slug of
+  an archived research.
 
 ### unikit-evolve
 - **Purpose:** Learn from accumulated fix-patches — extract prevention points and turn them into
@@ -223,13 +236,17 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **Out:** proposed rules → `.unikit/RULES.md` and/or `.unikit/skill-context/<skill>/SKILL.md`.
 - **Optional (feedback loop).** Before: `/unikit-fix`. After: `/unikit-rules`, `/unikit-memory`.
 
-### unikit-devcontext
-- **Purpose:** The code-writing engine / senior-developer persona for direct, ad-hoc edits with
-  **no plan** (e.g. a one-off refactor). The skill the pipeline delegates to as `develop-agent`.
-- **When:** "just add this method", "refactor this", "do it directly, no plan".
-- **In:** a task or file path; bootstraps the full knowledge base.
-- **Out:** project code.
-- **Optional / internal.** Used directly for quick edits, or spawned by implement/fix/verify
+### unikit-execute
+- **Purpose:** One small task straight from a description, with **no plan** — `/unikit-implement`
+  without the plan: it reads the text into a card (code, editor, mixed or question), carries it out
+  through the engine bridges, checks compilation and reads the changed state back. The skill the
+  pipeline delegates to as `develop-agent`.
+- **When:** "just add this method", "set this up in the editor, no plan", "do it directly".
+  Not for a bug (`/unikit-fix`), an existing plan (`/unikit-implement`), a multi-step feature
+  (`/unikit-plan`) or a discussion (`/unikit-explore`).
+- **In:** the task in words, optionally `--docs=yes|no|warn` and `--editor=engine-bridge|manual|direct`.
+- **Out:** project code and editor changes, one report, and an offer to review or commit.
+- **Optional / internal.** Used directly for small tasks, or spawned by implement/fix/verify
   for parallel or deep-dive work.
 
 ---
@@ -473,6 +490,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **`prune` mode:** `/unikit-rules prune` lists deletion candidates with evidence — "delete everything
   proposed" removes them in one answer, or choose by id — and resolves contradictions in a separate
   question (keep the right side or merge both into one rule); a partly outdated rule is never deleted.
+- **By keyword or in plain words:** each mode is also started by a request in plain words; the keyword stays the exact form.
 - **Every mode announces itself** before reading anything, in one plain sentence — which mode
   and what it is about to do — and starts every step with one short line about what it is doing now.
 - **Optional.** After: `/unikit-memory migrate-rules` (promote a mature rule into the knowledge base).
@@ -524,31 +542,52 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **Out:** `.unikit/TODO.md`.
 - **Optional.** Implement/fix auto-close matching items.
 
-### unikit-mcp-trap
-- **Purpose:** Record a finding about the configured engine MCP server into
-  `.unikit/MCP-RECHECK-NOTES.md` — the project's log of what has to be re-checked here.
-  Zero MCP calls, no editor needed. Writes in one genre only: a check to perform, never a
+### unikit-bridge-trap
+- **Purpose:** Record a finding about an engine bridge of this project into
+  `.unikit/bridge-notes/<bridge>.md` — the project's log of what has to be re-checked there.
+  Zero bridge calls, no editor needed. Writes in one genre only: a check to perform, never a
   lifted gate and never a named workaround.
 - **When:** right after a call reported success while changing nothing, ate an argument, or
-  validated a broken state — "write this down", "record this MCP finding", "add a recheck note".
+  validated a broken state — "write this down", "record this bridge finding", "add a recheck note".
 - **In:** three forms — the finding in one line; a path to a plan file (harvests that plan's
-  `## MCP Findings` table only, the session is not touched); or nothing, which harvests the
+  `## Engine Bridge Findings` table only, the session is not touched); or nothing, which harvests the
   session first and then offers to scan the tables of plans touched since the last audit.
-- **Out:** `.unikit/MCP-RECHECK-NOTES.md`.
-- **Optional.** Pairs with `/unikit-mcp-audit`, which curates what this writes.
+- **Out:** `.unikit/bridge-notes/<bridge>.md`.
+- **Optional.** Pairs with `/unikit-bridge-audit`, which curates what this writes.
 
-### unikit-mcp-audit
+### unikit-bridge-audit
 - **Purpose:** Curate those notes — re-stamp on a change of server, replay `replay: safe`
   findings inside a disposable sandbox, offer to retire what was fixed or went upstream, and
   print a ready diff for the packaged rules tree.
-- **When:** "audit the MCP notes", "are these findings still true", "the server was updated —
+- **When:** "audit the bridge notes", "are these findings still true", "the server was updated —
   revisit the notes".
 - **In:** nothing, a note id (`R2`), or one of `stamp` / `replay` / `retire` / `upstream`.
-- **Out:** an updated `.unikit/MCP-RECHECK-NOTES.md` (+ an upstream diff, printed).
+- **Out:** an updated `.unikit/bridge-notes/<bridge>.md` (+ an upstream diff, printed).
 - **Optional.** Mutates a live editor when replaying. It takes no pre-flight measurements: it
   tells you how to prepare the editor, names everything it will create, and asks once — that
   confirmation is the whole gate. Works only inside a `UNIKIT_AUDIT_<runid>` sandbox and never
   saves the scene.
+
+### unikit-bridge-route
+- **Purpose:** Writes the routing rules of the engine bridges into `.unikit/bridge-routing.md`: a row says that a
+  kind of work (an `area` such as a kind of editor task or a gate, narrowed by `when` in your own words) goes only
+  through some bridges, goes through them first, or never goes through them. It asks in your words, shows the table
+  before it writes, and checks only that the bridge ids are installed. On request it also moves a bridge in
+  `.unikit/bridges.yaml`.
+- **When:** "run the tests only through this bridge", "never use that bridge for UI work", "try this bridge first
+  for scenes", "show my bridge routes", "put that bridge first".
+- **In:** the rule in your words, `list`, `remove <row>`, or nothing (it shows the table and asks).
+- **Out:** `.unikit/bridge-routing.md` (and, on request, the `order:` list of `.unikit/bridges.yaml`).
+- **Optional.** No file means no routing rules. It makes no bridge call and needs no editor.
+
+### unikit-references
+- **Purpose:** Your own reference material for the agents: a local file or folder is copied word for word, a
+  plain text or Markdown address is downloaded as a copy, any other page is recorded as a link with a note on
+  when to read it. Nothing is summarised or rewritten.
+- **When:** "add this document as a reference", "save this link for the agents", "what references do we have".
+- **In:** `add <path or address> [--name <name>]`, `list`, `show <name>`, `refresh <name>`, `delete <name>`.
+- **Out:** `.unikit/references/INDEX.md` and `.unikit/references/user/<name>/`.
+- **Optional.** To make agents read an entry, name it in the request or point to it from a project rule (`/unikit-rules`).
 
 ### unikit-help
 - **Purpose:** This navigator. Diagnoses what the user is trying to do and points to the right skill

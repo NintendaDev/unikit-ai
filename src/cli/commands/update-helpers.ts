@@ -1,5 +1,10 @@
 import chalk from 'chalk';
-import type { UniKitConfig } from '../../core/config.js';
+import path from 'path';
+import type { ExtensionRecord, UniKitConfig } from '../../core/config.js';
+import { SKILL_RENAMES } from '../../core/skill-renames.js';
+import { fileExists } from '../../utils/fs.js';
+import { UNIKIT_DIR } from '../../core/constants.js';
+import { SKILL_CONTEXT_DIR_NAME } from '../../core/constants-bridges.js';
 import type { SkillUpdateEntry } from '../../core/installer/skills.js';
 import type { ChainedRegistry } from '../../core/registry/index.js';
 import { bootstrapModuleRules } from '../../core/installer/rules-bootstrap.js';
@@ -11,7 +16,13 @@ import { logWarn } from '../../utils/log.js';
 // 500-line ceiling (guarded by Part 7i): how a skill-update reason is worded, how the entries
 // are grouped for the report, and the rules bootstrap for a module that just got its first skill.
 
+/** `renamed-from:<old>` — the reason an entry carries when a renamed skill took the old one's place. */
+const RENAMED_REASON_PATTERN = /^renamed-from:(.+)$/;
+
 export function formatReason(reason: string): string {
+  const renamed = RENAMED_REASON_PATTERN.exec(reason);
+  if (renamed) return `renamed from ${renamed[1]}`;
+
   switch (reason) {
     case 'source-hash-changed':
       return 'source changed';
@@ -107,4 +118,34 @@ export async function bootstrapNewSkillModuleRules(
     const moduleIds = [...new Set(installed.map(l => l.module))].join(', ');
     console.log(chalk.green(`✓ Bootstrapped ${installed.length} rule(s) for newly installed module(s): ${moduleIds}`));
   }
+}
+
+/** A rename target whose old name is installed somewhere is seeded by `updateSkills`; it must not be offered as "new". */
+export function withoutRenameTargets(newSkills: string[], installed: Set<string>): string[] {
+  const seeded = new Set(Object.entries(SKILL_RENAMES).filter(([old]) => installed.has(old)).map(([, next]) => next));
+  return newSkills.filter(skill => !seeded.has(skill));
+}
+
+/**
+ * A user override of a renamed skill (`.unikit/skill-context/<old>/`) is not read under the new name. The
+ * directory belongs to the user, so it is not moved: it is named, once per skill.
+ */
+export async function warnRenamedSkillContext(projectDir: string, installedBefore: Set<string>): Promise<void> {
+  for (const [old, next] of Object.entries(SKILL_RENAMES)) {
+    if (!installedBefore.has(old)) continue;
+    const dir = path.join(projectDir, UNIKIT_DIR, SKILL_CONTEXT_DIR_NAME, old);
+    if (await fileExists(dir)) {
+      logWarn('skills', `.unikit/skill-context/${old}/ belongs to the renamed skill; move it to .unikit/skill-context/${next}/ (it is not read under the old name)`);
+    }
+  }
+}
+
+/**
+ * The extensions that replaced a base skill which has just been renamed. `updateSkills` removed the
+ * old directory (and the replacement in it) and installed the new base skill; their files have to go
+ * back under the new base name.
+ */
+export function extensionsReplacingRenamedSkills(extensions: ExtensionRecord[], installedBefore: Set<string>): ExtensionRecord[] {
+  const targets = new Set(Object.entries(SKILL_RENAMES).filter(([old]) => installedBefore.has(old)).map(([, next]) => next));
+  return extensions.filter(ext => Object.keys(ext.replacedSkills ?? {}).some(baseName => targets.has(baseName)));
 }
