@@ -64,6 +64,7 @@ import { normalizeManifestToLatest } from './migrations/index.js';
 import { CODE_MODULE_ID } from '../constants.js';
 import { getModule } from '../modules.js';
 import { logInfo, logWarn } from '../../utils/log.js';
+import { RuleCandidateResolver, type RuleCandidate } from './rule-candidate.js';
 
 /** The `core` tier name subject to per-id B-merge (vs custom-only tiers). */
 const MERGE_TIER: Tier = 'core';
@@ -101,6 +102,11 @@ export abstract class ChainedRegistry implements RulesRegistry {
   // One-shot guard: `getResolvedSource` may re-enter `resolveModule`, so the
   // schema-too-new warning is flagged on the instance to fire at most once.
   private schemaWarned = false;
+  private readonly candidates = new RuleCandidateResolver(() => this.chain(), source => this.originOf(source));
+
+  resolveRuleCandidate(module: ModuleId, engine: string, tier: Tier, id: string): Promise<RuleCandidate | null> {
+    return this.candidates.resolve(module, engine, tier, id);
+  }
 
   protected constructor(engineId: string) {
     this.engineId = engineId;

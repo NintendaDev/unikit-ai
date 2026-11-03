@@ -8,7 +8,11 @@ import type { ChainedRegistry, RegistryRule } from '../registry/index.js';
 import { manifestEngineIds } from '../registry/validator.js';
 import { computeContentHash, isMarkdownFile, stripMdExtension } from './shared.js';
 import { mapWithConcurrency } from '../../utils/concurrency.js';
-import { REFERENCES_DIR_NAME, RULES_INDEX_FILE, RULE_FETCH_CONCURRENCY, moduleTierDir, type Tier } from '../constants.js';
+import { CODE_MODULE_ID, REFERENCES_DIR_NAME, RULES_INDEX_FILE, RULE_FETCH_CONCURRENCY, moduleTierDir, type Tier } from '../constants.js';
+import { adoptLegacyProviderSelection } from '../provider-rule-selection.js';
+import type { RuleCandidateSnapshot } from '../registry/rule-candidate.js';
+import { approvedProviderIds, syncApprovedProviderRules } from './provider-rule-sync.js';
+import { PROVIDER_RULE_TIER } from '../constants-provider-rules.js';
 import { listModules, type Module } from '../modules.js';
 import { loadRequiredByMap, generateRulesIndex, type InstalledByTier, type OriginByRule } from './rules-index.js';
 
@@ -53,6 +57,7 @@ export interface SyncRulesResult {
 }
 
 export interface SyncRulesOptions {
+  providerCandidates?: RuleCandidateSnapshot;
   /**
    * Overwrite existing registry-sourced rules regardless of version match and
    * overwrite locally-modified rule files. Emits `phase2:overwrite-local-mod`
@@ -189,7 +194,8 @@ async function syncRegistry(
   for (const tier of module.tiers) {
     // Rules come exclusively through the registry accessor — the single read
     // channel that resolves the module's normalized schema:2 manifest.
-    const registryRules = registry.getModuleRules(module.id, tier);
+    const providerIds = module.id === CODE_MODULE_ID && tier === PROVIDER_RULE_TIER ? approvedProviderIds(config) : new Set<string>();
+    const registryRules = registry.getModuleRules(module.id, tier).filter(row => !providerIds.has(row.id));
     const registryIds = new Set(registryRules.map(r => r.id));
     const stateList = getModuleTier(config, module.id, tier);
     const stateMap = new Map(stateList.map(e => [e.name, e]));
@@ -372,6 +378,7 @@ async function syncRegistry(
     if (prune && tier === 'stack') {
       for (let i = stateList.length - 1; i >= 0; i--) {
         const entry = stateList[i];
+        if (providerIds.has(entry.name)) continue;
         if (entry.source === 'local') continue;
         if (registryIds.has(entry.name)) continue;
 
@@ -452,7 +459,9 @@ export async function syncRulesState(
   const events: SyncRulesEvent[] = [];
   let changed = false;
 
+  if (module.id === CODE_MODULE_ID && await adoptLegacyProviderSelection(projectDir, config)) changed = true;
   if (await reconcileDiskState(projectDir, module, config, events)) changed = true;
+  if (module.id === CODE_MODULE_ID && await syncApprovedProviderRules(projectDir, engineId, config, registry, events, replace, options.providerCandidates)) changed = true;
   if (await syncRegistry(projectDir, engineId, module, config, registry, replace, prune, events)) changed = true;
   if (await regenerateIndex(projectDir, module, config, events)) changed = true;
 

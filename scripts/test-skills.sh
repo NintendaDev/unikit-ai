@@ -12843,6 +12843,17 @@ else
     echo "$BRL_OUTPUT" | sed 's/^/      /'
 fi
 
+set +e
+PROVIDER_OUTPUT=$(node "$ROOT_DIR/scripts/test-provider-rule-selection.mjs" 2>&1)
+PROVIDER_EXIT=$?
+set -e
+if [[ $PROVIDER_EXIT -eq 0 ]]; then
+    pass "Provider rule selection and lifecycle"
+else
+    fail "Provider rule selection and lifecycle"
+    echo "$PROVIDER_OUTPUT"
+fi
+
 # Part 7e8: architecture topics (family ART) and the request-driven modes of unikit-rules (family RMI)
 # ─────────────────────────────────────────────
 # The root and its topic files, the modes of unikit-architecture, every reader's way of loading the topics, the

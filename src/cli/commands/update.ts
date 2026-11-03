@@ -24,7 +24,7 @@ import { reconcileMcpSettings } from '../../core/mcp-reconcile.js';
 import { installEngineBridges, readPreviousBridgeSet } from '../../core/installer/engine-bridges.js';
 import { swapBridgeNotes } from '../../core/installer/bridge-notes.js';
 import { syncBridgeOrder } from '../../core/installer/bridge-order.js';
-import { syncBridgeRules } from '../../core/installer/bridge-rules.js';
+import { syncProviderRules } from '../../core/installer/provider-rules.js';
 import { KIMI_SUBAGENT_POOL_HINT } from '../../core/constants-kimi.js';
 import { getAgentConfig } from '../../core/agents.js';
 import { exitOnSharedSkillsDir } from '../guards.js';
@@ -43,7 +43,7 @@ import {
 } from './update-helpers.js';
 import { recomputeSelection } from './update-bridges.js';
 import { printInjectionReport } from './injection-report.js';
-import { printBridgeRulesReport } from './bridge-rules-report.js';
+import { printProviderRulesReport } from './bridge-rules-report.js';
 import { buildNewItemsChooser, formatPendingNotice } from './extension-selection-ui.js';
 
 interface UpdateCommandOptions {
@@ -296,14 +296,14 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
 
     // The rule of each selected bridge arrives with the bridge and leaves with it. The previous set is read here, before installEngineBridges
     // rewrites BRIDGES.md; the index is rebuilt by Phase 3 of the sync right below.
-    const bridgeRules = await syncBridgeRules({
+    const bridgeRules = await syncProviderRules({
       projectDir, config, registry, engineId,
-      previousBridgeIds: await readPreviousBridgeSet(projectDir),
-      currentBridgeIds: Object.keys(config.engineBridges.selected),
+      previousProviderIds: await readPreviousBridgeSet(projectDir),
+      currentProviderIds: Object.keys(config.engineBridges.selected),
       previousRules: config.rules.installed,
       regenerateIndex: 'none',
     });
-    printBridgeRulesReport(bridgeRules);
+    printProviderRulesReport(bridgeRules);
 
     const syncResult = await syncAllModules(projectDir, engineId, config, registry, {
       replace: force,

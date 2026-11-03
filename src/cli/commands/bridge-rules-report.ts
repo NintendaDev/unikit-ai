@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import type { BridgeRulesReport } from '../../core/installer/bridge-rules.js';
+import type { ProviderRulesReport } from '../../core/installer/provider-rules.js';
 import { BRIDGE_RULE_REPORT, bridgeRuleDisplayPath } from '../../core/constants-bridges.js';
 
 /**
@@ -7,7 +7,7 @@ import { BRIDGE_RULE_REPORT, bridgeRuleDisplayPath } from '../../core/constants-
  * one that stayed although its bridge went, and one that could not be installed. A rule that is already
  * there, and a bridge the registry has no rule for, are not news and print nothing.
  */
-export function printBridgeRulesReport(report: BridgeRulesReport): void {
+export function printProviderRulesReport(report: ProviderRulesReport): void {
   for (const { id, status, reason } of report.lines) {
     if (status === 'installed') {
       console.log(chalk.green(`✓ ${BRIDGE_RULE_REPORT.installed} ${id} (${bridgeRuleDisplayPath(id)})`));
