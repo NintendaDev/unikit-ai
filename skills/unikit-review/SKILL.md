@@ -176,7 +176,7 @@ Always run these checks in addition to project rules. If a finding from the chec
 - [ ] SOLID principles
 - [ ] DRY principle
 
-**Testing** (only when tests are due: a plan with `Testing: yes`, or the user asked for them; no tests by the user's choice is not a finding):
+**Testing** (only when tests are due: a plan with `Testing: yes`, or the user asked for them; no tests by the user's choice is not a finding, and neither are tests still waiting for acceptance):
 - [ ] Tests for new logic; none that pin tunable values or authored content
 - [ ] Edge cases of the logic tested
 - [ ] Mocking appropriateness

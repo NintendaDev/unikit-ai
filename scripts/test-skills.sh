@@ -7404,9 +7404,18 @@ if [[ -s "$TS_FIX" ]]; then
         'whole-project-default::Do not run (recommended)' \
         'answer-reach::What the answer covers' \
         'refusal-note::not run — your choice' \
-        'prototype-plan::not part of this plan (Testing: no)'; do
+        'prototype-plan::not part of this plan (Testing: no)' \
+        "prototype-keeps-the-word::the task's words do not ask for a run → no question"; do
         grep -qF -- "${ts4#*::}" "$TS_FIX" || TS4_WHY+=" TS-4:${ts4%%::*}"
     done
+    # The order of Step 4.2 is the behaviour: no bridge and a prototype plan both stop the step before it asks.
+    ts4_line() { # <literal>: the line of its first occurrence, 0 when there is none
+        { grep -nF -- "$1" "$TS_FIX" 2>/dev/null || echo 0; } | head -1 | cut -d: -f1
+    }
+    TS4_NO_BRIDGE=$(ts4_line 'If no engine bridge is available — skip and note: `Test run:')
+    TS4_PROTOTYPE=$(ts4_line 'not part of this plan (Testing: no)')
+    TS4_QUESTION=$(ts4_line '**The question.**')
+    [[ "$TS4_NO_BRIDGE" -gt 0 && "$TS4_NO_BRIDGE" -lt "$TS4_PROTOTYPE" && "$TS4_PROTOTYPE" -lt "$TS4_QUESTION" ]] || TS4_WHY+=" TS-4:step-4.2-order"
 else
     TS4_WHY+=" TS-4:fix-skill-missing"
 fi
@@ -7423,10 +7432,12 @@ for ts5 in \
     "$TS_TESTRUNS::phase-logic::Write tests for the logic created or modified in a phase" \
     "$TS_TESTRUNS::loop-exception::review loop" \
     "$TS_TESTRUNS::after-acceptance::after acceptance" \
+    "$TS_TESTRUNS::plan-with-no-manifest::Under \`Testing: yes\` with no manifest → one run, no record" \
     "$TS_IMPL::important-rule::Tests follow acceptance" \
     "$TS_IMPL::step-5.8-reminder::written and run once" \
     "$TS_REVIEW::checklist-line::Tests for new logic; none that pin tunable values or authored content" \
     "$TS_REVIEW::choice-not-a-finding::no tests by the user's choice is not a finding" \
+    "$TS_REVIEW::waiting-not-a-finding::tests still waiting for acceptance" \
     "$TS_COMMIT::closed-line::$TS_INFO_CLOSED" \
     "$TS_COMMIT::no-debt-line::No tests due" \
     "$TS_ULTRA::authored-content-literal::Not applicable — authored content; evidence is a read-back or a frame"; do
@@ -14265,9 +14276,27 @@ for xe_lit in 'plainly require' 'a rule demands coverage' 'None by default'; do
     xe_lacks "XE-8:skill-returned(${xe_lit:0:26})" "$xe_lit" "$XE_SKILL"
 done
 for xe_lit in 'No tests (recommended)' 'Write them after you accept the result' 'Only run the existing tests' \
-              '## Run width' 'one repeat' 'is not an order' 'prototype plan' 'Not done'; do
+              '## Run width' 'one repeat' 'is not an order' 'prototype plan' 'Not done' \
+              'says nothing about tests, in a session under a prototype plan' \
+              'No bridge offers a test run → no question' '`use_affected_modules: true`' \
+              '<written | not written>, not run — no bridge offers a test run' \
+              '<written | not written>, not run — the code does not compile'; do
     xe_has "XE-8:reference-lacks(${xe_lit:0:26})" "$xe_lit" "$XE_TESTS"
 done
+xe_has "XE-8:skill-lacks(narrowing-reads-the-rule)" 'writes tests or narrows a run to affected test suites' "$XE_SKILL"
+xe_lacks "XE-8:rule-read-before-width" 'Before working out a scope, read the rule' "$XE_TESTS"
+# "The first row that fits decides", so the order is the behaviour: the wider order comes before the narrower one
+# it contains, and the prototype row after every row that names an order, because a word of the user still counts.
+xe_row() { # <literal>: the line of the first row that holds it, 0 when there is none
+    { grep -nF -- "$1" "$XE_TESTS" 2>/dev/null || echo 0; } | head -1 | cut -d: -f1
+}
+XE_ROW_BOTH=$(xe_row '| orders tests and a run')
+XE_ROW_TESTS=$(xe_row '| orders tests (')
+XE_ROW_RUN=$(xe_row '| orders a run only')
+XE_ROW_PROTO=$(xe_row '| says nothing about tests, in a session under a prototype plan')
+XE_CHK=$((XE_CHK + 2))
+[[ "$XE_ROW_BOTH" -gt 0 && "$XE_ROW_BOTH" -lt "$XE_ROW_TESTS" ]] || XE_WHY+=" XE-8:narrower-order-row-first"
+[[ "$XE_ROW_RUN" -gt 0 && "$XE_ROW_RUN" -lt "$XE_ROW_PROTO" ]] || XE_WHY+=" XE-8:prototype-row-beats-an-order"
 
 [[ "$XE_CHK" -gt 0 ]] || XE_WHY+=" XE-0:nothing-checked"
 if [[ -z "$XE_WHY" ]]; then

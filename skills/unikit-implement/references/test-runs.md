@@ -81,7 +81,7 @@ Write tests for the logic created or modified in a phase **before the phase's fi
 
 Tests written here are included in the phase commit.
 
-**After acceptance.** The classes of target are item 5 of `dev-principles.md`; the tests of the review loop (item 5a) are written once, after acceptance, for the logic changed since the last commit. The run that follows is not part of this step: it is one run recorded by Step 3.2, items 5–9, with coverage `plan` — only in a plan with `Testing: yes` and a manifest, so that `/unikit-verify` does not ask to repeat it. No plan → the run is asked for (`dev-principles.md` item 5a).
+**After acceptance.** The classes of target are item 5 of `dev-principles.md`; the tests of the review loop (item 5a) are written once, after acceptance, for the logic changed since the last commit. The run that follows is not part of this step: it is one run recorded by Step 3.2, items 5–9, with coverage `plan` — only in a plan with `Testing: yes` and a manifest, so that `/unikit-verify` does not ask to repeat it. Under `Testing: yes` with no manifest → one run, no record. No plan → the run is asked for (`dev-principles.md` item 5a).
 
 ## Carrying the anchor across a commit
 

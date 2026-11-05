@@ -101,7 +101,7 @@ These describe the engine bridges actually configured for this project: their bo
    - **RULES.md**: ALWAYS read `.unikit/RULES.md` first (highest priority) **Rule topics:** load the topic files listed under its `## Topics` whose `Load when` matches the current task; when unsure, load.
    - **Core**: read the Core table. For EACH row where Required By = `all` or contains `{{self_name}}` — read that file from `.unikit/memory/code/core/` using the Read tool. Do NOT skip any matching row. Always re-read at skill start, never rely on prior conversation cache
    - **Stack**: load dynamically when the current task or context matches "Load When" column, or when a need arises during work
-   - **The one exception to the row rule: `testing.md`.** Read it only when this run writes tests or works out the width of a run, even though its row says `all`; `references/tests.md` says when.
+   - **The one exception to the row rule: `testing.md`.** Read it only when this run writes tests or narrows a run to affected test suites, even though its row says `all`; `references/tests.md` says when.
 4. **Read `.unikit/skill-context/{{self_name}}/SKILL.md`** if it exists — project-specific rules accumulated by `/unikit-evolve`. Treat as overrides: skill-context wins over general rules on conflict.
 
 Unless this is the delegate mode, and when `git` is available, run `git status --porcelain` once and remember the paths that already have uncommitted changes — Step 5 names them if this run touches them too.
