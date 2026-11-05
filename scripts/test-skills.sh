@@ -7396,6 +7396,17 @@ if [[ -s "$TS_FIX" ]]; then
     grep -qF -- "$TS_INFO_DEFER" "$TS_FIX" || TS4_WHY+=" TS-4:no-defer-line"
     grep -qF 'skip this step with the same single line' "$TS_FIX" || TS4_WHY+=" TS-4:step5-not-skipped-in-loop"
     grep -qF 'regression test' "$TS_FIX" || TS4_WHY+=" TS-4:no-regression-test"
+    # A run outside a review loop is asked for: the question names the scope, the recommended option
+    # follows its width, the answer's reach is stated, and a prototype plan with `Testing: no` is not asked.
+    for ts4 in \
+        "run-is-a-choice::a test run is the user's choice" \
+        'question-names-scope::Run the tests? Scope:' \
+        'whole-project-default::Do not run (recommended)' \
+        'answer-reach::What the answer covers' \
+        'refusal-note::not run — your choice' \
+        'prototype-plan::not part of this plan (Testing: no)'; do
+        grep -qF -- "${ts4#*::}" "$TS_FIX" || TS4_WHY+=" TS-4:${ts4%%::*}"
+    done
 else
     TS4_WHY+=" TS-4:fix-skill-missing"
 fi
@@ -7415,7 +7426,9 @@ for ts5 in \
     "$TS_IMPL::important-rule::Tests follow acceptance" \
     "$TS_IMPL::step-5.8-reminder::written and run once" \
     "$TS_REVIEW::checklist-line::Tests for new logic; none that pin tunable values or authored content" \
+    "$TS_REVIEW::choice-not-a-finding::no tests by the user's choice is not a finding" \
     "$TS_COMMIT::closed-line::$TS_INFO_CLOSED" \
+    "$TS_COMMIT::no-debt-line::No tests due" \
     "$TS_ULTRA::authored-content-literal::Not applicable — authored content; evidence is a read-back or a frame"; do
     ts5_file="${ts5%%::*}"; ts5_rest="${ts5#*::}"; ts5_key="${ts5_rest%%::*}"; ts5_anchor="${ts5_rest#*::}"
     ts5_rel="${ts5_file#"$ROOT_DIR"/}"
@@ -7500,6 +7513,35 @@ if [[ -z "$TS7_WHY" ]]; then
     pass "TS-7 every engine's testing rule in the snapshot is at major version 2 or later (scanned $TS7_N files)"
 else
     fail "TS-7 registry snapshot versions:$TS7_WHY"
+fi
+
+# (TS-8) tests are a choice: the carrier says who decides, 5a binds only when tests are due and also
+# covers a task of /unikit-execute; the sentences that made writing and running a duty stay gone.
+TS8_WHY=""
+TS8_N=0
+if [[ -s "$TS_DEVPRIN" ]]; then
+    for ts8 in \
+        'choice::Whether tests are written and whether a run is started is a choice' \
+        'tests-due::This item applies when tests are due' \
+        'task-in-loop::a phase, a plan, a fix, a task'; do
+        TS8_N=$((TS8_N + 1))
+        grep -qF -- "${ts8#*::}" "$TS_DEVPRIN" || TS8_WHY+=" TS-8:${ts8%%::*}"
+    done
+    for ts8 in \
+        'duty-to-write::Write unit tests for the logic and the system values the code owns, and run them' \
+        'duty-to-have::the requirement to *have* tests stands' \
+        'acceptance-always-writes::unless the plan says `Testing: no`: write the tests'; do
+        TS8_N=$((TS8_N + 1))
+        grep -qF -- "${ts8#*::}" "$TS_DEVPRIN" && TS8_WHY+=" TS-8:returned:${ts8%%::*}"
+    done
+else
+    TS8_WHY+=" TS-8:dev-principles-missing"
+fi
+[[ "$TS8_N" -gt 0 ]] || TS8_WHY+=" TS-8:nothing-scanned"
+if [[ -z "$TS8_WHY" ]]; then
+    pass "TS-8 dev-principles.md makes writing and running tests a choice and keeps no duty to do either (scanned $TS8_N formulations)"
+else
+    fail "TS-8 tests as a choice:$TS8_WHY"
 fi
 
 # --- TR: the test-run block lives in a reference read only under `Testing: yes` (DEC-012 b) ---
@@ -7587,6 +7629,8 @@ if [[ -z "$TW_WHY" ]]; then
     grep -qF 'unikit-implement/references/test-runs.md' "$EM_FIX_SKILL" || TW_WHY+=" TW-7:fix-blind"
     grep -qF '## Run width' "$EM_FIX_SKILL" || TW_WHY+=" TW-7:fix-reads-no-section"
     grep -qF 'Determine which test assembly covers the modified module' "$EM_FIX_SKILL" && TW_WHY+=" TW-7:fix-one-assembly-returned"
+    # /unikit-execute takes the width of a chosen run from the same section; the section says so.
+    grep -qF '`/unikit-execute` reads it alone for a run the user chose' <<< "$TW_SEC" || TW_WHY+=" TW-7:execute-reader-unnamed"
     # (TW-8) the formats and the docs say "never narrower", not "not configurable", and the ultra
     # format no longer has the planner write a run's target into a phase file.
     grep -qF 'A run is never narrower than its coverage' "$TW_TASKFMT" || TW_WHY+=" TW-8:format-no-floor-rule"
@@ -14092,15 +14136,15 @@ else
 fi
 
 # ─────────────────────────────────────────────
-# Part 7g7b: XE-1…XE-7 — /unikit-execute, the task skill that works with no plan
+# Part 7g7b: XE-1…XE-8 — /unikit-execute, the task skill that works with no plan
 # ─────────────────────────────────────────────
 # unikit-execute does one task from a description: no plan file, a card classified from the text, the bridges
 # in the order D3 gives, an end with a report and one question. EM, RT, LB, EXP-E, PRT-8, UQ, SK and EP reach
 # it by name or by its frontmatter, and EW-2 / EW-3 list it; these guards pin what no other family owns: its
 # rights (XE-1), the reads it shares with the plan executors (XE-2), the card that reads its vocabulary
 # instead of copying it (XE-3), the delegate marker and its three call sites (XE-4), the ban on plan files
-# and the list of skills it may invoke (XE-5), `direct` behind the plan executors' own gate (XE-6) and a
-# rename that leaves no trace (XE-7). Own accumulators XE_*; every grep inside $( … ) is wrapped in
+# and the list of skills it may invoke (XE-5), `direct` behind the plan executors' own gate (XE-6) a
+# rename that leaves no trace (XE-7) and tests as the user's choice (XE-8). Own accumulators XE_*; every grep inside $( … ) is wrapped in
 # { … || true; } — under `set -e` an empty match would abort the suite.
 echo -e "\n${BOLD}Part 7g7b: unikit-execute — the task skill with no plan (XE)${NC}"
 XE_WHY=""
@@ -14208,11 +14252,28 @@ for xe_a in "${XE_ALLOW_OLD[@]}"; do
     grep -qi -- "$XE_OLD" "$ROOT_DIR/$xe_a" || XE_WHY+=" XE-7:allowlist-stale($xe_a)"
 done
 
+# (XE-8) tests are the user's choice: the skill holds the rule and the pointer, the reference holds the question,
+# the width and the reach of an answer. The branch that let a project's rules order tests must not return.
+XE_TESTS="$ROOT_DIR/skills/unikit-execute/references/tests.md"
+[[ -s "$XE_TESTS" ]] || XE_WHY+=" XE-8:reference-missing"
+for xe_lit in "Tests are the user's choice" 'The one exception to the row rule' 'tests follow the hand-off' \
+              'Accept and write the tests (recommended)' 'the tests stay unwritten' \
+              '{{skills_dir}}/{{self_name}}/references/tests.md'; do
+    xe_has "XE-8:skill-lacks(${xe_lit:0:26})" "$xe_lit" "$XE_SKILL"
+done
+for xe_lit in 'plainly require' 'a rule demands coverage' 'None by default'; do
+    xe_lacks "XE-8:skill-returned(${xe_lit:0:26})" "$xe_lit" "$XE_SKILL"
+done
+for xe_lit in 'No tests (recommended)' 'Write them after you accept the result' 'Only run the existing tests' \
+              '## Run width' 'one repeat' 'is not an order' 'prototype plan' 'Not done'; do
+    xe_has "XE-8:reference-lacks(${xe_lit:0:26})" "$xe_lit" "$XE_TESTS"
+done
+
 [[ "$XE_CHK" -gt 0 ]] || XE_WHY+=" XE-0:nothing-checked"
 if [[ -z "$XE_WHY" ]]; then
-    pass "XE-1…XE-7 unikit-execute: rights, shared reads, card, delegate marker at $XE_ALIAS_N call sites, no-plan ban, direct gate, rename with no trace ($XE_CHK checks, $XE_TARGET_N invoked skills)"
+    pass "XE-1…XE-8 unikit-execute: rights, shared reads, card, delegate marker at $XE_ALIAS_N call sites, no-plan ban, direct gate, rename with no trace, tests by the user's choice ($XE_CHK checks, $XE_TARGET_N invoked skills)"
 else
-    fail "XE-1…XE-7 unikit-execute:$XE_WHY"
+    fail "XE-1…XE-8 unikit-execute:$XE_WHY"
 fi
 
 # ─────────────────────────────────────────────
