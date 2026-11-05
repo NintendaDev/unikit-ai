@@ -3,7 +3,7 @@
 // Same shape as the wrappers there: a flat copy from `data/` into `.unikit/system/` with NO
 // substitution, NOT hash-tracked — every init/update rewrites it. The next flat contract goes here too.
 
-import { SUBAGENT_ARGUMENTS_FILE, SUBAGENT_ROLES_FILE, USER_QUESTIONS_FILE } from '../constants.js';
+import { SUBAGENT_ARGUMENTS_FILE, SUBAGENT_ROLES_FILE, TEST_RUN_WIDTH_FILE, USER_QUESTIONS_FILE } from '../constants.js';
 import { installFlatSystemAsset } from './shared.js';
 
 /**
@@ -37,4 +37,14 @@ export async function installSubagentRolesContract(projectDir: string): Promise<
  */
 export async function installUserQuestionsContract(projectDir: string): Promise<void> {
   await installFlatSystemAsset(projectDir, USER_QUESTIONS_FILE, 'installUserQuestionsContract');
+}
+
+/**
+ * The test-run-width contract — a flat copy from `data/test-run-width.md`, NO substitution, NOT hash-tracked.
+ * How wide a run goes, what unsaved editor state does to it and when it is green. A system asset because
+ * `/unikit-implement`, its coordinator, `/unikit-fix`, `/unikit-execute` and `/unikit-verify` read one text: as a
+ * reference of one skill it would not reach a project that installed the others without it.
+ */
+export async function installTestRunWidthContract(projectDir: string): Promise<void> {
+  await installFlatSystemAsset(projectDir, TEST_RUN_WIDTH_FILE, 'installTestRunWidthContract');
 }

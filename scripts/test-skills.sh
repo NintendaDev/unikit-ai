@@ -7124,6 +7124,7 @@ fi
 # The test-run block of unikit-implement lives in a reference read only under `Testing: yes`
 # (DEC-012 b); every TC literal that moved with it is asserted against that file.
 TC_TESTRUNS="$ROOT_DIR/skills/unikit-implement/references/test-runs.md"
+TC_RUNWIDTH="$ROOT_DIR/data/test-run-width.md"
 
 # --- group 4: verify checks the executor's run and starts none of its own (tasks 5.1, 5.2; research 2026-10-01 G/H) ---
 TC_G4_WHY=""
@@ -7203,10 +7204,10 @@ if [[ -z "$TC_G5_WHY" ]]; then
     # the skill (the stub that recognises the task); the rest moved to the reference.
     grep -qF 'Test checkpoint: <coverage>'  "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-34:no-run-task-branch"
     grep -qF 'every test in the project'    "$TC_TESTRUNS" || TC_G5_WHY+=" TC-35:no-plan-width"
-    grep -qF 'without building a graph'     "$TC_TESTRUNS" || TC_G5_WHY+=" TC-36:no-graph-free-rule"
-    grep -qF 'Safety valve'                 "$TC_TESTRUNS" || TC_G5_WHY+=" TC-37:no-safety-valve"
-    grep -qF 'assigned, not measured'       "$TC_TESTRUNS" || TC_G5_WHY+=" TC-37:threshold-passed-off-as-measured"
-    grep -qF 'Reading every module manifest is forbidden' "$TC_TESTRUNS" || TC_G5_WHY+=" TC-38:no-manifest-read-ban"
+    grep -qF 'without building a graph'     "$TC_RUNWIDTH" || TC_G5_WHY+=" TC-36:no-graph-free-rule"
+    grep -qF 'Safety valve'                 "$TC_RUNWIDTH" || TC_G5_WHY+=" TC-37:no-safety-valve"
+    grep -qF 'assigned, not measured'       "$TC_RUNWIDTH" || TC_G5_WHY+=" TC-37:threshold-passed-off-as-measured"
+    grep -qF 'Reading every module manifest is forbidden' "$TC_RUNWIDTH" || TC_G5_WHY+=" TC-38:no-manifest-read-ban"
     grep -qF 'git rev-parse HEAD; { git diff HEAD --name-only' "$TC_TESTRUNS" || TC_G5_WHY+=" TC-39:no-hash-commands"
     grep -qF 'only WRITES tests and never runs them'      "$TC_TESTRUNS" || TC_G5_WHY+=" TC-40:step-3.8-may-still-run"
     # (TC-41) NEGATIVE — the policy is engine-neutral and the mechanism lives in testing.md.
@@ -7396,6 +7397,26 @@ if [[ -s "$TS_FIX" ]]; then
     grep -qF -- "$TS_INFO_DEFER" "$TS_FIX" || TS4_WHY+=" TS-4:no-defer-line"
     grep -qF 'skip this step with the same single line' "$TS_FIX" || TS4_WHY+=" TS-4:step5-not-skipped-in-loop"
     grep -qF 'regression test' "$TS_FIX" || TS4_WHY+=" TS-4:no-regression-test"
+    # A run outside a review loop is asked for: the question names the scope, the recommended option
+    # follows its width, the answer's reach is stated, and a prototype plan with `Testing: no` is not asked.
+    for ts4 in \
+        "run-is-a-choice::a test run is the user's choice" \
+        'question-names-scope::Run the tests? Scope:' \
+        'whole-project-default::Do not run (recommended)' \
+        'answer-reach::What the answer covers' \
+        'refusal-note::not run — your choice' \
+        'prototype-plan::not part of this plan (Testing: no)' \
+        "prototype-keeps-the-word::the task's words do not ask for a run → no question"; do
+        grep -qF -- "${ts4#*::}" "$TS_FIX" || TS4_WHY+=" TS-4:${ts4%%::*}"
+    done
+    # The order of Step 4.2 is the behaviour: no bridge and a prototype plan both stop the step before it asks.
+    ts4_line() { # <literal>: the line of its first occurrence, 0 when there is none
+        { grep -nF -- "$1" "$TS_FIX" 2>/dev/null || echo 0; } | head -1 | cut -d: -f1
+    }
+    TS4_NO_BRIDGE=$(ts4_line 'If no engine bridge is available — skip and note: `Test run:')
+    TS4_PROTOTYPE=$(ts4_line 'not part of this plan (Testing: no)')
+    TS4_QUESTION=$(ts4_line '**The question.**')
+    [[ "$TS4_NO_BRIDGE" -gt 0 && "$TS4_NO_BRIDGE" -lt "$TS4_PROTOTYPE" && "$TS4_PROTOTYPE" -lt "$TS4_QUESTION" ]] || TS4_WHY+=" TS-4:step-4.2-order"
 else
     TS4_WHY+=" TS-4:fix-skill-missing"
 fi
@@ -7412,10 +7433,14 @@ for ts5 in \
     "$TS_TESTRUNS::phase-logic::Write tests for the logic created or modified in a phase" \
     "$TS_TESTRUNS::loop-exception::review loop" \
     "$TS_TESTRUNS::after-acceptance::after acceptance" \
+    "$TS_TESTRUNS::plan-with-no-manifest::Under \`Testing: yes\` with no manifest → one run, no record" \
     "$TS_IMPL::important-rule::Tests follow acceptance" \
     "$TS_IMPL::step-5.8-reminder::written and run once" \
     "$TS_REVIEW::checklist-line::Tests for new logic; none that pin tunable values or authored content" \
+    "$TS_REVIEW::choice-not-a-finding::no tests by the user's choice is not a finding" \
+    "$TS_REVIEW::waiting-not-a-finding::tests still waiting for acceptance" \
     "$TS_COMMIT::closed-line::$TS_INFO_CLOSED" \
+    "$TS_COMMIT::no-debt-line::No tests due" \
     "$TS_ULTRA::authored-content-literal::Not applicable — authored content; evidence is a read-back or a frame"; do
     ts5_file="${ts5%%::*}"; ts5_rest="${ts5#*::}"; ts5_key="${ts5_rest%%::*}"; ts5_anchor="${ts5_rest#*::}"
     ts5_rel="${ts5_file#"$ROOT_DIR"/}"
@@ -7502,6 +7527,35 @@ else
     fail "TS-7 registry snapshot versions:$TS7_WHY"
 fi
 
+# (TS-8) tests are a choice: the carrier says who decides, 5a binds only when tests are due and also
+# covers a task of /unikit-execute; the sentences that made writing and running a duty stay gone.
+TS8_WHY=""
+TS8_N=0
+if [[ -s "$TS_DEVPRIN" ]]; then
+    for ts8 in \
+        'choice::Whether tests are written and whether a run is started is a choice' \
+        'tests-due::This item applies when tests are due' \
+        'task-in-loop::a phase, a plan, a fix, a task'; do
+        TS8_N=$((TS8_N + 1))
+        grep -qF -- "${ts8#*::}" "$TS_DEVPRIN" || TS8_WHY+=" TS-8:${ts8%%::*}"
+    done
+    for ts8 in \
+        'duty-to-write::Write unit tests for the logic and the system values the code owns, and run them' \
+        'duty-to-have::the requirement to *have* tests stands' \
+        'acceptance-always-writes::unless the plan says `Testing: no`: write the tests'; do
+        TS8_N=$((TS8_N + 1))
+        grep -qF -- "${ts8#*::}" "$TS_DEVPRIN" && TS8_WHY+=" TS-8:returned:${ts8%%::*}"
+    done
+else
+    TS8_WHY+=" TS-8:dev-principles-missing"
+fi
+[[ "$TS8_N" -gt 0 ]] || TS8_WHY+=" TS-8:nothing-scanned"
+if [[ -z "$TS8_WHY" ]]; then
+    pass "TS-8 dev-principles.md makes writing and running tests a choice and keeps no duty to do either (scanned $TS8_N formulations)"
+else
+    fail "TS-8 tests as a choice:$TS8_WHY"
+fi
+
 # --- TR: the test-run block lives in a reference read only under `Testing: yes` (DEC-012 b) ---
 # Modelled on MX-3 / RD-H: present, not inline, and read at the right step. A body that exists
 # while no step reads it is a contract no run follows (RISK-010).
@@ -7557,10 +7611,10 @@ for f in "$TC_TESTRUNS" "$EM_FIX_SKILL" "$TW_TASKFMT" "$TW_ULTRA_FMT" "$TW_CONFI
     [[ -s "$f" ]] || TW_WHY+=" missing:${f##*/}"
 done
 if [[ -z "$TW_WHY" ]]; then
-    TW_SEC="$(awk '/^## Run width/{f=1} f' "$TC_TESTRUNS")"
+    TW_SEC="$(awk '/^## Run width/{f=1} f' "$TC_RUNWIDTH")"
     [[ -n "$TW_SEC" ]] || TW_WHY+=" TW-1:no-run-width-section"
-    # (TW-1) /unikit-fix reads "that section alone" — from the heading to the end of the file.
-    [[ -z "$(awk '/^## Run width/{f=1;next} f&&/^## /{print; exit}' "$TC_TESTRUNS")" ]] || TW_WHY+=" TW-1:run-width-not-last"
+    # (TW-1) the system file is this one section — from the heading to the end of the file.
+    [[ -z "$(awk '/^## Run width/{f=1;next} f&&/^## /{print; exit}' "$TC_RUNWIDTH")" ]] || TW_WHY+=" TW-1:run-width-not-last"
     # (TW-1) both keys, the default threshold, and the floor rule.
     grep -qF '`testing.run.use_affected_modules`'      <<< "$TW_SEC" || TW_WHY+=" TW-1:no-affected-key"
     grep -qF '`testing.run.full_run_threshold_percent`' <<< "$TW_SEC" || TW_WHY+=" TW-1:no-threshold-key"
@@ -7579,14 +7633,16 @@ if [[ -z "$TW_WHY" ]]; then
     grep -qF 'the project has no tests yet'          <<< "$TW_SEC" || TW_WHY+=" TW-4:fix-fails-without-tests"
     # (TW-5) the valve reads the key, and the old literal threshold is gone from the whole file.
     grep -qF 'is ≥ `full_run_threshold_percent` % of all the project' <<< "$TW_SEC" || TW_WHY+=" TW-5:valve-not-keyed"
-    grep -qF '70%' "$TC_TESTRUNS" && TW_WHY+=" TW-5:hardcoded-threshold-returned"
+    grep -qF '70%' "$TC_RUNWIDTH" && TW_WHY+=" TW-5:hardcoded-threshold-returned"
     # (TW-6) the final run is reused on an unchanged tree, and every run of every test moves the anchor.
     grep -qF 'The final full run may be closed by reuse' "$TC_TESTRUNS" || TW_WHY+=" TW-6:no-final-reuse"
     grep -qF 'for every run that ran every test in the project, additionally' "$TC_TESTRUNS" || TW_WHY+=" TW-6:anchor-only-on-plan"
     # (TW-7) /unikit-fix reads the same section and no longer guesses one assembly.
-    grep -qF 'unikit-implement/references/test-runs.md' "$EM_FIX_SKILL" || TW_WHY+=" TW-7:fix-blind"
-    grep -qF '## Run width' "$EM_FIX_SKILL" || TW_WHY+=" TW-7:fix-reads-no-section"
+    grep -qF '.unikit/system/test-run-width.md' "$EM_FIX_SKILL" || TW_WHY+=" TW-7:fix-blind"
+    grep -qF 'test-run-width.md` → `### One scope, one launch`' "$EM_FIX_SKILL" || TW_WHY+=" TW-7:fix-reads-no-section"
     grep -qF 'Determine which test assembly covers the modified module' "$EM_FIX_SKILL" && TW_WHY+=" TW-7:fix-one-assembly-returned"
+    # /unikit-execute takes the width of a chosen run from the same section; the section says so.
+    grep -qF '`/unikit-execute` for a run the user chose' <<< "$TW_SEC" || TW_WHY+=" TW-7:execute-reader-unnamed"
     # (TW-8) the formats and the docs say "never narrower", not "not configurable", and the ultra
     # format no longer has the planner write a run's target into a phase file.
     grep -qF 'A run is never narrower than its coverage' "$TW_TASKFMT" || TW_WHY+=" TW-8:format-no-floor-rule"
@@ -7658,7 +7714,7 @@ if [[ -z "$TW_WHY" ]]; then
     tw15_line="$( { grep -F 'After the fix the run is repeated' "$TC_TESTRUNS" || true; } | head -1)"
     [[ -n "$tw15_line" ]] || TW_WHY+=" TW-15:no-repeat-line"
     tw_has "TW-15:repeat-line-unlinked"  'One scope, one launch'                                   "$tw15_line"
-    tw_has "TW-15:search-looks-like-launch" 'no suite is started while it repeats'                 "$(cat "$TC_TESTRUNS")"
+    tw_has "TW-15:search-looks-like-launch" 'no suite is started while it repeats'                 "$(cat "$TC_RUNWIDTH")"
     tw_has "TW-15:fix-unlinked"          'One scope, one launch'                                   "$(cat "$EM_FIX_SKILL")"
     # (TW-16) a result that names a part still going is not green: a bridge can answer a run with a
     # success flag while one of its parts was only started in the background (measured 2026-10-27).
@@ -7673,10 +7729,32 @@ if [[ -z "$TW_WHY" ]]; then
     tw_has "TW-17:no-split-paragraph"    'splits it along its own boundary'                        "$TW_SEC"
     tw_has "TW-17:part-launched-twice"   'each part is launched once'                              "$TW_SEC"
     tw_has "TW-17:split-not-the-only-case" 'This is the only case in which a run is more than one launch' "$TW_SEC"
+    # (TW-18) unsaved editor state in the way of a run: neither a save nor a discard comes without an answer, the
+    # user is offered all three ways in this order (a save can write stale data over the file), and the rules of
+    # the bridges and the one run that does not go through this file point here instead of deciding on their own.
+    tw_has "TW-18:unasked-save-or-discard" 'Never do either without an answer'                  "$TW_SEC"
+    tw_has "TW-18:why-a-save-can-hurt"     'stale data'                                         "$TW_SEC"
+    tw_has "TW-18:nobody-to-ask"           'Test run: blocked — unsaved changes in'             "$TW_SEC"
+    tw_has "TW-18:option-self"             '`I will save them myself (recommended)`'            "$TW_SEC"
+    tw_has "TW-18:option-save"             '`Save and continue`'                                "$TW_SEC"
+    tw_has "TW-18:option-discard"          '`Discard all changes and continue`'                 "$TW_SEC"
+    tw_option_line() { # <literal>: its line in the section, 0 when absent
+        { grep -nF -- "$1" <<< "$TW_SEC" || echo 0; } | head -1 | cut -d: -f1
+    }
+    TW18_SELF=$(tw_option_line '`I will save them myself (recommended)`')
+    TW18_SAVE=$(tw_option_line '`Save and continue`')
+    TW18_DISCARD=$(tw_option_line '`Discard all changes and continue`')
+    [[ "$TW18_SELF" -gt 0 && "$TW18_SELF" -lt "$TW18_SAVE" && "$TW18_SAVE" -lt "$TW18_DISCARD" ]] || TW_WHY+=" TW-18:option-order"
+    grep -qF '### Unsaved editor state' "$ROOT_DIR/skills/unikit-verify/SKILL.md" || TW_WHY+=" TW-18:verify-pointer"
+    for tw18_f in unity-cli/INDEX.md unity-cli/verification.md unity-biome-mcp/verification.md; do
+        grep -qF "the user's answer" "$ROOT_DIR/engine-bridges/unity/rules/$tw18_f" || TW_WHY+=" TW-18:bridge-rule($tw18_f)"
+    done
+    grep -qF 'every open scene was saved: an unsaved scene makes the run' "$ROOT_DIR/engine-bridges/unity/rules/unity-cli/INDEX.md" && TW_WHY+=" TW-18:save-first-returned"
+    grep -qF 'every open scene saved first' "$ROOT_DIR/engine-bridges/unity/rules/unity-cli/verification.md" && TW_WHY+=" TW-18:save-first-returned"
     (( tw_chk > 0 )) || TW_WHY+=" TW-13:no-anchor-checked"
 fi
 if [[ -z "$TW_WHY" ]]; then
-    pass "TW-1…TW-17 run width: every test by default, affected runs and their threshold are keys, one launch, zero tests is not green, the final run reused on an unchanged tree, fix reads the same section; one content-aware, index-independent tree hash, carried over the executor's commits; tests written before the phase's run; one scope closed before its single launch, a repeat after red is one launch of the whole scope; a part still going is not green, a bridge that cannot run the scope in one launch splits it along its own boundary (${tw_chk:-0} new anchors)"
+    pass "TW-1…TW-18 run width: every test by default, affected runs and their threshold are keys, one launch, zero tests is not green, the final run reused on an unchanged tree, fix reads the same section; one content-aware, index-independent tree hash, carried over the executor's commits; tests written before the phase's run; one scope closed before its single launch, a repeat after red is one launch of the whole scope; a part still going is not green, a bridge that cannot run the scope in one launch splits it along its own boundary (${tw_chk:-0} new anchors)"
 else
     fail "TW run-width contract:$TW_WHY"
 fi
@@ -9904,7 +9982,9 @@ if [[ -z "$BX_WHY" ]]; then
     # 65830 -> 65950: the Bootstrap reads the order file and the routing file in one sentence (XE-2), as implement and execute do
     # 65950 -> 66690: architecture topics, 2026-10-28 — the Step 0.2 read of the topic files, the 3.4 table check and the 3.6 suggestions (AD-12); the numbers live in the contract
     # 66690 -> 66710: the Subagent arguments pointer moved out of the alias section into one of its own (AP-22), +14 bytes of heading
-    bx_max "BC-1:skill-size" 66710 "$UNIKIT_VERIFY_SKILL"
+    # 66710 -> 66860: the strict run points at the rule for unsaved editor state (TW-18), +154 bytes
+    # 66860 -> 66820: the pointer names the system file, the width left the skill folder
+    bx_max "BC-1:skill-size" 66820 "$UNIKIT_VERIFY_SKILL"
 
     # (BC-2) verify's branch: headings, the two level sentences, and the one place of suggested_next
     BX_CHK=$((BX_CHK + 1))
@@ -14092,15 +14172,15 @@ else
 fi
 
 # ─────────────────────────────────────────────
-# Part 7g7b: XE-1…XE-7 — /unikit-execute, the task skill that works with no plan
+# Part 7g7b: XE-1…XE-8 — /unikit-execute, the task skill that works with no plan
 # ─────────────────────────────────────────────
 # unikit-execute does one task from a description: no plan file, a card classified from the text, the bridges
 # in the order D3 gives, an end with a report and one question. EM, RT, LB, EXP-E, PRT-8, UQ, SK and EP reach
 # it by name or by its frontmatter, and EW-2 / EW-3 list it; these guards pin what no other family owns: its
 # rights (XE-1), the reads it shares with the plan executors (XE-2), the card that reads its vocabulary
 # instead of copying it (XE-3), the delegate marker and its three call sites (XE-4), the ban on plan files
-# and the list of skills it may invoke (XE-5), `direct` behind the plan executors' own gate (XE-6) and a
-# rename that leaves no trace (XE-7). Own accumulators XE_*; every grep inside $( … ) is wrapped in
+# and the list of skills it may invoke (XE-5), `direct` behind the plan executors' own gate (XE-6) a
+# rename that leaves no trace (XE-7) and tests as the user's choice (XE-8). Own accumulators XE_*; every grep inside $( … ) is wrapped in
 # { … || true; } — under `set -e` an empty match would abort the suite.
 echo -e "\n${BOLD}Part 7g7b: unikit-execute — the task skill with no plan (XE)${NC}"
 XE_WHY=""
@@ -14208,11 +14288,47 @@ for xe_a in "${XE_ALLOW_OLD[@]}"; do
     grep -qi -- "$XE_OLD" "$ROOT_DIR/$xe_a" || XE_WHY+=" XE-7:allowlist-stale($xe_a)"
 done
 
+# (XE-8) tests are the user's choice: the skill holds the rule and the pointer, the reference holds the question,
+# the width and the reach of an answer. The branch that let a project's rules order tests must not return.
+XE_TESTS="$ROOT_DIR/skills/unikit-execute/references/tests.md"
+[[ -s "$XE_TESTS" ]] || XE_WHY+=" XE-8:reference-missing"
+for xe_lit in "Tests are the user's choice" 'The one exception to the row rule' 'tests follow the hand-off' \
+              'Accept and write the tests (recommended)' 'the tests stay unwritten' \
+              '{{skills_dir}}/{{self_name}}/references/tests.md'; do
+    xe_has "XE-8:skill-lacks(${xe_lit:0:26})" "$xe_lit" "$XE_SKILL"
+done
+for xe_lit in 'plainly require' 'a rule demands coverage' 'None by default'; do
+    xe_lacks "XE-8:skill-returned(${xe_lit:0:26})" "$xe_lit" "$XE_SKILL"
+done
+for xe_lit in 'No tests (recommended)' 'Write them after you accept the result' 'Only run the existing tests' \
+              '.unikit/system/test-run-width.md' 'one repeat' 'is not an order' 'prototype plan' 'Not done' \
+              'says nothing about tests, in a session under a prototype plan' \
+              'No bridge offers a test run → no question' '`use_affected_modules: true`' \
+              '<written | not written>, not run — no bridge offers a test run' \
+              '<written | not written>, not run — the code does not compile'; do
+    xe_has "XE-8:reference-lacks(${xe_lit:0:26})" "$xe_lit" "$XE_TESTS"
+done
+xe_has "XE-8:skill-lacks(narrowing-reads-the-rule)" 'writes tests or narrows a run to affected test suites' "$XE_SKILL"
+xe_lacks "XE-8:rule-read-before-width" 'Before working out a scope, read the rule' "$XE_TESTS"
+xe_lacks "XE-8:width-from-a-skill-folder" 'unikit-implement/references/test-runs.md' "$XE_TESTS"
+# "The first row that fits decides", so the order is the behaviour: the wider order comes before the narrower one
+# it contains, and the prototype row after every row that names an order, because a word of the user still counts.
+xe_row() { # <literal>: the line of the first row that holds it, 0 when there is none
+    { grep -nF -- "$1" "$XE_TESTS" 2>/dev/null || echo 0; } | head -1 | cut -d: -f1
+}
+XE_ROW_BOTH=$(xe_row '| orders tests and a run')
+XE_ROW_TESTS=$(xe_row '| orders tests (')
+XE_ROW_RUN=$(xe_row '| orders a run only')
+XE_ROW_PROTO=$(xe_row '| says nothing about tests, in a session under a prototype plan')
+XE_CHK=$((XE_CHK + 2))
+[[ "$XE_ROW_BOTH" -gt 0 && "$XE_ROW_BOTH" -lt "$XE_ROW_TESTS" ]] || XE_WHY+=" XE-8:narrower-order-row-first"
+[[ "$XE_ROW_RUN" -gt 0 && "$XE_ROW_RUN" -lt "$XE_ROW_PROTO" ]] || XE_WHY+=" XE-8:prototype-row-beats-an-order"
+
 [[ "$XE_CHK" -gt 0 ]] || XE_WHY+=" XE-0:nothing-checked"
 if [[ -z "$XE_WHY" ]]; then
-    pass "XE-1…XE-7 unikit-execute: rights, shared reads, card, delegate marker at $XE_ALIAS_N call sites, no-plan ban, direct gate, rename with no trace ($XE_CHK checks, $XE_TARGET_N invoked skills)"
+    pass "XE-1…XE-8 unikit-execute: rights, shared reads, card, delegate marker at $XE_ALIAS_N call sites, no-plan ban, direct gate, rename with no trace, tests by the user's choice ($XE_CHK checks, $XE_TARGET_N invoked skills)"
 else
-    fail "XE-1…XE-7 unikit-execute:$XE_WHY"
+    fail "XE-1…XE-8 unikit-execute:$XE_WHY"
 fi
 
 # ─────────────────────────────────────────────

@@ -2285,6 +2285,19 @@ fi
 
 echo "  ✓ prototype-profile.md: update installs + refreshes from data/ (update.ts wiring)"
 
+# Test 30tw: test-run-width.md is delivered on update — same shape as 30s: DEVPRIN_DIR ran `update` with no
+# prior `init`, so the file existing proves update.ts calls the installer; tamper-refresh confirms the flat rewrite.
+TRW_FILE="$DEVPRIN_DIR/.unikit/system/test-run-width.md"
+assert_exists "$TRW_FILE" "test-run-width.md must be installed on update (system asset, update.ts wiring)"
+echo "tampered" > "$TRW_FILE"
+TRW_OUT="$TMPDIR/update-test-run-width.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$TRW_OUT" 2>&1)
+if ! grep -q '^## Run width$' "$TRW_FILE"; then
+    echo "Assertion failed: update did NOT refresh test-run-width.md from data/ (## Run width missing)"
+    exit 1
+fi
+echo "  ✓ test-run-width.md: update installs + refreshes from data/ (update.ts wiring)"
+
 # ─────────────────────────────────────────────
 # Test 30s: subagent-arguments.md is delivered on update — same shape as 30p: DEVPRIN_DIR ran
 # `update` with no prior `init`, so the file existing proves update.ts calls the installer;

@@ -100,6 +100,7 @@ explore save pipeline, on the same criterion — see
   apart.
 - **A test-checkpoint task is ticked by the `Edit` that records its run.** One write surface,
   one `Edit` — the rule `## Engine Bridge Findings` is written by as well.
+- **Why the width of a run is a system file** (`.unikit/system/test-run-width.md`, source `data/test-run-width.md`). `/unikit-fix`, `/unikit-execute` and `/unikit-verify` run tests too, and they must not depend on the folder of another skill.
 - **Why the test-run block is a reference** (`skills/unikit-implement/references/test-runs.md`).
   Its gate, `Testing: yes`, is known at plan load, before the context fills: a plan without
   tests never pays for the ~10 KB, and a plan with tests pays at the cheapest moment of the run.

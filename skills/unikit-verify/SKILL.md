@@ -409,6 +409,7 @@ Options:
 
 - A non-interactive run, or a reply that picks neither option → no answer, and no run.
 - **Run the full suite now** → run every test in the project, in one run, through the first available bridge that offers a test run (gate **tests**), and wait for the result. Green — a readable result with a test count above zero, the bar `verification.md` names for this gate — → by one `Edit`, append `<date> · plan · all tests, /unikit-verify --strict · passed N/N · tree-sha256 <hash>` to `## Test Runs` and rewrite its anchor line as `Full run: <date> · all tests · passed N/N · tree-sha256 <hash>`; `<date>` from `Bash(date *)`, `<hash>` by the command of item 3. This edit touches `## Test Runs` and nothing else in the manifest. Red → the failing tests go into the report, and strict verification fails.
+- Unsaved editor state stops the run → `.unikit/system/test-run-width.md` → `### Unsaved editor state`.
 - **Leave it**, or no answer → strict verification fails on this finding.
 - No engine bridge available → skip and note: `Test run: no engine bridge available, skipped`. The run is attempted on every available bridge and no affordance answers it → **GATE LIFTED**, skip and note: `Test run: gate lifted — <the observation that established it>`; a run that reports success over zero tests has not closed the gate. In both cases the finding stays a warning, exactly as the compilation gate behaves when it cannot run.
 - Under a phase scope (Step 0.1) nothing is asked.

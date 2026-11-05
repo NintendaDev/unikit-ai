@@ -87,12 +87,12 @@ testing:
       full: phase         # phase | plan
       fast: plan          # phase | plan
 
-  # Executor (/unikit-implement, /unikit-fix): how wide a run actually goes.
+  # Executor (/unikit-implement, /unikit-fix, /unikit-execute): how wide a run actually goes.
   # Read at run time and never recorded into a plan — a run may always be wider
   # than the coverage its checkpoint declares, never narrower.
   run:
     # How a phase checkpoint (`Test checkpoint: phase N` / `phases N-M`) and a
-    # /unikit-fix test run choose their tests.
+    # /unikit-fix or /unikit-execute test run choose their tests.
     #   false — run every test in the project, in one run
     #   true  — run only the test suites of the changed modules and of the
     #           modules that depend on them, in one run (every test when the

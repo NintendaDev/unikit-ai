@@ -311,6 +311,18 @@ assert_contains "$PROTOTYPE_PROFILE_PATH" 'WARN \[prototype\]' \
 assert_not_contains "$PROTOTYPE_PROFILE_PATH" '\{\{' \
   "prototype-profile.md is a flat copy — no unresolved {{vars}}"
 
+# Test 1b-tw: test-run-width.md installed as a system asset (flat copy, no vars)
+# Read by every skill that runs tests; a system asset so that it reaches a project whichever skills the wizard
+# installed. Update-path coverage like 1b-pp; the init.ts call site is SA-1's job.
+TRW_PATH="$CLAUDE_DIR/.unikit/system/test-run-width.md"
+assert_exists "$TRW_PATH" "test-run-width.md created in .unikit/system/"
+assert_contains "$TRW_PATH" '^## Run width$' "test-run-width.md carries the run width"
+assert_contains "$TRW_PATH" '^### Unsaved editor state$' "test-run-width.md carries the rule for unsaved editor state"
+if grep -qF '{{' "$TRW_PATH"; then
+  echo "Assertion failed: test-run-width.md is a flat copy, it must hold no unresolved {{vars}}"
+  exit 1
+fi
+
 # ─────────────────────────────────────────────────────
 # Test 1b-sa: subagent-arguments.md installed as a system asset (flat copy, no vars)
 # Read before the first subagent launch of a run by the skills that carry its pointer and by the two coordinators;
@@ -669,9 +681,9 @@ if [[ "$CODEX_PATH_DAMAGE" -ne 0 ]]; then
   grep -rE 'skills\$unikit-' "$CODEX_DIR/.codex/skills/" --include='*.md' | head -5
   exit 1
 fi
-assert_contains "$CODEX_DIR/.codex/skills/unikit-fix/SKILL.md" \
-  '\.codex/skills/unikit-implement/references/test-runs\.md' \
-  "codex install: the skills path in unikit-fix must reach the installed file intact"
+assert_contains "$CODEX_DIR/.codex/skills/unikit-execute/SKILL.md" \
+  '\.codex/skills/unikit-plan/references/TASK-FORMAT\.md' \
+  "codex install: the skills path in unikit-execute must reach the installed file intact"
 echo "  ✓ codex install: {{skills_dir}}/unikit-… paths survive the invocation rewrite"
 
 # Codex's agent call takes no type: no installed skill names one, and every call carries its own
@@ -771,9 +783,9 @@ if [[ "$QWEN_PATH_DAMAGE" -ne 0 ]]; then
   grep -rE 'skills/skills unikit-' "$QWEN_DIR/.qwen/skills/" --include='*.md' | head -5
   exit 1
 fi
-assert_contains "$QWEN_DIR/.qwen/skills/unikit-fix/SKILL.md" \
-  '\.qwen/skills/unikit-implement/references/test-runs\.md' \
-  "qwen install: the skills path in unikit-fix must reach the installed file intact"
+assert_contains "$QWEN_DIR/.qwen/skills/unikit-execute/SKILL.md" \
+  '\.qwen/skills/unikit-plan/references/TASK-FORMAT\.md' \
+  "qwen install: the skills path in unikit-execute must reach the installed file intact"
 echo "  ✓ qwen install: {{skills_dir}}/unikit-… paths intact"
 
 # ─────────────────────────────────────────────────────

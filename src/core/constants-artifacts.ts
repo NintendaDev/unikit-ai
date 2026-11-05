@@ -186,3 +186,6 @@ export const RESEARCH_ACTIVE_SUMMARY_END = '<!-- unikit:active-summary:end -->';
 export const RESEARCH_SESSIONS_HEADING = '## Sessions';
 export const RESEARCH_SESSIONS_START = '<!-- unikit:sessions:start -->';
 export const RESEARCH_SESSIONS_END = '<!-- unikit:sessions:end -->';
+
+/** How wide a test run goes, what stops it and when it is green; rationale on `installTestRunWidthContract`. */
+export const TEST_RUN_WIDTH_FILE = 'test-run-width.md';

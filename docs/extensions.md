@@ -810,6 +810,7 @@ The same variables are available in the text of an injection and in the `.md` re
 | `{{subagent_arguments_contract}}` | `.unikit/system/subagent-arguments.md` | always |
 | `{{subagent_roles_contract}}` | `.unikit/system/subagent-roles.md` | always |
 | `{{user_questions_contract}}` | `.unikit/system/user-questions.md` | always |
+| `{{test_run_width_contract}}` | `.unikit/system/test-run-width.md` | always |
 | `{{gd_principles}}` | `.unikit/system/gamedesign/gd-principles.md` | always |
 | `{{gd_authoring}}` | `.unikit/system/gamedesign/gd-authoring.md` | always |
 | `{{gd_lifecycle}}` | `.unikit/system/gamedesign/gd-lifecycle.md` | always |
