@@ -68,9 +68,34 @@ the live folder is the one a later save of `/unikit-explore` would update, and a
 the archive must never shadow it. The line printed for that case is what lets the user remove
 the extra copy.
 
-`researches/INDEX.md` lists live researches and never the archive. A reader that resolves a
-name does not need the index, and the index exists so `/unikit-plan` and `/unikit-improve` can
-offer researches; offering an archived one would undo the archiving.
+Each scope now has its own compact index. Even a known name reads that scope's index
+first, giving linked reads and topic searches the same navigation path. Ordinary plan
+discovery still offers active research only; explicitly requested history reads the
+archive without restoring it. Named restore starts in the archive, and an existing
+active destination remains a collision rather than successful linked-read resolution.
+
+## `## Reading an index`
+
+The v2 table keeps one row per research with a short agent-written description.
+The source manifest and its full Active Summary remain intact. The writer aims for
+one sentence of roughly 200–250 characters without cutting a qualification or turning
+a proposal into a decision. Created and Mode remain available in the manifest.
+
+`INDEX.cache.json` is optional writer state, excluded from normal reader context.
+Reuse requires current H1/Active Summary fingerprint, summary-rule version and artifact
+language. A matching Updated or mtime cannot establish source identity. This digest is
+distinct from the plan's full-summary digest. Cross-scope snapshots preserve checked
+summaries across move/restore without making the cache the membership source.
+
+Legacy cards work until the next authorized whole render. Read-only fallback compares
+manifest candidates with index rows and supplements only broken/missing rows in memory;
+SOURCE-only folders are unfinished work, not catalog drift. Missing navigation is INFO,
+not a warning that changes verify's gate. Init/update delivers instructions, never
+migrates user research. The first subsequent move/restore creates the archive index.
+
+Coherence-gate repairs can change the summary after the initial render. The saving
+session therefore checks the final summary input before confirmation and refreshes
+derived output only if it changed, without spending another coherence pass.
 
 ## `## What is hashed`
 

@@ -4902,7 +4902,7 @@ done < <(printf '%s\n%s' "$RDF_CHECKING" "$RDF_WRITING" | grep -oE '`WARN \[rese
 #     migrated file). `## Who writes the field` measured 0 at sizes 8-10 and is included —
 #     no section is excluded.
 RDF_SHINGLE_WORDS=9
-RDF_SHINGLE_SECTIONS=('## The entry' '## Finding the folder' '## What is hashed' '## Computing the hash' '## Writing an entry' '## Checking an entry' '## Who writes the field')
+RDF_SHINGLE_SECTIONS=('## The entry' '## Finding the folder' '## Reading an index' '## What is hashed' '## Computing the hash' '## Writing an entry' '## Checking an entry' '## Who writes the field')
 rdf_normalize() { tr '[:upper:]' '[:lower:]' | tr -d '`*_' | tr '\n' ' ' | tr -s '[:space:]' ' '; }
 rdf_shingles() {
     awk -v n="$1" '{
@@ -4970,6 +4970,11 @@ fi
 # computed at the right TIME (decision 2). Mechanical form of a rule with no other
 # detector: nothing else greps for WHERE a line sits relative to two headings.
 RDH_WHY=""
+RDH_PLAN_EARLY="$(awk '/^### Step 0.2:/{f=1;next} f&&/^### Step /{f=0} f' "$UNIKIT_PLAN_SKILL")"
+printf '%s' "$RDH_PLAN_EARLY" | grep -qF '.unikit/system/research-link.md' \
+    || RDH_WHY+=" plan-no-contract-before-early-index"
+printf '%s' "$RDH_PLAN_EARLY" | grep -qF '## Reading an index' \
+    || RDH_WHY+=" plan-no-early-reader-pointer"
 rdh_location() {
     local skill="$1" step_start="$2" step_end="$3" boot_start="$4" boot_end="$5" label="$6"
     local step_win boot_win
@@ -5022,7 +5027,7 @@ elif [[ -z "$RDI_ENTRY_N" || -z "$RDI_FIND_N" || -z "$RDI_HASHED_N" ]] \
     RDI_WHY+=" section-out-of-place"
 fi
 for p in '.unikit/code/archive/researches/<slug>/' 'INFO [research] <slug> is archived' \
-    'exists in researches/ and in archive/researches/' 'reading researches/' 'Neither exists' 'never the archive'; do
+    'exists in researches/ and in archive/researches/' 'reading researches/' 'Neither exists' 'Ordinary discovery searches active research only'; do
     printf '%s' "$RDI_SECTION" | grep -qF "$p" || RDI_WHY+=" section-lacks:${p// /-}"
 done
 # The place alone is not a finding: INFO in the section, no WARN of any label.
@@ -9609,7 +9614,46 @@ if [[ -z "$AR_WHY" ]]; then
     ar_has "AR-26:destination-may-be-overwritten" 'already exists in researches/ — rename one of the two folders by hand' "$AR_RESEARCHES"
     ar_has "AR-26:no-list-without-slug" 'Restore all <n>' "$AR_RESEARCHES"
     ar_has "AR-26:empty-archive-unsaid" 'Archive is empty — no research has been archived yet.' "$AR_RESEARCHES"
-    ar_has "AR-26:index-after-restore" 'The index, as R4 item 6' "$AR_RESEARCHES"
+    ar_has "AR-26:index-after-restore" 'The indexes, as R4 item 6' "$AR_RESEARCHES"
+    # RI guards check instructions, not observed model behavior. Replay cases keep
+    # that distinction explicit; delivery is exercised by test-install.sh.
+    RI_CACHE="$ROOT_DIR/skills/unikit-explore/references/index-summary-cache.md"
+    RI_RENDER="$ROOT_DIR/skills/unikit-explore/references/index-render.md"
+    RI_CASES="$ROOT_DIR/scripts/test-fixtures/research-indexes/README.md"
+    for anchor in '## Reading an index' 'unikit:research-index:2' \
+        'SOURCE-only' 'Do not reread healthy manifests' 'never repair the index/cache on disk' \
+        'slug from the decoded link' 'symlink paths outside that root' \
+        'Missing Lifecycle has effective value' 'known slug' 'INFO [research-index]'; do
+        ar_has "RI:reader:$anchor" "$anchor" "$RL_CONTRACT"
+    done
+    for anchor in 'sourceSha256' 'summaryVersion' 'language' 'H1' 'whole-line' \
+        '200–250' 'preserving the summary verbatim' 'both old caches in memory' \
+        'never proof of reuse' 'no temporary files' 'No extra coherence pass' \
+        'Cache write failure' 'No digest tool' '## Final source check after the gate'; do
+        ar_has "RI:cache:$anchor" "$anchor" "$RI_CACHE"
+    done
+    for anchor in 'scope: active | archive' 'header-only table' 'whole active render' \
+        'Write INDEX.md, then INDEX.cache.json' 'Cache is never' '## Save closure'; do
+        ar_has "RI:writer:$anchor" "$anchor" "$RI_RENDER"
+    done
+    for anchor in 'once each after the batch' 'pre-rebuild cache' 'No successful moves' \
+        'before exiting after a later batch error' 'same archive index even for an exact name' \
+        'active folder is a destination collision' 'Read-only list never generates'; do
+        ar_has "RI:archive:$anchor" "$anchor" "$AR_RESEARCHES"
+    done
+    ar_has 'RI:final-sync' '### Final index synchronization' "$UR_EXPLORE"
+    RI_FINAL="$(grep -n '^### Final index synchronization' "$UR_EXPLORE" | cut -d: -f1)"
+    RI_CONFIRM="$(grep -n '^### Step 5: Confirm' "$UR_EXPLORE" | cut -d: -f1)"
+    [[ -n "$RI_FINAL" && -n "$RI_CONFIRM" && "$RI_FINAL" -lt "$RI_CONFIRM" ]] \
+        || AR_WHY+=" RI:final-sync-after-confirm"
+    for skill in explore archive; do
+        for grant in 'Bash(shasum *)' 'Bash(sha256sum *)' 'Bash(awk *)'; do
+            ar_has "RI:$skill:digest-grant" "$grant" "$ROOT_DIR/skills/unikit-$skill/SKILL.md"
+        done
+    done
+    for case_id in {1..18}; do
+        ar_has "RI:replay-case-C$case_id" "| C$case_id |" "$RI_CASES"
+    done
     # (AR-27) the grants and the boundary: Write is granted (the index is rewritten whole) and rm
     # still is not; design researches stay untouched, the plan protocol no longer claims that code
     # researches are, and the router owns both archives. The ownership section is the router's only.

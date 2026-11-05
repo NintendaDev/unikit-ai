@@ -24,12 +24,15 @@ allowed-tools:
   - Bash(mv *)
   - Bash(mkdir *)
   - Bash(date *)
+  - Bash(shasum *)
+  - Bash(sha256sum *)
+  - Bash(awk *)
 disable-model-invocation: false
 ---
 
 # Plan and Research Archive
 
-Move finished folder plans out of `.unikit/code/plans/` into `.unikit/code/archive/plans/`, and code researches out of `.unikit/code/researches/` into `.unikit/code/archive/researches/`. Plan lookup in `/unikit-implement`, `/unikit-verify` and `/unikit-improve`, the plan lists and the "latest plan" choice walk `.unikit/code/plans/*/` and nothing else, so an archived plan simply stops being offered — there is no index to update. Researches have one: `.unikit/code/researches/INDEX.md` lists them, so a move re-renders it, and a plan that links a research keeps finding it by its folder name, in the archive too. Nothing is deleted and nothing is committed.
+Move finished folder plans out of `.unikit/code/plans/` into `.unikit/code/archive/plans/`, and code researches out of `.unikit/code/researches/` into `.unikit/code/archive/researches/`. Plan lookup in `/unikit-implement`, `/unikit-verify` and `/unikit-improve`, the plan lists and the "latest plan" choice walk `.unikit/code/plans/*/` and nothing else, so an archived plan simply stops being offered — there is no index to update. Researches have two compact catalogs: active and archived. A successful move/restore batch rebuilds both indexes and optional summary caches once; linked reads and requested history use the shared index-first contract. Nothing is deleted and nothing is committed.
 
 **User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
 
@@ -118,12 +121,12 @@ The closing line `Nothing was committed. Commit the move with /unikit-commit.` i
 ## Rules
 
 1. Nothing is deleted, overwritten, renamed or committed — `/unikit-commit` commits. The folder name of a plan or a research never changes.
-2. The edits of each protocol are exactly the ones it names: in a plan, the one `Archived:` line; in a research, the one `Archived:` line and `.unikit/code/researches/INDEX.md`, re-rendered whole through the reference of `/unikit-explore`.
-3. Other skills do not search the archive, on purpose: an archived plan or research must stop being offered. The readers that look there are named in each protocol; a `## Based on` entry reaches an archived research only through the research-link contract.
+2. The edits of each protocol are exactly the ones it names: in a plan, the one `Archived:` line; in a research, that line and both active/archive `INDEX.md` and `INDEX.cache.json`, re-rendered through the shared writer reference.
+3. Archived plans and researches stop being offered as new work. Linked reads and explicitly requested research history use the research-link contract; reading history never implies restore.
 4. Design researches (`.unikit/gamedesign/researches/`), the fast plan, `FIX_PLAN.md` and patches are never touched.
 
 ## Artifact Ownership
 
 - **Owns:** `.unikit/code/archive/plans/`, `.unikit/code/archive/researches/`.
 - **Reads:** `.unikit/code/plans/*/`, `.unikit/code/researches/*/`, `.unikit/bridge-notes/*.md` and its parked `archive/` copies, `.unikit/config.yaml`.
-- **Modifies:** the `Archived:` line of a moved plan's task file and of a moved research's `RESEARCH.md`, and `.unikit/code/researches/INDEX.md` — re-rendered whole, never edited by hand.
+- **Modifies:** the `Archived:` line of a moved plan's task file and of a moved research's `RESEARCH.md`; active and archive `INDEX.md` / `INDEX.cache.json` — whole-rendered, never edited by hand. Other manifest content stays unchanged.

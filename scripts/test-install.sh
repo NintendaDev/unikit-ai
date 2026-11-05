@@ -411,6 +411,17 @@ assert_exists "$CLAUDE_DIR/.claude/skills/unikit-explore/references/merge-resear
 # missing delivery would silently skip the re-render in both skills.
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-explore/references/index-render.md" \
   "unikit-explore index-render.md reference installed"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-explore/references/index-summary-cache.md" \
+  "research index writer-only cache reference installed"
+assert_contains "$RESEARCH_LINK_PATH" 'unikit:research-index:2' \
+  "installed research-link supports compact indexes"
+assert_contains "$RESEARCH_LINK_PATH" '## Reading an index' \
+  "installed research-link carries the shared index reader"
+for index_ref in "$CLAUDE_DIR/.claude/skills/unikit-explore/references/index-render.md" \
+  "$CLAUDE_DIR/.claude/skills/unikit-explore/references/index-summary-cache.md" \
+  "$CLAUDE_DIR/.claude/skills/unikit-archive/references/researches.md"; do
+  assert_not_contains "$index_ref" '\{\{[a-z_]+\}\}' "installed index reference has no unresolved variables"
+done
 # unikit-archive keeps its plan protocol in a reference (SKILL.md is the router); it is read
 # only when plans are archived, so no content guard sees a missing delivery.
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-archive/references/plans.md" \

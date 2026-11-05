@@ -1,6 +1,6 @@
 # Research link — the `## Based on` contract
 
-`/unikit-plan` and `/unikit-improve` write entries under a plan's `## Based on` section. `/unikit-implement`, `/unikit-verify` and `/unikit-improve` check them. Read this file only when a plan links at least one research, never at Bootstrap. The hashed region is declared by `/unikit-explore`'s manifest template.
+`/unikit-plan` and `/unikit-improve` write entries under a plan's `## Based on` section. `/unikit-implement`, `/unikit-verify` and `/unikit-improve` check them. Read this file at the first code research index use or linked research, never at Bootstrap. The hashed region is declared by `/unikit-explore`'s manifest template.
 
 Do not restate this contract inside a skill — that is the failure mode this file exists to prevent. A skill **names** the rule and points here; a skill that **repeats** the rule drifts from it, and nothing turns red when the two disagree.
 
@@ -34,12 +34,40 @@ An entry carrying `- **Brief SHA256**: …` predates this field — the retired 
 
 The heading of an entry is a folder name, never a path. Before anything is read from a linked research, find its folder:
 
-1. `.unikit/code/researches/<slug>/` — when it exists, read there.
-2. Otherwise `.unikit/code/archive/researches/<slug>/` — read there and print `INFO [research] <slug> is archived — read from .unikit/code/archive/researches/<slug>/`, once per folder per run.
+1. `.unikit/code/researches/<slug>/` — when it exists, use its scope's index as below before reading the manifest.
+2. Otherwise `.unikit/code/archive/researches/<slug>/` — use the archive index as below, read there and print `INFO [research] <slug> is archived — read from .unikit/code/archive/researches/<slug>/`, once per folder per run.
 3. Both exist (a research moved back by hand and the copy stayed) — read `researches/` and print `INFO [research] <slug> exists in researches/ and in archive/researches/ — reading researches/`.
 4. Neither exists — **source missing**, see `## Checking an entry`.
 
-An archived research is found, not lost: the hash, the files and every outcome below are the same wherever the folder lies, and the place alone never raises a warning. Only a reader that resolves the name of an entry comes here; `researches/INDEX.md` lists live researches and never the archive.
+An archived research is found, not lost: the hash, the files and every outcome below are the same wherever the folder lies, and the place alone never raises a warning. Ordinary discovery searches active research only; explicitly requested history may search the archive. Reading history does not restore it or propose new work.
+
+## Reading an index
+
+The active root is `.unikit/code/researches/`; the archive root is `.unikit/code/archive/researches/`. Each has its own generated `INDEX.md`. Read that index first, even for a known slug; then read only the selected manifests and verify their current metadata before use or a move. Filesystem existence decides the source, never an index row. Restore selects its source in the archive only; an existing active destination is a collision, not successful active-first resolution.
+
+### Compact format v2
+
+Exactly one `<!-- unikit:research-index:2 -->`, a short heading, a generated warning and one Markdown table. One physical row per research, without fixed-width padding:
+
+```
+| Research | Updated | Status | Lifecycle | Summary | Target |
+|---|---|---|---|---|---|
+| [Title](<slug>/RESEARCH.md) | <original timestamp> | completed | active | <short agent summary> | — |
+```
+
+The archive adds `Archived` immediately after `Updated`. Preserve date precision, including time; absent dates are `—`, never Created or mtime. Missing Lifecycle has effective value `active`. Status and Lifecycle remain independent axes. Created and Mode stay in the manifest, outside the table. Sort active by Updated descending, Created descending, slug ascending; archive by Archived descending, then those same keys. Missing dates follow present dates. Readers preserve existing consumer filters and limits.
+
+Human titles and summaries follow the artifact language policy; column names and enum values stay stable. Collapse cell line breaks to spaces; escape backslashes, pipes (`\|`), brackets and Markdown metacharacters in titles/summary/Target. Encode link-destination special characters (including spaces, parentheses, brackets and pipes) so the link resolves exactly. Recover the slug from the decoded link, never from its title. Accept only a single direct child followed by `/RESEARCH.md` within the selected root: reject absolute paths, URL schemes, separators in the decoded slug, dot segments and escaped/symlink paths outside that root.
+
+### Compatibility and read-only fallback
+
+Also accept the legacy `### title` cards with bold Created/Updated/Status/Lifecycle/Summary/Path/Target fields; Path identifies the folder. A readable legacy index needs no migration during reading. Do not load `INDEX.cache.json`: it is writer-only and proves neither existence nor freshness. Navigation Summary never replaces the full Active Summary used for planning and hashing.
+
+For a known slug, look up its row first. Missing index, unknown version, malformed document, missing row or broken row → `INFO [research-index] <scope>: <reason> — filesystem fallback`, then check that slug's folder directly. A rejected link must never be followed outside the root.
+
+For catalog search/list, compare rows with direct-child `*/RESEARCH.md` candidates, not all directories. A SOURCE-only folder is an expected unfinished exploration: print NOTE, not an index mismatch; other folders without readable manifests print a skip notice. Neither triggers a catalog fallback. With an otherwise readable index, remove vanished manifests from the in-memory catalog and read only the missing/broken rows' manifests (header and Topic/Active Summary) to supplement it. Do not reread healthy manifests. Only a wholly missing/unparseable index permits bounded metadata reads across the selected scope. Keep the same sorting/filter rules; never repair the index/cache on disk. Matching folder sets do not prove every summary fresh. Recheck the selected manifest before acting.
+
+Index fallback is navigation information, never `WARN [research-drift]`. Source-missing and drift outcomes below still depend on the manifest and its full-summary markers. The writer lives in `unikit-explore/references/index-render.md`; readers need only this contract, even when explore is not installed.
 
 ## What is hashed
 

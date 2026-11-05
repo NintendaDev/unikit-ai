@@ -315,7 +315,7 @@ Understand:
 
 ### Step 1.5: Research Check
 
-**The research-link contract — read at first need, and only then.** Read `.unikit/system/research-link.md` the moment this step first needs it: on the first entry in `linked_researches`, or on the first research chosen for attachment — whichever comes first, and never if neither happens. Name it and follow it; never restate it here — one contract, one place.
+**The research-link contract.** Read `.unikit/system/research-link.md` before the first index use or linked entry, never at Bootstrap. Follow `## Reading an index` for discovery and its fallback. Ordinary discovery stays active-only.
 
 **If `.unikit/system/research-link.md` is missing or unreadable, do not block:** record no `Summary SHA256` and check none — print `WARN [research-drift]: research-link contract missing — drift detection off for this run; run unikit-ai update` once, and continue.
 

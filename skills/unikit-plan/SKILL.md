@@ -152,7 +152,7 @@ If the description is empty (user only typed a mode keyword like `full` or `fast
 
 1. **Check session context** — look in the current conversation history for results of `/unikit-explore`. If found, use the exploration topic and findings as the feature description and context.
 
-2. **Check recent researches** — if no session context, read `.unikit/code/researches/INDEX.md` (if it exists). The index is sorted newest-first. Take the first entry whose `Lifecycle` is `active` — a record carrying no `Lifecycle` line counts as `active` — and ask:
+2. **Check recent researches** — if no session context, read `.unikit/system/research-link.md` → `## Reading an index`, then `.unikit/code/researches/INDEX.md` by that contract. The index is sorted newest-first. Take the first entry whose `Lifecycle` is `active` — a record carrying no `Lifecycle` line counts as `active` — and ask:
    ```
    The question tool of your agent (`AskUserQuestion`): Found recent research: "<Title>" (<Created>)
    Use as basis for planning?
@@ -315,7 +315,7 @@ Load only the selected mode's body — never all of them at once:
 
 **An experiment plan** runs no topic matching in this step (points 1-6): a research reaches it only through an `Experiment:` line (`{{skills_dir}}/{{self_name}}/references/experiment-plan.md` → `## The snapshot comes first`), and point 7 reads what that finds.
 
-**The research-link contract — read at the first link, and only then.** The moment this step links its first research — through the `research_pre_linked` shortcut below or through point 7 — read `.unikit/system/research-link.md`. For each research linked here, compute its `Summary SHA256` over the `## Active Summary` just read, by `## Computing the hash`, and keep the digest for Step 5 (`## Writing an entry`).
+**The research-link contract.** Before first index use (including Step 0.2) or first link, read `.unikit/system/research-link.md` once. Follow `## Reading an index` for navigation. For each research linked here, compute its `Summary SHA256` over the `## Active Summary` just read, by `## Computing the hash`, and keep the digest for Step 5 (`## Writing an entry`).
 
 **If `.unikit/system/research-link.md` is missing or unreadable, do not block:** record no `Summary SHA256` and check none — print `WARN [research-drift]: research-link contract missing — drift detection off for this run; run unikit-ai update` once, and continue.
 
@@ -323,8 +323,7 @@ Load only the selected mode's body — never all of them at once:
 
 Before exploring code, check if `/unikit-explore` has produced relevant researches.
 
-1. Read `.unikit/code/researches/INDEX.md`
-   - If the file doesn't exist — skip this step entirely, proceed to Step 3.
+1. Read `.unikit/code/researches/INDEX.md` through `## Reading an index` of the contract, including legacy compatibility and read-only fallback; ordinary discovery stays active-only.
 
 2. Read `workflow.research_relevance_days` from `.unikit/config.yaml` (default: `7`).
 

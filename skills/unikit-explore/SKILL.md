@@ -25,6 +25,9 @@ allowed-tools:
   - Bash(wc *)
   - Bash(mkdir *)
   - Bash(date *)
+  - Bash(shasum *)
+  - Bash(sha256sum *)
+  - Bash(awk *)
   - Bash(git merge-base *)
   - Bash(git log *)
   - Bash(git diff *)
@@ -104,6 +107,10 @@ the alias and never carry a type or a model argument of their own.
   Fallback: if the `Agent` tool is unavailable, read `references/coherence-gate.md` yourself
   and run the pass inline (`WARN [coherence] fresh-context pass unavailable — running inline`).
   The gate is never skipped or delayed.
+
+## Research navigation
+
+At first code research index use or requested historical context, read `.unikit/system/research-link.md` → `## Reading an index` and follow it. Read selected manifests only. History never restores a research or proposes work automatically; continuation and slug collision checks still inspect folders.
 
 ## Artifact Ownership
 
@@ -812,7 +819,7 @@ silence: no block, no line.
 
 ### Step 4: Re-render the Researches Index
 
-`.unikit/code/researches/INDEX.md` is a **generated** registry: it is not edited and not appended to — on every save it is re-rendered whole from the folders on disk. Read `{{skills_dir}}/{{self_name}}/references/index-render.md` and follow it. If it cannot be read, print `WARN [research] index-render reference missing — researches/INDEX.md was not re-rendered; run unikit-ai update` and go on to the gate.
+`.unikit/code/researches/INDEX.md` is a **generated** registry: it is not edited and not appended to — on every save it is re-rendered whole from the folders on disk. Read `{{skills_dir}}/{{self_name}}/references/index-render.md` and follow it with scope active, including its writer-only cache. If it cannot be read, print `WARN [research] index-render reference missing — researches/INDEX.md was not re-rendered; run unikit-ai update` and go on to the gate.
 
 <!-- Why reconciliation stopped being a separate command: docs/skills/unikit-explore-save-rationale.md in the UniKit repository. -->
 
@@ -839,6 +846,15 @@ fallback).
 If `references/coherence-gate.md` does not exist, or the pass reports that it cannot read it,
 print one line `WARN [coherence] reference missing — saving without the coherence pass` and
 continue.
+
+### Final index synchronization
+
+After all gate outcomes that save (pass, repairs, or an authorized save with OQ),
+and before Step 5, follow `index-render.md` → `## Save closure` in this session.
+Compare final summary inputs to those used at Step 4; changed inputs require the
+active whole-render with refreshed summaries/cache. Sessions-only changes do not.
+No additional coherence pass. If the writer is unavailable, keep its announced
+warning and explicitly say the index remains unsynchronized.
 
 ### Step 5: Confirm the save
 

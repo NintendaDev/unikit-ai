@@ -209,9 +209,9 @@ Each check is **blocking**; saving stops until it passes:
 
 Applies to: ultra only
 
-- The top-level `researches/INDEX.md` **format**, including the `Summary` field, which still
-  comes from `Topic:`. The file itself is no longer hand-written: it is regenerated whole on
-  every save, and the format is what stayed a contract while the authorship changed.
+- The top-level index protocol is shared with standard research: `index-render.md`
+  generates its compact table and short agent Summary. The full Topic and Active
+  Summary remain in RESEARCH.md; the index description never replaces them.
 
 - **The input to `/unikit-plan`.** The plan reads `## Active Summary`; adaptive artifacts are
   optional reading "for the rationale", never a source of requirements.
