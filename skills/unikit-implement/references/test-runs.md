@@ -81,7 +81,7 @@ Write tests for the logic created or modified in a phase **before the phase's fi
 
 Tests written here are included in the phase commit.
 
-**After acceptance.** The classes of target are item 5 of `dev-principles.md`; the tests of the review loop (item 5a) are written once, after acceptance, for the logic changed since the last commit. The run that follows is not part of this step: it is one run recorded by Step 3.2, items 5–9, with coverage `plan` — only in a plan with `Testing: yes` and a manifest, so that `/unikit-verify` does not ask to repeat it. No manifest → one run, no record.
+**After acceptance.** The classes of target are item 5 of `dev-principles.md`; the tests of the review loop (item 5a) are written once, after acceptance, for the logic changed since the last commit. The run that follows is not part of this step: it is one run recorded by Step 3.2, items 5–9, with coverage `plan` — only in a plan with `Testing: yes` and a manifest, so that `/unikit-verify` does not ask to repeat it. No plan → the run is asked for (`dev-principles.md` item 5a).
 
 ## Carrying the anchor across a commit
 
@@ -96,7 +96,7 @@ Git unavailable → nothing is carried. A commit made outside this run — `/uni
 
 ## Run width
 
-How wide a run goes once its coverage is known. Step 3.2 follows this section for a test-checkpoint task, and `/unikit-fix` Step 4.2 reads **this section alone** for the run after a fix — one policy, one place.
+How wide a run goes once its coverage is known. Step 3.2 follows this section for a test-checkpoint task, `/unikit-fix` Step 4.2 reads **this section alone** for the run after a fix, and `/unikit-execute` reads it alone for a run the user chose — one policy, one place.
 
 ### Settings
 
