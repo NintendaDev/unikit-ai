@@ -151,6 +151,20 @@ Then launch. Forbidden: a trial run to see what is red or what exists; growing t
 
 **A bridge that cannot run the scope in one launch splits it along its own boundary.** Its calibration, or the answer of its call, says where the boundary lies — two kinds of tests that cannot go in one call, a part that can only be started in the background. The scope is still closed whole before the first launch; then each part is launched once, and the run is over when every part has reported (`### What counts as green`). A repeat after red is the same launches again, one per part, over the scope recomputed once, and the narrower check stays forbidden. This is the only case in which a run is more than one launch.
 
+### Unsaved editor state
+
+A loaded scene or another open document with unsaved changes can stop a run or empty it: the bridge refuses to start, or reports a success with no tests. Check before the launch where the rule of the bridge says to, and read the refusal when it comes. You do not know what those changes are: they may be someone's work, or stale data left open while the file on disk is newer. A save writes them over the file, a discard loses them for good. **Never do either without an answer**, whatever a rule says about the state a run needs.
+
+Ask once, with the question tool of your agent (`AskUserQuestion`), naming every such document: `Unsaved changes stop the test run: <documents>. What do we do?`
+
+- `I will save them myself (recommended)` — the user saves them and says so; check again and go on, and ask again if something is still unsaved.
+- `Save and continue` — the current state, stale data included, is written over the files.
+- `Discard all changes and continue` — the unsaved changes are lost for good.
+
+A bridge with no such call → that option is left out. After a save or a discard, read back that nothing is unsaved before the launch. The answer covers these documents now: it spends neither the answer that allowed the run nor its repeat, and a later block asks again. Nobody to ask (the delegate mode, a non-interactive run) → no save, no discard and no run: note `Test run: blocked — unsaved changes in <documents>`.
+
+**Verbose.** `INFO [testing] unsaved state: <the choice> — <documents>`.
+
 ### What counts as green
 
 A run is green only when its result is **readable** — passed and failed counts — and **the number of tests run is above zero**. `passed 0/0`, a result without counts, a timeout and a run that never started are not green: the filter matched nothing, discovery had not finished, or the run did not happen. In `/unikit-implement` that is a Step 3.3 blocker; in `/unikit-fix` it is a failed test check — except a run of every test in the project that reports zero tests: the project has no tests yet, and `/unikit-fix` notes `Test run: no tests in the project` instead of failing.

@@ -7728,10 +7728,32 @@ if [[ -z "$TW_WHY" ]]; then
     tw_has "TW-17:no-split-paragraph"    'splits it along its own boundary'                        "$TW_SEC"
     tw_has "TW-17:part-launched-twice"   'each part is launched once'                              "$TW_SEC"
     tw_has "TW-17:split-not-the-only-case" 'This is the only case in which a run is more than one launch' "$TW_SEC"
+    # (TW-18) unsaved editor state in the way of a run: neither a save nor a discard comes without an answer, the
+    # user is offered all three ways in this order (a save can write stale data over the file), and the rules of
+    # the bridges and the one run that does not go through this file point here instead of deciding on their own.
+    tw_has "TW-18:unasked-save-or-discard" 'Never do either without an answer'                  "$TW_SEC"
+    tw_has "TW-18:why-a-save-can-hurt"     'stale data'                                         "$TW_SEC"
+    tw_has "TW-18:nobody-to-ask"           'Test run: blocked — unsaved changes in'             "$TW_SEC"
+    tw_has "TW-18:option-self"             '`I will save them myself (recommended)`'            "$TW_SEC"
+    tw_has "TW-18:option-save"             '`Save and continue`'                                "$TW_SEC"
+    tw_has "TW-18:option-discard"          '`Discard all changes and continue`'                 "$TW_SEC"
+    tw_option_line() { # <literal>: its line in the section, 0 when absent
+        { grep -nF -- "$1" <<< "$TW_SEC" || echo 0; } | head -1 | cut -d: -f1
+    }
+    TW18_SELF=$(tw_option_line '`I will save them myself (recommended)`')
+    TW18_SAVE=$(tw_option_line '`Save and continue`')
+    TW18_DISCARD=$(tw_option_line '`Discard all changes and continue`')
+    [[ "$TW18_SELF" -gt 0 && "$TW18_SELF" -lt "$TW18_SAVE" && "$TW18_SAVE" -lt "$TW18_DISCARD" ]] || TW_WHY+=" TW-18:option-order"
+    grep -qF '### Unsaved editor state' "$ROOT_DIR/skills/unikit-verify/SKILL.md" || TW_WHY+=" TW-18:verify-pointer"
+    for tw18_f in unity-cli/INDEX.md unity-cli/verification.md unity-biome-mcp/verification.md; do
+        grep -qF "the user's answer" "$ROOT_DIR/engine-bridges/unity/rules/$tw18_f" || TW_WHY+=" TW-18:bridge-rule($tw18_f)"
+    done
+    grep -qF 'every open scene was saved: an unsaved scene makes the run' "$ROOT_DIR/engine-bridges/unity/rules/unity-cli/INDEX.md" && TW_WHY+=" TW-18:save-first-returned"
+    grep -qF 'every open scene saved first' "$ROOT_DIR/engine-bridges/unity/rules/unity-cli/verification.md" && TW_WHY+=" TW-18:save-first-returned"
     (( tw_chk > 0 )) || TW_WHY+=" TW-13:no-anchor-checked"
 fi
 if [[ -z "$TW_WHY" ]]; then
-    pass "TW-1…TW-17 run width: every test by default, affected runs and their threshold are keys, one launch, zero tests is not green, the final run reused on an unchanged tree, fix reads the same section; one content-aware, index-independent tree hash, carried over the executor's commits; tests written before the phase's run; one scope closed before its single launch, a repeat after red is one launch of the whole scope; a part still going is not green, a bridge that cannot run the scope in one launch splits it along its own boundary (${tw_chk:-0} new anchors)"
+    pass "TW-1…TW-18 run width: every test by default, affected runs and their threshold are keys, one launch, zero tests is not green, the final run reused on an unchanged tree, fix reads the same section; one content-aware, index-independent tree hash, carried over the executor's commits; tests written before the phase's run; one scope closed before its single launch, a repeat after red is one launch of the whole scope; a part still going is not green, a bridge that cannot run the scope in one launch splits it along its own boundary (${tw_chk:-0} new anchors)"
 else
     fail "TW run-width contract:$TW_WHY"
 fi
@@ -9959,7 +9981,8 @@ if [[ -z "$BX_WHY" ]]; then
     # 65830 -> 65950: the Bootstrap reads the order file and the routing file in one sentence (XE-2), as implement and execute do
     # 65950 -> 66690: architecture topics, 2026-10-28 — the Step 0.2 read of the topic files, the 3.4 table check and the 3.6 suggestions (AD-12); the numbers live in the contract
     # 66690 -> 66710: the Subagent arguments pointer moved out of the alias section into one of its own (AP-22), +14 bytes of heading
-    bx_max "BC-1:skill-size" 66710 "$UNIKIT_VERIFY_SKILL"
+    # 66710 -> 66860: the strict run points at the rule for unsaved editor state (TW-18), +154 bytes
+    bx_max "BC-1:skill-size" 66860 "$UNIKIT_VERIFY_SKILL"
 
     # (BC-2) verify's branch: headings, the two level sentences, and the one place of suggested_next
     BX_CHK=$((BX_CHK + 1))
