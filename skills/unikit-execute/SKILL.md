@@ -72,7 +72,8 @@ A flag value outside its list → `ERROR [execute] invalid --docs value; expecte
 - the plan-file check (Step 2) and Step 5 are not run: the report of Step 5.3 is the reply, in English, and the caller decides about documentation, context files, review and commit;
 - the `Editor:` lines of the hand-off are the card as written, and its `Editor tasks:` or `editor_mode:` line is the mode (Step 3);
 - a hand-off with no `Editor:` line — a fix, a verification — is classified from its text by Step 2;
-- a line the hand-off marks `manual` is never carried out.
+- a line the hand-off marks `manual` is never carried out;
+- tests follow the hand-off: written only when it asks for them and at once, a run only when it asks for one; nothing waits for acceptance, because the caller owns it.
 
 Any other arguments → the normal flow, which starts with the flags of **Input**.
 
@@ -80,7 +81,7 @@ Any other arguments → the normal flow, which starts with the flags of **Input*
 
 Load the project knowledge base once, before the first change. Do not print what you read.
 
-**Development principles — BLOCKING PRE-REQUISITE.** Before producing ANY code, silently read `.unikit/system/dev-principles.md` and apply its rules to ALL subsequent output. Read everything **above** the LAZY-READ BOUNDARY (`Grep -n '^<!-- === LAZY-READ BOUNDARY === -->'`, then `Read` with `limit` set to that line): Layer A — the evidence contract (`CLAIM / EVIDENCE / VERDICT`, the claim-class → evidence-class lattice, the nine failure classes, discipline, phase order, lane, stop-conditions, the `kind` and area vocabularies, "no rules ≠ no rights"), then the engine workflow and the code conventions (engine bridge usage, comments policy, docs/tests requirements, TODO handling). The section **below** the boundary is read once per session, at the first call through a bridge (Step 4) — unconditionally, never gated on which rules are installed; a run that reaches no bridge never reads it.
+**Development principles — BLOCKING PRE-REQUISITE.** Before producing ANY code, silently read `.unikit/system/dev-principles.md` and apply its rules to ALL subsequent output. Read everything **above** the LAZY-READ BOUNDARY (`Grep -n '^<!-- === LAZY-READ BOUNDARY === -->'`, then `Read` with `limit` set to that line): Layer A — the evidence contract (`CLAIM / EVIDENCE / VERDICT`, the claim-class → evidence-class lattice, the nine failure classes, discipline, phase order, lane, stop-conditions, the `kind` and area vocabularies, "no rules ≠ no rights"), then the engine workflow and the code conventions (engine bridge usage, comments policy, docs requirements, the test policy, TODO handling). The section **below** the boundary is read once per session, at the first call through a bridge (Step 4) — unconditionally, never gated on which rules are installed; a run that reaches no bridge never reads it.
 
 Then, in the same pass:
 - `.unikit/system/engine-bridges/BRIDGES.md` and, for each bridge whose block names a rules tree, that tree's `.unikit/system/engine-bridges/<bridge>/INDEX.md`, **base section only** — the stamp under the title (the `bridge` row) plus every section **except** the `## Check` table — access, the live failure classes, shape and cost, what is irreversible, the lane, and what to do when the file is silent. The `## Check` table is **not** read here: it is grepped per editor line, by that line's own area plus the six cross-cutting ones (`rollback · console · batch · compile · transport · visual`). Also read `.unikit/bridges.yaml` (the bridge order) and, when it exists, `.unikit/bridge-routing.md` (the routing rules); a missing order file means the default order `BRIDGES.md` states, a missing routing file means no routing rules.
@@ -100,6 +101,7 @@ These describe the engine bridges actually configured for this project: their bo
    - **RULES.md**: ALWAYS read `.unikit/RULES.md` first (highest priority) **Rule topics:** load the topic files listed under its `## Topics` whose `Load when` matches the current task; when unsure, load.
    - **Core**: read the Core table. For EACH row where Required By = `all` or contains `{{self_name}}` — read that file from `.unikit/memory/code/core/` using the Read tool. Do NOT skip any matching row. Always re-read at skill start, never rely on prior conversation cache
    - **Stack**: load dynamically when the current task or context matches "Load When" column, or when a need arises during work
+   - **The one exception to the row rule: `testing.md`.** Read it only when this run writes tests or works out the width of a run, even though its row says `all`; `references/tests.md` says when.
 4. **Read `.unikit/skill-context/{{self_name}}/SKILL.md`** if it exists — project-specific rules accumulated by `/unikit-evolve`. Treat as overrides: skill-context wins over general rules on conflict.
 
 Unless this is the delegate mode, and when `git` is available, run `git status --porcelain` once and remember the paths that already have uncommitted changes — Step 5 names them if this run touches them too.
@@ -164,7 +166,7 @@ Work in the phase order of **A5** — `code → compilation → editor → wirin
 
 **A blocker** — a compilation error you cannot fix, a missing dependency, a requirement that is unclear: stop that line, say what you observed and carry it to the report as not done. Guess nothing; ask only when the answer is a choice between things you found.
 
-**Tests.** None by default. Write them when the description asks ("with tests", "add a test for …") or when the rules of the project and the shape of the touched code plainly require them — a test file mirrors every source file of the area, a rule demands coverage for this kind of change; in doubt, none. They follow `dev-principles.md` item 5. Run them once through the route **D3** gives; no route → the report says `Tests: written, not run — no bridge offers a test run`. A result handed over is under review: an edit asked for after it gets no new test and no suite run, and the tests come once, after the user says it is accepted (item 5a).
+**Tests are the user's choice** (`dev-principles.md` item 5): no test is written and no run is started unless the task's words or the user's answer say so. A rule of the project, or a test file beside the source, is no such word. When the description mentions tests or a test run, or this run changed logic or a system value, read `{{skills_dir}}/{{self_name}}/references/tests.md` once, after the last step above, and follow it. Otherwise say nothing about tests and report `Tests: none`. In the delegate mode Step 0 decides and the reference is not read. The file cannot be read → print `WARN [testing] test reference missing — no test is written or run; run unikit-ai update` and report `Tests: none`.
 
 ### Step 5: Close the run
 
@@ -194,7 +196,7 @@ Manual (editor targets):
 Not done:
 - <the line> — <what was observed>
 Compilation: <confirmed through <bridge> | not checked — <reason> | errors of other code: <list>>
-Tests: <written and run through <bridge> | written, not run — <reason> | none requested>
+Tests: <the report line of references/tests.md | none>
 Bridges used: <ids, in the order used>
 Search: <the INFO [bridge-search] lines of the calls, and the Docs: and Reference: lines D6 and D8 told you to print>
 Documentation: <the outcome of 5.2>
@@ -207,7 +209,9 @@ Already changed before this run: <files this run changed that had uncommitted ch
 
 **5.5 What next.** Asked only when the running list of Step 4 is not empty and `git` is available. Ask once, with the question tool of your agent (`AskUserQuestion`): `What next?` — `Review first (recommended)`: `/unikit-review`, then `/unikit-commit` · `Commit now`: `/unikit-commit`.
 
-Before either: stage the files of this run and only those — `git add -- <the files of the running list>`, never `git add .` or `git add -A`. A file of the list that had uncommitted changes at the start (Step 1) is named first: `WARN [execute] <file> had uncommitted changes before this run — they are committed with this run's edits`.
+While tests wait for acceptance (`references/tests.md`), `Accept and write the tests (recommended)` comes first and `Review first` loses its mark. Taking it is the user's acceptance: do `## After acceptance`, then ask `What next?` once more without that option. Meanwhile the descriptions of `Review first` and `Commit now` say that the tests stay unwritten.
+
+Before a review or a commit: stage the files of this run and only those — `git add -- <the files of the running list>`, never `git add .` or `git add -A`. A file of the list that had uncommitted changes at the start (Step 1) is named first: `WARN [execute] <file> had uncommitted changes before this run — they are committed with this run's edits`.
 - Review first → invoke `unikit-review` with no argument (it reviews the staged changes), wait for it to return, then invoke `unikit-commit` with no argument.
 - Commit now → invoke `unikit-commit` with no argument.
 
@@ -218,4 +222,4 @@ Then STOP: there is no summary file and no report file. `/unikit-verify` is not 
 1. **No plan.** `.unikit/code/PLAN.md`, `.unikit/code/FIX_PLAN.md` and `.unikit/code/plans/` are never read, created or edited — the only touch is the existence check of Step 2. No patch is written to `.unikit/code/patches/`, no roadmap milestone is checked, no question about the deletion or the archive of a plan is asked, no PR checkpoint is run.
 2. **The skills this skill invokes** are `unikit-commit`, `unikit-review`, `unikit-todo`, `unikit-docs` and `unikit-bridge-trap`, and no other: never `unikit-plan`, `unikit-fix`, `unikit-implement` or `unikit-verify` — a task that needs one of them is not this skill's.
 3. **Commit only your own changes** — stage only the files of the running list of Step 4; never `git add .` or `git add -A`.
-4. **Tests follow acceptance** — an edit the user asks for on a result you have handed over gets no new test and no suite run; its tests come after acceptance (`dev-principles.md` item 5a).
+4. **Tests are the user's choice** — none written and no run started without the task's words or an answer (`references/tests.md`); chosen tests wait for acceptance, and an edit on a result you have handed over gets no new test and no suite run (`dev-principles.md` item 5a).
