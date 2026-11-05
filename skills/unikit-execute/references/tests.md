@@ -31,12 +31,12 @@ The code of this run does not compile, or a line stayed in `Not done` → no que
 
 ## The width of a run
 
-Before working out a scope, read `{{skills_dir}}/unikit-implement/references/test-runs.md` → `## Run width`, that section alone, once. A run with no plan has no coverage: it follows the section's `phase` row, and its changed files are `git status --porcelain` plus the running list of Step 4. Only with `use_affected_modules: true` read the rule of the `testing` row in `.unikit/memory/code/RULES_INDEX.md` as well, before the search: the way to find the affected suites lives there. With `false` the scope is the whole project and the rule stays unread.
+Before working out a scope, read `.unikit/system/test-run-width.md` once. A run with no plan has no coverage: it follows the file's `phase` row, and its changed files are `git status --porcelain` plus the running list of Step 4. Only with `use_affected_modules: true` read the rule of the `testing` row in `.unikit/memory/code/RULES_INDEX.md` as well, before the search: the way to find the affected suites lives there. With `false` the scope is the whole project and the rule stays unread.
 
 The question names the scope as `the whole project` or as `<n> test suites: <names>`.
 
-- The file or the section is missing → print `WARN [testing] test-run reference missing — every test is run; run unikit-ai update`; the scope is the whole project.
-- The project has no `testing` rule → go on with no warning: `## Run width` itself chooses a full run when it has no way to narrow.
+- The file is missing → print `WARN [testing] test-run reference missing — every test is run; run unikit-ai update`; the scope is the whole project.
+- The project has no `testing` rule → go on with no warning: `.unikit/system/test-run-width.md` itself chooses a full run when it has no way to narrow.
 
 ## The run
 

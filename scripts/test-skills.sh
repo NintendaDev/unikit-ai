@@ -7124,6 +7124,7 @@ fi
 # The test-run block of unikit-implement lives in a reference read only under `Testing: yes`
 # (DEC-012 b); every TC literal that moved with it is asserted against that file.
 TC_TESTRUNS="$ROOT_DIR/skills/unikit-implement/references/test-runs.md"
+TC_RUNWIDTH="$ROOT_DIR/data/test-run-width.md"
 
 # --- group 4: verify checks the executor's run and starts none of its own (tasks 5.1, 5.2; research 2026-10-01 G/H) ---
 TC_G4_WHY=""
@@ -7203,10 +7204,10 @@ if [[ -z "$TC_G5_WHY" ]]; then
     # the skill (the stub that recognises the task); the rest moved to the reference.
     grep -qF 'Test checkpoint: <coverage>'  "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-34:no-run-task-branch"
     grep -qF 'every test in the project'    "$TC_TESTRUNS" || TC_G5_WHY+=" TC-35:no-plan-width"
-    grep -qF 'without building a graph'     "$TC_TESTRUNS" || TC_G5_WHY+=" TC-36:no-graph-free-rule"
-    grep -qF 'Safety valve'                 "$TC_TESTRUNS" || TC_G5_WHY+=" TC-37:no-safety-valve"
-    grep -qF 'assigned, not measured'       "$TC_TESTRUNS" || TC_G5_WHY+=" TC-37:threshold-passed-off-as-measured"
-    grep -qF 'Reading every module manifest is forbidden' "$TC_TESTRUNS" || TC_G5_WHY+=" TC-38:no-manifest-read-ban"
+    grep -qF 'without building a graph'     "$TC_RUNWIDTH" || TC_G5_WHY+=" TC-36:no-graph-free-rule"
+    grep -qF 'Safety valve'                 "$TC_RUNWIDTH" || TC_G5_WHY+=" TC-37:no-safety-valve"
+    grep -qF 'assigned, not measured'       "$TC_RUNWIDTH" || TC_G5_WHY+=" TC-37:threshold-passed-off-as-measured"
+    grep -qF 'Reading every module manifest is forbidden' "$TC_RUNWIDTH" || TC_G5_WHY+=" TC-38:no-manifest-read-ban"
     grep -qF 'git rev-parse HEAD; { git diff HEAD --name-only' "$TC_TESTRUNS" || TC_G5_WHY+=" TC-39:no-hash-commands"
     grep -qF 'only WRITES tests and never runs them'      "$TC_TESTRUNS" || TC_G5_WHY+=" TC-40:step-3.8-may-still-run"
     # (TC-41) NEGATIVE — the policy is engine-neutral and the mechanism lives in testing.md.
@@ -7610,10 +7611,10 @@ for f in "$TC_TESTRUNS" "$EM_FIX_SKILL" "$TW_TASKFMT" "$TW_ULTRA_FMT" "$TW_CONFI
     [[ -s "$f" ]] || TW_WHY+=" missing:${f##*/}"
 done
 if [[ -z "$TW_WHY" ]]; then
-    TW_SEC="$(awk '/^## Run width/{f=1} f' "$TC_TESTRUNS")"
+    TW_SEC="$(awk '/^## Run width/{f=1} f' "$TC_RUNWIDTH")"
     [[ -n "$TW_SEC" ]] || TW_WHY+=" TW-1:no-run-width-section"
-    # (TW-1) /unikit-fix reads "that section alone" — from the heading to the end of the file.
-    [[ -z "$(awk '/^## Run width/{f=1;next} f&&/^## /{print; exit}' "$TC_TESTRUNS")" ]] || TW_WHY+=" TW-1:run-width-not-last"
+    # (TW-1) the system file is this one section — from the heading to the end of the file.
+    [[ -z "$(awk '/^## Run width/{f=1;next} f&&/^## /{print; exit}' "$TC_RUNWIDTH")" ]] || TW_WHY+=" TW-1:run-width-not-last"
     # (TW-1) both keys, the default threshold, and the floor rule.
     grep -qF '`testing.run.use_affected_modules`'      <<< "$TW_SEC" || TW_WHY+=" TW-1:no-affected-key"
     grep -qF '`testing.run.full_run_threshold_percent`' <<< "$TW_SEC" || TW_WHY+=" TW-1:no-threshold-key"
@@ -7632,16 +7633,16 @@ if [[ -z "$TW_WHY" ]]; then
     grep -qF 'the project has no tests yet'          <<< "$TW_SEC" || TW_WHY+=" TW-4:fix-fails-without-tests"
     # (TW-5) the valve reads the key, and the old literal threshold is gone from the whole file.
     grep -qF 'is ≥ `full_run_threshold_percent` % of all the project' <<< "$TW_SEC" || TW_WHY+=" TW-5:valve-not-keyed"
-    grep -qF '70%' "$TC_TESTRUNS" && TW_WHY+=" TW-5:hardcoded-threshold-returned"
+    grep -qF '70%' "$TC_RUNWIDTH" && TW_WHY+=" TW-5:hardcoded-threshold-returned"
     # (TW-6) the final run is reused on an unchanged tree, and every run of every test moves the anchor.
     grep -qF 'The final full run may be closed by reuse' "$TC_TESTRUNS" || TW_WHY+=" TW-6:no-final-reuse"
     grep -qF 'for every run that ran every test in the project, additionally' "$TC_TESTRUNS" || TW_WHY+=" TW-6:anchor-only-on-plan"
     # (TW-7) /unikit-fix reads the same section and no longer guesses one assembly.
-    grep -qF 'unikit-implement/references/test-runs.md' "$EM_FIX_SKILL" || TW_WHY+=" TW-7:fix-blind"
-    grep -qF '## Run width' "$EM_FIX_SKILL" || TW_WHY+=" TW-7:fix-reads-no-section"
+    grep -qF '.unikit/system/test-run-width.md' "$EM_FIX_SKILL" || TW_WHY+=" TW-7:fix-blind"
+    grep -qF 'test-run-width.md` → `### One scope, one launch`' "$EM_FIX_SKILL" || TW_WHY+=" TW-7:fix-reads-no-section"
     grep -qF 'Determine which test assembly covers the modified module' "$EM_FIX_SKILL" && TW_WHY+=" TW-7:fix-one-assembly-returned"
     # /unikit-execute takes the width of a chosen run from the same section; the section says so.
-    grep -qF '`/unikit-execute` reads it alone for a run the user chose' <<< "$TW_SEC" || TW_WHY+=" TW-7:execute-reader-unnamed"
+    grep -qF '`/unikit-execute` for a run the user chose' <<< "$TW_SEC" || TW_WHY+=" TW-7:execute-reader-unnamed"
     # (TW-8) the formats and the docs say "never narrower", not "not configurable", and the ultra
     # format no longer has the planner write a run's target into a phase file.
     grep -qF 'A run is never narrower than its coverage' "$TW_TASKFMT" || TW_WHY+=" TW-8:format-no-floor-rule"
@@ -7713,7 +7714,7 @@ if [[ -z "$TW_WHY" ]]; then
     tw15_line="$( { grep -F 'After the fix the run is repeated' "$TC_TESTRUNS" || true; } | head -1)"
     [[ -n "$tw15_line" ]] || TW_WHY+=" TW-15:no-repeat-line"
     tw_has "TW-15:repeat-line-unlinked"  'One scope, one launch'                                   "$tw15_line"
-    tw_has "TW-15:search-looks-like-launch" 'no suite is started while it repeats'                 "$(cat "$TC_TESTRUNS")"
+    tw_has "TW-15:search-looks-like-launch" 'no suite is started while it repeats'                 "$(cat "$TC_RUNWIDTH")"
     tw_has "TW-15:fix-unlinked"          'One scope, one launch'                                   "$(cat "$EM_FIX_SKILL")"
     # (TW-16) a result that names a part still going is not green: a bridge can answer a run with a
     # success flag while one of its parts was only started in the background (measured 2026-10-27).
@@ -9982,7 +9983,8 @@ if [[ -z "$BX_WHY" ]]; then
     # 65950 -> 66690: architecture topics, 2026-10-28 — the Step 0.2 read of the topic files, the 3.4 table check and the 3.6 suggestions (AD-12); the numbers live in the contract
     # 66690 -> 66710: the Subagent arguments pointer moved out of the alias section into one of its own (AP-22), +14 bytes of heading
     # 66710 -> 66860: the strict run points at the rule for unsaved editor state (TW-18), +154 bytes
-    bx_max "BC-1:skill-size" 66860 "$UNIKIT_VERIFY_SKILL"
+    # 66860 -> 66820: the pointer names the system file, the width left the skill folder
+    bx_max "BC-1:skill-size" 66820 "$UNIKIT_VERIFY_SKILL"
 
     # (BC-2) verify's branch: headings, the two level sentences, and the one place of suggested_next
     BX_CHK=$((BX_CHK + 1))
@@ -14299,7 +14301,7 @@ for xe_lit in 'plainly require' 'a rule demands coverage' 'None by default'; do
     xe_lacks "XE-8:skill-returned(${xe_lit:0:26})" "$xe_lit" "$XE_SKILL"
 done
 for xe_lit in 'No tests (recommended)' 'Write them after you accept the result' 'Only run the existing tests' \
-              '## Run width' 'one repeat' 'is not an order' 'prototype plan' 'Not done' \
+              '.unikit/system/test-run-width.md' 'one repeat' 'is not an order' 'prototype plan' 'Not done' \
               'says nothing about tests, in a session under a prototype plan' \
               'No bridge offers a test run → no question' '`use_affected_modules: true`' \
               '<written | not written>, not run — no bridge offers a test run' \
@@ -14308,6 +14310,7 @@ for xe_lit in 'No tests (recommended)' 'Write them after you accept the result' 
 done
 xe_has "XE-8:skill-lacks(narrowing-reads-the-rule)" 'writes tests or narrows a run to affected test suites' "$XE_SKILL"
 xe_lacks "XE-8:rule-read-before-width" 'Before working out a scope, read the rule' "$XE_TESTS"
+xe_lacks "XE-8:width-from-a-skill-folder" 'unikit-implement/references/test-runs.md' "$XE_TESTS"
 # "The first row that fits decides", so the order is the behaviour: the wider order comes before the narrower one
 # it contains, and the prototype row after every row that names an order, because a word of the user still counts.
 xe_row() { # <literal>: the line of the first row that holds it, 0 when there is none
