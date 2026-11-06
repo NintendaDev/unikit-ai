@@ -8,8 +8,8 @@ Read only when a plan links a research.
 ### <folder name>
 - **Summary SHA256**: <64 hex chars>
 - `RESEARCH.md` — the manifest; its `## Active Summary` is the declared input
-- `CONTRACTS.md` — interfaces, patterns, files, DI bindings (if the file exists)
-- `SOURCE.md` — original exploration dialogue (if the file exists)
+- `CONTRACTS.md` — interfaces, patterns, files, DI bindings (include only if the file exists)
+- `SOURCE.md` — original exploration dialogue (include only if the file exists)
 ```
 
 ## Finding the folder
@@ -26,7 +26,7 @@ Run it when the summary is read. No digest: omit the line and print `WARN [resea
 
 ## Checking an entry
 
-`## Finding the folder`, run the script, compare with the recorded `Summary SHA256`:
+With a `Summary SHA256`: `## Finding the folder`, run the script, compare. Without one nothing runs: **unknown**.
 
 - **match** — silent.
 - **drift** — `WARN [research-drift]: <folder> — Active Summary changed since the plan was built`.

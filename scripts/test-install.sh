@@ -258,7 +258,8 @@ assert_exists "$RESEARCH_HASH_PATH" "research-hash.mjs created in .unikit/system
 assert_not_contains "$RESEARCH_HASH_PATH" '\{\{' \
   "research-hash.mjs is a flat copy — no unresolved {{vars}}"
 RESEARCH_HASH_FIXTURE="$ROOT_DIR/scripts/test-fixtures/research-indexes/project/2026-10-02_unicode/RESEARCH.md"
-RESEARCH_HASH_DIGEST="$(node "$RESEARCH_HASH_PATH" "$RESEARCH_HASH_FIXTURE")"
+# `|| true`: a failing script must reach the message below, not abort the suite under set -e.
+RESEARCH_HASH_DIGEST="$(node "$RESEARCH_HASH_PATH" "$RESEARCH_HASH_FIXTURE" || true)"
 if [[ "$RESEARCH_HASH_DIGEST" != "ab542cb16b4c0712cddda2a4eae1ca6fceceb6011be8b6aeb21212a0b2966167" ]]; then
   echo "Assertion failed: the installed research-hash.mjs printed '$RESEARCH_HASH_DIGEST' for the unicode fixture"
   exit 1

@@ -81,7 +81,7 @@ linked-read resolution.
 ## Why the index rules left this contract
 
 Each scope keeps its own compact table, but its rules no longer live here. The contract grew from
-about 6.5 KB to 11.7 KB when they joined it, and every plan paid for that read just to look at an
+about 7.7 KB to 11.7 KB when they joined it, and every plan paid for that read just to look at an
 index, including a plan that links nothing. Measured on 35 real manifests, a table row saves
 about 270 bytes against a card, so the read only broke even at 44 researches. The format now
 belongs to its one writer, `unikit-explore/references/index-render.md`, and a reader does not need
@@ -268,7 +268,7 @@ a period nobody actually examined.
 | `RD-G` | The one degradation sentence is verbatim-identical and appears exactly once in each of the four skills |
 | `RD-H` | The contract is read only within its research step's own section, never inside Bootstrap and never for `/unikit-plan`'s early look at the index; the digest is computed at read/link time (`/unikit-plan` Step 2, `/unikit-improve` Step 1.5), never recomputed at the later write step (`/unikit-plan` Step 5, `/unikit-improve` Step 5.5) |
 | `RD-I` | The name of an entry is resolved in `researches/` first and `archive/researches/` second, in the contract only: `## Finding the folder` sits between `## The entry` and `## Computing the hash`, raises no `WARN` for the place of a folder, is pointed at by `## Checking an entry` and by `/unikit-improve`, and no consuming skill names the archive path |
-| `RD-J` | The contract stays within its size limit, computes the hash through the script, carries no digest utility and no index rules; no shipped file names its retired sections |
+| `RD-J` | The contract stays within its size limit, computes the hash through the script, carries no digest utility and no index rules, runs nothing for an entry without a hash and keeps the condition on the two optional lines of an entry; no shipped file names its retired sections |
 | `RI:*` | The index: the format, the `Topic:` rule and the one search live in `index-render.md`, which does not read the contract; the **Research index** sentence is word for word once in each of the five readers; no cache in anything shipped and no digest grant in `/unikit-explore` or `/unikit-archive`; a gate repair re-renders before the save is confirmed; `/unikit-plan` shows `Updated`; thirteen replay cases |
 | `SA-1` | Every `export async function install*` in `system-assets.ts` and `system-contracts.ts` is called from both `init.ts` and `update.ts` — derived from the source, not a maintained name list |
 | `TC-24` | The literal `the one tree-hash command` in `test-runs.md` and in `/unikit-verify`: one command named in two places, never two commands that merely agree today. It shares nothing with `Summary SHA256` but the algorithm |

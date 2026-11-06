@@ -5067,6 +5067,11 @@ RDJ_WHY=""
 RDJ_BYTES="$(wc -c < "$RL_CONTRACT" | tr -d ' ')"
 (( RDJ_BYTES <= RDJ_MAX_BYTES )) || RDJ_WHY+=" contract-size=$RDJ_BYTES"
 grep -qF 'node .unikit/system/research-hash.mjs' "$RL_CONTRACT" || RDJ_WHY+=" contract-no-command"
+# Shrinking must not cost two rules. An entry without a hash stays unknown whatever the folder holds,
+# so it never reaches the script; and the two optional lines of an entry are conditions, not text to copy.
+grep -qF 'Without one nothing runs' "$RL_CONTRACT" || RDJ_WHY+=" contract-runs-the-script-for-an-entry-without-a-hash"
+RDJ_OPTIONAL="$({ grep -cF '(include only if the file exists)' "$RL_CONTRACT" || true; })"
+[[ "$RDJ_OPTIONAL" -eq 2 ]] || RDJ_WHY+=" contract-optional-lines=$RDJ_OPTIONAL"
 for tok in 'shasum' 'sha256sum' '## Reading an index' 'INDEX.cache' 'unikit:research-index'; do
     if grep -qF "$tok" "$RL_CONTRACT"; then RDJ_WHY+=" contract-carries:${tok// /-}"; fi
 done
