@@ -4638,27 +4638,44 @@ fi
 # instruction the skill cannot carry out without asking. Both shells are required: the mechanism
 # exists to work without Git Bash, where a `Bash(...)` grant means nothing. Each grant names the one
 # script, never all of `node`, so a skill that only checks a hash gains no general interpreter.
-# The digest utilities stay only where another command still needs them: `tree-sha256` in implement
-# and verify, `ultra-stateful.md` in plan. improve has no other use, and a leftover grant reads
-# as if the hash still depended on them.
+# The digest utilities stay only where another command still needs them: `ultra-stateful.md` in
+# plan. improve, implement and verify have no other use, and a leftover grant reads as if a hash
+# still depended on them.
 RDB_WHY=""
 for f in "${RD_CONSUMERS[@]}"; do
     n="$(basename "$(dirname "$f")")"
     grep -qF 'Bash(node .unikit/system/research-hash.mjs *)'       "$f" || RDB_WHY+=" $n-no-bash-grant"
     grep -qF 'PowerShell(node .unikit/system/research-hash.mjs *)' "$f" || RDB_WHY+=" $n-no-powershell-grant"
 done
-for f in "$UNIKIT_PLAN_SKILL" "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL"; do
+grep -qF 'Bash(shasum *)'    "$UNIKIT_PLAN_SKILL" || RDB_WHY+=" unikit-plan-no-shasum"
+grep -qF 'Bash(sha256sum *)' "$UNIKIT_PLAN_SKILL" || RDB_WHY+=" unikit-plan-no-sha256sum"
+for f in "$UNIKIT_IMPROVE_SKILL" "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL"; do
     n="$(basename "$(dirname "$f")")"
-    grep -qF 'Bash(shasum *)'    "$f" || RDB_WHY+=" $n-no-shasum"
-    grep -qF 'Bash(sha256sum *)' "$f" || RDB_WHY+=" $n-no-sha256sum"
+    if grep -qF 'Bash(shasum *)' "$f" || grep -qF 'Bash(sha256sum *)' "$f"; then
+        RDB_WHY+=" $n-keeps-a-digest-grant"
+    fi
 done
-if grep -qF 'Bash(shasum *)' "$UNIKIT_IMPROVE_SKILL" || grep -qF 'Bash(sha256sum *)' "$UNIKIT_IMPROVE_SKILL"; then
-    RDB_WHY+=" improve-keeps-a-digest-grant"
-fi
 if [[ -z "$RDB_WHY" ]]; then
     pass "RD-B the script grant is in all four skills for both shells, and the digest utilities stay only where another command needs them"
 else
     fail "RD-B a hash grant is missing or left over:$RDB_WHY"
+fi
+
+# (TH-1) The grant that makes the tree-hash command runnable, in both shells, for the same reason as
+# RD-B: the script exists to work without Git Bash, where a `Bash(...)` grant means nothing. What the
+# script computes is pinned by scripts/test-tree-hash.mjs (Part 7f10).
+TH_WHY=""
+TH_SKILLS=0
+for f in "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL"; do
+    TH_SKILLS=$((TH_SKILLS + 1))
+    n="$(basename "$(dirname "$f")")"
+    grep -qF 'Bash(node .unikit/system/tree-hash.mjs *)'       "$f" || TH_WHY+=" $n-no-bash-grant"
+    grep -qF 'PowerShell(node .unikit/system/tree-hash.mjs *)' "$f" || TH_WHY+=" $n-no-powershell-grant"
+done
+if [[ -z "$TH_WHY" ]]; then
+    pass "TH-1 the tree-hash grant is in $TH_SKILLS skills for both shells"
+else
+    fail "TH-1 a tree-hash grant is missing:$TH_WHY"
 fi
 
 # (RD-C) One label for every drift branch, and the writer/reader split.
@@ -7164,11 +7181,10 @@ for f in "$UNIKIT_VERIFY_SKILL" "$UNIKIT_IMPLEMENT_SKILL" "$TC_TESTRUNS" "$EM_FI
     [[ -s "$f" ]] || TC_G4_WHY+=" missing:${f##*/}"
 done
 if [[ -z "$TC_G4_WHY" ]]; then
-    # (TC-23) the four halves of the anchor check.
+    # (TC-23) the three halves of the anchor check.
     grep -qF 'Full run:'              "$UNIKIT_VERIFY_SKILL" || TC_G4_WHY+=" TC-23:no-anchor-read"
     grep -qF 'Test run: reused'       "$UNIKIT_VERIFY_SKILL" || TC_G4_WHY+=" TC-23:no-reused-outcome"
-    grep -qF 'git rev-parse HEAD'     "$UNIKIT_VERIFY_SKILL" || TC_G4_WHY+=" TC-23:no-head-command"
-    grep -qF 'git ls-files --others --exclude-standard --full-name' "$UNIKIT_VERIFY_SKILL" || TC_G4_WHY+=" TC-23:no-untracked-command"
+    grep -qF 'node .unikit/system/tree-hash.mjs' "$UNIKIT_VERIFY_SKILL" || TC_G4_WHY+=" TC-23:no-hash-command"
     # (TC-23) normal mode starts no test run; --strict asks once and is the only way verify runs
     # tests; an unresolved strict finding is the `verify-tests` blocker.
     grep -qF 'Normal mode starts no test run' "$UNIKIT_VERIFY_SKILL" || TC_G4_WHY+=" TC-23:verify-may-run-tests"
@@ -7240,7 +7256,7 @@ if [[ -z "$TC_G5_WHY" ]]; then
     grep -qF 'Safety valve'                 "$TC_RUNWIDTH" || TC_G5_WHY+=" TC-37:no-safety-valve"
     grep -qF 'assigned, not measured'       "$TC_RUNWIDTH" || TC_G5_WHY+=" TC-37:threshold-passed-off-as-measured"
     grep -qF 'Reading every module manifest is forbidden' "$TC_RUNWIDTH" || TC_G5_WHY+=" TC-38:no-manifest-read-ban"
-    grep -qF 'git rev-parse HEAD; { git diff HEAD --name-only' "$TC_TESTRUNS" || TC_G5_WHY+=" TC-39:no-hash-commands"
+    grep -qF 'node .unikit/system/tree-hash.mjs' "$TC_TESTRUNS" || TC_G5_WHY+=" TC-39:no-hash-commands"
     grep -qF 'only WRITES tests and never runs them'      "$TC_TESTRUNS" || TC_G5_WHY+=" TC-40:step-3.8-may-still-run"
     # (TC-41) NEGATIVE — the policy is engine-neutral and the mechanism lives in testing.md.
     # The scope covers unikit-fix too, and the case is spelled out as classes: the plain
@@ -7629,8 +7645,8 @@ fi
 # default of 30; a run is one launch; a run over zero tests is not green; the final full run is
 # closed by reuse on an unchanged tree; /unikit-fix reads the same section; the coordinator
 # counts a reused final run apart from a performed one. Plan refinement 2026-10-01: the tree
-# hash sees file content and leaves `.unikit/` out, one command in implement and verify; the
-# executor carries a matching anchor over every commit it makes; a phase writes its tests before
+# hash sees file content and leaves `.unikit/` out, one command in implement and verify; a
+# commit that moves no file does not move it (2026-11-06); a phase writes its tests before
 # its run. Anchored on formulations, never on headings alone. The `## Run width` window runs to
 # the end of test-runs.md: it is the last section. A window is tested with a here-string, never
 # piped into `grep -q` — under pipefail a SIGPIPE hides the hit (the PX-2 note says the same).
@@ -7686,40 +7702,27 @@ if [[ -z "$TW_WHY" ]]; then
     # (TW-9) the coordinator does not count a reused final run as a performed one.
     grep -qF '<r> reused' "$TC_COORD" || TW_WHY+=" TW-9:coordinator-counts-reuse-as-run"
     # (TW-10) SHARED — the tree hash is ONE command, compared as a whole line between the two
-    # files (a fragment check stays green while one of the four `.unikit` excludes drifts in one
-    # copy). The line must be index-independent, top-relative and nested-repo safe: the review of
-    # 2026-10-01 measured `git status --porcelain` moving on `git add` (so no executor commit ever
-    # carried the anchor) and `--relative` + `hash-object` failing from a subdirectory, silently.
-    tw10_impl="$(awk '/git hash-object --stdin-paths/{n++; l=$0} END{if(n==1){sub(/^ +/,"",l); print l}}' "$TC_TESTRUNS")"
-    tw10_ver="$(awk '/git hash-object --stdin-paths/{n++; l=$0} END{if(n==1){sub(/^ +/,"",l); print l}}' "$UNIKIT_VERIFY_SKILL")"
+    # files; what it computes is pinned by behaviour in scripts/test-tree-hash.mjs. The pipeline it
+    # replaced must not come back: its Bash `{ … }` block reaching PowerShell hands its own text to
+    # `sha256sum`, so the digest stayed the same whatever the tree held (measured 2026-11-06) and
+    # read as "tree unchanged". `sort` made the digest depend on the locale as well.
+    tw10_impl="$(awk '/^ +node \.unikit\/system\/tree-hash\.mjs$/{n++; l=$0} END{if(n==1){sub(/^ +/,"",l); print l}}' "$TC_TESTRUNS")"
+    tw10_ver="$(awk '/^ +node \.unikit\/system\/tree-hash\.mjs$/{n++; l=$0} END{if(n==1){sub(/^ +/,"",l); print l}}' "$UNIKIT_VERIFY_SKILL")"
     [[ -n "$tw10_impl" ]] || TW_WHY+=" TW-10:not-one-hash-line:test-runs.md"
     [[ -n "$tw10_ver" ]]  || TW_WHY+=" TW-10:not-one-hash-line:SKILL.md"
     [[ -n "$tw10_impl" && "$tw10_impl" == "$tw10_ver" ]] || TW_WHY+=" TW-10:hash-drift-between-files"
-    tw10_i=0
-    for tw10_frag in 'git diff HEAD --name-only --no-renames --ignore-submodules -- .' \
-                     'git ls-files --others --exclude-standard --full-name -- .' \
-                     "| grep -v '/\$' | sort | git hash-object --stdin-paths; } | shasum -a 256"; do
-        tw10_i=$((tw10_i + 1))
-        grep -qF "$tw10_frag" <<< "$tw10_impl" || TW_WHY+=" TW-10:fragment-$tw10_i-missing"
-    done
-    tw10_ex="':(exclude).unikit'"
-    tw10_rest="${tw10_impl//"$tw10_ex"/}"
-    (( (${#tw10_impl} - ${#tw10_rest}) == 4 * ${#tw10_ex} )) || TW_WHY+=" TW-10:not-four-unikit-excludes"
-    # Markdown is documentation: the plan's documentation step writes it after the final run, and
-    # counting it made nearly every `Docs: yes` plan read as stale (user decision 2026-10-01).
-    tw10_md="':(exclude,icase)*.md'"
-    tw10_rest_md="${tw10_impl//"$tw10_md"/}"
-    (( (${#tw10_impl} - ${#tw10_rest_md}) == 4 * ${#tw10_md} )) || TW_WHY+=" TW-10:not-four-markdown-excludes"
-    grep -qF 'git status --porcelain' <<< "$tw10_impl" && TW_WHY+=" TW-10:index-sensitive-hash-returned"
-    grep -qF -- '--relative' <<< "$tw10_impl" && TW_WHY+=" TW-10:cwd-relative-paths-returned"
     for tw10_f in "$TC_TESTRUNS" "$UNIKIT_VERIFY_SKILL"; do
-        grep -qF 'Any `fatal:` line the command prints → git did not answer' "$tw10_f" || TW_WHY+=" TW-10:fatal-not-unavailable:${tw10_f##*/}"
+        grep -qF 'A non-zero exit, or no `node`' "$tw10_f" || TW_WHY+=" TW-10:failure-not-unavailable:${tw10_f##*/}"
+        for tw10_gone in 'git hash-object' 'shasum' 'sha256sum' 'Any `fatal:` line'; do
+            grep -qF "$tw10_gone" "$tw10_f" && TW_WHY+=" TW-10:pipeline-returned(${tw10_gone}):${tw10_f##*/}"
+        done
     done
-    # (TW-11) the executor carries a matching anchor over every commit — implement and the coordinator alike.
-    grep -qF '## Carrying the anchor across a commit' "$TC_TESTRUNS"            || TW_WHY+=" TW-11:no-carry-section"
-    grep -qF 'A commit moves no file'                 "$TC_TESTRUNS"            || TW_WHY+=" TW-11:no-carry-reason"
-    grep -qF 'Carrying the anchor across a commit'    "$UNIKIT_IMPLEMENT_SKILL" || TW_WHY+=" TW-11:implement-never-carries"
-    grep -qF 'Carrying the anchor across a commit'    "$TC_COORD"               || TW_WHY+=" TW-11:coordinator-never-carries"
+    # (TW-11) a commit does not move the hash, so nothing is carried over one: the section, the
+    # implement paragraph and the coordinator's bullet that did it must not come back.
+    grep -qF 'A commit that moves no file' "$TC_TESTRUNS" || TW_WHY+=" TW-11:no-commit-rule"
+    for tw11_f in "$TC_TESTRUNS" "$UNIKIT_IMPLEMENT_SKILL" "$TC_COORD"; do
+        grep -qF 'Carrying the anchor across a commit' "$tw11_f" && TW_WHY+=" TW-11:carry-returned:${tw11_f##*/}"
+    done
     # (TW-12) a phase writes its tests before its run, or the last phase's tests are never run.
     grep -qF 'A phase that has not run `## Step 3.8` yet writes its tests now' "$TC_TESTRUNS" || TW_WHY+=" TW-12:tests-written-after-run"
     # (TW-13…TW-15) one scope, one launch: the scope is closed whole before the first launch, and a
@@ -7786,7 +7789,7 @@ if [[ -z "$TW_WHY" ]]; then
     (( tw_chk > 0 )) || TW_WHY+=" TW-13:no-anchor-checked"
 fi
 if [[ -z "$TW_WHY" ]]; then
-    pass "TW-1…TW-18 run width: every test by default, affected runs and their threshold are keys, one launch, zero tests is not green, the final run reused on an unchanged tree, fix reads the same section; one content-aware, index-independent tree hash, carried over the executor's commits; tests written before the phase's run; one scope closed before its single launch, a repeat after red is one launch of the whole scope; a part still going is not green, a bridge that cannot run the scope in one launch splits it along its own boundary (${tw_chk:-0} new anchors)"
+    pass "TW-1…TW-18 run width: every test by default, affected runs and their threshold are keys, one launch, zero tests is not green, the final run reused on an unchanged tree, fix reads the same section; one content-only tree hash that a commit does not move; tests written before the phase's run; one scope closed before its single launch, a repeat after red is one launch of the whole scope; a part still going is not green, a bridge that cannot run the scope in one launch splits it along its own boundary (${tw_chk:-0} new anchors)"
 else
     fail "TW run-width contract:$TW_WHY"
 fi
@@ -10041,7 +10044,8 @@ if [[ -z "$BX_WHY" ]]; then
     # 66710 -> 66860: the strict run points at the rule for unsaved editor state (TW-18), +154 bytes
     # 66860 -> 66820: the pointer names the system file, the width left the skill folder
     # 66820 -> 66880: research-link simplification, 2026-11-06 — the two grants of the hash script and the report line of a skipped check, less the pointer to the retired digest section
-    bx_max "BC-1:skill-size" 66880 "$UNIKIT_VERIFY_SKILL"
+    # 66880 -> 66450: the tree hash left the skill for a script, 2026-11-06 — one short command instead of the pipeline and its rules
+    bx_max "BC-1:skill-size" 66450 "$UNIKIT_VERIFY_SKILL"
 
     # (BC-2) verify's branch: headings, the two level sentences, and the one place of suggested_next
     BX_CHK=$((BX_CHK + 1))
@@ -10134,7 +10138,8 @@ if [[ -z "$BX_WHY" ]]; then
     # 53720 -> 54520: architecture topics, 2026-10-28 — the Step 1 and Step 3.0 reads of the topic files and the 3.7 delta form (AD-12)
     # 54520 -> 54540: the Subagent arguments pointer moved out of the alias section into one of its own (AP-22), +14 bytes of heading
     # 54540 -> 54640: research-link simplification, 2026-11-06 — the two grants of the hash script
-    bx_max "BM-6:implement-skill-size" 54640 "$UNIKIT_IMPLEMENT_SKILL"
+    # 54640 -> 54425: a commit no longer moves the tree hash, 2026-11-06 — the paragraph that wrapped every commit is gone
+    bx_max "BM-6:implement-skill-size" 54425 "$UNIKIT_IMPLEMENT_SKILL"
     # (BC-4) a measurement the user skipped is a skipped row, not a blocker
     bx_has "BC-4:skipped-measure-is-a-blocker" '⏭️ SKIPPED' "$BC_REF"
     # (BC-5) a name stated in ## Not measured is accounted for — a measurement the user skipped is not a blocker
@@ -11276,9 +11281,6 @@ for km_f in "$ROOT_DIR"/skills/*/SKILL.md; do
     fi
 done
 [[ "$KM_SKILL_SEEN" -gt 0 ]] || KM_WHY+=" KM-1:no-skills-scanned"
-for km_f in "$ROOT_DIR/skills/unikit-verify/SKILL.md" "$ROOT_DIR/skills/unikit-implement/references/test-runs.md"; do
-    grep -qF "| shasum -a 256 | cut -d' ' -f1" "$km_f" || KM_WHY+=" KM-1:hash-tail-not-cut:${km_f##*/}"
-done
 
 # (KM-2 was retired with the swap it guarded: the `general-purpose` → `coder` rewrite is gone,
 # and AP-1…AP-7 now forbid the literal in skills altogether.)

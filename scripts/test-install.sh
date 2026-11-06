@@ -920,7 +920,7 @@ fi
 # skills/, subagents/ and mcp/universal/ catalog, never a synthetic copy. Each installed skill
 # is the object of one claim: unikit (references, variable substitution), unikit-plan (a
 # reference that names /unikit-implement), unikit-implement (general-purpose → coder,
-# {{settings_file}}), unikit-fix, unikit-verify (the tree-hash tail), unikit-gd-explore (a
+# {{settings_file}}), unikit-fix, unikit-verify (the tree-hash command), unikit-gd-explore (a
 # REFERENCE that spells the subagent type), unikit-gd-review (a !claude block), unikit-gd-brainstorm.
 # The five subagents are the two coordinators (rewritten), the polisher and the worker (their
 # `skills:` field becomes a read list) and a sidecar (untouched).
@@ -1099,8 +1099,8 @@ if [[ "$KIMI_DOLLAR_HITS" -ne 0 ]]; then
   grep -rEn '\$[0-9]' "$KIMI_SKILLS" --include='SKILL.md' | cut -c1-160 | head -5
   exit 1
 fi
-assert_contains "$KIMI_SKILLS/unikit-verify/SKILL.md" "shasum -a 256 \| cut -d' ' -f1" \
-  "kimi: the tree-hash command ends in cut, not awk '{print \$1}'"
+assert_contains "$KIMI_SKILLS/unikit-verify/SKILL.md" 'node \.unikit/system/tree-hash\.mjs' \
+  "kimi: verify runs the tree-hash script"
 
 # Coordinators (REQ-008, DEC-015, DEC-016): Agent(...) → Agent + subagents:, ${base_prompt}, kimi --agent
 KIMI_COORD="$KIMI_AGENTS/unikit-implement-coordinator.md"
