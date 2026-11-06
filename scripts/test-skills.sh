@@ -4638,25 +4638,22 @@ fi
 # instruction the skill cannot carry out without asking. Both shells are required: the mechanism
 # exists to work without Git Bash, where a `Bash(...)` grant means nothing. Each grant names the one
 # script, never all of `node`, so a skill that only checks a hash gains no general interpreter.
-# The digest utilities stay only where another command still needs them: `ultra-stateful.md` in
-# plan. improve, implement and verify have no other use, and a leftover grant reads as if a hash
-# still depended on them.
+# The digest utilities have no use left in these four skills: every hash they take goes through a
+# script, and a leftover grant reads as if a hash still depended on them.
 RDB_WHY=""
 for f in "${RD_CONSUMERS[@]}"; do
     n="$(basename "$(dirname "$f")")"
     grep -qF 'Bash(node .unikit/system/research-hash.mjs *)'       "$f" || RDB_WHY+=" $n-no-bash-grant"
     grep -qF 'PowerShell(node .unikit/system/research-hash.mjs *)' "$f" || RDB_WHY+=" $n-no-powershell-grant"
 done
-grep -qF 'Bash(shasum *)'    "$UNIKIT_PLAN_SKILL" || RDB_WHY+=" unikit-plan-no-shasum"
-grep -qF 'Bash(sha256sum *)' "$UNIKIT_PLAN_SKILL" || RDB_WHY+=" unikit-plan-no-sha256sum"
-for f in "$UNIKIT_IMPROVE_SKILL" "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL"; do
+for f in "${RD_CONSUMERS[@]}"; do
     n="$(basename "$(dirname "$f")")"
     if grep -qF 'Bash(shasum *)' "$f" || grep -qF 'Bash(sha256sum *)' "$f"; then
         RDB_WHY+=" $n-keeps-a-digest-grant"
     fi
 done
 if [[ -z "$RDB_WHY" ]]; then
-    pass "RD-B the script grant is in all four skills for both shells, and the digest utilities stay only where another command needs them"
+    pass "RD-B the script grant is in all four skills for both shells, and none of them keeps a digest utility"
 else
     fail "RD-B a hash grant is missing or left over:$RDB_WHY"
 fi
@@ -4666,7 +4663,7 @@ fi
 # script computes is pinned by scripts/test-tree-hash.mjs (Part 7f10).
 TH_WHY=""
 TH_SKILLS=0
-for f in "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL"; do
+for f in "$UNIKIT_PLAN_SKILL" "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL"; do
     TH_SKILLS=$((TH_SKILLS + 1))
     n="$(basename "$(dirname "$f")")"
     grep -qF 'Bash(node .unikit/system/tree-hash.mjs *)'       "$f" || TH_WHY+=" $n-no-bash-grant"
@@ -11015,6 +11012,9 @@ if [[ -z "$UW_WHY" ]]; then
         grep -qF -- "$lit" "$UW_STATEFUL" || UW_WHY+=" UW-4:recon-missing(${lit:0:32})"
     done
     grep -qF 'answers condensed' "$UW_STATEFUL" && UW_WHY+=" UW-4:recon-condensed"
+    # The change guard goes through the script: a shell pipeline here needs Unix utilities the project may not have.
+    grep -qF 'node .unikit/system/tree-hash.mjs --all' "$UW_STATEFUL" || UW_WHY+=" UW-4:guard-not-the-script"
+    grep -qF 'shasum' "$UW_STATEFUL" && UW_WHY+=" UW-4:guard-pipeline-returned"
     # ...and where there is NO writing agent the SESSION is the writer, as an ordered procedure with a
     # gate, never a clause it can skip. A live run on a runtime without a writing agent: the read-only
     # recon agents finished and no recon/ folder existed — the exception had been one sentence,
