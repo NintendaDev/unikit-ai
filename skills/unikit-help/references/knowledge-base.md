@@ -101,6 +101,9 @@ Relevant to the dev pipeline:
   links a research.
 - `research-hash.mjs` — the script those skills run for `Summary SHA256`: it reads the manifest
   itself, needs only Node and gives the same digest in any shell.
+- `tree-hash.mjs` — the script `/unikit-implement` and `/unikit-verify` run for `tree-sha256`, and
+  `/unikit-plan` for its change guard: it calls `git` with no shell, so it needs only Node and git
+  and gives the same digest in any shell.
 - `plan-boundaries.md` — where a plan, a module and a push start and end (base branch, plan
   start, module boundary, push target), read by `/unikit-verify`, `/unikit-implement`,
   `/unikit-commit` and `/unikit-pr`.
