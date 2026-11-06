@@ -1,140 +1,42 @@
 # Research link — the `## Based on` contract
 
-`/unikit-plan` and `/unikit-improve` write entries under a plan's `## Based on` section. `/unikit-implement`, `/unikit-verify` and `/unikit-improve` check them. Read this file at the first code research index use or linked research, never at Bootstrap. The hashed region is declared by `/unikit-explore`'s manifest template.
-
-Do not restate this contract inside a skill — that is the failure mode this file exists to prevent. A skill **names** the rule and points here; a skill that **repeats** the rule drifts from it, and nothing turns red when the two disagree.
+Read only when a plan links a research.
 
 ## The entry
 
-One entry per linked research, under `## Based on`:
-
 ```
-### <slug>
+### <folder name>
 - **Summary SHA256**: <64 hex chars>
 - `RESEARCH.md` — the manifest; its `## Active Summary` is the declared input
-- `CONTRACTS.md` — interfaces, patterns, files, DI bindings (include only if the file exists)
-- `SOURCE.md` — original exploration dialogue (include only if the file exists)
+- `CONTRACTS.md` — interfaces, patterns, files, DI bindings (if the file exists)
+- `SOURCE.md` — original exploration dialogue (if the file exists)
 ```
-
-Example:
-
-```
-### customer-items-on-scene
-- **Summary SHA256**: 9f2c1d4e7a05b83c6e1f0a94d27b5c38ea6417d9b0c25f83a1e46d7c92b0f5a1
-- `RESEARCH.md` — the manifest; its `## Active Summary` is the declared input
-- `CONTRACTS.md` — interfaces, patterns, files, DI bindings
-- `SOURCE.md` — original exploration dialogue
-```
-
-The heading is the folder name, whatever that name is. A folder created before dateless naming keeps the form `YYYY-MM-DD_name` — an entry reading `### 2026-03-15_customer-items-on-scene` is exactly as valid as the example above. Full paths resolve from the folder `## Finding the folder` returns.
-
-An entry carrying `- **Brief SHA256**: …` predates this field — the retired brief field, hashed `RESEARCH_BRIEF.md`. It is never recomputed against the summary; see `## Checking an entry` → **unknown (retired field)**.
 
 ## Finding the folder
 
-The heading of an entry is a folder name, never a path. Before anything is read from a linked research, find its folder:
-
-1. `.unikit/code/researches/<slug>/` — when it exists, use its scope's index as below before reading the manifest.
-2. Otherwise `.unikit/code/archive/researches/<slug>/` — use the archive index as below, read there and print `INFO [research] <slug> is archived — read from .unikit/code/archive/researches/<slug>/`, once per folder per run.
-3. Both exist (a research moved back by hand and the copy stayed) — read `researches/` and print `INFO [research] <slug> exists in researches/ and in archive/researches/ — reading researches/`.
-4. Neither exists — **source missing**, see `## Checking an entry`.
-
-An archived research is found, not lost: the hash, the files and every outcome below are the same wherever the folder lies, and the place alone never raises a warning. Ordinary discovery searches active research only; explicitly requested history may search the archive. Reading history does not restore it or propose new work.
-
-## Reading an index
-
-The active root is `.unikit/code/researches/`; the archive root is `.unikit/code/archive/researches/`. Each has its own generated `INDEX.md`. Read that index first, even for a known slug; then read only the selected manifests and verify their current metadata before use or a move. Filesystem existence decides the source, never an index row. Restore selects its source in the archive only; an existing active destination is a collision, not successful active-first resolution.
-
-### Compact format v2
-
-Exactly one `<!-- unikit:research-index:2 -->`, a short heading, a generated warning and one Markdown table. One physical row per research, without fixed-width padding:
-
-```
-| Research | Updated | Status | Lifecycle | Summary | Target |
-|---|---|---|---|---|---|
-| [Title](<slug>/RESEARCH.md) | <original timestamp> | completed | active | <short agent summary> | — |
-```
-
-The archive adds `Archived` immediately after `Updated`. Preserve date precision, including time; absent dates are `—`, never Created or mtime. Missing Lifecycle has effective value `active`. Status and Lifecycle remain independent axes. Created and Mode stay in the manifest, outside the table. Sort active by Updated descending, Created descending, slug ascending; archive by Archived descending, then those same keys. Missing dates follow present dates. Readers preserve existing consumer filters and limits.
-
-Human titles and summaries follow the artifact language policy; column names and enum values stay stable. Collapse cell line breaks to spaces; escape backslashes, pipes (`\|`), brackets and Markdown metacharacters in titles/summary/Target. Encode link-destination special characters (including spaces, parentheses, brackets and pipes) so the link resolves exactly. Recover the slug from the decoded link, never from its title. Accept only a single direct child followed by `/RESEARCH.md` within the selected root: reject absolute paths, URL schemes, separators in the decoded slug, dot segments and escaped/symlink paths outside that root.
-
-### Compatibility and read-only fallback
-
-Also accept the legacy `### title` cards with bold Created/Updated/Status/Lifecycle/Summary/Path/Target fields; Path identifies the folder. A readable legacy index needs no migration during reading. Do not load `INDEX.cache.json`: it is writer-only and proves neither existence nor freshness. Navigation Summary never replaces the full Active Summary used for planning and hashing.
-
-For a known slug, look up its row first. Missing index, unknown version, malformed document, missing row or broken row → `INFO [research-index] <scope>: <reason> — filesystem fallback`, then check that slug's folder directly. A rejected link must never be followed outside the root.
-
-For catalog search/list, compare rows with direct-child `*/RESEARCH.md` candidates, not all directories. A SOURCE-only folder is an expected unfinished exploration: print NOTE, not an index mismatch; other folders without readable manifests print a skip notice. Neither triggers a catalog fallback. With an otherwise readable index, remove vanished manifests from the in-memory catalog and read only the missing/broken rows' manifests (header and Topic/Active Summary) to supplement it. Do not reread healthy manifests. Only a wholly missing/unparseable index permits bounded metadata reads across the selected scope. Keep the same sorting/filter rules; never repair the index/cache on disk. Matching folder sets do not prove every summary fresh. Recheck the selected manifest before acting.
-
-Index fallback is navigation information, never `WARN [research-drift]`. Source-missing and drift outcomes below still depend on the manifest and its full-summary markers. The writer lives in `unikit-explore/references/index-render.md`; readers need only this contract, even when explore is not installed.
-
-## What is hashed
-
-The bytes between the `## Active Summary` markers of `RESEARCH.md`, and nothing else.
-
-| Region / file | Hashed |
-|---|---|
-| `RESEARCH.md` → between the `## Active Summary` markers | yes |
-| `RESEARCH.md` → `## Findings`, `## Sessions`, the header | no |
-| `SOURCE.md`, `CONTRACTS.md`, ADR, C4, the dependency graph | no |
+`.unikit/code/researches/<slug>/`, else `.unikit/code/archive/researches/<slug>/` (`INFO [research] <slug> is archived`). Both: `INFO [research] <slug> exists in researches/ and in archive/researches/ — reading researches/`. Neither exists: **source missing**. Ordinary discovery searches active research only.
 
 ## Computing the hash
 
-### Normalization
-
-0. Extract the text between `<!-- unikit:active-summary:start -->` and `<!-- unikit:active-summary:end -->`, excluding the marker lines themselves. Both markers are matched as whole lines. If either is missing, or either occurs more than once, the region is undefined: omit the `Summary SHA256` line and print `WARN [research]: <folder> — Active Summary markers missing or duplicated — drift detection disabled for this link`.
-1. Strip a leading **UTF-8 BOM** if present.
-2. LF line endings — strip every carriage return (`CR`, byte `0x0D`).
-3. Trim trailing spaces from every line.
-4. Exactly **one final newline**.
-5. Preserve line order and leading whitespace — do not reformat.
-
-HTML comments inside the region are kept in the hashed text; only the two marker lines are excluded, by rule 0. Rule 0 runs on text already read, not by a separate shell command — it needs no grant of its own.
-
-### Digest
-
-Feed the normalized text through stdin, **never a temp file**:
-
-```
-… | shasum -a 256 | awk '{print $1}'
-```
-
-Fall back to `sha256sum` when `shasum` is unavailable. This is the one digest step every `Summary SHA256` uses — the same step other short texts are hashed by, `tree-sha256` among them. Normalization above is specific to the region this contract defines; the digest step is not.
+`node .unikit/system/research-hash.mjs <folder>/RESEARCH.md` prints the digest of the text between the `## Active Summary` markers (`<!-- unikit:active-summary:start -->`, `<!-- unikit:active-summary:end -->`). Exit 2: markers missing or duplicated. Exit 3: no readable file. Any other failure, no `node` included: **unavailable**.
 
 ## Writing an entry
 
-Compute the digest when the summary is read; write it when the entry is written.
-
-These branches omit the `Summary SHA256` line entirely rather than write a placeholder:
-
-- No SHA256 tool available: print `WARN [research]: no SHA256 tool available — drift detection disabled for this link`.
-- No `RESEARCH.md` for the linked research: print `WARN [research]: <folder> — no RESEARCH.md`.
-- `## Active Summary` markers missing or duplicated: print `WARN [research]: <folder> — Active Summary markers missing or duplicated — drift detection disabled for this link`.
-
-No placeholder, no timestamp: an absent field is honester than a field that looks like a hash and is not one. Drift detection is a convenience, not a gate — none of these branches blocks the write that carries the rest of the entry.
+Run it when the summary is read. No digest: omit the line and print `WARN [research]: <folder> — <reason> — no drift detection for this link`.
 
 ## Checking an entry
 
-Only when the entry carries a `Summary SHA256`. An entry with neither hash field is resolved by the **unknown (no hash)** outcome below, without recomputing anything.
+`## Finding the folder`, run the script, compare with the recorded `Summary SHA256`:
 
-Find the folder first (`## Finding the folder`); the digest and every outcome below are computed from it. Recompute the digest over the linked research's current `## Active Summary`, by the procedure above, and compare it against the recorded `Summary SHA256`:
+- **match** — silent.
+- **drift** — `WARN [research-drift]: <folder> — Active Summary changed since the plan was built`.
+- **source missing** — neither folder exists, exit 2 or 3: `WARN [research-drift]: <folder> source missing`.
+- **unknown (retired field)** — only `Brief SHA256`: `WARN [research-drift]: <folder> drift unknown (recorded against the retired brief field)`.
+- **unknown (no hash)** — `WARN [research-drift]: <folder> drift unknown (no hash recorded)`.
+- **unavailable** — `INFO [research-hash] <folder>: check skipped — <reason>`.
 
-- **match** — say nothing, continue.
-- **drift** — recomputed ≠ the recorded `Summary SHA256`. Print `WARN [research-drift]: <folder> — the linked Active Summary is no longer byte-identical to the one this plan was built from`.
-- **source missing** — `RESEARCH.md` is missing or unreadable in the folder found, neither folder exists, or its `## Active Summary` markers are absent or duplicated. Print `WARN [research-drift]: <folder> source missing`.
-- **unknown (retired field)** — the entry carries a `Brief SHA256` and no `Summary SHA256`; nothing is recomputed. Print `WARN [research-drift]: <folder> drift unknown (recorded against the retired brief field)`. Never read a digest recorded against the retired brief field as a `Summary SHA256`.
-- **unknown (no hash)** — no hash field of either name is recorded. Print `WARN [research-drift]: <folder> drift unknown (no hash recorded)`.
-- **no tool** — neither `shasum` nor `sha256sum` is available. Print `WARN [research-drift]: no SHA256 tool available — drift checks skipped` once for the whole run.
-
-`WARN [research-drift]` is the one label for every outcome above. Do not fall back to any older timestamp field. Every outcome continues against the plan, never against the research: a reader does not widen scope, add work or rewrite a recorded hash. The fix for both **unknown** outcomes is a re-link through `/unikit-improve`.
+A reader continues against the plan and never rewrites a hash. **unknown** is fixed by a re-link through `/unikit-improve`.
 
 ## Who writes the field
 
-- `/unikit-plan` — on create, for every research the plan links.
-- `/unikit-improve` — on attaching a new research; on an approved re-link, writing an entry that carries none; on an explicit rebase request.
-- A stale hash is evidence of drift and is never silently rewritten.
-- The on-disk plan migration does not fill this field.
-- A reader never writes it while reading.
-
-<!-- Why each rule exists: docs/skills/research-link-rationale.md in the UniKit repository. -->
+`/unikit-plan` on create; `/unikit-improve` on attach, approved re-link or explicit rebase. A stale hash is never silently rewritten.

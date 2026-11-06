@@ -25,6 +25,8 @@ allowed-tools:
   - Bash(date *)
   - Bash(shasum *)
   - Bash(sha256sum *)
+  - Bash(node .unikit/system/research-hash.mjs *)
+  - PowerShell(node .unikit/system/research-hash.mjs *)
   - Agent
   - Skill
   - AskUserQuestion
@@ -235,7 +237,7 @@ Then reconcile plan state with reality:
 ### Step 1: Load Plan Context
 
 - Read the **plan manifest** — `.unikit/code/plans/<folder>/PLAN.md`, or the flat `.unikit/code/PLAN.md`. Its section list: `{{skills_dir}}/unikit-plan/references/TASK-FORMAT.md` → *Plan Manifest Template*. In an ultra bundle every task's detail lives in its phase file; the reading depth is set by `.unikit/system/ultra-plan-read.md`.
-- `## Based on` names a research → do **NOT** read its `RESEARCH.md` as a substitute for the plan's own context: the plan's `## Technical Context` supersedes it. The research is read for **one** purpose only — the drift check below.
+- `## Based on` names a research → do **NOT** read its `RESEARCH.md` as a substitute for the plan's own context: the plan's `## Technical Context` supersedes it. The drift check below runs a script over it and reads nothing itself.
 - Read **`.unikit/DESCRIPTION.md`** — project specification, tech stack, constraints
 - Read **`.unikit/ARCHITECTURE.md`** — project structure, tech stack, and pointers to detailed rules. **Architecture topics:** only the root here; the topic files its `## Topics` table lists load per phase in Step 3.0.
 

@@ -444,10 +444,8 @@ assert_not_exists "$CLAUDE_DIR/.claude/skills/unikit-explore/references/index-su
   "the retired research index cache reference is not installed"
 assert_contains "$CLAUDE_DIR/.claude/skills/unikit-explore/references/index-render.md" 'unikit:research-index:2' \
   "installed index-render carries the compact index format"
-assert_contains "$RESEARCH_LINK_PATH" 'unikit:research-index:2' \
-  "installed research-link supports compact indexes"
-assert_contains "$RESEARCH_LINK_PATH" '## Reading an index' \
-  "installed research-link carries the shared index reader"
+assert_not_contains "$RESEARCH_LINK_PATH" '## Reading an index' \
+  "installed research-link carries no index rules — a reader needs the table, not the contract"
 for index_ref in "$CLAUDE_DIR/.claude/skills/unikit-explore/references/index-render.md" \
   "$CLAUDE_DIR/.claude/skills/unikit-archive/references/researches.md"; do
   assert_not_contains "$index_ref" '\{\{[a-z_]+\}\}' "installed index reference has no unresolved variables"

@@ -17,8 +17,8 @@ allowed-tools:
   - Bash(ls *)
   - Bash(find *)
   - Bash(wc *)
-  - Bash(shasum *)
-  - Bash(sha256sum *)
+  - Bash(node .unikit/system/research-hash.mjs *)
+  - PowerShell(node .unikit/system/research-hash.mjs *)
   - Bash(date *)
   - Agent
   - AskUserQuestion
@@ -328,7 +328,7 @@ Check whether research context has changed since the plan was created or if new 
 1. For each entry in `linked_researches`, run `## Checking an entry` against it — the ladder decides the outcome; this skill only decides what comes next.
    - **drift** → mark `research_updated = true`.
    - Either **unknown** outcome → add a `Re-link: <folder>` finding to `research_improvements`, carrying the `Summary SHA256` of the summary as read now. This branch only **proposes** — the consent is the user's answer to that finding in Step 4, and the write is the re-link branch of Step 5.5.
-   - Every other outcome → its `WARN` line only; no further action here.
+   - Every other outcome → its line only; no further action here.
 
 2. If any `research_updated = true`:
    - Re-read the updated research's `## Active Summary`, and `CONTRACTS.md` when it exists

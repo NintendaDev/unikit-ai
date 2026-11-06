@@ -28,6 +28,8 @@ allowed-tools:
   - Bash(sha256sum *)
   - Bash(date *)
   - Bash(node *)
+  - Bash(node .unikit/system/research-hash.mjs *)
+  - PowerShell(node .unikit/system/research-hash.mjs *)
   - Agent
   - Skill
   - AskUserQuestion
