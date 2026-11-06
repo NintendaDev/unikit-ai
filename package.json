@@ -73,6 +73,7 @@
       "types"
     ],
     "ignore": [
+      "data/research-hash.mjs",
       "examples/**",
       "scripts/generate-cli-contract.ts",
       "scripts/genres-validate.mjs",
@@ -90,6 +91,7 @@
       "scripts/test-extension-selection.mjs",
       "scripts/test-kimi-transform.mjs",
       "scripts/test-reference-paths.mjs",
+      "scripts/test-research-hash.mjs",
       "scripts/test-system-vars.mjs",
       "scripts/test-ultra-plan-contract.mjs",
       "scripts/validate-agent-markers.mjs",

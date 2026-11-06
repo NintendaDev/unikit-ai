@@ -13215,6 +13215,25 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# Part 7f9: the research-hash script (scripts/test-research-hash.mjs)
+# The digests are constants from an independent pipeline; delivery is in test-install.sh / test-update.sh.
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 7f9: research-hash script behaviour${NC}"
+
+set +e
+RESEARCH_HASH_OUTPUT=$(node "$ROOT_DIR/scripts/test-research-hash.mjs" 2>&1)
+RESEARCH_HASH_EXIT=$?
+set -e
+
+if [[ $RESEARCH_HASH_EXIT -eq 0 ]]; then
+    pass "Research-hash script behaviour"
+    echo "$RESEARCH_HASH_OUTPUT" | tail -1 | sed 's/^/    /'
+else
+    fail "Research-hash script behaviour"
+    echo "$RESEARCH_HASH_OUTPUT" | sed 's/^/      /'
+fi
+
+# ─────────────────────────────────────────────
 # Part 7g: validate <!-- unikit:agents --> markers in skills/subagents
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Part 7g: agent-marker validation${NC}"

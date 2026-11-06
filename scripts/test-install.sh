@@ -249,6 +249,23 @@ assert_contains "$RESEARCH_LINK_PATH" 'archive/researches' \
   "research-link.md carries the archive resolution — a linked research is found there too"
 
 # ─────────────────────────────────────────────────────
+# Test 1b-rh: research-hash.mjs installed as a system asset and runnable where it lands.
+# A flat .mjs with no package.json next to it; running the installed copy is what proves it,
+# so the digest is asserted, not just the file. Expected digest: scripts/test-research-hash.mjs.
+# ─────────────────────────────────────────────────────
+RESEARCH_HASH_PATH="$CLAUDE_DIR/.unikit/system/research-hash.mjs"
+assert_exists "$RESEARCH_HASH_PATH" "research-hash.mjs created in .unikit/system/"
+assert_not_contains "$RESEARCH_HASH_PATH" '\{\{' \
+  "research-hash.mjs is a flat copy — no unresolved {{vars}}"
+RESEARCH_HASH_FIXTURE="$ROOT_DIR/scripts/test-fixtures/research-indexes/project/2026-10-02_unicode/RESEARCH.md"
+RESEARCH_HASH_DIGEST="$(node "$RESEARCH_HASH_PATH" "$RESEARCH_HASH_FIXTURE")"
+if [[ "$RESEARCH_HASH_DIGEST" != "ab542cb16b4c0712cddda2a4eae1ca6fceceb6011be8b6aeb21212a0b2966167" ]]; then
+  echo "Assertion failed: the installed research-hash.mjs printed '$RESEARCH_HASH_DIGEST' for the unicode fixture"
+  exit 1
+fi
+echo "  ✓ the installed research-hash.mjs prints the expected digest of a real research"
+
+# ─────────────────────────────────────────────────────
 # Test 1b-pb: plan-boundaries.md installed as a system asset (flat copy, no vars)
 # Read by verify/implement/commit/pr to compute the same plan start, module boundary and
 # push target. Update-path coverage like 1b-rl above; the init.ts call site is SA-1's job.

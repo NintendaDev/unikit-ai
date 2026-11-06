@@ -189,3 +189,6 @@ export const RESEARCH_SESSIONS_END = '<!-- unikit:sessions:end -->';
 
 /** How wide a test run goes, what stops it and when it is green; rationale on `installTestRunWidthContract`. */
 export const TEST_RUN_WIDTH_FILE = 'test-run-width.md';
+
+/** The script that computes `Summary SHA256` from a manifest; rationale on `installResearchHashScript`. */
+export const RESEARCH_HASH_FILE = 'research-hash.mjs';

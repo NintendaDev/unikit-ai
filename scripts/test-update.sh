@@ -2204,6 +2204,25 @@ fi
 echo "  ✓ research-link.md: update installs + refreshes from data/ (update.ts wiring)"
 
 # ─────────────────────────────────────────────
+# Test 30l2: research-hash.mjs is delivered on update — the update.ts wiring of
+# installResearchHashScript. Same shape as 30l. The init.ts call site is SA-1's job.
+# ─────────────────────────────────────────────
+RESEARCH_HASH="$DEVPRIN_DIR/.unikit/system/research-hash.mjs"
+assert_exists "$RESEARCH_HASH" "research-hash.mjs must be installed on update (system asset, update.ts wiring)"
+
+echo "// RH_TAMPERED_BY_TEST" >> "$RESEARCH_HASH"
+
+DEVPRIN_OUT_RH="$TMPDIR/update-research-hash.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$DEVPRIN_OUT_RH" 2>&1)
+
+if grep -q "RH_TAMPERED_BY_TEST" "$RESEARCH_HASH"; then
+    echo "Assertion failed: update did NOT refresh research-hash.mjs from data/ (tamper marker still present)"
+    exit 1
+fi
+
+echo "  ✓ research-hash.mjs: update installs + refreshes from data/ (update.ts wiring)"
+
+# ─────────────────────────────────────────────
 # Test 30m: plan-boundaries.md is delivered on update — the ONLY mechanical guard for the
 # update.ts wiring of installPlanBoundariesContract. Same shape as 30l: DEVPRIN_DIR ran
 # `update` with no prior `init`, so the file existing proves update.ts calls the installer;
