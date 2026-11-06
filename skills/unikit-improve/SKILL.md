@@ -315,7 +315,9 @@ Understand:
 
 ### Step 1.5: Research Check
 
-**The research-link contract.** Read `.unikit/system/research-link.md` before the first index use or linked entry, never at Bootstrap. Follow `## Reading an index` for discovery and its fallback. Ordinary discovery stays active-only.
+**The research-link contract.** Read `.unikit/system/research-link.md` at the first linked entry or selected research, never at Bootstrap and not for the index. Ordinary discovery stays active-only.
+
+**Research index.** The `INDEX.md` of a research root is a generated table (an older project has `### title` cards) and only navigates: take `<slug>` only from a link to a direct child of that root and read `<slug>/RESEARCH.md` before acting on a row. No readable index → print `INFO [research-index] <root>: no readable index — searching the folders`, search that root's `*/RESEARCH.md` for the title and header fields, and write nothing.
 
 **If `.unikit/system/research-link.md` is missing or unreadable, do not block:** record no `Summary SHA256` and check none — print `WARN [research-drift]: research-link contract missing — drift detection off for this run; run unikit-ai update` once, and continue.
 
@@ -339,7 +341,7 @@ Check whether research context has changed since the plan was created or if new 
    - A manifest carrying no `Created:` is a plan the migration has not reached. Say so and skip this sub-step rather than guess a boundary: `WARN [plan] <plan>: manifest has no Created — cannot bound "researches newer than this plan"; run unikit-ai update`.
    - Filter the index for records whose `Updated` is **newer** than that boundary and whose `Lifecycle` is not `superseded` (a record carrying no `Lifecycle` line counts as `active`)
    - **Log the drop**, always, in the form `/unikit-plan` uses: `INFO [research] index: <N> entries, <K> shown (<a> not newer than the plan, <b> superseded)`. A record with no `Updated` is excluded and **named** — `WARN [research] <folder>: index row has no Updated — excluded; run /unikit-explore to redraw the index` — never guessed at from another field.
-   - Take up to 5 entries, check relevance against the plan's feature scope (compare Summary against plan Overview)
+   - Take up to 5 entries, check relevance against the plan's feature scope (compare title and Summary against plan Overview)
    - If relevant entries found → ask user:
      ```
      The question tool of your agent (`AskUserQuestion`): Found new researches since the plan was created:
@@ -366,7 +368,7 @@ Check whether research context has changed since the plan was created or if new 
    - Read `.unikit/code/researches/INDEX.md`
    - Drop records whose `Lifecycle` is `superseded` (a record carrying no `Lifecycle` line counts as `active`), then take up to 5 entries — the **first 5**, because the index is sorted newest-first, so these are the most recent
    - **Log the drop**, always, in the same form as Case A: `INFO [research] index: <N> entries, <K> shown (<c> superseded)`
-   - Check relevance against the plan's feature scope
+   - Check relevance against the plan's feature scope (title and Summary)
    - If relevant entries found → ask user (same question format as Case A step 3)
    - If user selects → read their `RESEARCH.md` (`## Active Summary` first, then `CONTRACTS.md` when it exists), add to `research_improvements`, compute each one's `Summary SHA256` over the summary just read and keep the digest for Step 5.5, prepare to attach in Step 5
 

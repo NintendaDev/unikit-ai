@@ -4970,11 +4970,13 @@ fi
 # computed at the right TIME (decision 2). Mechanical form of a rule with no other
 # detector: nothing else greps for WHERE a line sits relative to two headings.
 RDH_WHY=""
+# The early window reads the index and links nothing, so a plan with no linked research reads no
+# contract: the contract is opened at the first link, in Step 2. An empty window would pass the
+# negative below, so its absence is a failure of its own.
 RDH_PLAN_EARLY="$(awk '/^### Step 0.2:/{f=1;next} f&&/^### Step /{f=0} f' "$UNIKIT_PLAN_SKILL")"
+[[ -n "$RDH_PLAN_EARLY" ]] || RDH_WHY+=" plan-no-step-0.2-body"
 printf '%s' "$RDH_PLAN_EARLY" | grep -qF '.unikit/system/research-link.md' \
-    || RDH_WHY+=" plan-no-contract-before-early-index"
-printf '%s' "$RDH_PLAN_EARLY" | grep -qF '## Reading an index' \
-    || RDH_WHY+=" plan-no-early-reader-pointer"
+    && RDH_WHY+=" plan-reads-the-contract-for-the-index"
 rdh_location() {
     local skill="$1" step_start="$2" step_end="$3" boot_start="$4" boot_end="$5" label="$6"
     local step_win boot_win
@@ -9695,7 +9697,6 @@ if [[ -z "$AR_WHY" ]]; then
     ar_has "AR-26:index-after-restore" 'The indexes, as R4 item 6' "$AR_RESEARCHES"
     # RI guards check instructions, not observed model behavior. Replay cases keep
     # that distinction explicit; delivery is exercised by test-install.sh.
-    RI_CACHE="$ROOT_DIR/skills/unikit-explore/references/index-summary-cache.md"
     RI_RENDER="$ROOT_DIR/skills/unikit-explore/references/index-render.md"
     RI_CASES="$ROOT_DIR/scripts/test-fixtures/research-indexes/README.md"
     for anchor in '## Reading an index' 'unikit:research-index:2' \
@@ -9704,34 +9705,65 @@ if [[ -z "$AR_WHY" ]]; then
         'Missing Lifecycle has effective value' 'known slug' 'INFO [research-index]'; do
         ar_has "RI:reader:$anchor" "$anchor" "$RL_CONTRACT"
     done
-    for anchor in 'sourceSha256' 'summaryVersion' 'language' 'H1' 'whole-line' \
-        '200–250' 'preserving the summary verbatim' 'both old caches in memory' \
-        'never proof of reuse' 'no temporary files' 'No extra coherence pass' \
-        'Cache write failure' 'No digest tool' '## Final source check after the gate'; do
-        ar_has "RI:cache:$anchor" "$anchor" "$RI_CACHE"
-    done
-    for anchor in 'scope: active | archive' 'header-only table' 'whole active render' \
-        'Write INDEX.md, then INDEX.cache.json' 'Cache is never' '## Save closure'; do
+    # The format and the writer: the table lives in the one reference that writes it, its Summary
+    # comes from Topic, and the writer reads neither the contract nor a whole manifest.
+    for anchor in 'scope: active | archive' 'header-only table' 'unikit:research-index:2' \
+        'INFO [research-index]' 'Summary` is the `Topic:` line' 'cut at 250' \
+        'No `Topic:` between the two markers → `—`' 'One search with line numbers' \
+        '`Topic:` counts only between' 'A line left out as too' \
+        'Never shorten or rewrite the manifest'; do
         ar_has "RI:writer:$anchor" "$anchor" "$RI_RENDER"
     done
-    for anchor in 'once each after the batch' 'pre-rebuild cache' 'No successful moves' \
-        'before exiting after a later batch error' 'same archive index even for an exact name' \
+    ar_lacks 'RI:writer-reads-the-contract' 'research-link.md' "$RI_RENDER"
+    # One reading rule, word for word in every reader. The text is taken from unikit-plan on the
+    # RD-G precedent; a reader that restates it in other words drops out of the count.
+    RI_READER="$({ grep -oE '\*\*Research index\.\*\* .*and write nothing\.' "$UNIKIT_PLAN_SKILL" || true; } | head -1)"
+    RI_READER_N=0
+    if [[ -z "$RI_READER" ]]; then
+        AR_WHY+=" RI:reader-no-object"
+    else
+        for ri_f in "$UNIKIT_PLAN_SKILL" "$UNIKIT_IMPROVE_SKILL" "$UR_EXPLORE" "$AR_RESEARCHES" "$ROOT_DIR/skills/unikit-help/SKILL.md"; do
+            RI_READER_N=$((RI_READER_N + 1))
+            ri_count="$(grep -cF "$RI_READER" "$ri_f" || true)"
+            [[ "$ri_count" -eq 1 ]] || AR_WHY+=" RI:reader-count:${ri_f##*/skills/}=$ri_count"
+        done
+    fi
+    [[ "$RI_READER_N" -gt 0 ]] || AR_WHY+=" RI:reader-no-readers"
+    # The summary cache is gone from everything the package ships. Counted first: an empty scan
+    # would pass every negative below.
+    RI_NC_FILES="$(find "$ROOT_DIR/skills" -type f | wc -l | tr -d ' ')"
+    [[ "$RI_NC_FILES" -gt 0 ]] || AR_WHY+=" RI:no-cache-scanned-nothing"
+    for tok in 'INDEX.cache' 'sourceSha256' 'summaryVersion' 'index-summary-cache'; do
+        if grep -rqF "$tok" "$ROOT_DIR/skills"; then AR_WHY+=" RI:no-cache:$tok"; fi
+    done
+    [[ ! -e "$ROOT_DIR/skills/unikit-explore/references/index-summary-cache.md" ]] || AR_WHY+=" RI:no-cache:reference-returned"
+    # Archive and restore: one rebuild per batch, and a named restore goes to the folders.
+    for anchor in 'once each after the batch' 'No successful moves' \
+        'before exiting after a later batch error' 'Go straight to the folders' \
         'active folder is a destination collision' 'Read-only list never generates'; do
         ar_has "RI:archive:$anchor" "$anchor" "$AR_RESEARCHES"
     done
-    ar_has 'RI:final-sync' '### Final index synchronization' "$UR_EXPLORE"
-    RI_FINAL="$(grep -n '^### Final index synchronization' "$UR_EXPLORE" | cut -d: -f1)"
-    RI_CONFIRM="$(grep -n '^### Step 5: Confirm' "$UR_EXPLORE" | cut -d: -f1)"
-    [[ -n "$RI_FINAL" && -n "$RI_CONFIRM" && "$RI_FINAL" -lt "$RI_CONFIRM" ]] \
-        || AR_WHY+=" RI:final-sync-after-confirm"
+    # A gate repair that touches what the index shows re-renders it before the save is confirmed.
+    ar_lacks 'RI:final-sync-returned' '### Final index synchronization' "$UR_EXPLORE"
+    RI_GATE="$({ grep -nF 'A repair that changed a header field or the `Topic:` line' "$UR_EXPLORE" || true; } | head -1 | cut -d: -f1)"
+    RI_CONFIRM="$({ grep -n '^### Step 5: Confirm' "$UR_EXPLORE" || true; } | head -1 | cut -d: -f1)"
+    [[ -n "$RI_GATE" && -n "$RI_CONFIRM" && "$RI_GATE" -lt "$RI_CONFIRM" ]] \
+        || AR_WHY+=" RI:gate-rerender-missing-or-after-confirm"
+    # The grants the cache needed left with it; the frontmatter is read, not the whole file.
     for skill in explore archive; do
+        RI_FM="$(awk 'NR==1&&/^---$/{f=1;next} f&&/^---$/{exit} f' "$ROOT_DIR/skills/unikit-$skill/SKILL.md")"
+        [[ -n "$RI_FM" ]] || AR_WHY+=" RI:$skill:no-frontmatter"
         for grant in 'Bash(shasum *)' 'Bash(sha256sum *)' 'Bash(awk *)'; do
-            ar_has "RI:$skill:digest-grant" "$grant" "$ROOT_DIR/skills/unikit-$skill/SKILL.md"
+            if printf '%s' "$RI_FM" | grep -qF "$grant"; then AR_WHY+=" RI:$skill:digest-grant"; fi
         done
     done
-    for case_id in {1..18}; do
+    # The table has no Created, so the planner shows the column it does have.
+    ar_has 'RI:plan-shows-updated' '(<Updated>)' "$UNIKIT_PLAN_SKILL"
+    ar_lacks 'RI:plan-shows-created' '(<Created>)' "$UNIKIT_PLAN_SKILL"
+    for case_id in {1..13}; do
         ar_has "RI:replay-case-C$case_id" "| C$case_id |" "$RI_CASES"
     done
+    ar_lacks 'RI:replay-case-C14-returned' '| C14 |' "$RI_CASES"
     # (AR-27) the grants and the boundary: Write is granted (the index is rewritten whole) and rm
     # still is not; design researches stay untouched, the plan protocol no longer claims that code
     # researches are, and the router owns both archives. The ownership section is the router's only.
@@ -10037,7 +10069,8 @@ if [[ -z "$BX_WHY" ]]; then
     # 62000 -> 62560: architecture topics, 2026-10-28 — the Bootstrap read of the topic files and the topic-path slot in the recon prompts (AD-12)
     # 62560 -> 62580: the Subagent arguments pointer moved out of the alias section into one of its own (AP-22), +15 bytes of heading
     # 62580 -> 62720: research archive, 2026-10-28 — the linked research is read from the folder the contract's "Finding the folder" returns (+140 bytes)
-    bx_max "BS-3:skill-size" 62720 "$UNIKIT_IMPROVE_SKILL"
+    # 62720 -> 63040: research-link simplification, 2026-11-06 — the one reading rule of an index moved out of the contract into each reader (+440 bytes)
+    bx_max "BS-3:skill-size" 63040 "$UNIKIT_IMPROVE_SKILL"
 
     # (BX-1) the four branch files: no agent-filter markers, no engine words, all point at the contract
     for f in "$BP_REF" "$BM_REF" "$BC_REF" "$BS_REF"; do

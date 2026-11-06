@@ -17,13 +17,11 @@ A research is a folder `.unikit/code/researches/<slug>/` with a `RESEARCH.md`. A
 
 Reads, never writes.
 
-Before first index use, read `.unikit/system/research-link.md` → `## Reading an index`.
-Use its active catalog, legacy compatibility and read-only fallback for discovery;
-verify selected manifests' current fields before acting. R1's plan-link checks and
-filters still apply. Snapshot both scopes' old INDEX.cache.json entries in memory
-before any move/restore rebuild; the cache is writer-only, not discovery evidence.
+**Research index.** The `INDEX.md` of a research root is a generated table (an older project has `### title` cards) and only navigates: take `<slug>` only from a link to a direct child of that root and read `<slug>/RESEARCH.md` before acting on a row. No readable index → print `INFO [research-index] <root>: no readable index — searching the folders`, search that root's `*/RESEARCH.md` for the title and header fields, and write nothing.
 
-1. Discover the active catalog through the contract above. No research → `Nothing to archive.` and stop this protocol.
+Verify selected manifests' current fields before acting. R1's plan-link checks and filters still apply.
+
+1. Discover the active catalog (`.unikit/code/researches/`) by the rule above. No research → `Nothing to archive.` and stop this protocol.
 2. Use the index fields for the table; do not bulk-read healthy manifests. Recheck selected fields before acting. A folder without a readable `RESEARCH.md` is not offered: `NOTE [archive] <folder> — no RESEARCH.md, not offered` (that includes an unfinished exploration that holds only a `SOURCE.md`).
 3. **Which plans link them.** One `Grep` for `^### (<slug>|<slug>|…)$`, in batches of at most 40 slugs (regex characters escaped), over `.unikit/code/plans/*/*.md` and `.unikit/code/PLAN.md`. A hit is a link only when its line stands inside the `## Based on` section of that file — from that heading to the next `## ` heading. Classify each plan that has a hit by items 1–4 of Step 2 in `{{skills_dir}}/{{self_name}}/references/plans.md` — the task file, the scope, the checkbox lines, the verdict — and by nothing else: no dates, no follow-ups, no git. The fast plan `.unikit/code/PLAN.md` goes through the same rule. A plan that is `incomplete` blocks the research it links; a `completed`, `empty` or `broken bundle` plan does not, and neither does any plan in `.unikit/code/archive/plans/`.
 4. Print the table as your own message: `#` · folder · `Status` · `Lifecycle` · `Updated` (the date), the oldest `Updated` first. Under it, one line per hidden research and plan: `hidden <k>: <slug> — plan <folder>` (none hidden → no line). Then `INFO [archive] researches: <n> folders, <l> listed, <h> hidden by an unfinished plan`.
@@ -67,11 +65,10 @@ There is no option for typing a choice and no second question for it: what the u
 5. Print `INFO [archive] archived: .unikit/code/researches/<slug> → .unikit/code/archive/researches/<slug>`.
 6. **The indexes — once, after the last research of the run**, not after each one.
    Read `{{skills_dir}}/unikit-explore/references/index-render.md` and follow it for
-   active and archive, once each after the batch, using both pre-rebuild cache
-   snapshots for cross-scope reuse. Print each scope's Kept / Added / Removed and
-   summary counters as your own message. Missing reference →
+   active and archive, once each after the batch. Print each scope's Kept / Added /
+   Removed and its counters as your own message. Missing reference →
    `WARN [research] index-render reference missing — active/archive indexes not re-rendered; run unikit-ai update, then the next authorized archive/restore rebuild repairs both`.
-   The move stands. A failed index/cache write names the scope/path; do not claim
+   The move stands. A failed index write names the scope/path; do not claim
    both succeeded. Explore's next save repairs active only. If any move succeeded,
    perform this closing rebuild even before exiting after a later batch error.
    No successful moves (including Cancel) → no hidden rebuild.
@@ -81,17 +78,16 @@ There is no option for typing a choice and no second question for it: what the u
 
 `researches restore [<slug>]`:
 
-- **No slug.** Start with the archive index by `## Reading an index` of the contract,
-  including legacy and read-only fallback. None → `Archive is empty — no research has been archived yet.`
+- **No slug.** Start with the index of `.unikit/code/archive/researches/` by the
+  **Research index** rule of R1. No research there → `Archive is empty — no research has been archived yet.`
   and stop. Otherwise print the full numbered table as your own message:
   `#` · folder · `Archived` · `Status` · `Lifecycle`, latest archived first, then
   ask in the form of R2 — `Restore all <n>` / `Cancel`, row numbers or an Archived
   date rule in the user's own answer.
-- **With a slug.** Start with that same archive index even for an exact name; use
-  the archive-only filesystem fallback when needed. Match exact, dated suffix,
-  then partial by R3 item 1, including its partial/ambiguous questions (say Restore).
-  Verify the selected archive manifest before moving. Do not use active-first
-  linked-reading resolution here: the active folder is a destination collision.
+- **With a slug.** Go straight to the folders of `.unikit/code/archive/researches/`:
+  match exact, dated suffix, then partial by R3 item 1, including its partial/ambiguous
+  questions (say Restore). Verify the selected archive manifest before moving. Do not
+  use active-first linked-reading resolution here: the active folder is a destination collision.
 
 For each research:
 
@@ -118,16 +114,16 @@ Nothing was committed. Commit the move with /unikit-commit.
 For a restore: `Restored <n> research(es) to .unikit/code/researches/:`. Omit `Skipped` when `<k>` is 0.
 
 Rules of this protocol: nothing is deleted, overwritten, renamed or committed;
-edits are the Archived line and both scopes' INDEX.md / INDEX.cache.json through
-the shared writer. No other research content changes; the folder name stays fixed.
-History readers use the research-link contract and never restore implicitly.
+edits are the Archived line and both scopes' INDEX.md through the shared writer.
+No other research content changes; the folder name stays fixed. A reader of history
+never restores implicitly.
 
 ## `list`
 
-Called from the router. Read the archive index first by the contract's
-`## Reading an index`, with legacy/fallback support. None → `Archive is empty — no research has been archived yet.`
+Called from the router. Read the index of `.unikit/code/archive/researches/` first by
+the **Research index** rule of R1. No research there → `Archive is empty — no research has been archived yet.`
 Otherwise print every folder's Archived (`—` if absent), Status and Lifecycle,
-then `Total: <n> archived researches`. Read-only list never generates an index/cache
+then `Total: <n> archived researches`. Read-only list never generates an index
 or treats a missing index as an empty archive. Recheck selected metadata before use.
 
 ## Reserved words

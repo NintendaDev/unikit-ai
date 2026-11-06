@@ -24,9 +24,6 @@ allowed-tools:
   - Bash(mv *)
   - Bash(mkdir *)
   - Bash(date *)
-  - Bash(shasum *)
-  - Bash(sha256sum *)
-  - Bash(awk *)
 disable-model-invocation: false
 ---
 
@@ -121,12 +118,12 @@ The closing line `Nothing was committed. Commit the move with /unikit-commit.` i
 ## Rules
 
 1. Nothing is deleted, overwritten, renamed or committed — `/unikit-commit` commits. The folder name of a plan or a research never changes.
-2. The edits of each protocol are exactly the ones it names: in a plan, the one `Archived:` line; in a research, that line and both active/archive `INDEX.md` and `INDEX.cache.json`, re-rendered through the shared writer reference.
-3. Archived plans and researches stop being offered as new work. Linked reads and explicitly requested research history use the research-link contract; reading history never implies restore.
+2. The edits of each protocol are exactly the ones it names: in a plan, the one `Archived:` line; in a research, that line and both active/archive `INDEX.md`, re-rendered through the shared writer reference.
+3. Archived plans and researches stop being offered as new work. A plan's linked research is found by its folder name, and explicitly requested research history reads the archive index; reading history never implies restore.
 4. Design researches (`.unikit/gamedesign/researches/`), the fast plan, `FIX_PLAN.md` and patches are never touched.
 
 ## Artifact Ownership
 
 - **Owns:** `.unikit/code/archive/plans/`, `.unikit/code/archive/researches/`.
 - **Reads:** `.unikit/code/plans/*/`, `.unikit/code/researches/*/`, `.unikit/bridge-notes/*.md` and its parked `archive/` copies, `.unikit/config.yaml`.
-- **Modifies:** the `Archived:` line of a moved plan's task file and of a moved research's `RESEARCH.md`; active and archive `INDEX.md` / `INDEX.cache.json` — whole-rendered, never edited by hand. Other manifest content stays unchanged.
+- **Modifies:** the `Archived:` line of a moved plan's task file and of a moved research's `RESEARCH.md`; active and archive `INDEX.md` — whole-rendered, never edited by hand. Other manifest content stays unchanged.
