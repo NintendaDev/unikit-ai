@@ -196,8 +196,11 @@ function caseSubdirectory() {
     write(root, '.unikit/R.cs', 'r\n');
     commitAll(root);
     const project = path.join(root, 'Sub');
+    // The scope is the project, by the user's decision of 2026-11-06, and a known limit: a change next to
+    // the project moves nothing, even when its tests depend on that file. See unikit-implement-rationale.md.
     walk('a project in a subdirectory', project, [], [
         ['a change next to the project', () => write(root, 'Other/O.cs', 'o2\n'), SAME],
+        ['committing the change next to the project', () => commitAll(root), SAME],
         ['a change under <project>/.unikit', () => write(project, '.unikit/U.cs', 'u2\n'), SAME],
         ['an edit in the project', () => write(project, 'Assets/S.cs', 's2\n'), MOVED],
         ['committing it', () => {
@@ -205,6 +208,35 @@ function caseSubdirectory() {
             git(project, 'commit', '-qm', 'edit');
         }, SAME],
     ]);
+    walk('--all in a subdirectory', project, ['--all'], [
+        ['a change next to the project', () => write(root, 'Other/O.cs', 'o3\n'), SAME],
+        ['a change under <project>/.unikit', () => write(project, '.unikit/U.cs', 'u3\n'), MOVED],
+    ]);
+}
+
+/** A setting of the user changes no answer: the script states the ones that could. */
+function caseUserSettings() {
+    const links = newRepo('settings-links');
+    write(links, 'a.cs', 'a\n');
+    commitAll(links);
+    git(links, 'update-index', '--add', '--cacheinfo', `160000,${git(links, 'rev-parse', 'HEAD')},lib`);
+    git(links, 'commit', '-qm', 'link');
+    git(links, 'config', 'diff.ignoreSubmodules', 'all');
+    walk('diff.ignoreSubmodules=all', links, [], [
+        ['a committed gitlink bump', () => {
+            git(links, 'update-index', '--cacheinfo', `160000,${git(links, 'rev-parse', 'HEAD')},lib`);
+            git(links, 'commit', '-qm', 'bump');
+        }, MOVED],
+    ]);
+
+    const root = newRepo('settings-relative');
+    write(root, 'Sub/Assets/S.cs', 's\n');
+    commitAll(root);
+    const project = path.join(root, 'Sub');
+    write(project, 'Assets/S.cs', 's2\n');
+    const plain = digestOf('diff.relative: without it', project);
+    git(root, 'config', 'diff.relative', 'true');
+    check('diff.relative=true gives the same digest', digestOf('diff.relative=true', project) === plain, 'the digest differs');
 }
 
 function caseNestedAndLinks() {
@@ -235,9 +267,10 @@ function caseNestedAndLinks() {
 function caseFailures() {
     expectNoAnswer('a repository with no commits', newRepo('unborn'));
 
+    // The ceiling keeps this true when the temporary directory itself lies inside a repository.
     const outside = path.join(tmp, 'outside');
     fs.mkdirSync(outside);
-    expectNoAnswer('a directory outside any repository', outside);
+    expectNoAnswer('a directory outside any repository', outside, { ...gitEnv, GIT_CEILING_DIRECTORIES: tmp });
 
     const dir = newRepo('boom');
     write(dir, 'a.cs', 'a\n');
@@ -261,7 +294,8 @@ function caseFailures() {
 /** A Windows shell gives the same digest: the mechanism exists to work there. */
 function casePowerShell(dir) {
     if (process.platform !== 'win32') return;
-    const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', `& '${process.execPath}' '${SCRIPT}'`],
+    const quoted = (text) => `'${text.replaceAll("'", "''")}'`;
+    const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', `& ${quoted(process.execPath)} ${quoted(SCRIPT)}`],
         { cwd: dir, env: gitEnv, encoding: 'utf8' });
     check('PowerShell gives the same digest', result.status === 0 && result.stdout.trim() === DIGEST_MIXED_TREE,
         `exit ${result.status}, stdout ${JSON.stringify(result.stdout)}, stderr ${JSON.stringify(result.stderr)}`);
@@ -274,6 +308,7 @@ try {
     caseAll();
     caseSubdirectory();
     caseNestedAndLinks();
+    caseUserSettings();
     caseFailures();
     check('the script is a flat copy', !fs.readFileSync(SCRIPT, 'utf8').includes('{{'), 'the script carries a template token');
 } finally {

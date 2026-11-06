@@ -278,12 +278,16 @@ assert_not_contains "$TREE_HASH_PATH" '\{\{' \
 TREE_HASH_REPO="$TMPDIR/tree-hash-repo"
 mkdir -p "$TREE_HASH_REPO"
 printf 'a\n' > "$TREE_HASH_REPO/a.cs"
-git -C "$TREE_HASH_REPO" init -q .
-git -C "$TREE_HASH_REPO" config core.autocrlf false
-git -C "$TREE_HASH_REPO" add -A
-git -C "$TREE_HASH_REPO" -c user.email=test@example.invalid -c user.name=test -c commit.gpgsign=false commit -qm init
+# No system or user configuration and no GIT_DEFAULT_HASH: another object format would be another digest.
+TREE_HASH_GITCONFIG="$TMPDIR/tree-hash-gitconfig"
+: > "$TREE_HASH_GITCONFIG"
+TREE_HASH_GIT=(env -u GIT_DEFAULT_HASH GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL="$TREE_HASH_GITCONFIG" git -C "$TREE_HASH_REPO")
+"${TREE_HASH_GIT[@]}" init -q .
+"${TREE_HASH_GIT[@]}" config core.autocrlf false
+"${TREE_HASH_GIT[@]}" add -A
+"${TREE_HASH_GIT[@]}" -c user.email=test@example.invalid -c user.name=test commit -qm init
 # `|| true`: a failing script must reach the message below, not abort the suite under set -e.
-TREE_HASH_DIGEST="$(cd "$TREE_HASH_REPO" && node "$TREE_HASH_PATH" || true)"
+TREE_HASH_DIGEST="$(cd "$TREE_HASH_REPO" && env -u GIT_DEFAULT_HASH GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL="$TREE_HASH_GITCONFIG" node "$TREE_HASH_PATH" || true)"
 if [[ "$TREE_HASH_DIGEST" != "8a9e8c1d0f074c629503f74ae7dfefcbb0a733fbbe08e5e259aabd523d402939" ]]; then
   echo "Assertion failed: the installed tree-hash.mjs printed '$TREE_HASH_DIGEST' for a one-file repository"
   exit 1

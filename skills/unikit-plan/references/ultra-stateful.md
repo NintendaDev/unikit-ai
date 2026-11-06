@@ -160,8 +160,8 @@ never go on from a summary alone.
 
 **Change guard.** `recon-writer-agent` runs an agent that could edit files, and only its prompt
 bounds it. Before the first agent starts, write `guard: <hash>` into `## Recon`: the output of
-`node .unikit/system/tree-hash.mjs --all`, a digest of every file git does not ignore, Markdown and
-`.unikit/` included. `.planning/` is ignored by git, so once no line is `pending` the hash comes out
+`node .unikit/system/tree-hash.mjs --all`, a digest of every file of the project git does not ignore,
+Markdown and `.unikit/` included. `.planning/` is ignored by git, so once no line is `pending` the hash comes out
 the same again. A different one → print
 `WARN [plan] files changed outside .planning/ while recon agents ran` with the paths
 `git status --porcelain` shows, and ask whether to continue or stop; never revert anything yourself.

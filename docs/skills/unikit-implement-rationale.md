@@ -93,8 +93,9 @@ explore save pipeline, on the same criterion — see
 - **A commit is not part of the hash.** A commit moves no file, but it moved `HEAD`, so the executor
   had to carry the anchor over every commit it made and a commit made by hand read as stale. One
   line per file, `<blob id> <path>`, makes the carry unnecessary, and a commit and its revert come
-  back to the same digest. The price was paid once: a record written before the change reads as
-  stale, and a plan in progress runs the suite one extra time at its final checkpoint.
+  back to the same digest. The price of the change: a record written before it reads as stale until
+  the next run of every test rewrites it, so a plan in progress runs the suite one extra time at its
+  final checkpoint and a finished plan keeps the warning unless `--strict` runs the suite.
 - **What the hash leaves out.** `.unikit/`: the plan's own progress must not move it, while a second
   edit of an already modified file must. Staging: a hash that saw the index would move on `git add`
   and match nothing. Markdown files: the documentation step (Step 5.3) and the `AGENTS.md` refresh
@@ -107,6 +108,19 @@ explore save pipeline, on the same criterion — see
   truth for a change no test run in a game project depends on. A project without git: the field
   stays `unavailable`. A walk over the files would need ignore rules of its own, and a directory the
   engine rewrites during a run, which a partial rule set would miss, reads as stale every time.
+- **The scope is the project, and this is a known limit.** A project in a subdirectory of its
+  repository counts its own files only, so a change next to it, committed or not, moves nothing even
+  when its tests depend on that file: a local package at `../shared`, for one. The final run is then
+  closed by reuse over code that changed. The old formula caught the committed half by accident,
+  through `HEAD`. Hashing the whole repository would close the hole for about the same time (measured
+  0.5 s over 40 000 files), at the price of a `stale` warning for every edit of a neighbouring project
+  in a monorepo. The user chose the narrow scope on 2026-11-06; reconsider it if real projects keep
+  dependencies outside their directory. `scripts/test-tree-hash.mjs` pins the behaviour, so widening
+  it is a decision and not an accident.
+- **What the user's git settings cannot change.** The script states `core.quotepath`, `diff.relative`
+  and `diff.ignoreSubmodules` itself. Measured: `diff.ignoreSubmodules=all` hid a committed submodule
+  bump, a false "tree unchanged", and `diff.relative=true` made every changed file of a project in a
+  subdirectory unreadable for `hash-object`.
 - **A phase writes its tests before its run.** Written after the run, a phase's tests reached no
   run of that phase, and the last phase's tests reached none at all.
 - **Module manifests are searched, never read.** Reading the whole module graph costs thousands

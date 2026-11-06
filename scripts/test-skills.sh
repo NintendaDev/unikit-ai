@@ -68,6 +68,7 @@ child_start genres      bash "$SCRIPT_DIR/test-genres.sh"
 child_start skillgroups bash "$SCRIPT_DIR/test-skill-groups.sh"
 child_start helpskill   bash "$SCRIPT_DIR/test-help-skill.sh"
 child_start grepshim    bash "$SCRIPT_DIR/test-grep-shim.sh"
+child_start treehash    node "$SCRIPT_DIR/test-tree-hash.mjs"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -10042,7 +10043,8 @@ if [[ -z "$BX_WHY" ]]; then
     # 66860 -> 66820: the pointer names the system file, the width left the skill folder
     # 66820 -> 66880: research-link simplification, 2026-11-06 — the two grants of the hash script and the report line of a skipped check, less the pointer to the retired digest section
     # 66880 -> 66450: the tree hash left the skill for a script, 2026-11-06 — one short command instead of the pipeline and its rules
-    bx_max "BC-1:skill-size" 66450 "$UNIKIT_VERIFY_SKILL"
+    # 66450 -> 66570: review of that change — a stale old record until the next full run, and a command that did not answer names no single cause
+    bx_max "BC-1:skill-size" 66570 "$UNIKIT_VERIFY_SKILL"
 
     # (BC-2) verify's branch: headings, the two level sentences, and the one place of suggested_next
     BX_CHK=$((BX_CHK + 1))
@@ -13300,10 +13302,9 @@ fi
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Part 7f10: tree-hash script behaviour${NC}"
 
-set +e
-TREE_HASH_OUTPUT=$(node "$ROOT_DIR/scripts/test-tree-hash.mjs" 2>&1)
-TREE_HASH_EXIT=$?
-set -e
+child_wait treehash
+TREE_HASH_OUTPUT="$CHILD_OUTPUT"
+TREE_HASH_EXIT="$CHILD_EXIT"
 
 if [[ $TREE_HASH_EXIT -eq 0 ]]; then
     pass "Tree-hash script behaviour"

@@ -6,6 +6,7 @@
 // Exit 0: the digest on stdout. 3: git did not answer; nothing on stdout.
 // Git is called with no shell, so the digest does not depend on the shell, its pipes or the locale.
 // A commit is not part of the text: a commit that moves no file does not move the digest.
+// A project in a subdirectory of its repository counts its own files only: a change next to it moves nothing.
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 
@@ -16,10 +17,13 @@ const SCOPE = process.argv.includes('--all')
   : ['--', '.', ':(exclude).unikit', ':(exclude,icase)*.md'];
 const AGAINST_HEAD = ['diff', 'HEAD', '--name-only', '--no-renames', '--ignore-submodules'];
 
-// core.quotepath=on: every byte above ASCII of a path is octal-escaped, so no code page can touch the text,
-// the digest does not follow the user's setting, and `--stdin-paths` reads that form back.
+// One answer whatever the user set. core.quotepath=on: every byte above ASCII of a path is octal-escaped, so no
+// code page can touch the text, and `--stdin-paths` reads that form back. diff.relative=false: `--stdin-paths`
+// reads from the repository root. diff.ignoreSubmodules=none: a committed submodule bump moves the digest; the
+// submodule's own state stays out through the flag in AGAINST_HEAD.
+const SETTINGS = ['-c', 'core.quotepath=on', '-c', 'diff.relative=false', '-c', 'diff.ignoreSubmodules=none'];
 const git = (args, input = '') =>
-  execFileSync('git', ['-c', 'core.quotepath=on', ...args], { input, stdio: ['pipe', 'pipe', 'pipe'], maxBuffer: 2 ** 30 });
+  execFileSync('git', [...SETTINGS, ...args], { input, stdio: ['pipe', 'pipe', 'pipe'], maxBuffer: 2 ** 30 });
 const lines = (buffer) => buffer.toString().split('\n').filter(Boolean);
 const bytewise = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 
@@ -40,7 +44,6 @@ try {
   const toHash = [...changed, ...untracked].filter((p) => !p.endsWith('/'));
   if (toHash.length > 0) {
     const ids = lines(git(['hash-object', '--stdin-paths'], `${toHash.join('\n')}\n`));
-    if (ids.length !== toHash.length) throw new Error('git hashed fewer files than it was given');
     toHash.forEach((path, index) => tree.set(path, ids[index]));
   }
 
