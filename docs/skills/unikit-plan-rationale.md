@@ -25,9 +25,9 @@ explore save pipeline, on the same criterion — see
 - **A record carrying no `Lifecycle` line counts as `active`.** Records written before the
   field existed do not carry it; treating them as anything else would hide every older
   research.
-- **`<Created>` is displayed, `Updated` is never substituted for it.** `Created` exists for
-  display and for breaking ties; `Updated` drives every filter and all sorting.
-- **A record with no `Created` is shown as `(date unknown)`, never with empty brackets.** An
+- **`<Updated>` is displayed.** The compact index has no `Created` column; `Updated` is what it
+  shows, and it drives every filter and all sorting. `Created` stays in the manifest and breaks ties.
+- **A record with no `Updated` is shown as `(date unknown)`, never with empty brackets.** An
   empty bracket is indistinguishable from normal and hides the gap in the dialogue the same way
   an unlogged filter hides it in Step 2.
 

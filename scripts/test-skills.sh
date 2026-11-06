@@ -4629,9 +4629,9 @@ for f in "$RL_CONTRACT" "${RD_CONSUMERS[@]}"; do
     if grep -F 'Brief SHA256' "$f" | grep -vF "$RDA_BRIEF_ALLOW" | grep -q .; then RDA_WHY+=" $n-retired-field-survives"; fi
 done
 if [[ -z "$RDA_WHY" ]]; then
-    pass "RD-A Summary SHA256 + the one normalization procedure (incl. rule 0) present in the owner (retired fields gone everywhere)"
+    pass "RD-A Summary SHA256, the hash script and the region marker present in the owner (retired fields gone everywhere)"
 else
-    fail "RD-A research-drift procedure diverged:$RDA_WHY"
+    fail "RD-A the research-link contract lost its field, script or region:$RDA_WHY"
 fi
 
 # (RD-B) The grant that makes the command runnable at all. Without it the contract is an
@@ -9750,10 +9750,10 @@ if [[ -z "$AR_WHY" ]]; then
     [[ "$RI_READER_N" -gt 0 ]] || AR_WHY+=" RI:reader-no-readers"
     # The summary cache is gone from everything the package ships. Counted first: an empty scan
     # would pass every negative below.
-    RI_NC_FILES="$(find "$ROOT_DIR/skills" "$ROOT_DIR/data" -type f | wc -l | tr -d ' ')"
+    RI_NC_FILES="$(find "$ROOT_DIR/skills" "$ROOT_DIR/data" "$ROOT_DIR/docs" -type f | wc -l | tr -d ' ')"
     [[ "$RI_NC_FILES" -gt 0 ]] || AR_WHY+=" RI:no-cache-scanned-nothing"
     for tok in 'INDEX.cache' 'sourceSha256' 'summaryVersion' 'index-summary-cache'; do
-        if grep -rqF "$tok" "$ROOT_DIR/skills" "$ROOT_DIR/data"; then AR_WHY+=" RI:no-cache:$tok"; fi
+        if grep -rqF "$tok" "$ROOT_DIR/skills" "$ROOT_DIR/data" "$ROOT_DIR/docs"; then AR_WHY+=" RI:no-cache:$tok"; fi
     done
     [[ ! -e "$ROOT_DIR/skills/unikit-explore/references/index-summary-cache.md" ]] || AR_WHY+=" RI:no-cache:reference-returned"
     # Archive and restore: one rebuild per batch, and a named restore goes to the folders.

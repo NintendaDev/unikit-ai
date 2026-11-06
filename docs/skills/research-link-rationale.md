@@ -26,7 +26,8 @@ The gate "does this plan link a research" fires at the start of every run — `/
 Step 2, `/unikit-implement` Step 1, `/unikit-verify` Step 0.2, `/unikit-improve` Step 1.5 —
 exactly where the drift check already stood before the contract existed. Reading the contract
 at Bootstrap instead would charge every plan for it, including the majority that link no
-research at all; that cost is exactly what moving the read to the gate avoids.
+research at all; that cost is exactly what moving the read to the gate avoids. The same reasoning
+keeps it out of a look at the index: `/unikit-plan` Step 0.2 reads the table and opens no contract.
 
 `/unikit-plan` is the one exception that needed its own decision. Its old computation happened
 in Step 5, at the end of the planning session — the single worst place in that skill to add a
@@ -68,36 +69,53 @@ the live folder is the one a later save of `/unikit-explore` would update, and a
 the archive must never shadow it. The line printed for that case is what lets the user remove
 the extra copy.
 
-Each scope now has its own compact index. Even a known name reads that scope's index
-first, giving linked reads and topic searches the same navigation path. Ordinary plan
-discovery still offers active research only; explicitly requested history reads the
-archive without restoring it. Named restore starts in the archive, and an existing
-active destination remains a collision rather than successful linked-read resolution.
+A known name reads no index. The folder on disk decides the source, so a row could decide
+nothing, and reading the index first only added its size to every check. This reverses an
+earlier rule that read the index even for a known name; that rule came from a request to read the
+index "when they need it", and a reader that already holds the name does not need it. The index
+serves search and lists. Ordinary plan discovery still offers active research only; explicitly
+requested history reads the archive without restoring it. A named restore goes straight to the
+archive's folders, and an existing active destination remains a collision rather than successful
+linked-read resolution.
 
-## `## Reading an index`
+## Why the index rules left this contract
 
-The v2 table keeps one row per research with a short agent-written description.
-The source manifest and its full Active Summary remain intact. The writer aims for
-one sentence of roughly 200–250 characters without cutting a qualification or turning
-a proposal into a decision. Created and Mode remain available in the manifest.
+Each scope keeps its own compact table, but its rules no longer live here. The contract grew from
+about 6.5 KB to 11.7 KB when they joined it, and every plan paid for that read just to look at an
+index, including a plan that links nothing. Measured on 35 real manifests, a table row saves
+about 270 bytes against a card, so the read only broke even at 44 researches. The format now
+belongs to its one writer, `unikit-explore/references/index-render.md`, and a reader does not need
+it: the table explains itself. What a reader does need is one sentence, **Research index**, carried
+word for word by `/unikit-plan`, `/unikit-improve`, `/unikit-explore`, `/unikit-archive` and
+`/unikit-help` and held equal by `RI:reader`, in the way `RD-G` holds the degradation sentence.
 
-`INDEX.cache.json` is optional writer state, excluded from normal reader context.
-Reuse requires current H1/Active Summary fingerprint, summary-rule version and artifact
-language. A matching Updated or mtime cannot establish source identity. This digest is
-distinct from the plan's full-summary digest. Cross-scope snapshots preserve checked
-summaries across move/restore without making the cache the membership source.
+`Summary` is the `Topic:` line. An agent-written sentence with a cache of reusable sentences solved
+a cost it had created itself: it needed a fingerprint of the source, a rule version, a language key
+and a second hash next to the plan's. A new `Topic:` is one sentence up to 250 characters and an old
+long one is cut at render. The price is that a cut row can lose a qualification at its end. It is
+accepted because the row only navigates: the manifest is always opened before the research is used.
+Old manifests are not rewritten to fit.
 
-Legacy cards work until the next authorized whole render. Read-only fallback compares
-manifest candidates with index rows and supplements only broken/missing rows in memory;
-SOURCE-only folders are unfinished work, not catalog drift. Missing navigation is INFO,
-not a warning that changes verify's gate. Init/update delivers instructions, never
-migrates user research. The first subsequent move/restore creates the archive index.
+The writer takes the fields from one search over the manifests rather than reading them whole:
+on those 35 manifests that is about 718 bytes each, against an average manifest of 85 KB. Two
+rules of that search exist for measured reasons. `Topic:` counts only between the markers and
+the header fields only above the start marker, because a whole-file search also finds those words
+in `## Sessions`. And a line the search output leaves out as too long is read on its own, because
+5 of 33 old `Topic:` lines exceed 500 characters, which is about where a search tool starts
+replacing a line with a notice.
 
-Coherence-gate repairs can change the summary after the initial render. The saving
-session therefore checks the final summary input before confirmation and refreshes
-derived output only if it changed, without spending another coherence pass.
+The comparison of index rows with folders went too. It repaired a catalog that the reader was
+about to verify anyway by opening the selected manifest. A missing index is an `INFO` and a search of
+the folders: navigation failing is not a drift, and it must not change `/unikit-verify`'s gate. The
+cards of 3.0.0 stay readable through the same sentence, because `init` and `update` never migrate a
+user's research; the next whole render replaces them.
 
-## `## What is hashed`
+A coherence-gate repair can change what the row shows after Step 4 wrote it, so a repair that
+touched a header field or `Topic:` re-renders the index once more before the save is confirmed, with
+no further coherence pass. The index stays ahead of the gate because the order of the save is
+pinned, and the gate does not read the index.
+
+## `## Computing the hash` → what is hashed
 
 The rule is a content signal, not a clock: hash the declared requirements, never the append-only
 session log. Before this contract, `## Based on` carried a link timestamp compared against a
@@ -112,46 +130,58 @@ its own file was already a marker. That file split was retired because it create
 obligation the markers exist to avoid — keeping two documents in sync, paid on every save — so
 markers inside one file replaced a second file, not the other way around.
 
-## `## Computing the hash` → Normalization
+## `## Computing the hash` → why a script
 
-Every one of the five normalization rules exists because its absence produces a **false**
-drift report on content nobody changed:
+The hash was once a procedure the agent carried out: extract the region, normalize it, pipe it into
+`shasum`. Three things were wrong with that. It made the agent read the summary, an average 30 KB,
+for a check that only compares two strings. It needed `shasum`, `awk` or `sed`, which on Windows come
+with Git Bash, and Git Bash may not be installed. And the result depended on the shell: the same
+`awk | sha256sum` over one Cyrillic file gave `f0dcdff4…` from Git Bash and `9e7a833a…` from
+PowerShell 5.1, with UTF-8 forced as well, while Node gave `f0dcdff4…` from both.
+
+`data/research-hash.mjs` reads the manifest itself and works on bytes, so neither a code page nor a
+shell can touch them. Node is present wherever `unikit-ai` is installed. It is a system asset because
+four skills run it at one path, whichever of them the wizard installed. Each of them holds a grant
+for that one script in both shells, never for all of `node`: a skill that checks a hash gains no
+general interpreter, and without Git Bash a `Bash(...)` grant means nothing.
+
+Two alternatives were rejected. A copy of `Updated` in place of the hash loses the check on existing
+plans and misses a hand edit of a summary, and it warns on a save that did not change the summary.
+A shell one-liner with a date as a fallback still needs the utilities and still depends on the shell.
+
+`git hash-object` was rejected earlier and stays rejected. The object it produces is SHA-1 with a
+blob header, while the field is named `Summary SHA256`, and it would make drift detection depend on
+git in a tool that explicitly supports `git.enabled: false`.
+
+`tree-sha256` is a separate matter and still uses `shasum`. It is a digest of git's own output, not
+of a file, and it shares only the algorithm with this field. Without Git Bash a plan with
+`Testing: yes` can therefore still keep `/unikit-verify` at `warn` for that reason.
+
+Every normalization rule exists because its absence produces a **false** drift report on content
+nobody changed:
 
 - **UTF-8 BOM** — this project's primary development platform is Windows, where editors commonly
   prepend a BOM; a summary re-saved with one gets a different hash for identical text.
 - **CR / LF** — a checkout on Windows without `core.autocrlf` set correctly reintroduces `\r`
   bytes that never appear in the declared requirements.
 - **Trailing spaces** — an editor's "trim on save" setting silently changes bytes at the end of
-  wrapped lines.
+  wrapped lines. Spaces only, as the rule has always read, so a hash computed correctly before the
+  script stays valid. A trailing tab stays in the text; none of the 35 measured summaries has one.
 - **One final newline** — the single most common byte-level diff between two saves of the "same"
   file.
-- **No reformatting** (line order and leading whitespace preserved) — this is a prohibition on
-  the *reader*, not a transformation: the summary carries fenced code blocks and indented list
-  structure, and any well-meaning re-indentation of a stored comparison copy would break every
-  hash ever recorded. There is no stored copy for this reason — nothing to align a corrected
-  indentation against.
+- **No reformatting** (line order and leading whitespace preserved) — the summary carries fenced code
+  blocks and indented list structure, and any re-indentation would break every hash ever recorded.
 
-Rule 0 — extracting the region between the two markers — is asserted separately from the other
-five because it is the only one that can regress **alone** without breaking the other five's
-internal consistency: drop it, and the five surviving rules still describe a coherent procedure,
-just applied to the wrong object (the whole manifest, whose `## Sessions` grows every save,
-making every append report drift). It needs no grant of its own because it runs on text a skill
-has *already read* — extraction is not a shell command, so `allowed-tools` is unchanged by the
-move from a whole file to one region within it.
-
-## `## Computing the hash` → Digest
-
-`git hash-object` was considered and rejected. It would have reused the `Bash(git *)` grant a
-skill already holds instead of adding `shasum`/`sha256sum`, and `.unikit/` is not gitignored so
-the manifest is normally tracked — but the object it produces is SHA-1 with a blob header, while
-the field is named `Summary SHA256`, and it would make drift detection depend on git in a tool
-that explicitly supports `git.enabled: false`.
+Extracting the region comes before all of them and is the one rule that could regress alone: without
+it the others still describe a coherent procedure, over the wrong object, the whole manifest, whose
+`## Sessions` grows on every save. `scripts/test-research-hash.mjs` pins every rule against digests
+computed once by an independent pipeline, never by the script under test.
 
 ## `## Writing an entry`
 
 An absent `Summary SHA256` line is honester than a field that looks like a hash and is not one.
-The three no-tool/no-source/no-markers branches all omit the line entirely rather than write a
-placeholder or fall back to a timestamp, because a placeholder invites exactly the reader
+Every case with no digest (no markers, no readable file, the script could not run) omits the line
+entirely rather than write a placeholder or fall back to a timestamp, because a placeholder invites exactly the reader
 mistake the contract exists to prevent: treating a field that merely resembles a digest as if it
 carried the guarantee a real digest does.
 
@@ -169,6 +199,12 @@ brief field" versus "no hash recorded" — because they need different repairs (
 dead line, the other records a first hash), and the log line is the only place a human sees
 which one applies.
 
+**unavailable** is the one outcome outside that label, and it is an `INFO` on purpose: the script
+did not run, so nothing is known about the research. A warning there would hold `/unikit-verify` at
+`warn` for something no command in the workflow can clear, and that is the state the script was
+written to end. `/unikit-verify` still puts the line in its report, because a report silent about a
+check that did not run reads as a check that passed.
+
 There is no bundle-validation branch. `## Based on` always names a folder under
 `.unikit/code/researches/`, and the hashed object is always one fixed section of one fixed
 file — one shape, one region, every time. A branch for "is this a bundle entry point or a
@@ -182,10 +218,9 @@ either as interchangeable with the current field reports a change nobody made.
 **"Continue against the plan, not against the research"** is the operative instruction for
 every drift outcome: a reader does not widen scope, add tasks, or rewrite the recorded hash —
 that is `/unikit-improve`'s job, and only on the user's explicit request. The drift wording
-itself is deliberate: "no longer byte-identical to the one this plan was built from" claims
-identity of *input bytes*, not a claim about the research author's intent — the summary is
-rewritten wholesale on every save, so a mismatch proves the bytes changed, not that anyone
-changed their mind. Claiming the latter would make a routine save read as a finding about the
+itself is deliberate: "Active Summary changed since the plan was built" is a claim about the
+*input*, not about the research author's intent — the summary is rewritten wholesale on every
+save, so a mismatch proves the bytes changed, not that anyone changed their mind. Claiming the latter would make a routine save read as a finding about the
 plan.
 
 A stale hash is evidence, and is never silently rewritten. It is the record of what the plan
@@ -223,19 +258,23 @@ a period nobody actually examined.
 
 | Guard | Holds |
 |-------|-------|
-| `RD-A` | The recorded field name and the full normalization procedure (incl. rule 0) are present in the contract; the two retired fields (`**Attached**`, `Brief SHA256`) survive only where a branch has to name them, in the contract and all four skills alike |
-| `RD-B` | The `shasum`/`sha256sum` grant is present in all four skills, regardless of whether a skill still restates the procedure or only points at the contract |
-| `RD-C` | One canonical `WARN [research-drift]` label in the contract's reader ladder, never in its writer section; `/unikit-implement` and `/unikit-verify` each project the drift result into their own second surface (the completion summary / the `unikit-gate-result` block) and never read the research brief as a substitute for the plan |
+| `test-research-hash.mjs` | The normalization by behaviour: LF, CRLF and BOM spellings of one region give one digest, a trailing tab and a leading blank line stay, the exit codes 2 and 3, a real research and a Cyrillic path; every expected digest comes from an independent pipeline; the markers of the script equal the constants of the installer |
+| `RD-A` | The recorded field name, the script, the file and the region marker are present in the contract; the two retired fields (`**Attached**`, `Brief SHA256`) survive only where a branch has to name them, in the contract and all four skills alike |
+| `RD-B` | The script's grant in both shells is present in all four skills; `shasum`/`sha256sum` stay only in `/unikit-plan`, `/unikit-implement` and `/unikit-verify`, where another command needs them |
+| `RD-C` | One canonical `WARN [research-drift]` label in the contract's reader ladder, never in its writer section; `/unikit-implement` and `/unikit-verify` each project the drift result into their own second surface (the completion summary / the `unikit-gate-result` block) and never read the research brief as a substitute for the plan; a skipped check is `INFO [research-hash]` and `/unikit-verify` reports it |
 | `RD-D` | A hashless entry's re-link proposal is reachable end to end: raised as a finding in Step 1.5, surfaced in the Step 4 report, selectable, and the Step 5.5 write is gated on that approval — not merely present somewhere in the file |
-| `RD-E` | The hashed object is a region (not a whole file) in the contract; the retired-field branch lives only in `## Checking an entry`, never in `## Writing an entry` or in `/unikit-plan`, which never reads an existing entry |
+| `RD-E` | The hashed object is a region (not a whole file) in the contract; its markers in the contract and in the script equal the constants of the installer; the retired-field branch lives only in `## Checking an entry`, never in `## Writing an entry` or in `/unikit-plan`, which never reads an existing entry |
 | `RD-F` | No skill or planner reference surface restates the contract — checked three ways: the four fixed procedure tokens are absent, no derived `WARN [...]: <text>` template is copied whole, and no 9-word run of the contract's substantive sections is reproduced (word-shingle detection, ported from `scripts/test-ultra-plan-contract.mjs`'s T17) |
 | `RD-G` | The one degradation sentence is verbatim-identical and appears exactly once in each of the four skills |
-| `RD-H` | The contract is read only within its research step's own section, never inside Bootstrap; the digest is computed at read/link time (`/unikit-plan` Step 2, `/unikit-improve` Step 1.5), never recomputed at the later write step (`/unikit-plan` Step 5, `/unikit-improve` Step 5.5) |
-| `RD-I` | The name of an entry is resolved in `researches/` first and `archive/researches/` second, in the contract only: `## Finding the folder` sits between `## The entry` and `## What is hashed`, raises no `WARN` for the place of a folder, is pointed at by `## Checking an entry` and by `/unikit-improve`, and no consuming skill names the archive path |
-| `SA-1` | Every `export async function install*` in `system-assets.ts` is called from both `init.ts` and `update.ts` — derived from the source, not a maintained name list |
-| `TC-24` | The literal `the same procedure as \`Summary SHA256\`` — the anchor `tree-sha256` shares with the contract: the digest *step* (stdin, `shasum` → `sha256sum`), never rule 0, which has no meaning for a text that is not an Active Summary |
+| `RD-H` | The contract is read only within its research step's own section, never inside Bootstrap and never for `/unikit-plan`'s early look at the index; the digest is computed at read/link time (`/unikit-plan` Step 2, `/unikit-improve` Step 1.5), never recomputed at the later write step (`/unikit-plan` Step 5, `/unikit-improve` Step 5.5) |
+| `RD-I` | The name of an entry is resolved in `researches/` first and `archive/researches/` second, in the contract only: `## Finding the folder` sits between `## The entry` and `## Computing the hash`, raises no `WARN` for the place of a folder, is pointed at by `## Checking an entry` and by `/unikit-improve`, and no consuming skill names the archive path |
+| `RD-J` | The contract stays within its size limit, computes the hash through the script, carries no digest utility and no index rules; no shipped file names its retired sections |
+| `RI:*` | The index: the format, the `Topic:` rule and the one search live in `index-render.md`, which does not read the contract; the **Research index** sentence is word for word once in each of the five readers; no cache in anything shipped and no digest grant in `/unikit-explore` or `/unikit-archive`; a gate repair re-renders before the save is confirmed; `/unikit-plan` shows `Updated`; thirteen replay cases |
+| `SA-1` | Every `export async function install*` in `system-assets.ts` and `system-contracts.ts` is called from both `init.ts` and `update.ts` — derived from the source, not a maintained name list |
+| `TC-24` | The literal `the one tree-hash command` in `test-runs.md` and in `/unikit-verify`: one command named in two places, never two commands that merely agree today. It shares nothing with `Summary SHA256` but the algorithm |
 | `Test 1b-rl` | `research-link.md` is delivered into `.unikit/system/` (update-path coverage — this project is set up via `run_update`); carries the region marker and the canonical `WARN [research-drift]` label; is a flat copy (no unresolved `{{vars}}`) |
-| `Test 30l` | `research-link.md` is delivered on `update` with no prior `init`, and a tampered copy is refreshed from `data/` on the next `update` |
+| `Test 1b-rh` | `research-hash.mjs` is delivered, is a flat copy, and the installed copy prints the expected digest of a real research |
+| `Test 30l`, `Test 30l2` | `research-link.md` and `research-hash.mjs` are delivered on `update` with no prior `init`, and a tampered copy is refreshed from `data/` on the next `update` |
 
 ## Why the degradation is verbatim in four places
 

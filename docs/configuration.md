@@ -800,7 +800,8 @@ your-unity-project/
 │   │   ├── modules.yml            # Generated snapshot of MODULE_REGISTRY
 │   │   ├── gate-result-contract.md # Schema of the `unikit-gate-result` fenced JSON block
 │   │   ├── ultra-plan-read.md     # Reader contract for an ultra plan bundle
-│   │   ├── research-link.md       # The `## Based on` contract - entry, hashing, drift ladder
+│   │   ├── research-link.md       # The `## Based on` contract - entry, hash command, drift ladder
+│   │   ├── research-hash.mjs      # Computes `Summary SHA256` from a manifest - run by plan, improve, implement, verify
 │   │   ├── plan-boundaries.md     # Where a plan, a module and a push start and end - read by verify, implement, commit, pr
 │   │   ├── merge-analysis.md      # How to read a merge before it happens - read by explore and plan when asked to merge a branch
 │   │   ├── balance-handback.md    # The balance hand-back report contract - read by plan, implement, verify and unikit-gd-balance
