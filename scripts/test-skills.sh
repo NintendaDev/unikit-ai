@@ -13293,6 +13293,25 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# Part 7f10: the tree-hash script (scripts/test-tree-hash.mjs)
+# Real git repositories in a temporary directory; delivery is in test-install.sh / test-update.sh.
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 7f10: tree-hash script behaviour${NC}"
+
+set +e
+TREE_HASH_OUTPUT=$(node "$ROOT_DIR/scripts/test-tree-hash.mjs" 2>&1)
+TREE_HASH_EXIT=$?
+set -e
+
+if [[ $TREE_HASH_EXIT -eq 0 ]]; then
+    pass "Tree-hash script behaviour"
+    echo "$TREE_HASH_OUTPUT" | tail -1 | sed 's/^/    /'
+else
+    fail "Tree-hash script behaviour"
+    echo "$TREE_HASH_OUTPUT" | sed 's/^/      /'
+fi
+
+# ─────────────────────────────────────────────
 # Part 7g: validate <!-- unikit:agents --> markers in skills/subagents
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Part 7g: agent-marker validation${NC}"

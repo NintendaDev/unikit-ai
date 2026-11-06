@@ -267,6 +267,30 @@ fi
 echo "  ✓ the installed research-hash.mjs prints the expected digest of a real research"
 
 # ─────────────────────────────────────────────────────
+# Test 1b-th: tree-hash.mjs installed as a system asset and runnable where it lands.
+# A flat .mjs with no package.json next to it; running the installed copy in a real repository is what
+# proves it, so the digest is asserted, not just the file. Expected digest: scripts/test-tree-hash.mjs.
+# ─────────────────────────────────────────────────────
+TREE_HASH_PATH="$CLAUDE_DIR/.unikit/system/tree-hash.mjs"
+assert_exists "$TREE_HASH_PATH" "tree-hash.mjs created in .unikit/system/"
+assert_not_contains "$TREE_HASH_PATH" '\{\{' \
+  "tree-hash.mjs is a flat copy — no unresolved {{vars}}"
+TREE_HASH_REPO="$TMPDIR/tree-hash-repo"
+mkdir -p "$TREE_HASH_REPO"
+printf 'a\n' > "$TREE_HASH_REPO/a.cs"
+git -C "$TREE_HASH_REPO" init -q .
+git -C "$TREE_HASH_REPO" config core.autocrlf false
+git -C "$TREE_HASH_REPO" add -A
+git -C "$TREE_HASH_REPO" -c user.email=test@example.invalid -c user.name=test -c commit.gpgsign=false commit -qm init
+# `|| true`: a failing script must reach the message below, not abort the suite under set -e.
+TREE_HASH_DIGEST="$(cd "$TREE_HASH_REPO" && node "$TREE_HASH_PATH" || true)"
+if [[ "$TREE_HASH_DIGEST" != "8a9e8c1d0f074c629503f74ae7dfefcbb0a733fbbe08e5e259aabd523d402939" ]]; then
+  echo "Assertion failed: the installed tree-hash.mjs printed '$TREE_HASH_DIGEST' for a one-file repository"
+  exit 1
+fi
+echo "  ✓ the installed tree-hash.mjs prints the expected digest of a real repository"
+
+# ─────────────────────────────────────────────────────
 # Test 1b-pb: plan-boundaries.md installed as a system asset (flat copy, no vars)
 # Read by verify/implement/commit/pr to compute the same plan start, module boundary and
 # push target. Update-path coverage like 1b-rl above; the init.ts call site is SA-1's job.

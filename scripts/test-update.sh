@@ -2223,6 +2223,25 @@ fi
 echo "  ✓ research-hash.mjs: update installs + refreshes from data/ (update.ts wiring)"
 
 # ─────────────────────────────────────────────
+# Test 30l3: tree-hash.mjs is delivered on update — the update.ts wiring of
+# installTreeHashScript. Same shape as 30l2. The init.ts call site is SA-1's job.
+# ─────────────────────────────────────────────
+TREE_HASH="$DEVPRIN_DIR/.unikit/system/tree-hash.mjs"
+assert_exists "$TREE_HASH" "tree-hash.mjs must be installed on update (system asset, update.ts wiring)"
+
+echo "// TH_TAMPERED_BY_TEST" >> "$TREE_HASH"
+
+DEVPRIN_OUT_TH="$TMPDIR/update-tree-hash.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$DEVPRIN_OUT_TH" 2>&1)
+
+if grep -q "TH_TAMPERED_BY_TEST" "$TREE_HASH"; then
+    echo "Assertion failed: update did NOT refresh tree-hash.mjs from data/ (tamper marker still present)"
+    exit 1
+fi
+
+echo "  ✓ tree-hash.mjs: update installs + refreshes from data/ (update.ts wiring)"
+
+# ─────────────────────────────────────────────
 # Test 30m: plan-boundaries.md is delivered on update — the ONLY mechanical guard for the
 # update.ts wiring of installPlanBoundariesContract. Same shape as 30l: DEVPRIN_DIR ran
 # `update` with no prior `init`, so the file existing proves update.ts calls the installer;

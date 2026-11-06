@@ -3,7 +3,7 @@
 // Same shape as the wrappers there: a flat copy from `data/` into `.unikit/system/` with NO
 // substitution, NOT hash-tracked — every init/update rewrites it. The next flat contract goes here too.
 
-import { RESEARCH_HASH_FILE, SUBAGENT_ARGUMENTS_FILE, SUBAGENT_ROLES_FILE, TEST_RUN_WIDTH_FILE, USER_QUESTIONS_FILE } from '../constants.js';
+import { RESEARCH_HASH_FILE, SUBAGENT_ARGUMENTS_FILE, SUBAGENT_ROLES_FILE, TEST_RUN_WIDTH_FILE, TREE_HASH_FILE, USER_QUESTIONS_FILE } from '../constants.js';
 import { installFlatSystemAsset } from './shared.js';
 
 /**
@@ -57,4 +57,15 @@ export async function installTestRunWidthContract(projectDir: string): Promise<v
  */
 export async function installResearchHashScript(projectDir: string): Promise<void> {
   await installFlatSystemAsset(projectDir, RESEARCH_HASH_FILE, 'installResearchHashScript');
+}
+
+/**
+ * The tree-hash script — a flat copy from `data/tree-hash.mjs`, NO substitution, NOT hash-tracked.
+ * It computes `tree-sha256` for `/unikit-implement` and `/unikit-verify` and the recon change guard for
+ * `/unikit-plan`. A script rather than a command in the skill text, because a shell pipeline does not survive
+ * every shell: in PowerShell the `{ … }` of a Bash pipeline is a script block whose text reaches the next
+ * program, so a digest could stay the same whatever the tree holds.
+ */
+export async function installTreeHashScript(projectDir: string): Promise<void> {
+  await installFlatSystemAsset(projectDir, TREE_HASH_FILE, 'installTreeHashScript');
 }
