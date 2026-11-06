@@ -85,9 +85,9 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   re-reads the written files, and after two passes asks you instead of looping.
 - **Out:** `.unikit/code/researches/<slug>/` (`RESEARCH.md` — the manifest, plus `SOURCE.md`,
   the verbatim dialogue log, and adaptive artifacts in ultra), and a regenerated
-  compact `researches/INDEX.md` and optional writer-only `INDEX.cache.json`.
-  Short descriptions preserve the full research; checked source fingerprints allow
-  reuse. Gate changes refresh derived summaries before save confirmation.
+  compact `researches/INDEX.md`, one row per research with its description taken from
+  `Topic:`. A gate repair that changes a header field or `Topic:` re-renders it before the
+  save is confirmed.
 - **Optional (research).** Before: `/unikit`. After: `/unikit-plan` (consumes the manifest's
   `## Active Summary`), `/unikit-fix` (if a bug was found).
 
@@ -223,10 +223,10 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   `--all`, or `list` (both archives). A plan is classified with its verdict, created date and last
   change, oldest change first.
 - **Out:** the moved folder + one `Archived:` line in its manifest; for a research also a
-  re-rendered active and archive `INDEX.md` tables with optional summary caches, once
-  per successful batch. Readers start at the relevant index even for a named restore;
-  legacy/missing entries use read-only fallback. History reads never restore or offer
-  archived work automatically, and restore refuses an existing active destination.
+  re-rendered active and archive `INDEX.md` tables, once per successful batch. A named
+  restore goes straight to the folders; a missing index falls back to a read-only search of
+  them. History reads never restore or offer archived work automatically, and restore
+  refuses an existing active destination.
 - **Optional (after commit).** Untransferred MCP findings and `open` rule candidates never
   block: it asks whether to handle them first (`/unikit-bridge-trap`, `/unikit-verify`) or
   archive anyway. `/unikit-explore` reads archived plans as history and never takes the slug of

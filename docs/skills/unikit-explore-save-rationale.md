@@ -377,9 +377,10 @@ findable.
 
 ### The registry and the gate
 
-- **The registry is generated** from folders, with a compact description written by the
-  agent rather than a copy of a long Topic. Its optional cache requires a verified
-  source fingerprint; full research content is unchanged.
+- **The registry is generated** from folders, with its description taken from the `Topic:`
+  line and an older, longer one cut in the row. No agent sentence and nothing to keep in step
+  with the source: the row only navigates, and full research content is unchanged
+  ([research-link rationale](research-link-rationale.md)).
 - **An unfinished exploration is a `NOTE`**, not a `WARN`: nothing in it is damaged.
 - **The skip rule did not change when the unfinished-exploration line arrived** — only the message
   now tells the two cases apart.

@@ -210,8 +210,8 @@ Each check is **blocking**; saving stops until it passes:
 Applies to: ultra only
 
 - The top-level index protocol is shared with standard research: `index-render.md`
-  generates its compact table and short agent Summary. The full Topic and Active
-  Summary remain in RESEARCH.md; the index description never replaces them.
+  generates its compact table, with the Summary cell taken from `Topic:`. The full Topic
+  and Active Summary remain in RESEARCH.md; the index row never replaces them.
 
 - **The input to `/unikit-plan`.** The plan reads `## Active Summary`; adaptive artifacts are
   optional reading "for the rationale", never a source of requirements.

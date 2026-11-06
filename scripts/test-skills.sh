@@ -4579,26 +4579,21 @@ UNIKIT_IMPLEMENT_SKILL="$ROOT_DIR/skills/unikit-implement/SKILL.md"
 # The research-link contract's one owner, and the "all four consumers" array shared by
 # every guard below.
 RL_CONTRACT="$ROOT_DIR/data/research-link.md"
+RH_SCRIPT="$ROOT_DIR/data/research-hash.mjs"
 RD_CONSUMERS=("$UNIKIT_PLAN_SKILL" "$UNIKIT_IMPROVE_SKILL" "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL")
 # RD-E asserts the marker pair is DECLARED by its owner. The owner is the manifest template
 # of /unikit-explore since the manifest layout left the ultra reference, so RD-E reads the
 # skill; declared here because `set -u` makes a forward reference fatal.
 RDE_OWNER="$ROOT_DIR/skills/unikit-explore/SKILL.md"
 
-# (RD-A) The recorded field and the normalization procedure, owned by RL_CONTRACT.
-# unikit-plan writes the hash; unikit-{improve,implement,verify} recompute it. If the
-# normalization diverges by a single rule, every consumer reports drift that did not
-# happen — and the failure reads as "the research changed", not as "the guard is
-# missing". The tokens are chosen, not sampled: `UTF-8 BOM` and `one final newline` are
-# the two rules whose divergence produces a FALSE drift on byte-identical content (and
-# the BOM rule exists because this project's primary platform is Windows);
-# `never a temp file` is the stdin rule; `RESEARCH.md` is the file the hashed region
-# lives in, and `unikit:active-summary:start` is rule 0 — the rule that makes the object
-# a REGION rather than the whole file. Rule 0 is asserted separately from the other five
-# for one measured reason: it is the only one that can vanish alone. Drop it and the five
-# survivors still describe a coherent procedure, over the wrong object — the whole
-# manifest, whose `## Sessions` grows on every save, so every append would report drift
-# that did not happen.
+# (RD-A) The recorded field and the one way to compute it, owned by RL_CONTRACT.
+# unikit-plan writes the hash; unikit-{improve,implement,verify} recompute it. The contract
+# names the field, the command and the region; the normalization itself lives in
+# data/research-hash.mjs, where scripts/test-research-hash.mjs pins it by behaviour. A script
+# that diverges by a single rule would report drift that did not happen, and the failure reads
+# as "the research changed", not as "the guard is missing".
+# `unikit:active-summary:start` is what makes the object a REGION rather than the whole file,
+# whose `## Sessions` grows on every save, so every append would report drift that did not happen.
 # The negative half is load-bearing: without it a half-applied edit leaves the retired
 # field standing somewhere it should not. That half is anchored on the FIELD form
 # `**Attached**`, never on the bare word: `Attached` is ordinary English and a sentence
@@ -4612,7 +4607,7 @@ RDA_WHY=""
 if [[ ! -s "$RL_CONTRACT" ]]; then
     RDA_WHY+=" contract-missing"
 else
-    for tok in 'Summary SHA256' 'UTF-8 BOM' 'one final newline' 'never a temp file' 'RESEARCH.md' 'unikit:active-summary:start'; do
+    for tok in 'Summary SHA256' 'research-hash.mjs' 'RESEARCH.md' 'unikit:active-summary:start'; do
         grep -qF "$tok" "$RL_CONTRACT" || RDA_WHY+=" contract:no-${tok// /-}"
     done
     # A spelled-out count next to a list rots the moment the list grows and nothing turns red
@@ -4634,32 +4629,36 @@ for f in "$RL_CONTRACT" "${RD_CONSUMERS[@]}"; do
     if grep -F 'Brief SHA256' "$f" | grep -vF "$RDA_BRIEF_ALLOW" | grep -q .; then RDA_WHY+=" $n-retired-field-survives"; fi
 done
 if [[ -z "$RDA_WHY" ]]; then
-    pass "RD-A Summary SHA256 + the one normalization procedure (incl. rule 0) present in the owner (retired fields gone everywhere)"
+    pass "RD-A Summary SHA256, the hash script and the region marker present in the owner (retired fields gone everywhere)"
 else
-    fail "RD-A research-drift procedure diverged:$RDA_WHY"
+    fail "RD-A the research-link contract lost its field, script or region:$RDA_WHY"
 fi
 
-# (RD-B) The grant that makes the procedure followable at all. Without it the
-# normalization text is an instruction the skill cannot carry out, and the skill degrades
-# to the WARN branch on every single plan — silently, because that WARN branch is a
-# legitimate state. Both names are required: `shasum` ships with perl (macOS, Git Bash),
-# `sha256sum` with GNU coreutils (Linux, Git Bash).
-# Rule 0 (extract the region between the markers) adds nothing here: it is performed on
-# text the skill has already read, not by a shell command, so the list of two names stays
-# complete and no `awk`/`sed` grant joins it.
-# Loops over RD_CONSUMERS, not RDA_ALL: the grant belongs to each SKILL regardless of
-# whether that skill still restates the procedure or only points at RL_CONTRACT, so this
-# check must keep covering all four after tasks 7-10 shrink RDA_ALL.
+# (RD-B) The grant that makes the command runnable at all. Without it the contract is an
+# instruction the skill cannot carry out without asking. Both shells are required: the mechanism
+# exists to work without Git Bash, where a `Bash(...)` grant means nothing. Each grant names the one
+# script, never all of `node`, so a skill that only checks a hash gains no general interpreter.
+# The digest utilities stay only where another command still needs them: `tree-sha256` in implement
+# and verify, `ultra-stateful.md` in plan. improve has no other use, and a leftover grant reads
+# as if the hash still depended on them.
 RDB_WHY=""
 for f in "${RD_CONSUMERS[@]}"; do
+    n="$(basename "$(dirname "$f")")"
+    grep -qF 'Bash(node .unikit/system/research-hash.mjs *)'       "$f" || RDB_WHY+=" $n-no-bash-grant"
+    grep -qF 'PowerShell(node .unikit/system/research-hash.mjs *)' "$f" || RDB_WHY+=" $n-no-powershell-grant"
+done
+for f in "$UNIKIT_PLAN_SKILL" "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL"; do
     n="$(basename "$(dirname "$f")")"
     grep -qF 'Bash(shasum *)'    "$f" || RDB_WHY+=" $n-no-shasum"
     grep -qF 'Bash(sha256sum *)' "$f" || RDB_WHY+=" $n-no-sha256sum"
 done
+if grep -qF 'Bash(shasum *)' "$UNIKIT_IMPROVE_SKILL" || grep -qF 'Bash(sha256sum *)' "$UNIKIT_IMPROVE_SKILL"; then
+    RDB_WHY+=" improve-keeps-a-digest-grant"
+fi
 if [[ -z "$RDB_WHY" ]]; then
-    pass "RD-B the hash grant follows the procedure into all four skills"
+    pass "RD-B the script grant is in all four skills for both shells, and the digest utilities stay only where another command needs them"
 else
-    fail "RD-B a skill carries the normalization procedure but not the grant:$RDB_WHY"
+    fail "RD-B a hash grant is missing or left over:$RDB_WHY"
 fi
 
 # (RD-C) One label for every drift branch, and the writer/reader split.
@@ -4715,6 +4714,10 @@ printf '%s' "$RLC_WRITING" | grep -qF 'WARN [research-drift]' && RDC_WHY+=" writ
 # retired) RDA_READERS label loop incidentally held both halves together; nothing else
 # in this family checks them.
 grep -qF 'reaches the Step 4 report' "$UNIKIT_VERIFY_SKILL" || RDC_WHY+=" verify-projection-lost"
+# A skipped check is printed as INFO so that it cannot raise the gate, and the report still has to
+# say the check did not run: a report silent about it would read as a passed check.
+grep -qF 'An `INFO [research-hash]` line reaches the Step 4 report too and raises nothing' "$UNIKIT_VERIFY_SKILL" || RDC_WHY+=" verify-loses-the-skipped-check"
+printf '%s' "$RLC_CHECKING" | grep -qF 'INFO [research-hash]' || RDC_WHY+=" contract-no-unavailable-outcome"
 grep -qE '\*\*Research drift\.\*\*.*raises' "$UNIKIT_VERIFY_SKILL" || RDC_WHY+=" verify-projection-lost"
 RDC_IMPL_S4="$(awk 'index($0,"### Step 4: Completion Summary")==1{f=1;next} index($0,"### Step 5")==1{f=0} f' "$UNIKIT_IMPLEMENT_SKILL")"
 printf '%s' "$RDC_IMPL_S4" | grep -qF 'Research drifted — consider /unikit-improve' || RDC_WHY+=" implement-summary-line-lost"
@@ -4830,11 +4833,13 @@ if [[ -z "$RLE_START_CONST" ]]; then
     RDE_WHY+=" constant-unreadable:RESEARCH_ACTIVE_SUMMARY_START"
 else
     grep -qF "$RLE_START_CONST" "$RL_CONTRACT" || RDE_WHY+=" marker-not-pinned:RESEARCH_ACTIVE_SUMMARY_START"
+    grep -qF "$RLE_START_CONST" "$RH_SCRIPT"   || RDE_WHY+=" script-marker-not-pinned:RESEARCH_ACTIVE_SUMMARY_START"
 fi
 if [[ -z "$RLE_END_CONST" ]]; then
     RDE_WHY+=" constant-unreadable:RESEARCH_ACTIVE_SUMMARY_END"
 else
     grep -qF "$RLE_END_CONST" "$RL_CONTRACT" || RDE_WHY+=" marker-not-pinned:RESEARCH_ACTIVE_SUMMARY_END"
+    grep -qF "$RLE_END_CONST" "$RH_SCRIPT"   || RDE_WHY+=" script-marker-not-pinned:RESEARCH_ACTIVE_SUMMARY_END"
 fi
 if [[ -z "$RDE_WHY" ]]; then
     pass "RD-E the hashed object is the Active Summary region in the owner; the file-split refusal is gone"
@@ -4891,18 +4896,15 @@ done < <(printf '%s\n%s' "$RDF_CHECKING" "$RDF_WRITING" | grep -oE '`WARN \[rese
 #     2026-08-22-14.05). Measured, not reasoned, exactly like T17: sizes 5-8 false-positive
 #     on short vocabulary this project shares legitimately everywhere — at 5, improve's own
 #     Re-links report template ("recorded against the retired brief") and the literal
-#     `shasum -a 256 | awk '{print $1}'` command both collide — it stood in implement/verify
-#     as the concrete digest step and still stands in the contract's `### Digest`; the
-#     tree-hash copies in implement/verify now end in `cut -d' ' -f1` (Kimi Code expands `$1`
-#     inside a SKILL.md body), which only removes a collision. The shasum command alone
-#     still collided through size 8. Size 9 is the smallest that gives ZERO windows on every
+#     `shasum -a 256 | awk '{print $1}'` command both collided while the contract still
+#     carried that command. The shasum command alone collided through size 8. Size 9 is the smallest that gives ZERO windows on every
 #     correct surface today, and it still catches a paraphrase with roughly a third of its
 #     words replaced (24-51 shared 9-word runs, measured by inserting the pre-migration
 #     verify ladder verbatim, and separately a reworded copy of it, into a copy of the
 #     migrated file). `## Who writes the field` measured 0 at sizes 8-10 and is included —
 #     no section is excluded.
 RDF_SHINGLE_WORDS=9
-RDF_SHINGLE_SECTIONS=('## The entry' '## Finding the folder' '## Reading an index' '## What is hashed' '## Computing the hash' '## Writing an entry' '## Checking an entry' '## Who writes the field')
+RDF_SHINGLE_SECTIONS=('## The entry' '## Finding the folder' '## Computing the hash' '## Writing an entry' '## Checking an entry' '## Who writes the field')
 rdf_normalize() { tr '[:upper:]' '[:lower:]' | tr -d '`*_' | tr '\n' ' ' | tr -s '[:space:]' ' '; }
 rdf_shingles() {
     awk -v n="$1" '{
@@ -4970,11 +4972,13 @@ fi
 # computed at the right TIME (decision 2). Mechanical form of a rule with no other
 # detector: nothing else greps for WHERE a line sits relative to two headings.
 RDH_WHY=""
+# The early window reads the index and links nothing, so a plan with no linked research reads no
+# contract: the contract is opened at the first link, in Step 2. An empty window would pass the
+# negative below, so its absence is a failure of its own.
 RDH_PLAN_EARLY="$(awk '/^### Step 0.2:/{f=1;next} f&&/^### Step /{f=0} f' "$UNIKIT_PLAN_SKILL")"
+[[ -n "$RDH_PLAN_EARLY" ]] || RDH_WHY+=" plan-no-step-0.2-body"
 printf '%s' "$RDH_PLAN_EARLY" | grep -qF '.unikit/system/research-link.md' \
-    || RDH_WHY+=" plan-no-contract-before-early-index"
-printf '%s' "$RDH_PLAN_EARLY" | grep -qF '## Reading an index' \
-    || RDH_WHY+=" plan-no-early-reader-pointer"
+    && RDH_WHY+=" plan-reads-the-contract-for-the-index"
 rdh_location() {
     local skill="$1" step_start="$2" step_end="$3" boot_start="$4" boot_end="$5" label="$6"
     local step_win boot_win
@@ -5019,7 +5023,7 @@ RDI_SECTION="$(awk 'index($0,"## Finding the folder")==1{f=1;next} f&&/^## /{f=0
 rdi_line() { { grep -n "^$1\$" "$RL_CONTRACT" || true; } | head -1 | cut -d: -f1; }
 RDI_ENTRY_N="$(rdi_line '## The entry')"
 RDI_FIND_N="$(rdi_line '## Finding the folder')"
-RDI_HASHED_N="$(rdi_line '## What is hashed')"
+RDI_HASHED_N="$(rdi_line '## Computing the hash')"
 if [[ -z "$RDI_SECTION" ]]; then
     RDI_WHY+=" no-section"
 elif [[ -z "$RDI_ENTRY_N" || -z "$RDI_FIND_N" || -z "$RDI_HASHED_N" ]] \
@@ -5052,6 +5056,34 @@ if [[ -z "$RDI_WHY" ]]; then
     pass "RD-I a linked research is found by name, live folder first and archive second, in the contract only ($RDI_N consuming skills name no archive path)"
 else
     fail "RD-I research folder resolution broke:$RDI_WHY"
+fi
+
+# (RD-J) The contract stays small enough to be read whenever a plan links a research, and the rules
+# that made it large do not come back: the index rules live with their writer and in one sentence of
+# each reader, the digest in a script. The negatives also keep a hash procedure in shell from
+# returning, which is what a machine without Git Bash could not run.
+RDJ_MAX_BYTES=2300
+RDJ_WHY=""
+RDJ_BYTES="$(wc -c < "$RL_CONTRACT" | tr -d ' ')"
+(( RDJ_BYTES <= RDJ_MAX_BYTES )) || RDJ_WHY+=" contract-size=$RDJ_BYTES"
+grep -qF 'node .unikit/system/research-hash.mjs' "$RL_CONTRACT" || RDJ_WHY+=" contract-no-command"
+# Shrinking must not cost two rules. An entry without a hash stays unknown whatever the folder holds,
+# so it never reaches the script; and the two optional lines of an entry are conditions, not text to copy.
+grep -qF 'Without one nothing runs' "$RL_CONTRACT" || RDJ_WHY+=" contract-runs-the-script-for-an-entry-without-a-hash"
+RDJ_OPTIONAL="$({ grep -cF '(include only if the file exists)' "$RL_CONTRACT" || true; })"
+[[ "$RDJ_OPTIONAL" -eq 2 ]] || RDJ_WHY+=" contract-optional-lines=$RDJ_OPTIONAL"
+for tok in 'shasum' 'sha256sum' '## Reading an index' 'INDEX.cache' 'unikit:research-index'; do
+    if grep -qF "$tok" "$RL_CONTRACT"; then RDJ_WHY+=" contract-carries:${tok// /-}"; fi
+done
+# The retired section is named nowhere in the package. Counted first: an empty scan would pass.
+RDJ_FILES="$(find "$ROOT_DIR/skills" "$ROOT_DIR/subagents" "$ROOT_DIR/data" -type f | wc -l | tr -d ' ')"
+[[ "$RDJ_FILES" -gt 0 ]] || RDJ_WHY+=" scanned-nothing"
+if grep -rqF '## Reading an index' "$ROOT_DIR/skills" "$ROOT_DIR/subagents" "$ROOT_DIR/data"; then RDJ_WHY+=" retired-section-named"; fi
+if grep -rqF '### Digest' "$ROOT_DIR/skills" "$ROOT_DIR/subagents" "$ROOT_DIR/data"; then RDJ_WHY+=" retired-digest-section-named"; fi
+if [[ -z "$RDJ_WHY" ]]; then
+    pass "RD-J the contract is $RDJ_BYTES of at most $RDJ_MAX_BYTES bytes, computes the hash through the script, and $RDJ_FILES shipped files name no retired section"
+else
+    fail "RD-J the research-link contract grew back:$RDJ_WHY"
 fi
 
 # =============================================
@@ -7153,7 +7185,7 @@ if [[ -z "$TC_G4_WHY" ]]; then
     # (TC-24) SHARED — ONE string applied to BOTH files. The digest must be produced by one
     # procedure named in two places, never by two procedures that merely agree today: drift
     # in either half makes the anchor stop matching for no visible reason.
-    TC24_SHARED='the same procedure as `Summary SHA256`'
+    TC24_SHARED='the one tree-hash command'
     for tc24_f in "$TC_TESTRUNS" "$UNIKIT_VERIFY_SKILL"; do
         grep -qF "$TC24_SHARED" "$tc24_f" || TC_G4_WHY+=" TC-24:${tc24_f##*/skills/}-restates-hash-procedure"
     done
@@ -9695,43 +9727,67 @@ if [[ -z "$AR_WHY" ]]; then
     ar_has "AR-26:index-after-restore" 'The indexes, as R4 item 6' "$AR_RESEARCHES"
     # RI guards check instructions, not observed model behavior. Replay cases keep
     # that distinction explicit; delivery is exercised by test-install.sh.
-    RI_CACHE="$ROOT_DIR/skills/unikit-explore/references/index-summary-cache.md"
     RI_RENDER="$ROOT_DIR/skills/unikit-explore/references/index-render.md"
     RI_CASES="$ROOT_DIR/scripts/test-fixtures/research-indexes/README.md"
-    for anchor in '## Reading an index' 'unikit:research-index:2' \
-        'SOURCE-only' 'Do not reread healthy manifests' 'never repair the index/cache on disk' \
-        'slug from the decoded link' 'symlink paths outside that root' \
-        'Missing Lifecycle has effective value' 'known slug' 'INFO [research-index]'; do
-        ar_has "RI:reader:$anchor" "$anchor" "$RL_CONTRACT"
-    done
-    for anchor in 'sourceSha256' 'summaryVersion' 'language' 'H1' 'whole-line' \
-        '200–250' 'preserving the summary verbatim' 'both old caches in memory' \
-        'never proof of reuse' 'no temporary files' 'No extra coherence pass' \
-        'Cache write failure' 'No digest tool' '## Final source check after the gate'; do
-        ar_has "RI:cache:$anchor" "$anchor" "$RI_CACHE"
-    done
-    for anchor in 'scope: active | archive' 'header-only table' 'whole active render' \
-        'Write INDEX.md, then INDEX.cache.json' 'Cache is never' '## Save closure'; do
+    # The format and the writer: the table lives in the one reference that writes it, its Summary
+    # comes from Topic, and the writer reads neither the contract nor a whole manifest.
+    for anchor in 'scope: active | archive' 'header-only table' 'unikit:research-index:2' \
+        'INFO [research-index]' 'Summary` is the `Topic:` line' 'cut at 250' \
+        'No `Topic:` between the two markers → `—`' 'One search with line numbers' \
+        '`Topic:` counts only between' 'A line left out as too' \
+        'Never shorten or rewrite the manifest'; do
         ar_has "RI:writer:$anchor" "$anchor" "$RI_RENDER"
     done
-    for anchor in 'once each after the batch' 'pre-rebuild cache' 'No successful moves' \
-        'before exiting after a later batch error' 'same archive index even for an exact name' \
+    ar_lacks 'RI:writer-reads-the-contract' 'research-link.md' "$RI_RENDER"
+    # One reading rule, word for word in every reader. The text is taken from unikit-plan on the
+    # RD-G precedent; a reader that restates it in other words drops out of the count.
+    RI_READER="$({ grep -oE '\*\*Research index\.\*\* .*and write nothing\.' "$UNIKIT_PLAN_SKILL" || true; } | head -1)"
+    RI_READER_N=0
+    if [[ -z "$RI_READER" ]]; then
+        AR_WHY+=" RI:reader-no-object"
+    else
+        for ri_f in "$UNIKIT_PLAN_SKILL" "$UNIKIT_IMPROVE_SKILL" "$UR_EXPLORE" "$AR_RESEARCHES" "$ROOT_DIR/skills/unikit-help/SKILL.md"; do
+            RI_READER_N=$((RI_READER_N + 1))
+            ri_count="$(grep -cF "$RI_READER" "$ri_f" || true)"
+            [[ "$ri_count" -eq 1 ]] || AR_WHY+=" RI:reader-count:${ri_f##*/skills/}=$ri_count"
+        done
+    fi
+    [[ "$RI_READER_N" -gt 0 ]] || AR_WHY+=" RI:reader-no-readers"
+    # The summary cache is gone from everything the package ships. Counted first: an empty scan
+    # would pass every negative below.
+    RI_NC_FILES="$(find "$ROOT_DIR/skills" "$ROOT_DIR/data" "$ROOT_DIR/docs" -type f | wc -l | tr -d ' ')"
+    [[ "$RI_NC_FILES" -gt 0 ]] || AR_WHY+=" RI:no-cache-scanned-nothing"
+    for tok in 'INDEX.cache' 'sourceSha256' 'summaryVersion' 'index-summary-cache'; do
+        if grep -rqF "$tok" "$ROOT_DIR/skills" "$ROOT_DIR/data" "$ROOT_DIR/docs"; then AR_WHY+=" RI:no-cache:$tok"; fi
+    done
+    [[ ! -e "$ROOT_DIR/skills/unikit-explore/references/index-summary-cache.md" ]] || AR_WHY+=" RI:no-cache:reference-returned"
+    # Archive and restore: one rebuild per batch, and a named restore goes to the folders.
+    for anchor in 'once each after the batch' 'No successful moves' \
+        'before exiting after a later batch error' 'Go straight to the folders' \
         'active folder is a destination collision' 'Read-only list never generates'; do
         ar_has "RI:archive:$anchor" "$anchor" "$AR_RESEARCHES"
     done
-    ar_has 'RI:final-sync' '### Final index synchronization' "$UR_EXPLORE"
-    RI_FINAL="$(grep -n '^### Final index synchronization' "$UR_EXPLORE" | cut -d: -f1)"
-    RI_CONFIRM="$(grep -n '^### Step 5: Confirm' "$UR_EXPLORE" | cut -d: -f1)"
-    [[ -n "$RI_FINAL" && -n "$RI_CONFIRM" && "$RI_FINAL" -lt "$RI_CONFIRM" ]] \
-        || AR_WHY+=" RI:final-sync-after-confirm"
+    # A gate repair that touches what the index shows re-renders it before the save is confirmed.
+    ar_lacks 'RI:final-sync-returned' '### Final index synchronization' "$UR_EXPLORE"
+    RI_GATE="$({ grep -nF 'A repair that changed a header field or the `Topic:` line' "$UR_EXPLORE" || true; } | head -1 | cut -d: -f1)"
+    RI_CONFIRM="$({ grep -n '^### Step 5: Confirm' "$UR_EXPLORE" || true; } | head -1 | cut -d: -f1)"
+    [[ -n "$RI_GATE" && -n "$RI_CONFIRM" && "$RI_GATE" -lt "$RI_CONFIRM" ]] \
+        || AR_WHY+=" RI:gate-rerender-missing-or-after-confirm"
+    # The grants the cache needed left with it; the frontmatter is read, not the whole file.
     for skill in explore archive; do
+        RI_FM="$(awk 'NR==1&&/^---$/{f=1;next} f&&/^---$/{exit} f' "$ROOT_DIR/skills/unikit-$skill/SKILL.md")"
+        [[ -n "$RI_FM" ]] || AR_WHY+=" RI:$skill:no-frontmatter"
         for grant in 'Bash(shasum *)' 'Bash(sha256sum *)' 'Bash(awk *)'; do
-            ar_has "RI:$skill:digest-grant" "$grant" "$ROOT_DIR/skills/unikit-$skill/SKILL.md"
+            if printf '%s' "$RI_FM" | grep -qF "$grant"; then AR_WHY+=" RI:$skill:digest-grant"; fi
         done
     done
-    for case_id in {1..18}; do
+    # The table has no Created, so the planner shows the column it does have.
+    ar_has 'RI:plan-shows-updated' '(<Updated>)' "$UNIKIT_PLAN_SKILL"
+    ar_lacks 'RI:plan-shows-created' '(<Created>)' "$UNIKIT_PLAN_SKILL"
+    for case_id in {1..13}; do
         ar_has "RI:replay-case-C$case_id" "| C$case_id |" "$RI_CASES"
     done
+    ar_lacks 'RI:replay-case-C14-returned' '| C14 |' "$RI_CASES"
     # (AR-27) the grants and the boundary: Write is granted (the index is rewritten whole) and rm
     # still is not; design researches stay untouched, the plan protocol no longer claims that code
     # researches are, and the router owns both archives. The ownership section is the router's only.
@@ -9984,7 +10040,8 @@ if [[ -z "$BX_WHY" ]]; then
     # 66690 -> 66710: the Subagent arguments pointer moved out of the alias section into one of its own (AP-22), +14 bytes of heading
     # 66710 -> 66860: the strict run points at the rule for unsaved editor state (TW-18), +154 bytes
     # 66860 -> 66820: the pointer names the system file, the width left the skill folder
-    bx_max "BC-1:skill-size" 66820 "$UNIKIT_VERIFY_SKILL"
+    # 66820 -> 66880: research-link simplification, 2026-11-06 — the two grants of the hash script and the report line of a skipped check, less the pointer to the retired digest section
+    bx_max "BC-1:skill-size" 66880 "$UNIKIT_VERIFY_SKILL"
 
     # (BC-2) verify's branch: headings, the two level sentences, and the one place of suggested_next
     BX_CHK=$((BX_CHK + 1))
@@ -10037,7 +10094,8 @@ if [[ -z "$BX_WHY" ]]; then
     # 62000 -> 62560: architecture topics, 2026-10-28 — the Bootstrap read of the topic files and the topic-path slot in the recon prompts (AD-12)
     # 62560 -> 62580: the Subagent arguments pointer moved out of the alias section into one of its own (AP-22), +15 bytes of heading
     # 62580 -> 62720: research archive, 2026-10-28 — the linked research is read from the folder the contract's "Finding the folder" returns (+140 bytes)
-    bx_max "BS-3:skill-size" 62720 "$UNIKIT_IMPROVE_SKILL"
+    # 62720 -> 63100: research-link simplification, 2026-11-06 — the one reading rule of an index moved out of the contract into each reader, and the two grants of the hash script in place of the digest utilities
+    bx_max "BS-3:skill-size" 63100 "$UNIKIT_IMPROVE_SKILL"
 
     # (BX-1) the four branch files: no agent-filter markers, no engine words, all point at the contract
     for f in "$BP_REF" "$BM_REF" "$BC_REF" "$BS_REF"; do
@@ -10075,7 +10133,8 @@ if [[ -z "$BX_WHY" ]]; then
     # 53650 -> 53720: the bridge order moved from the config to .unikit/bridges.yaml and the routing file joined it in one Bootstrap sentence (XE-2)
     # 53720 -> 54520: architecture topics, 2026-10-28 — the Step 1 and Step 3.0 reads of the topic files and the 3.7 delta form (AD-12)
     # 54520 -> 54540: the Subagent arguments pointer moved out of the alias section into one of its own (AP-22), +14 bytes of heading
-    bx_max "BM-6:implement-skill-size" 54540 "$UNIKIT_IMPLEMENT_SKILL"
+    # 54540 -> 54640: research-link simplification, 2026-11-06 — the two grants of the hash script
+    bx_max "BM-6:implement-skill-size" 54640 "$UNIKIT_IMPLEMENT_SKILL"
     # (BC-4) a measurement the user skipped is a skipped row, not a blocker
     bx_has "BC-4:skipped-measure-is-a-blocker" '⏭️ SKIPPED' "$BC_REF"
     # (BC-5) a name stated in ## Not measured is accounted for — a measurement the user skipped is not a blocker
@@ -13212,6 +13271,25 @@ if [[ $SYSTEM_VARS_EXIT -eq 0 ]]; then
 else
     fail "System-file variable registry guards"
     echo "$SYSTEM_VARS_OUTPUT" | sed 's/^/      /'
+fi
+
+# ─────────────────────────────────────────────
+# Part 7f9: the research-hash script (scripts/test-research-hash.mjs)
+# The digests are constants from an independent pipeline; delivery is in test-install.sh / test-update.sh.
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 7f9: research-hash script behaviour${NC}"
+
+set +e
+RESEARCH_HASH_OUTPUT=$(node "$ROOT_DIR/scripts/test-research-hash.mjs" 2>&1)
+RESEARCH_HASH_EXIT=$?
+set -e
+
+if [[ $RESEARCH_HASH_EXIT -eq 0 ]]; then
+    pass "Research-hash script behaviour"
+    echo "$RESEARCH_HASH_OUTPUT" | tail -1 | sed 's/^/    /'
+else
+    fail "Research-hash script behaviour"
+    echo "$RESEARCH_HASH_OUTPUT" | sed 's/^/      /'
 fi
 
 # ─────────────────────────────────────────────

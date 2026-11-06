@@ -249,6 +249,24 @@ assert_contains "$RESEARCH_LINK_PATH" 'archive/researches' \
   "research-link.md carries the archive resolution — a linked research is found there too"
 
 # ─────────────────────────────────────────────────────
+# Test 1b-rh: research-hash.mjs installed as a system asset and runnable where it lands.
+# A flat .mjs with no package.json next to it; running the installed copy is what proves it,
+# so the digest is asserted, not just the file. Expected digest: scripts/test-research-hash.mjs.
+# ─────────────────────────────────────────────────────
+RESEARCH_HASH_PATH="$CLAUDE_DIR/.unikit/system/research-hash.mjs"
+assert_exists "$RESEARCH_HASH_PATH" "research-hash.mjs created in .unikit/system/"
+assert_not_contains "$RESEARCH_HASH_PATH" '\{\{' \
+  "research-hash.mjs is a flat copy — no unresolved {{vars}}"
+RESEARCH_HASH_FIXTURE="$ROOT_DIR/scripts/test-fixtures/research-indexes/project/2026-10-02_unicode/RESEARCH.md"
+# `|| true`: a failing script must reach the message below, not abort the suite under set -e.
+RESEARCH_HASH_DIGEST="$(node "$RESEARCH_HASH_PATH" "$RESEARCH_HASH_FIXTURE" || true)"
+if [[ "$RESEARCH_HASH_DIGEST" != "ab542cb16b4c0712cddda2a4eae1ca6fceceb6011be8b6aeb21212a0b2966167" ]]; then
+  echo "Assertion failed: the installed research-hash.mjs printed '$RESEARCH_HASH_DIGEST' for the unicode fixture"
+  exit 1
+fi
+echo "  ✓ the installed research-hash.mjs prints the expected digest of a real research"
+
+# ─────────────────────────────────────────────────────
 # Test 1b-pb: plan-boundaries.md installed as a system asset (flat copy, no vars)
 # Read by verify/implement/commit/pr to compute the same plan start, module boundary and
 # push target. Update-path coverage like 1b-rl above; the init.ts call site is SA-1's job.
@@ -423,14 +441,13 @@ assert_exists "$CLAUDE_DIR/.claude/skills/unikit-explore/references/merge-resear
 # missing delivery would silently skip the re-render in both skills.
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-explore/references/index-render.md" \
   "unikit-explore index-render.md reference installed"
-assert_exists "$CLAUDE_DIR/.claude/skills/unikit-explore/references/index-summary-cache.md" \
-  "research index writer-only cache reference installed"
-assert_contains "$RESEARCH_LINK_PATH" 'unikit:research-index:2' \
-  "installed research-link supports compact indexes"
-assert_contains "$RESEARCH_LINK_PATH" '## Reading an index' \
-  "installed research-link carries the shared index reader"
+assert_not_exists "$CLAUDE_DIR/.claude/skills/unikit-explore/references/index-summary-cache.md" \
+  "the retired research index cache reference is not installed"
+assert_contains "$CLAUDE_DIR/.claude/skills/unikit-explore/references/index-render.md" 'unikit:research-index:2' \
+  "installed index-render carries the compact index format"
+assert_not_contains "$RESEARCH_LINK_PATH" '## Reading an index' \
+  "installed research-link carries no index rules — a reader needs the table, not the contract"
 for index_ref in "$CLAUDE_DIR/.claude/skills/unikit-explore/references/index-render.md" \
-  "$CLAUDE_DIR/.claude/skills/unikit-explore/references/index-summary-cache.md" \
   "$CLAUDE_DIR/.claude/skills/unikit-archive/references/researches.md"; do
   assert_not_contains "$index_ref" '\{\{[a-z_]+\}\}' "installed index reference has no unresolved variables"
 done

@@ -96,9 +96,11 @@ Relevant to the dev pipeline:
   demand by the skills that need them.
 - `ultra-plan-read.md` — the ultra plan bundle reader contract, read by `/unikit-implement`,
   `/unikit-verify`, `/unikit-improve` and `/unikit-commit` only when the plan is an ultra bundle.
-- `research-link.md` — the `## Based on` contract (entry format, hashing, drift ladder), read by
+- `research-link.md` — the `## Based on` contract (entry format, hash command, drift ladder), read by
   `/unikit-plan`, `/unikit-implement`, `/unikit-verify` and `/unikit-improve` only when a plan
   links a research.
+- `research-hash.mjs` — the script those skills run for `Summary SHA256`: it reads the manifest
+  itself, needs only Node and gives the same digest in any shell.
 - `plan-boundaries.md` — where a plan, a module and a push start and end (base branch, plan
   start, module boundary, push target), read by `/unikit-verify`, `/unikit-implement`,
   `/unikit-commit` and `/unikit-pr`.

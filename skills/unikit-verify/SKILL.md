@@ -20,6 +20,8 @@ allowed-tools:
   - Bash(date *)
   - Bash(shasum *)
   - Bash(sha256sum *)
+  - Bash(node .unikit/system/research-hash.mjs *)
+  - PowerShell(node .unikit/system/research-hash.mjs *)
   - Agent
   - AskUserQuestion
   - Skill
@@ -181,7 +183,7 @@ Check if `--strict` is in `$ARGUMENTS`. If yes — enable strict mode (see Stric
 ### 0.2 Read Plan & Context
 
 - Read the **plan manifest** — `.unikit/code/plans/<folder>/PLAN.md` for a folder plan, `.unikit/code/PLAN.md` for a flat fast-mode plan. In fast and full one file carries everything: `## Overview`, `## Settings`, the `## Checklist` with phases, dependencies and completion status, and `## Technical Context` (constraints, interfaces, key patterns, dependency graph, files, editor targets, DI bindings). **In an ultra bundle it does not:** the manifest carries the checklist and only the cross-phase part of `## Technical Context`, while every task's own detail lives in its phase file — the reading depth is stated in `.unikit/system/ultra-plan-read.md`. For the full section list see `{{skills_dir}}/unikit-plan/references/TASK-FORMAT.md` → *Plan Manifest Template*; it is not restated here.
-- If the manifest has a `## Based on` section pointing to a research, do **NOT** read that research's `RESEARCH.md` as a substitute for the plan's own context. The plan's `## Technical Context` is authoritative and supersedes the research summary (`/unikit-plan`: it was synthesized from the research and then verified against the code). The research is read for **one** purpose only — the drift check below.
+- If the manifest has a `## Based on` section pointing to a research, do **NOT** read that research's `RESEARCH.md` as a substitute for the plan's own context. The plan's `## Technical Context` is authoritative and supersedes the research summary (`/unikit-plan`: it was synthesized from the research and then verified against the code). The drift check below runs a script over it and reads nothing itself.
 - Read **`.unikit/DESCRIPTION.md`** — project specification, tech stack
 - Read **`.unikit/ARCHITECTURE.md`** — project structure, dependency rules, modules, namespace conventions. **Architecture topics:** the root now; then the topic files listed under its `## Topics` whose `Load when` matches a file the plan's tasks changed — their `Files:` lines and the diff under verification; when unsure, load (`RULES_INDEX.md` → Step 1). A listed file that is missing is reported in 3.4.
 - Read **`.unikit/ROADMAP.md`** (if present) — strategic milestones for alignment checks
@@ -192,7 +194,7 @@ Check if `--strict` is in `$ARGUMENTS`. If yes — enable strict mode (see Stric
 
 **Skipping this drift check is a verification bug.** A verification that passed while the plan and its source had diverged is the one failure this check exists to prevent.
 
-Every `WARN [research-drift]` line reaches the Step 4 report **and** the `unikit-gate-result` block — otherwise it is lost with the session. The gate level is `warn`, **never** `fail`: source drift does not make the implementation wrong, it makes it debatable, and the decision is the user's.
+Every `WARN [research-drift]` line reaches the Step 4 report **and** the `unikit-gate-result` block — otherwise it is lost with the session. The gate level is `warn`, **never** `fail`: source drift does not make the implementation wrong, it makes it debatable, and the decision is the user's. An `INFO [research-hash]` line reaches the Step 4 report too and raises nothing.
 
 **Parse `## Settings`** from the plan while it is open here — Step 1 needs it and runs long before the `Docs:` read in Step 3:
 - `Editor tasks: engine-bridge | manual | direct` (the 2.x spelling `mcp` is read as the same value) — the mode `/unikit-implement` used. Context for Step 1: under `manual`, editor targets are expected to be marked `⏸️ MANUAL` rather than implemented.
@@ -376,7 +378,7 @@ Check that the project compiles after implementation — gate **compilation** of
 
 1. **`Testing: no`, or no `## Settings`** → one line, `Tests: not part of this plan (Testing: no)`, and nothing else in this step. It is not a finding.
 2. **Read the manifest's `## Test Runs` and find the `Full run:` anchor line.** No section or no line → `⚠️ Test run: no full run recorded`. An anchor whose `tree-sha256` reads `unavailable` → `⚠️ Test run: the full run of <date> carries no tree hash and cannot be checked`.
-3. **An anchor is there** → compute the current tree hash **by the same procedure as `Summary SHA256`** — its digest step, `.unikit/system/research-link.md` → `### Digest`; the command below is that step in full, and nothing is read for it:
+3. **An anchor is there** → compute the current tree hash **by the one tree-hash command** below; nothing is read for it:
 
    ```
    { git rev-parse HEAD; { git diff HEAD --name-only --no-renames --ignore-submodules -- . ':(exclude).unikit' ':(exclude,icase)*.md'; git ls-files --others --exclude-standard --full-name -- . ':(exclude).unikit' ':(exclude,icase)*.md'; } | sort; { git diff HEAD --name-only --no-renames --ignore-submodules --diff-filter=d -- . ':(exclude).unikit' ':(exclude,icase)*.md'; git ls-files --others --exclude-standard --full-name -- . ':(exclude).unikit' ':(exclude,icase)*.md'; } | grep -v '/$' | sort | git hash-object --stdin-paths; } | shasum -a 256 | cut -d' ' -f1

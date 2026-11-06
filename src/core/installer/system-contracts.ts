@@ -3,7 +3,7 @@
 // Same shape as the wrappers there: a flat copy from `data/` into `.unikit/system/` with NO
 // substitution, NOT hash-tracked — every init/update rewrites it. The next flat contract goes here too.
 
-import { SUBAGENT_ARGUMENTS_FILE, SUBAGENT_ROLES_FILE, TEST_RUN_WIDTH_FILE, USER_QUESTIONS_FILE } from '../constants.js';
+import { RESEARCH_HASH_FILE, SUBAGENT_ARGUMENTS_FILE, SUBAGENT_ROLES_FILE, TEST_RUN_WIDTH_FILE, USER_QUESTIONS_FILE } from '../constants.js';
 import { installFlatSystemAsset } from './shared.js';
 
 /**
@@ -47,4 +47,14 @@ export async function installUserQuestionsContract(projectDir: string): Promise<
  */
 export async function installTestRunWidthContract(projectDir: string): Promise<void> {
   await installFlatSystemAsset(projectDir, TEST_RUN_WIDTH_FILE, 'installTestRunWidthContract');
+}
+
+/**
+ * The research-hash script — a flat copy from `data/research-hash.mjs`, NO substitution, NOT hash-tracked.
+ * It computes `Summary SHA256` for `/unikit-plan`, `/unikit-improve`, `/unikit-implement` and `/unikit-verify`,
+ * so a skill neither reads the summary for the hash nor builds a shell pipeline whose bytes depend on the shell.
+ * A system asset because those four skills run one script at one path, whichever of them the wizard installed.
+ */
+export async function installResearchHashScript(projectDir: string): Promise<void> {
+  await installFlatSystemAsset(projectDir, RESEARCH_HASH_FILE, 'installResearchHashScript');
 }

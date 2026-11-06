@@ -3,26 +3,49 @@
 Loaded on demand at explore Step 4 and after archive/restore batches. One writer
 serves `scope: active | archive`: roots `.unikit/code/researches/` and
 `.unikit/code/archive/researches/`. Explore saves use active only; ultra pinning
-SOURCE.md does not render an index or create a cache.
+SOURCE.md does not render an index. A reader of the index does not need this file.
 
-Read `.unikit/system/research-link.md` → `## Reading an index` for the table format,
-escaping and compatibility. Read
-`{{skills_dir}}/unikit-explore/references/index-summary-cache.md` for summarization,
-fingerprints, reuse and write ordering. If either reference is unreadable, announce
-`WARN [research-index] <scope>: writer reference missing — index/cache not rebuilt;
-run unikit-ai update`, and continue the saving gate or keep the successful moves.
+## Format
+
+Exactly one `<!-- unikit:research-index:2 -->`, a short heading, a generated warning
+and one Markdown table. One physical row per research, without fixed-width padding:
+
+```
+| Research | Updated | Status | Lifecycle | Summary | Target |
+|---|---|---|---|---|---|
+| [Title](<slug>/RESEARCH.md) | <original timestamp> | completed | active | <Topic> | — |
+```
+
+The archive adds `Archived` immediately after `Updated`. Preserve date precision,
+including time; absent dates are `—`, never Created or mtime. Missing Lifecycle has
+effective value `active`. Status and Lifecycle remain independent axes. Column names
+and enum values stay stable.
+
+`Summary` is the `Topic:` line of the Active Summary without its prefix. Longer than
+250 characters → cut at 250 and end with `…`. No `Topic:` between the two markers → `—`.
+Never shorten or rewrite the manifest to fit the index.
+
+Cut first, then collapse cell line breaks to spaces and escape backslashes, pipes
+(`\|`), brackets and Markdown metacharacters in titles/Summary/Target. Encode
+link-destination special characters (including spaces, parentheses, brackets and
+pipes) so the link resolves exactly.
 
 ## Whole render
 
 The index is **re-rendered whole** from real direct-child folders, never appended
-or patched by row. Do not edit manually — edits are overwritten. Cache is never
-the source of membership. Before either scope is rebuilt after a move/restore,
-retain both old cache snapshots as the cache reference requires.
+or patched by row. Do not edit manually — edits are overwritten.
 
-1. List the selected root's direct subfolders. Read each `RESEARCH.md` and take
-   its H1 and first header Created / Updated / Archived / Status / Lifecycle /
-   Target fields; current metadata always comes from disk. Generate/reuse the
-   short description by the cache reference, never by copying the whole Topic.
+1. List the selected root's direct subfolders. One search with line numbers over
+   `<root>/*/RESEARCH.md`, no manifest read whole, for the lines matching:
+
+   ```
+   ^(# |Created:|Updated:|Archived:|Status:|Lifecycle:|Target:|Topic:|<!-- unikit:active-summary:(start|end) -->)
+   ```
+
+   In each file the title and the header fields are the first hit of each above the
+   start marker (no markers → the first hit in the file); `Topic:` counts only between
+   the two markers. An output cut into pages → read the rest. A line left out as too
+   long → read that one line. Current metadata always comes from disk.
 2. No readable manifest → skip and announce. SOURCE.md without a manifest is
    expected unfinished work:
 
@@ -38,18 +61,16 @@ retain both old cache snapshots as the cache reference requires.
    WARN [research] skipped <folder> — no readable RESEARCH.md
    ```
 
-   Skipping in silence is forbidden. Missing manifest is the only exclusion;
-   broken cache, H1 or summary markers do not exclude readable research.
-3. Prepare the v2 heading, generated warning, marker and table specified by the
-   contract. Empty scope still writes the heading/marker and header-only table.
+   Skipping in silence is forbidden. Missing manifest is the only exclusion; a broken
+   H1 or broken summary markers do not exclude readable research (no H1 → the slug is
+   the title).
+3. Prepare the heading, generated warning, marker and table of `## Format`. Empty
+   scope still writes the heading/marker and header-only table.
    Sort by `Updated` descending for active, then Created descending, slug ascending;
    archive prefixes Archived descending. Missing dates follow existing dates.
-   Keep full date precision and the contract's escaping, without fixed-width padding.
-4. Compare old index membership (legacy or v2) with successfully indexed folders
-   for reconciliation. Prepare the new cache too, containing only this scope's
-   successful entries. Write INDEX.md, then INDEX.cache.json by the cache protocol.
-   Index write failure → WARN naming scope and path, never announce success or
-   write its new cache. Cache failure keeps the index; moves never roll back.
+4. Compare old index membership (cards or table) with successfully indexed folders
+   for reconciliation, then write INDEX.md whole. Write failure → WARN naming scope and
+   path, never announce success. Moves never roll back.
 5. Print as your own message, separately per scope:
 
    ```
@@ -57,13 +78,5 @@ retain both old cache snapshots as the cache reference requires.
    - Kept: N
    - Added: N (list names)
    - Removed: N (list names)
-   INFO [research-index] <scope>: generated N, reused N, limited N
+   INFO [research-index] <scope>: N rows, N cut to 250, N without Topic
    ```
-
-## Save closure
-
-Keep the normalized summary inputs used by this render in the saving session.
-After all coherence-gate edits, apply `index-summary-cache.md` → `## Final source
-check after the gate` before Step 5. A changed input causes a whole active render;
-an unchanged input causes no repeat write. This check belongs to the saving
-session, adds no coherence pass and does not change the gate's budget.

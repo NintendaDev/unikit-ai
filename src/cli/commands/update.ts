@@ -10,7 +10,7 @@ import {
   type SubagentUpdateEntry,
 } from '../../core/installer/subagents.js';
 import { installEngineTemplates, installCliContract, installGateResultContract, installUltraPlanReadContract, installResearchLinkContract, installPlanBoundariesContract, installMergeAnalysisContract, installBalanceHandbackContract, installPrototypeProfileContract, installDevPrinciples, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
-import { installSubagentArgumentsContract, installSubagentRolesContract, installTestRunWidthContract, installUserQuestionsContract } from '../../core/installer/system-contracts.js';
+import { installResearchHashScript, installSubagentArgumentsContract, installSubagentRolesContract, installTestRunWidthContract, installUserQuestionsContract } from '../../core/installer/system-contracts.js';
 import { installKimiSubagentModelsTemplate } from '../../core/installer/kimi-subagent-models.js';
 import { injectMcpRules } from '../../core/installer/mcp-injection.js';
 import { collectManagedGrantPrefixes } from '../../core/bridges/grants.js';
@@ -337,6 +337,7 @@ export async function runUpdateCommand(projectDir: string, options: UpdateComman
 
     // Refresh the research-link contract (read by plan/improve/implement/verify when a plan links a research)
     await installResearchLinkContract(projectDir);
+    await installResearchHashScript(projectDir);
     await installPlanBoundariesContract(projectDir);
 
     // Refresh the merge-analysis protocol (read by explore and plan when asked to merge a branch)

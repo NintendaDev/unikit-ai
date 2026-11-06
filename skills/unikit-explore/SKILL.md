@@ -25,9 +25,6 @@ allowed-tools:
   - Bash(wc *)
   - Bash(mkdir *)
   - Bash(date *)
-  - Bash(shasum *)
-  - Bash(sha256sum *)
-  - Bash(awk *)
   - Bash(git merge-base *)
   - Bash(git log *)
   - Bash(git diff *)
@@ -110,7 +107,9 @@ the alias and never carry a type or a model argument of their own.
 
 ## Research navigation
 
-At first code research index use or requested historical context, read `.unikit/system/research-link.md` → `## Reading an index` and follow it. Read selected manifests only. History never restores a research or proposes work automatically; continuation and slug collision checks still inspect folders.
+**Research index.** The `INDEX.md` of a research root is a generated table (an older project has `### title` cards) and only navigates: take `<slug>` only from a link to a direct child of that root and read `<slug>/RESEARCH.md` before acting on a row. No readable index → print `INFO [research-index] <root>: no readable index — searching the folders`, search that root's `*/RESEARCH.md` for the title and header fields, and write nothing.
+
+The roots are `.unikit/code/researches/` and, for requested historical context only, `.unikit/code/archive/researches/`. Read selected manifests only. History never restores a research or proposes work automatically; continuation and slug collision checks still inspect folders.
 
 ## Artifact Ownership
 
@@ -399,7 +398,7 @@ Supersedes: <slug>                                   (optional)
 
 ## Active Summary
 <!-- unikit:active-summary:start -->
-Topic: <1-2 sentences: what was explored>
+Topic: <one sentence, up to 250 characters: what was explored; the research index shows this line>
 Experiment: <EXP-<nnn> v<Version> — <card title>; one line per card, only when the exploration was grounded on a card — otherwise omit the line>
 Goal: <what this research is for — the decision it has to enable>
 Scope: <in / out — the out-half carries the stop condition>
@@ -819,7 +818,7 @@ silence: no block, no line.
 
 ### Step 4: Re-render the Researches Index
 
-`.unikit/code/researches/INDEX.md` is a **generated** registry: it is not edited and not appended to — on every save it is re-rendered whole from the folders on disk. Read `{{skills_dir}}/{{self_name}}/references/index-render.md` and follow it with scope active, including its writer-only cache. If it cannot be read, print `WARN [research] index-render reference missing — researches/INDEX.md was not re-rendered; run unikit-ai update` and go on to the gate.
+`.unikit/code/researches/INDEX.md` is a **generated** registry: it is not edited and not appended to — on every save it is re-rendered whole from the folders on disk. Read `{{skills_dir}}/{{self_name}}/references/index-render.md` and follow it with scope active. If it cannot be read, print `WARN [research] index-render reference missing — researches/INDEX.md was not re-rendered; run unikit-ai update` and go on to the gate.
 
 <!-- Why reconciliation stopped being a separate command: docs/skills/unikit-explore-save-rationale.md in the UniKit repository. -->
 
@@ -847,14 +846,7 @@ If `references/coherence-gate.md` does not exist, or the pass reports that it ca
 print one line `WARN [coherence] reference missing — saving without the coherence pass` and
 continue.
 
-### Final index synchronization
-
-After all gate outcomes that save (pass, repairs, or an authorized save with OQ),
-and before Step 5, follow `index-render.md` → `## Save closure` in this session.
-Compare final summary inputs to those used at Step 4; changed inputs require the
-active whole-render with refreshed summaries/cache. Sessions-only changes do not.
-No additional coherence pass. If the writer is unavailable, keep its announced
-warning and explicitly say the index remains unsynchronized.
+A repair that changed a header field or the `Topic:` line → re-render the index once more by Step 4 before Step 5, with no further coherence pass; if that fails, say the index stays out of sync.
 
 ### Step 5: Confirm the save
 
