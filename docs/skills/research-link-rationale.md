@@ -153,9 +153,10 @@ A shell one-liner with a date as a fallback still needs the utilities and still 
 blob header, while the field is named `Summary SHA256`, and it would make drift detection depend on
 git in a tool that explicitly supports `git.enabled: false`.
 
-`tree-sha256` is a separate matter and still uses `shasum`. It is a digest of git's own output, not
-of a file, and it shares only the algorithm with this field. Without Git Bash a plan with
-`Testing: yes` can therefore still keep `/unikit-verify` at `warn` for that reason.
+`tree-sha256` is a separate matter. It is a digest of the project's content, not of a region of one
+file, and it shares only the algorithm with this field. It has a script of its own,
+`data/tree-hash.mjs`, so a missing Git Bash no longer keeps `/unikit-verify` at `warn`. A missing git
+still does, because that field then reads `unavailable`.
 
 Every normalization rule exists because its absence produces a **false** drift report on content
 nobody changed:
@@ -260,7 +261,7 @@ a period nobody actually examined.
 |-------|-------|
 | `test-research-hash.mjs` | The normalization by behaviour: LF, CRLF and BOM spellings of one region give one digest, a trailing tab and a leading blank line stay, the exit codes 2 and 3, a real research and a Cyrillic path; every expected digest comes from an independent pipeline; the markers of the script equal the constants of the installer |
 | `RD-A` | The recorded field name, the script, the file and the region marker are present in the contract; the two retired fields (`**Attached**`, `Brief SHA256`) survive only where a branch has to name them, in the contract and all four skills alike |
-| `RD-B` | The script's grant in both shells is present in all four skills; `shasum`/`sha256sum` stay only in `/unikit-plan`, `/unikit-implement` and `/unikit-verify`, where another command needs them |
+| `RD-B` | The script's grant in both shells is present in all four skills, and none of them keeps `shasum` or `sha256sum`: every hash they take goes through a script |
 | `RD-C` | One canonical `WARN [research-drift]` label in the contract's reader ladder, never in its writer section; `/unikit-implement` and `/unikit-verify` each project the drift result into their own second surface (the completion summary / the `unikit-gate-result` block) and never read the research brief as a substitute for the plan; a skipped check is `INFO [research-hash]` and `/unikit-verify` reports it |
 | `RD-D` | A hashless entry's re-link proposal is reachable end to end: raised as a finding in Step 1.5, surfaced in the Step 4 report, selectable, and the Step 5.5 write is gated on that approval — not merely present somewhere in the file |
 | `RD-E` | The hashed object is a region (not a whole file) in the contract; its markers in the contract and in the script equal the constants of the installer; the retired-field branch lives only in `## Checking an entry`, never in `## Writing an entry` or in `/unikit-plan`, which never reads an existing entry |

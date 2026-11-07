@@ -267,6 +267,34 @@ fi
 echo "  ✓ the installed research-hash.mjs prints the expected digest of a real research"
 
 # ─────────────────────────────────────────────────────
+# Test 1b-th: tree-hash.mjs installed as a system asset and runnable where it lands.
+# A flat .mjs with no package.json next to it; running the installed copy in a real repository is what
+# proves it, so the digest is asserted, not just the file. Expected digest: scripts/test-tree-hash.mjs.
+# ─────────────────────────────────────────────────────
+TREE_HASH_PATH="$CLAUDE_DIR/.unikit/system/tree-hash.mjs"
+assert_exists "$TREE_HASH_PATH" "tree-hash.mjs created in .unikit/system/"
+assert_not_contains "$TREE_HASH_PATH" '\{\{' \
+  "tree-hash.mjs is a flat copy — no unresolved {{vars}}"
+TREE_HASH_REPO="$TMPDIR/tree-hash-repo"
+mkdir -p "$TREE_HASH_REPO"
+printf 'a\n' > "$TREE_HASH_REPO/a.cs"
+# No system or user configuration and no GIT_DEFAULT_HASH: another object format would be another digest.
+TREE_HASH_GITCONFIG="$TMPDIR/tree-hash-gitconfig"
+: > "$TREE_HASH_GITCONFIG"
+TREE_HASH_GIT=(env -u GIT_DEFAULT_HASH GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL="$TREE_HASH_GITCONFIG" git -C "$TREE_HASH_REPO")
+"${TREE_HASH_GIT[@]}" init -q .
+"${TREE_HASH_GIT[@]}" config core.autocrlf false
+"${TREE_HASH_GIT[@]}" add -A
+"${TREE_HASH_GIT[@]}" -c user.email=test@example.invalid -c user.name=test commit -qm init
+# `|| true`: a failing script must reach the message below, not abort the suite under set -e.
+TREE_HASH_DIGEST="$(cd "$TREE_HASH_REPO" && env -u GIT_DEFAULT_HASH GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL="$TREE_HASH_GITCONFIG" node "$TREE_HASH_PATH" || true)"
+if [[ "$TREE_HASH_DIGEST" != "8a9e8c1d0f074c629503f74ae7dfefcbb0a733fbbe08e5e259aabd523d402939" ]]; then
+  echo "Assertion failed: the installed tree-hash.mjs printed '$TREE_HASH_DIGEST' for a one-file repository"
+  exit 1
+fi
+echo "  ✓ the installed tree-hash.mjs prints the expected digest of a real repository"
+
+# ─────────────────────────────────────────────────────
 # Test 1b-pb: plan-boundaries.md installed as a system asset (flat copy, no vars)
 # Read by verify/implement/commit/pr to compute the same plan start, module boundary and
 # push target. Update-path coverage like 1b-rl above; the init.ts call site is SA-1's job.
@@ -896,7 +924,7 @@ fi
 # skills/, subagents/ and mcp/universal/ catalog, never a synthetic copy. Each installed skill
 # is the object of one claim: unikit (references, variable substitution), unikit-plan (a
 # reference that names /unikit-implement), unikit-implement (general-purpose → coder,
-# {{settings_file}}), unikit-fix, unikit-verify (the tree-hash tail), unikit-gd-explore (a
+# {{settings_file}}), unikit-fix, unikit-verify (the tree-hash command), unikit-gd-explore (a
 # REFERENCE that spells the subagent type), unikit-gd-review (a !claude block), unikit-gd-brainstorm.
 # The five subagents are the two coordinators (rewritten), the polisher and the worker (their
 # `skills:` field becomes a read list) and a sidecar (untouched).
@@ -1075,8 +1103,8 @@ if [[ "$KIMI_DOLLAR_HITS" -ne 0 ]]; then
   grep -rEn '\$[0-9]' "$KIMI_SKILLS" --include='SKILL.md' | cut -c1-160 | head -5
   exit 1
 fi
-assert_contains "$KIMI_SKILLS/unikit-verify/SKILL.md" "shasum -a 256 \| cut -d' ' -f1" \
-  "kimi: the tree-hash command ends in cut, not awk '{print \$1}'"
+assert_contains "$KIMI_SKILLS/unikit-verify/SKILL.md" 'node \.unikit/system/tree-hash\.mjs' \
+  "kimi: verify runs the tree-hash script"
 
 # Coordinators (REQ-008, DEC-015, DEC-016): Agent(...) → Agent + subagents:, ${base_prompt}, kimi --agent
 KIMI_COORD="$KIMI_AGENTS/unikit-implement-coordinator.md"

@@ -18,10 +18,10 @@ allowed-tools:
   - Bash(find *)
   - Bash(wc *)
   - Bash(date *)
-  - Bash(shasum *)
-  - Bash(sha256sum *)
   - Bash(node .unikit/system/research-hash.mjs *)
   - PowerShell(node .unikit/system/research-hash.mjs *)
+  - Bash(node .unikit/system/tree-hash.mjs *)
+  - PowerShell(node .unikit/system/tree-hash.mjs *)
   - Agent
   - AskUserQuestion
   - Skill
@@ -381,10 +381,10 @@ Check that the project compiles after implementation — gate **compilation** of
 3. **An anchor is there** → compute the current tree hash **by the one tree-hash command** below; nothing is read for it:
 
    ```
-   { git rev-parse HEAD; { git diff HEAD --name-only --no-renames --ignore-submodules -- . ':(exclude).unikit' ':(exclude,icase)*.md'; git ls-files --others --exclude-standard --full-name -- . ':(exclude).unikit' ':(exclude,icase)*.md'; } | sort; { git diff HEAD --name-only --no-renames --ignore-submodules --diff-filter=d -- . ':(exclude).unikit' ':(exclude,icase)*.md'; git ls-files --others --exclude-standard --full-name -- . ':(exclude).unikit' ':(exclude,icase)*.md'; } | grep -v '/$' | sort | git hash-object --stdin-paths; } | shasum -a 256 | cut -d' ' -f1
+   node .unikit/system/tree-hash.mjs
    ```
 
-   No `shasum` → `sha256sum`. You read no project file for it — git hashes only the changed ones, so the size of the project does not affect the cost; `.unikit/`, where the plan records its progress, and Markdown files (`*.md`), which the plan's documentation step writes after the final run, are left out, and staging a file never moves the hash. **Any `fatal:` line the command prints → git did not answer** (item 6): a path git could not hash drops every path after it, and such a hash proves nothing.
+   It prints a digest of the project's content, one git blob id per file, and needs no Git Bash and no Unix utility. You read no project file for it — git hashes only the changed ones. A commit that moves no file never moves it; `.unikit/`, where the plan records its progress, and Markdown files (`*.md`), which the plan's documentation step writes after the final run, are left out, and staging a file never moves the hash. **A non-zero exit, or no `node` → git did not answer** (item 6): the command prints no digest.
 4. **The hash matches, and the anchor's count is above zero** → one line into the report, quoting the run:
 
    ```
@@ -392,8 +392,8 @@ Check that the project compiles after implementation — gate **compilation** of
    ```
 
    This is **not** a lifted gate and **not** a skip: the gate is closed, and closed by the very class of evidence `verification.md` names for it — the evidence was produced earlier, and by another skill. The report must name whose run it was, or verify claims someone else's result as its own. The hash matches but the count is zero → `⚠️ Test run: the full run of <date> ran 0 tests — not evidence`.
-5. **The hash does not match** → `⚠️ Test run: stale — the tree changed since the full run of <date>`. The executor carries the anchor over every commit it makes; a commit made by hand outside `/unikit-implement` does not, and reads as a change too.
-6. **Git is unavailable, or either command does not answer** → `WARN [testing] git unavailable — the Full run: anchor was not checked`. Unavailable git never means "the evidence holds": an unknown tree state is reported, not assumed.
+5. **The hash does not match** → `⚠️ Test run: stale — the tree changed since the full run of <date>`. A commit alone does not move the hash, so a stale anchor means a file changed since the run. An anchor recorded before this hash existed also reads as stale, until the next run of every test rewrites it.
+6. **The command does not answer** (no git, no `node`, the script is missing) → `WARN [testing] the tree-hash command did not answer — the Full run: anchor was not checked`. A command that did not answer never means "the evidence holds": an unknown tree state is reported, not assumed.
 
 A broken anchor — no `tree-sha256`, an unreadable date — is reported as `WARN [testing] the Full run: line could not be parsed`. Acting on a half-parsed anchor is forbidden: half a mark is worse than none.
 
@@ -683,7 +683,7 @@ After the human-readable report (Step 4.1) and overall status (Step 4.2) — and
 - **Research drift.** Every `WARN [research-drift]` line from Step 0.2 raises `status` to at least `warn` and is named in the human summary. It is **never** a blocker and never enters `blockers`: source drift makes the work debatable, not wrong, and the call is the user's.
 - **A reused run.** A test gate closed by someone else's full run (Step 2.2, the `reused` branch) is a `Gate closed`: it does **not** affect `status`, and it never enters `blockers`. The human summary must name it in one line — `Test run: reused — …` — because "the gate was closed by evidence obtained earlier" and "the gate was not checked" are different statements, and in JSON they look identical.
 - **Test evidence findings.** A Step 2.2 ⚠️ — no full run recorded, a stale or unhashed anchor, a zero count — raises `status` to at least `warn` and is named in the human summary. It enters `blockers` only in strict mode, as `verify-tests` with `file` set to the plan manifest, when the Step 2.2 question did not end in a green run — declined, unanswered, or red. A run that could not happen because no engine bridge is available, or whose gate was lifted, stays a warning (Step 2.2), as the compilation gate does. Under a phase scope Step 2.2 produces none of these findings.
-- **`WARN [testing]`** of any origin — git unavailable, an anchor line that would not parse, an inadmissible `checkpoints` value — raises `status` to at least `warn` and is named in the summary. It is never a blocker — except a Step 2.2 one in strict mode that the Step 2.2 question did not end in a green run, which is `verify-tests` like the ⚠️ above, with the same exception: not knowing the state of the tree makes the work debatable rather than wrong, which is the same logic research drift follows.
+- **`WARN [testing]`** of any origin — a tree-hash command that did not answer, an anchor line that would not parse, an inadmissible `checkpoints` value — raises `status` to at least `warn` and is named in the summary. It is never a blocker — except a Step 2.2 one in strict mode that the Step 2.2 question did not end in a green run, which is `verify-tests` like the ⚠️ above, with the same exception: not knowing the state of the tree makes the work debatable rather than wrong, which is the same logic research drift follows.
 - `"suggested_next.command"`: from the allowlist in `gate-result-contract.md` — `/unikit-fix` (task gaps, anti-patterns, failing checks), `/unikit-rules` (rules-gate violation needing a writer update), `/unikit-architecture` (architecture drift), `/unikit-roadmap` (roadmap drift), `/unikit-commit` (clean — natural next step), or `null`.
 
 **Ultra bundle — verification commands outside the grant.** Commands under a task's `### Verification` are executed within the grant this skill already holds. Anything outside it is printed with the `⏸️ MANUAL` status in the report **and** must reach this block, or it is lost in silence: an unrun verification command is an accepted skip, so `status` is at least `warn` and the human summary names the command and the task. It is not a blocker and it never enters `blockers`. **`allowed-tools` is not widened for this** — the `⏸️ MANUAL` idiom already exists for editor targets.

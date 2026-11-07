@@ -84,7 +84,7 @@ Rules: <path> · <path> · …
 - P<n> · <exact names this phase created> · TEMP <what a later phase must undo> — undo in P<m>
 
 ## Recon
-- guard: <status hash> · <diff hash>
+- guard: <hash>
 - recon/<topic>.md · pending
 - recon/<topic>.md → P<a>, P<b>
 
@@ -159,13 +159,13 @@ A line whose file is missing was never saved: ask that one question again, write
 never go on from a summary alone.
 
 **Change guard.** `recon-writer-agent` runs an agent that could edit files, and only its prompt
-bounds it. Before the first agent starts, write `guard: <status hash> · <diff hash>` into
-`## Recon`: `git status --porcelain --untracked-files=all | shasum -a 256` and
-`git diff | shasum -a 256` (`sha256sum` where `shasum` is missing). `.planning/` is ignored by git,
-so once no line is `pending` both hashes come out the same again. A different one → print
+bounds it. Before the first agent starts, write `guard: <hash>` into `## Recon`: the output of
+`node .unikit/system/tree-hash.mjs --all`, a digest of every file of the project git does not ignore,
+Markdown and `.unikit/` included. `.planning/` is ignored by git, so once no line is `pending` the hash comes out
+the same again. A different one → print
 `WARN [plan] files changed outside .planning/ while recon agents ran` with the paths
 `git status --porcelain` shows, and ask whether to continue or stop; never revert anything yourself.
-Outside a git work tree there is no guard.
+Outside a git work tree, or when the command exits non-zero, there is no guard.
 
 ## Phase cycle
 

@@ -192,3 +192,6 @@ export const TEST_RUN_WIDTH_FILE = 'test-run-width.md';
 
 /** The script that computes `Summary SHA256` from a manifest; rationale on `installResearchHashScript`. */
 export const RESEARCH_HASH_FILE = 'research-hash.mjs';
+
+/** The script that computes `tree-sha256` and the recon change guard; rationale on `installTreeHashScript`. */
+export const TREE_HASH_FILE = 'tree-hash.mjs';

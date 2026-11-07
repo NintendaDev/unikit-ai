@@ -74,6 +74,7 @@
     ],
     "ignore": [
       "data/research-hash.mjs",
+      "data/tree-hash.mjs",
       "examples/**",
       "scripts/generate-cli-contract.ts",
       "scripts/genres-validate.mjs",
@@ -93,6 +94,7 @@
       "scripts/test-reference-paths.mjs",
       "scripts/test-research-hash.mjs",
       "scripts/test-system-vars.mjs",
+      "scripts/test-tree-hash.mjs",
       "scripts/test-ultra-plan-contract.mjs",
       "scripts/validate-agent-markers.mjs",
       "skills/unikit-rules/scripts/rules-layout.mjs",

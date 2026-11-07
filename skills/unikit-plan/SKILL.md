@@ -24,12 +24,12 @@ allowed-tools:
   - Bash(find *)
   - Bash(wc *)
   - Bash(git *)
-  - Bash(shasum *)
-  - Bash(sha256sum *)
   - Bash(date *)
   - Bash(node *)
   - Bash(node .unikit/system/research-hash.mjs *)
   - PowerShell(node .unikit/system/research-hash.mjs *)
+  - Bash(node .unikit/system/tree-hash.mjs *)
+  - PowerShell(node .unikit/system/tree-hash.mjs *)
   - Agent
   - Skill
   - AskUserQuestion

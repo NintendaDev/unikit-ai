@@ -97,6 +97,18 @@ explore save pipeline, on the same criterion — see
   minutes, landing in the middle of another phase's mutation. Any phase sharing a layer with
   editor work is the hazard, whatever that phase is doing.
 
+## Stateful ultra — the change guard
+
+- **The guard is one digest from the tree-hash script.** It used to hash `git status` and `git diff`
+  through `shasum`, which a project without Unix utilities cannot run. `tree-hash.mjs --all` needs
+  only Node and git, and it sees Markdown and `.unikit/`, which the record of a test run leaves out:
+  a recon agent that edits a document has still edited a file.
+- **What it gave up.** A `git add` with no edit no longer trips it: it is not a change to a file. A
+  project in a subdirectory of its repository no longer sees an edit next to it, because the script
+  counts the project's own files only. Both were accepted on 2026-11-06. A `guard:` line with two
+  hashes in a planning run that started before the change gives one false warning, and nothing handles
+  that case on purpose.
+
 ## Important Rules
 
 - **A plan is intent, not inventory — no tool name ever reaches it.** A name in a plan is a name

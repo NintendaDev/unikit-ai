@@ -81,17 +81,46 @@ explore save pipeline, on the same criterion — see
   When the last phase and `Test checkpoint: plan` land on the same tree, the second run would
   repeat the first. The final run stays mandatory — it is closed by a run of every test over that
   very tree.
-- **The executor carries the anchor over its own commits.** A commit moves no file, but it moves
-  `HEAD`, and without the carry every committed plan would read as stale to `/unikit-verify`.
-  The executor carries it rather than `/unikit-commit`, which writes nothing into a plan. The
-  tree hash includes a blob id per changed file and leaves `.unikit/` out: a second edit of an
-  already modified file must move it, and the plan's own progress must not. It ignores the index
-  as well: the executor stages a commit's files before the call, and a hash that saw staging would
-  never match the anchor at that moment. A `fatal:` from git means some path went unhashed, so it
-  counts as git unavailable rather than as a hash. Markdown files are left out as well: the
-  documentation step (Step 5.3) and the `AGENTS.md` refresh write them after the final run, and
-  counting them made nearly every `Docs: yes` plan read as stale, while in a game project no test
-  runs a `.md`.
+- **The tree hash is a script, not a command in the skill text.** It was a shell pipeline written
+  into two skills, and it failed where no reader could see it. In PowerShell the `{ … }` of a Bash
+  pipeline is a script block whose text reaches the next program, so with the `sha256sum` fallback
+  the digest stayed the same whatever the tree held. Measured by hand on PowerShell 5.1 (2026-11-06)
+  over three trees, a real repository and a directory outside any repository; no live agent run
+  showed it. Such a digest reads as "tree unchanged" and closes the final run with no run at all.
+  Git Bash `sort` also made the digest depend on the locale, and a file git could not hash printed
+  `fatal:` and a digest with exit 0. `data/tree-hash.mjs` calls git with no shell and exits non-zero
+  on any failure, so it needs neither Git Bash nor a rule about what to look for in the output.
+- **A commit is not part of the hash.** A commit moves no file, but it moved `HEAD`, so the executor
+  had to carry the anchor over every commit it made and a commit made by hand read as stale. One
+  line per file, `<blob id> <path>`, makes the carry unnecessary, and a commit and its revert come
+  back to the same digest. The price of the change: a record written before it reads as stale until
+  the next run of every test rewrites it, so a plan in progress runs the suite one extra time at its
+  final checkpoint and a finished plan keeps the warning unless `--strict` runs the suite.
+- **What the hash leaves out.** `.unikit/`: the plan's own progress must not move it, while a second
+  edit of an already modified file must. Staging: a hash that saw the index would move on `git add`
+  and match nothing. Markdown files: the documentation step (Step 5.3) and the `AGENTS.md` refresh
+  write them after the final run, and counting them made nearly every `Docs: yes` plan read as
+  stale, while in a game project no test runs a `.md`. One pathspec states these exclusions for all
+  three lists, which is why the files of `HEAD` come from a diff against the empty tree: `ls-tree`
+  does not understand exclusions, and a second copy of the rule in the script could drift.
+- **What the hash does not see, on purpose.** A change of a file's mode alone: counting it would
+  need the mode of untracked files from the file system and `core.filemode`, a second source of
+  truth for a change no test run in a game project depends on. A project without git: the field
+  stays `unavailable`. A walk over the files would need ignore rules of its own, and a directory the
+  engine rewrites during a run, which a partial rule set would miss, reads as stale every time.
+- **The scope is the project, and this is a known limit.** A project in a subdirectory of its
+  repository counts its own files only, so a change next to it, committed or not, moves nothing even
+  when its tests depend on that file: a local package at `../shared`, for one. The final run is then
+  closed by reuse over code that changed. The old formula caught the committed half by accident,
+  through `HEAD`. Hashing the whole repository would close the hole for about the same time (measured
+  0.5 s over 40 000 files), at the price of a `stale` warning for every edit of a neighbouring project
+  in a monorepo. The user chose the narrow scope on 2026-11-06; reconsider it if real projects keep
+  dependencies outside their directory. `scripts/test-tree-hash.mjs` pins the behaviour, so widening
+  it is a decision and not an accident.
+- **What the user's git settings cannot change.** The script states `core.quotepath`, `diff.relative`
+  and `diff.ignoreSubmodules` itself. Measured: `diff.ignoreSubmodules=all` hid a committed submodule
+  bump, a false "tree unchanged", and `diff.relative=true` made every changed file of a project in a
+  subdirectory unreadable for `hash-object`.
 - **A phase writes its tests before its run.** Written after the run, a phase's tests reached no
   run of that phase, and the last phase's tests reached none at all.
 - **Module manifests are searched, never read.** Reading the whole module graph costs thousands
