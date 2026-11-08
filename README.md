@@ -90,8 +90,11 @@ Select one or more during `unikit-ai init`. See [Agents](docs/agents.md) for age
 
 ```bash
 npm install -g unikit-ai    # install
-unikit-ai update            # later: reinstall only what changed
+unikit-ai self-update       # later: update the CLI itself from npm
+unikit-ai update            # bring the project up to the installed CLI
 ```
+
+`unikit-ai self-update` upgrades UniKit AI itself - the CLI on your machine - to the latest version on npm. `unikit-ai update` then brings the current project up to the version installed on this machine, reinstalling only what changed.
 
 ```bash
 unikit-ai init              # in your game project directory
@@ -226,6 +229,26 @@ write plans? Where should I start?
 Run without a question, it starts a short diagnostic of where you are.
 
 See the full [Development Workflow](docs/workflow.md) with diagram and decision table.
+
+### Ultra Research and Ultra Plans
+
+For complex, many-sided work there is an ultra mode. You turn it on by asking for it - the word `ultra`, or "ultra research" / "ultra plan" in your own words; the agent never picks it on its own because a task looks big.
+
+- **Ultra research** goes deeper than an ordinary research: it keeps a log of the whole dialogue as you talk and saves extra artifacts next to the research - a C4 view of the architecture, decision records (ADRs), a dependency graph.
+- **Ultra plan** writes a separate plan for every phase: the main plan keeps the checklist, and each phase gets its own file - a mini-plan with exact files, ordered edits, interfaces, acceptance criteria and checks. It suits complex, multi-system features, and a plan written by a strong model can be carried out later by a smaller one.
+
+Run an ultra research, then build an ultra plan from it:
+
+```
+/unikit-explore ultra Design the save system: local saves, cloud sync
+and migration of old save files between game versions
+```
+
+```
+/unikit-plan ultra Use the latest research on the save system
+```
+
+`/unikit-implement` runs an ultra plan the same way as any other, all at once or phase by phase. See [Ultra bundle](docs/plan-files.md#ultra-bundle--a-manifest-plus-one-file-per-phase).
 
 ### Engine Bridge Routing
 
