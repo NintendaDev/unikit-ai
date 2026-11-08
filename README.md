@@ -101,33 +101,41 @@ The wizard asks which AI agent you use and which game engine, configures the MCP
 
 **[Context7](https://github.com/upstash/context7)** is also recommended - the agent uses it for generating framework rules and deep research of libraries and APIs.
 
-Then open your AI agent and start working:
+Then open your AI agent and start working. Give `/unikit` a couple of sentences about your game - what it is and how it plays:
 
 ```
-/unikit
+/unikit A 2D top-down roguelike shooter for PC. The player clears procedurally generated dungeon floors, collects weapons and upgrades between runs, and fights a boss at the end of each floor.
 ```
 
-`/unikit` scans your game project, detects the full tech stack, asks targeted questions to fill in gaps, generates project description and architecture files, then bootstraps starter rules for every framework in your stack so the agent is ready to write idiomatic code from the first prompt.
+Run without a description, `/unikit` asks for one. It then scans your game project, detects the full tech stack, asks targeted questions to fill in gaps, generates project description and architecture files, then bootstraps starter rules for every framework in your stack so the agent is ready to write idiomatic code from the first prompt.
 
 ### Example Workflow
 
-Say you want to add an item rarity system with visual effects.
+Say you need a character controller and want to settle its architecture before a line of code is written.
 
 **1. Explore** - research the idea, analyze the codebase, find integration points:
 
 ```
-/unikit-explore Add item rarity system with rarity tiers and drop logic
+/unikit-explore We need a character controller. The character must run, jump, climb ladders and shoot weapons. Figure out which architecture to use for the controller and which technologies fit it.
 ```
 
 The agent produces a research document with diagrams, option comparisons, and architectural recommendations. Save it or feed it directly into the next step.
 
-**2. Plan** - turn research into concrete tasks:
+**2. Plan** - turn research into concrete tasks. Point the planner at the research:
 
 ```
-/unikit-plan
+/unikit-plan Use the latest research on the character controller
 ```
 
-The plan carries both code tasks and, where the feature needs them, editor tasks - the rarity badge on the item widget, the tint material, the VFX prefab.
+Run without arguments, `/unikit-plan` offers the most recent research itself. You can also plan straight from a task description, with no research behind it:
+
+```
+/unikit-plan Create an AI module for enemies based on a Behavior Tree and a State Machine
+```
+
+A plan built on a research usually comes out better: the research has already compared the architectural options and found where the feature meets the existing code, so the plan settles those questions instead of guessing them. Plan directly when the task is small or the approach is already clear.
+
+The plan carries both code tasks and, where the feature needs them, editor tasks - the player prefab and its collider, the animation states, the ladder trigger zones.
 
 **3. Improve** - refine the plan (run 2-3 times for complex features):
 
@@ -135,10 +143,30 @@ The plan carries both code tasks and, where the feature needs them, editor tasks
 /unikit-improve
 ```
 
-**4. Implement** - execute tasks phase by phase, code and editor alike, test in-game after each one:
+**4. Implement** - execute the plan, code and editor tasks alike. Without arguments it runs every pending task of the plan:
 
 ```
 /unikit-implement
+```
+
+Or go phase by phase and test in-game between the runs:
+
+```
+/unikit-implement Phases 1-3
+```
+
+`Phase 4` runs a single phase and `Tasks 2.1 2.3` runs individual tasks; the next run without arguments picks up what is still pending.
+
+**No plan needed for small tasks** - `/unikit-execute` lets you vibe-code the classic way: describe the task, and the skill loads the whole harness - the project rules, the engine bridges - and makes the change, code and editor work alike, then checks that it compiles. Recommended for small tasks; a multi-step feature still deserves a plan:
+
+```
+/unikit-execute Let's rework the layout of the energy purchase window to the new spec
+```
+
+**Fix bugs** - `/unikit-fix` takes a bug description or an error message, finds the cause and fixes it, and records a patch that later feeds the [self-learning](#self-learning) loop:
+
+```
+/unikit-fix Levels in the game take a long time to load. Find the problem and the error.
 ```
 
 **5. Review & Verify** - check code against project rules, verify completeness:
@@ -163,7 +191,29 @@ The plan carries both code tasks and, where the feature needs them, editor tasks
 /unikit-pr
 ```
 
+**Lost?** Ask the navigator. `/unikit-help` takes a question in plain words and points you to the skill or pipeline that fits:
+
+```
+/unikit-help How do I work with the framework properly and how do I write plans? Where should I start?
+```
+
+Run without a question, it starts a short diagnostic of where you are.
+
 See the full [Development Workflow](docs/workflow.md) with diagram and decision table.
+
+### Engine Bridge Routing
+
+With several engine bridges selected, the agent tries them in the order of `.unikit/bridges.yaml`. Routing narrows that for one kind of work: describe the rule in your own words, and `/unikit-bridge-route` writes it as a row of `.unikit/bridge-routing.md` - `only` these bridges, these `first`, or `never` these:
+
+```
+/unikit-bridge-route run the tests only through unity-cli
+```
+
+```
+/unikit-bridge-route never use coplay-unity-mcp for UI work
+```
+
+A rule decides only the steps of its own area; everything else keeps the order, and an instruction in your request still beats a rule. See [Bridge order, routing and the rule of a bridge](docs/configuration.md#bridge-order-routing-and-the-rule-of-a-bridge).
 
 ---
 
