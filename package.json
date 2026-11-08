@@ -1,6 +1,6 @@
 {
   "name": "unikit-ai",
-  "version": "3.0.1",
+  "version": "3.0.2",
   "type": "module",
   "description": "CLI tool for installing AI agent skills and knowledge base rules for game development projects",
   "main": "dist/cli/index.js",
