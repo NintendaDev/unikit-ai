@@ -2204,6 +2204,44 @@ fi
 echo "  ✓ research-link.md: update installs + refreshes from data/ (update.ts wiring)"
 
 # ─────────────────────────────────────────────
+# Test 30l2: research-hash.mjs is delivered on update — the update.ts wiring of
+# installResearchHashScript. Same shape as 30l. The init.ts call site is SA-1's job.
+# ─────────────────────────────────────────────
+RESEARCH_HASH="$DEVPRIN_DIR/.unikit/system/research-hash.mjs"
+assert_exists "$RESEARCH_HASH" "research-hash.mjs must be installed on update (system asset, update.ts wiring)"
+
+echo "// RH_TAMPERED_BY_TEST" >> "$RESEARCH_HASH"
+
+DEVPRIN_OUT_RH="$TMPDIR/update-research-hash.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$DEVPRIN_OUT_RH" 2>&1)
+
+if grep -q "RH_TAMPERED_BY_TEST" "$RESEARCH_HASH"; then
+    echo "Assertion failed: update did NOT refresh research-hash.mjs from data/ (tamper marker still present)"
+    exit 1
+fi
+
+echo "  ✓ research-hash.mjs: update installs + refreshes from data/ (update.ts wiring)"
+
+# ─────────────────────────────────────────────
+# Test 30l3: tree-hash.mjs is delivered on update — the update.ts wiring of
+# installTreeHashScript. Same shape as 30l2. The init.ts call site is SA-1's job.
+# ─────────────────────────────────────────────
+TREE_HASH="$DEVPRIN_DIR/.unikit/system/tree-hash.mjs"
+assert_exists "$TREE_HASH" "tree-hash.mjs must be installed on update (system asset, update.ts wiring)"
+
+echo "// TH_TAMPERED_BY_TEST" >> "$TREE_HASH"
+
+DEVPRIN_OUT_TH="$TMPDIR/update-tree-hash.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$DEVPRIN_OUT_TH" 2>&1)
+
+if grep -q "TH_TAMPERED_BY_TEST" "$TREE_HASH"; then
+    echo "Assertion failed: update did NOT refresh tree-hash.mjs from data/ (tamper marker still present)"
+    exit 1
+fi
+
+echo "  ✓ tree-hash.mjs: update installs + refreshes from data/ (update.ts wiring)"
+
+# ─────────────────────────────────────────────
 # Test 30m: plan-boundaries.md is delivered on update — the ONLY mechanical guard for the
 # update.ts wiring of installPlanBoundariesContract. Same shape as 30l: DEVPRIN_DIR ran
 # `update` with no prior `init`, so the file existing proves update.ts calls the installer;
@@ -2284,6 +2322,19 @@ if ! grep -q "^## Branch and base$" "$PROTOTYPE_PROFILE"; then
 fi
 
 echo "  ✓ prototype-profile.md: update installs + refreshes from data/ (update.ts wiring)"
+
+# Test 30tw: test-run-width.md is delivered on update — same shape as 30s: DEVPRIN_DIR ran `update` with no
+# prior `init`, so the file existing proves update.ts calls the installer; tamper-refresh confirms the flat rewrite.
+TRW_FILE="$DEVPRIN_DIR/.unikit/system/test-run-width.md"
+assert_exists "$TRW_FILE" "test-run-width.md must be installed on update (system asset, update.ts wiring)"
+echo "tampered" > "$TRW_FILE"
+TRW_OUT="$TMPDIR/update-test-run-width.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$TRW_OUT" 2>&1)
+if ! grep -q '^## Run width$' "$TRW_FILE"; then
+    echo "Assertion failed: update did NOT refresh test-run-width.md from data/ (## Run width missing)"
+    exit 1
+fi
+echo "  ✓ test-run-width.md: update installs + refreshes from data/ (update.ts wiring)"
 
 # ─────────────────────────────────────────────
 # Test 30s: subagent-arguments.md is delivered on update — same shape as 30p: DEVPRIN_DIR ran

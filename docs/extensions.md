@@ -803,6 +803,8 @@ The same variables are available in the text of an injection and in the `.md` re
 | `{{gate_result_contract}}` | `.unikit/system/gate-result-contract.md` | always |
 | `{{ultra_plan_read_contract}}` | `.unikit/system/ultra-plan-read.md` | always |
 | `{{research_link_contract}}` | `.unikit/system/research-link.md` | always |
+| `{{research_hash_script}}` | `.unikit/system/research-hash.mjs` | always |
+| `{{tree_hash_script}}` | `.unikit/system/tree-hash.mjs` | always |
 | `{{plan_boundaries_contract}}` | `.unikit/system/plan-boundaries.md` | always |
 | `{{merge_analysis_contract}}` | `.unikit/system/merge-analysis.md` | always |
 | `{{balance_handback_contract}}` | `.unikit/system/balance-handback.md` | always |
@@ -810,6 +812,7 @@ The same variables are available in the text of an injection and in the `.md` re
 | `{{subagent_arguments_contract}}` | `.unikit/system/subagent-arguments.md` | always |
 | `{{subagent_roles_contract}}` | `.unikit/system/subagent-roles.md` | always |
 | `{{user_questions_contract}}` | `.unikit/system/user-questions.md` | always |
+| `{{test_run_width_contract}}` | `.unikit/system/test-run-width.md` | always |
 | `{{gd_principles}}` | `.unikit/system/gamedesign/gd-principles.md` | always |
 | `{{gd_authoring}}` | `.unikit/system/gamedesign/gd-authoring.md` | always |
 | `{{gd_lifecycle}}` | `.unikit/system/gamedesign/gd-lifecycle.md` | always |

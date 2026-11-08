@@ -105,6 +105,12 @@ the alias and never carry a type or a model argument of their own.
   and run the pass inline (`WARN [coherence] fresh-context pass unavailable — running inline`).
   The gate is never skipped or delayed.
 
+## Research navigation
+
+**Research index.** The `INDEX.md` of a research root is a generated table (an older project has `### title` cards) and only navigates: take `<slug>` only from a link to a direct child of that root and read `<slug>/RESEARCH.md` before acting on a row. No readable index → print `INFO [research-index] <root>: no readable index — searching the folders`, search that root's `*/RESEARCH.md` for the title and header fields, and write nothing.
+
+The roots are `.unikit/code/researches/` and, for requested historical context only, `.unikit/code/archive/researches/`. Read selected manifests only. History never restores a research or proposes work automatically; continuation and slug collision checks still inspect folders.
+
 ## Artifact Ownership
 
 - Primary ownership: `.unikit/code/researches/` directory only
@@ -392,7 +398,7 @@ Supersedes: <slug>                                   (optional)
 
 ## Active Summary
 <!-- unikit:active-summary:start -->
-Topic: <1-2 sentences: what was explored>
+Topic: <one sentence, up to 250 characters: what was explored; the research index shows this line>
 Experiment: <EXP-<nnn> v<Version> — <card title>; one line per card, only when the exploration was grounded on a card — otherwise omit the line>
 Goal: <what this research is for — the decision it has to enable>
 Scope: <in / out — the out-half carries the stop condition>
@@ -812,7 +818,7 @@ silence: no block, no line.
 
 ### Step 4: Re-render the Researches Index
 
-`.unikit/code/researches/INDEX.md` is a **generated** registry: it is not edited and not appended to — on every save it is re-rendered whole from the folders on disk. Read `{{skills_dir}}/{{self_name}}/references/index-render.md` and follow it. If it cannot be read, print `WARN [research] index-render reference missing — researches/INDEX.md was not re-rendered; run unikit-ai update` and go on to the gate.
+`.unikit/code/researches/INDEX.md` is a **generated** registry: it is not edited and not appended to — on every save it is re-rendered whole from the folders on disk. Read `{{skills_dir}}/{{self_name}}/references/index-render.md` and follow it with scope active. If it cannot be read, print `WARN [research] index-render reference missing — researches/INDEX.md was not re-rendered; run unikit-ai update` and go on to the gate.
 
 <!-- Why reconciliation stopped being a separate command: docs/skills/unikit-explore-save-rationale.md in the UniKit repository. -->
 
@@ -839,6 +845,8 @@ fallback).
 If `references/coherence-gate.md` does not exist, or the pass reports that it cannot read it,
 print one line `WARN [coherence] reference missing — saving without the coherence pass` and
 continue.
+
+A repair that changed a header field or the `Topic:` line → re-render the index once more by Step 4 before Step 5, with no further coherence pass; if that fails, say the index stays out of sync.
 
 ### Step 5: Confirm the save
 

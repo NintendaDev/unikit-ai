@@ -249,6 +249,52 @@ assert_contains "$RESEARCH_LINK_PATH" 'archive/researches' \
   "research-link.md carries the archive resolution — a linked research is found there too"
 
 # ─────────────────────────────────────────────────────
+# Test 1b-rh: research-hash.mjs installed as a system asset and runnable where it lands.
+# A flat .mjs with no package.json next to it; running the installed copy is what proves it,
+# so the digest is asserted, not just the file. Expected digest: scripts/test-research-hash.mjs.
+# ─────────────────────────────────────────────────────
+RESEARCH_HASH_PATH="$CLAUDE_DIR/.unikit/system/research-hash.mjs"
+assert_exists "$RESEARCH_HASH_PATH" "research-hash.mjs created in .unikit/system/"
+assert_not_contains "$RESEARCH_HASH_PATH" '\{\{' \
+  "research-hash.mjs is a flat copy — no unresolved {{vars}}"
+RESEARCH_HASH_FIXTURE="$ROOT_DIR/scripts/test-fixtures/research-indexes/project/2026-10-02_unicode/RESEARCH.md"
+# `|| true`: a failing script must reach the message below, not abort the suite under set -e.
+RESEARCH_HASH_DIGEST="$(node "$RESEARCH_HASH_PATH" "$RESEARCH_HASH_FIXTURE" || true)"
+if [[ "$RESEARCH_HASH_DIGEST" != "ab542cb16b4c0712cddda2a4eae1ca6fceceb6011be8b6aeb21212a0b2966167" ]]; then
+  echo "Assertion failed: the installed research-hash.mjs printed '$RESEARCH_HASH_DIGEST' for the unicode fixture"
+  exit 1
+fi
+echo "  ✓ the installed research-hash.mjs prints the expected digest of a real research"
+
+# ─────────────────────────────────────────────────────
+# Test 1b-th: tree-hash.mjs installed as a system asset and runnable where it lands.
+# A flat .mjs with no package.json next to it; running the installed copy in a real repository is what
+# proves it, so the digest is asserted, not just the file. Expected digest: scripts/test-tree-hash.mjs.
+# ─────────────────────────────────────────────────────
+TREE_HASH_PATH="$CLAUDE_DIR/.unikit/system/tree-hash.mjs"
+assert_exists "$TREE_HASH_PATH" "tree-hash.mjs created in .unikit/system/"
+assert_not_contains "$TREE_HASH_PATH" '\{\{' \
+  "tree-hash.mjs is a flat copy — no unresolved {{vars}}"
+TREE_HASH_REPO="$TMPDIR/tree-hash-repo"
+mkdir -p "$TREE_HASH_REPO"
+printf 'a\n' > "$TREE_HASH_REPO/a.cs"
+# No system or user configuration and no GIT_DEFAULT_HASH: another object format would be another digest.
+TREE_HASH_GITCONFIG="$TMPDIR/tree-hash-gitconfig"
+: > "$TREE_HASH_GITCONFIG"
+TREE_HASH_GIT=(env -u GIT_DEFAULT_HASH GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL="$TREE_HASH_GITCONFIG" git -C "$TREE_HASH_REPO")
+"${TREE_HASH_GIT[@]}" init -q .
+"${TREE_HASH_GIT[@]}" config core.autocrlf false
+"${TREE_HASH_GIT[@]}" add -A
+"${TREE_HASH_GIT[@]}" -c user.email=test@example.invalid -c user.name=test commit -qm init
+# `|| true`: a failing script must reach the message below, not abort the suite under set -e.
+TREE_HASH_DIGEST="$(cd "$TREE_HASH_REPO" && env -u GIT_DEFAULT_HASH GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL="$TREE_HASH_GITCONFIG" node "$TREE_HASH_PATH" || true)"
+if [[ "$TREE_HASH_DIGEST" != "8a9e8c1d0f074c629503f74ae7dfefcbb0a733fbbe08e5e259aabd523d402939" ]]; then
+  echo "Assertion failed: the installed tree-hash.mjs printed '$TREE_HASH_DIGEST' for a one-file repository"
+  exit 1
+fi
+echo "  ✓ the installed tree-hash.mjs prints the expected digest of a real repository"
+
+# ─────────────────────────────────────────────────────
 # Test 1b-pb: plan-boundaries.md installed as a system asset (flat copy, no vars)
 # Read by verify/implement/commit/pr to compute the same plan start, module boundary and
 # push target. Update-path coverage like 1b-rl above; the init.ts call site is SA-1's job.
@@ -310,6 +356,18 @@ assert_contains "$PROTOTYPE_PROFILE_PATH" 'WARN \[prototype\]' \
   "prototype-profile.md carries the canonical WARN [prototype] label"
 assert_not_contains "$PROTOTYPE_PROFILE_PATH" '\{\{' \
   "prototype-profile.md is a flat copy — no unresolved {{vars}}"
+
+# Test 1b-tw: test-run-width.md installed as a system asset (flat copy, no vars)
+# Read by every skill that runs tests; a system asset so that it reaches a project whichever skills the wizard
+# installed. Update-path coverage like 1b-pp; the init.ts call site is SA-1's job.
+TRW_PATH="$CLAUDE_DIR/.unikit/system/test-run-width.md"
+assert_exists "$TRW_PATH" "test-run-width.md created in .unikit/system/"
+assert_contains "$TRW_PATH" '^## Run width$' "test-run-width.md carries the run width"
+assert_contains "$TRW_PATH" '^### Unsaved editor state$' "test-run-width.md carries the rule for unsaved editor state"
+if grep -qF '{{' "$TRW_PATH"; then
+  echo "Assertion failed: test-run-width.md is a flat copy, it must hold no unresolved {{vars}}"
+  exit 1
+fi
 
 # ─────────────────────────────────────────────────────
 # Test 1b-sa: subagent-arguments.md installed as a system asset (flat copy, no vars)
@@ -411,6 +469,16 @@ assert_exists "$CLAUDE_DIR/.claude/skills/unikit-explore/references/merge-resear
 # missing delivery would silently skip the re-render in both skills.
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-explore/references/index-render.md" \
   "unikit-explore index-render.md reference installed"
+assert_not_exists "$CLAUDE_DIR/.claude/skills/unikit-explore/references/index-summary-cache.md" \
+  "the retired research index cache reference is not installed"
+assert_contains "$CLAUDE_DIR/.claude/skills/unikit-explore/references/index-render.md" 'unikit:research-index:2' \
+  "installed index-render carries the compact index format"
+assert_not_contains "$RESEARCH_LINK_PATH" '## Reading an index' \
+  "installed research-link carries no index rules — a reader needs the table, not the contract"
+for index_ref in "$CLAUDE_DIR/.claude/skills/unikit-explore/references/index-render.md" \
+  "$CLAUDE_DIR/.claude/skills/unikit-archive/references/researches.md"; do
+  assert_not_contains "$index_ref" '\{\{[a-z_]+\}\}' "installed index reference has no unresolved variables"
+done
 # unikit-archive keeps its plan protocol in a reference (SKILL.md is the router); it is read
 # only when plans are archived, so no content guard sees a missing delivery.
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-archive/references/plans.md" \
@@ -658,9 +726,9 @@ if [[ "$CODEX_PATH_DAMAGE" -ne 0 ]]; then
   grep -rE 'skills\$unikit-' "$CODEX_DIR/.codex/skills/" --include='*.md' | head -5
   exit 1
 fi
-assert_contains "$CODEX_DIR/.codex/skills/unikit-fix/SKILL.md" \
-  '\.codex/skills/unikit-implement/references/test-runs\.md' \
-  "codex install: the skills path in unikit-fix must reach the installed file intact"
+assert_contains "$CODEX_DIR/.codex/skills/unikit-execute/SKILL.md" \
+  '\.codex/skills/unikit-plan/references/TASK-FORMAT\.md' \
+  "codex install: the skills path in unikit-execute must reach the installed file intact"
 echo "  ✓ codex install: {{skills_dir}}/unikit-… paths survive the invocation rewrite"
 
 # Codex's agent call takes no type: no installed skill names one, and every call carries its own
@@ -760,9 +828,9 @@ if [[ "$QWEN_PATH_DAMAGE" -ne 0 ]]; then
   grep -rE 'skills/skills unikit-' "$QWEN_DIR/.qwen/skills/" --include='*.md' | head -5
   exit 1
 fi
-assert_contains "$QWEN_DIR/.qwen/skills/unikit-fix/SKILL.md" \
-  '\.qwen/skills/unikit-implement/references/test-runs\.md' \
-  "qwen install: the skills path in unikit-fix must reach the installed file intact"
+assert_contains "$QWEN_DIR/.qwen/skills/unikit-execute/SKILL.md" \
+  '\.qwen/skills/unikit-plan/references/TASK-FORMAT\.md' \
+  "qwen install: the skills path in unikit-execute must reach the installed file intact"
 echo "  ✓ qwen install: {{skills_dir}}/unikit-… paths intact"
 
 # ─────────────────────────────────────────────────────
@@ -856,7 +924,7 @@ fi
 # skills/, subagents/ and mcp/universal/ catalog, never a synthetic copy. Each installed skill
 # is the object of one claim: unikit (references, variable substitution), unikit-plan (a
 # reference that names /unikit-implement), unikit-implement (general-purpose → coder,
-# {{settings_file}}), unikit-fix, unikit-verify (the tree-hash tail), unikit-gd-explore (a
+# {{settings_file}}), unikit-fix, unikit-verify (the tree-hash command), unikit-gd-explore (a
 # REFERENCE that spells the subagent type), unikit-gd-review (a !claude block), unikit-gd-brainstorm.
 # The five subagents are the two coordinators (rewritten), the polisher and the worker (their
 # `skills:` field becomes a read list) and a sidecar (untouched).
@@ -1035,8 +1103,8 @@ if [[ "$KIMI_DOLLAR_HITS" -ne 0 ]]; then
   grep -rEn '\$[0-9]' "$KIMI_SKILLS" --include='SKILL.md' | cut -c1-160 | head -5
   exit 1
 fi
-assert_contains "$KIMI_SKILLS/unikit-verify/SKILL.md" "shasum -a 256 \| cut -d' ' -f1" \
-  "kimi: the tree-hash command ends in cut, not awk '{print \$1}'"
+assert_contains "$KIMI_SKILLS/unikit-verify/SKILL.md" 'node \.unikit/system/tree-hash\.mjs' \
+  "kimi: verify runs the tree-hash script"
 
 # Coordinators (REQ-008, DEC-015, DEC-016): Agent(...) → Agent + subagents:, ${base_prompt}, kimi --agent
 KIMI_COORD="$KIMI_AGENTS/unikit-implement-coordinator.md"

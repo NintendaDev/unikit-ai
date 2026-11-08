@@ -85,7 +85,9 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   re-reads the written files, and after two passes asks you instead of looping.
 - **Out:** `.unikit/code/researches/<slug>/` (`RESEARCH.md` — the manifest, plus `SOURCE.md`,
   the verbatim dialogue log, and adaptive artifacts in ultra), and a regenerated
-  `researches/INDEX.md`.
+  compact `researches/INDEX.md`, one row per research with its description taken from
+  `Topic:`. A gate repair that changes a header field or `Topic:` re-renders it before the
+  save is confirmed.
 - **Optional (research).** Before: `/unikit`. After: `/unikit-plan` (consumes the manifest's
   `## Active Summary`), `/unikit-fix` (if a bug was found).
 
@@ -168,9 +170,9 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **Balance plan.** Checks the data's validity and the report, not the balance; warns on drift from the header of the checkpoints file.
 
 ### unikit-fix
-- **Purpose:** Fix a specific bug — find the root cause, fix it, run the tests (every test by
-  default, `testing.run.use_affected_modules` narrows the run to the changed modules), suggest
-  a test, and always write a learning *patch*. Also applies `/unikit-review` and `/unikit-verify`
+- **Purpose:** Fix a specific bug — find the root cause, fix it, ask and then run the tests
+  (every test by default, `testing.run.use_affected_modules` narrows the run to the changed
+  modules; the question names the scope), suggest a test, and always write a learning *patch*. Also applies `/unikit-review` and `/unikit-verify`
   findings.
 - **When:** "fix this bug", an error / stack trace / console log, "apply the review findings".
 - **In:** a bug description, or findings already in the conversation, or an existing `FIX_PLAN.md`.
@@ -221,7 +223,10 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   `--all`, or `list` (both archives). A plan is classified with its verdict, created date and last
   change, oldest change first.
 - **Out:** the moved folder + one `Archived:` line in its manifest; for a research also a
-  re-rendered `.unikit/code/researches/INDEX.md`.
+  re-rendered active and archive `INDEX.md` tables, once per successful batch. A named
+  restore goes straight to the folders; a missing index falls back to a read-only search of
+  them. History reads never restore or offer archived work automatically, and restore
+  refuses an existing active destination.
 - **Optional (after commit).** Untransferred MCP findings and `open` rule candidates never
   block: it asks whether to handle them first (`/unikit-bridge-trap`, `/unikit-verify`) or
   archive anyway. `/unikit-explore` reads archived plans as history and never takes the slug of
@@ -239,8 +244,9 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 ### unikit-execute
 - **Purpose:** One small task straight from a description, with **no plan** — `/unikit-implement`
   without the plan: it reads the text into a card (code, editor, mixed or question), carries it out
-  through the engine bridges, checks compilation and reads the changed state back. The skill the
-  pipeline delegates to as `develop-agent`.
+  through the engine bridges, checks compilation and reads the changed state back. Tests are the
+  user's choice: none written and no run started without the task's words or an answer. The skill
+  the pipeline delegates to as `develop-agent`.
 - **When:** "just add this method", "set this up in the editor, no plan", "do it directly".
   Not for a bug (`/unikit-fix`), an existing plan (`/unikit-implement`), a multi-step feature
   (`/unikit-plan`) or a discussion (`/unikit-explore`).

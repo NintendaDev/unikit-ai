@@ -267,7 +267,7 @@ a signal at all*; this ladder answers *in which order to take them*.
 2. **Compilation diagnostics with coordinates** — a build that does not pass explains most symptoms before any state is worth reading.
 3. **A narrow structural read** — the one object or component the symptom points at, not the tree around it.
 4. **A targeted probe chosen by the symptom** — read the state the symptom claims is wrong, directly.
-5. **A deterministic behaviour run** — a test with a readable result, or a scripted run.
+5. **A deterministic behaviour run** — a test with a readable result, or a scripted run. A test run here is asked for like the one of Step 4.2, unless the user's words already ask for it.
 6. **A frame** — **only** when the symptom is visual.
 
 Three rules hold across the whole ladder:
@@ -467,15 +467,18 @@ Check that the project compiles after the fix, through the first available engin
 
 ### 4.2 {{engine_name}} Test Run
 
-**Inside a review loop** (`dev-principles.md` item 5a — this fix answers a defect in a result handed over in this session, which the user is reviewing) skip this step: print `INFO [testing] review loop: tests deferred until you accept` — once per loop, not again when an earlier edit of this loop already printed it — and go to Step 4.3. Outside a loop, run it as follows.
+**Inside a review loop** (`dev-principles.md` item 5a — tests are due, and this fix answers a defect in a result handed over in this session, which the user is reviewing) skip this step: print `INFO [testing] review loop: tests deferred until you accept` — once per loop, not again when an earlier edit of this loop already printed it — and go to Step 4.3. Outside a loop, a test run is the user's choice (`dev-principles.md` item 5): work out the scope as follows, ask, and run only on the answer.
 
-Run the tests through the first available engine bridge that offers a test run with a readable result (**D3**) at the width the shared run settings give — `{{skills_dir}}/unikit-implement/references/test-runs.md` → `## Run width`. Read **that section alone**, once per session, the first time this step runs: it resolves `testing.run.use_affected_modules` and `testing.run.full_run_threshold_percent` from `.unikit/config.yaml`, says how the affected test suites are found, requires one run, and says what counts as green. A fix has no coverage, so its run follows the section's `phase` row; its changed files are `git status --porcelain` plus the files this fix touched.
+Run the tests through the first available engine bridge that offers a test run with a readable result (**D3**) at the width the shared run settings give — `.unikit/system/test-run-width.md`. Read it once per session, the first time this step runs: it resolves `testing.run.use_affected_modules` and `testing.run.full_run_threshold_percent` from `.unikit/config.yaml`, says how the affected test suites are found, requires one run, and says what counts as green. A fix has no coverage, so its run follows the file's `phase` row; its changed files are `git status --porcelain` plus the files this fix touched.
 - `use_affected_modules: false` (the default) → every test in the project, in one run
-- `true` → the affected test suites in one run — or every test, when that section widens the run
-- The file or the section is missing → run every test in the project in one run, and print `WARN [testing] test-run reference missing — every test is run; run unikit-ai update`
-- Wait for results and display them — highlight any failures. A run that is not green by that section — zero tests, no readable counts — is a failed check, not a pass; the one zero that is not a failure is a run of every test in a project that has no tests yet — note `Test run: no tests in the project` and go on
-- If tests fail because of the fix — investigate and fix the regression. The repeat after the fix is one launch over the scope recomputed once from all the files changed (`{{skills_dir}}/unikit-implement/references/test-runs.md` → `## Run width` → `### One scope, one launch`)
+- `true` → the affected test suites in one run — or every test, when that file widens the run
+- The file is missing → run every test in the project in one run, and print `WARN [testing] test-run reference missing — every test is run; run unikit-ai update`
 - If no engine bridge is available — skip and note: `Test run: no engine bridge available, skipped`
+- The fix runs against a plan with `## Experiment Context` (Step 0.2), the `## Settings` of that plan say `Testing: no`, and the task's words do not ask for a run → no question; note `Test run: not part of this plan (Testing: no)` and go to Step 4.3
+- **The question.** Unless the task's words already ask for a run ("and run the tests"), ask once, with the question tool of your agent (`AskUserQuestion`): `Run the tests? Scope: <the whole project | <n> test suites: <names>>`. A narrowed scope: `Run them (recommended)` · `Do not run`. The whole project: `Do not run (recommended)` · `Run them`. `Do not run` → note `Test run: not run — your choice` and go to Step 4.3.
+- **What the answer covers.** This run and one repeat after a red result once its cause is fixed: the repeat recomputes the scope and starts without asking, even if the scope grew. A bridge that splits the scope into parts spends nothing by that. Any further run takes a new answer.
+- Wait for results and display them — highlight any failures. A run that is not green by that file — zero tests, no readable counts — is a failed check, not a pass; the one zero that is not a failure is a run of every test in a project that has no tests yet — note `Test run: no tests in the project` and go on
+- If tests fail because of the fix — investigate and fix the regression. The repeat after the fix is one launch over the scope recomputed once from all the files changed (`.unikit/system/test-run-width.md` → `### One scope, one launch`)
 
 ### 4.3 Engine Companion Files
 
@@ -601,7 +604,7 @@ Space-separated tags for categorization, e.g.:
 - path/to/File.cs (line X)
 
 **Compilation:** pass / skipped
-**Tests:** pass / skipped
+**Tests:** pass / not run — your choice / skipped
 **Test suggested:** Yes
 **Patch created:** .unikit/code/patches/YYYY-MM-DD-HH.mm.md
 ```
@@ -689,7 +692,7 @@ Suggest the user to free up context space if needed: `/clear` (full reset) or `/
 2. Find where destroyed object is accessed
 3. Check if R3 subscription outlives the GameObject — missing `.AddTo()`
 4. Fix the subscription lifecycle
-5. Verify compilation and tests
+5. Verify compilation; tests on the user's answer
 6. Create patch with `#r3` `#lifecycle` tags
 
 ### Example 3: Zenject Binding Error
@@ -721,3 +724,4 @@ Suggest the user to free up context space if needed: `/clear` (full reset) or `/
 11. **Respond in the configured language** — use `language.ui` from `.unikit/config.yaml` (default: English)
 12. **Ownership boundary** — `/unikit-fix` owns `.unikit/code/FIX_PLAN.md` and `.unikit/code/patches/*.md`; all other `.unikit/` artifacts are read-only
 13. **Never modify third-party code** — `Assets/Third-Party Assets/` and `Assets/Plugins/` are off-limits
+14. **A test run is asked for** — outside a review loop no run starts without the task's words or an answer (Step 4.2)

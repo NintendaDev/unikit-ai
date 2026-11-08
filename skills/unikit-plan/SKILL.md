@@ -24,10 +24,12 @@ allowed-tools:
   - Bash(find *)
   - Bash(wc *)
   - Bash(git *)
-  - Bash(shasum *)
-  - Bash(sha256sum *)
   - Bash(date *)
   - Bash(node *)
+  - Bash(node .unikit/system/research-hash.mjs *)
+  - PowerShell(node .unikit/system/research-hash.mjs *)
+  - Bash(node .unikit/system/tree-hash.mjs *)
+  - PowerShell(node .unikit/system/tree-hash.mjs *)
   - Agent
   - Skill
   - AskUserQuestion
@@ -152,9 +154,11 @@ If the description is empty (user only typed a mode keyword like `full` or `fast
 
 1. **Check session context** — look in the current conversation history for results of `/unikit-explore`. If found, use the exploration topic and findings as the feature description and context.
 
-2. **Check recent researches** — if no session context, read `.unikit/code/researches/INDEX.md` (if it exists). The index is sorted newest-first. Take the first entry whose `Lifecycle` is `active` — a record carrying no `Lifecycle` line counts as `active` — and ask:
+2. **Check recent researches** — if no session context, read `.unikit/code/researches/INDEX.md`. **Research index.** The `INDEX.md` of a research root is a generated table (an older project has `### title` cards) and only navigates: take `<slug>` only from a link to a direct child of that root and read `<slug>/RESEARCH.md` before acting on a row. No readable index → print `INFO [research-index] <root>: no readable index — searching the folders`, search that root's `*/RESEARCH.md` for the title and header fields, and write nothing.
+
+   The index is sorted newest-first. Take the first entry whose `Lifecycle` is `active` — a record carrying no `Lifecycle` line counts as `active` — and ask:
    ```
-   The question tool of your agent (`AskUserQuestion`): Found recent research: "<Title>" (<Created>)
+   The question tool of your agent (`AskUserQuestion`): Found recent research: "<Title>" (<Updated>)
    Use as basis for planning?
 
    Options:
@@ -165,7 +169,7 @@ If the description is empty (user only typed a mode keyword like `full` or `fast
    - Yes → use research title/summary as description, mark `research_pre_linked = true` (skip research matching in Step 2)
    - No → proceed to ask user for description (step 3 below)
 
-   `<Created>` is the displayed field — never substitute `Updated` for it. A record with no `Created` is shown as `"<Title>" (date unknown)`, never with empty brackets.
+   A record with no `Updated` is shown as `"<Title>" (date unknown)`, never with empty brackets.
 
 3. **No context available** — if neither session context nor researches exist, ask the user for a description:
    ```
@@ -315,7 +319,7 @@ Load only the selected mode's body — never all of them at once:
 
 **An experiment plan** runs no topic matching in this step (points 1-6): a research reaches it only through an `Experiment:` line (`{{skills_dir}}/{{self_name}}/references/experiment-plan.md` → `## The snapshot comes first`), and point 7 reads what that finds.
 
-**The research-link contract — read at the first link, and only then.** The moment this step links its first research — through the `research_pre_linked` shortcut below or through point 7 — read `.unikit/system/research-link.md`. For each research linked here, compute its `Summary SHA256` over the `## Active Summary` just read, by `## Computing the hash`, and keep the digest for Step 5 (`## Writing an entry`).
+**The research-link contract.** Before the first link, not before reading the index, read `.unikit/system/research-link.md` once. For each research linked here, compute its `Summary SHA256` over the `## Active Summary` just read, by `## Computing the hash`, and keep the digest for Step 5 (`## Writing an entry`).
 
 **If `.unikit/system/research-link.md` is missing or unreadable, do not block:** record no `Summary SHA256` and check none — print `WARN [research-drift]: research-link contract missing — drift detection off for this run; run unikit-ai update` once, and continue.
 
@@ -323,8 +327,7 @@ Load only the selected mode's body — never all of them at once:
 
 Before exploring code, check if `/unikit-explore` has produced relevant researches.
 
-1. Read `.unikit/code/researches/INDEX.md`
-   - If the file doesn't exist — skip this step entirely, proceed to Step 3.
+1. Read `.unikit/code/researches/INDEX.md` by the **Research index** rule of Step 0.2; ordinary discovery stays active-only.
 
 2. Read `workflow.research_relevance_days` from `.unikit/config.yaml` (default: `7`).
 
@@ -345,7 +348,7 @@ Before exploring code, check if `/unikit-explore` has produced relevant research
    WARN [research] <folder>: index row has no Updated — excluded; run /unikit-explore to redraw the index
    ```
 
-4. **Match**: compare each surviving entry's `Summary` against the feature description. Select entries that are contextually relevant to the feature being planned.
+4. **Match**: compare each surviving entry's title and `Summary` against the feature description (a `Summary` of `—` leaves the title). Select entries that are contextually relevant to the feature being planned.
 
 5. If **0 relevant** researches found — proceed to Step 3 silently. Mark `research_linked = false`.
 

@@ -68,6 +68,7 @@ child_start genres      bash "$SCRIPT_DIR/test-genres.sh"
 child_start skillgroups bash "$SCRIPT_DIR/test-skill-groups.sh"
 child_start helpskill   bash "$SCRIPT_DIR/test-help-skill.sh"
 child_start grepshim    bash "$SCRIPT_DIR/test-grep-shim.sh"
+child_start treehash    node "$SCRIPT_DIR/test-tree-hash.mjs"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -4579,26 +4580,21 @@ UNIKIT_IMPLEMENT_SKILL="$ROOT_DIR/skills/unikit-implement/SKILL.md"
 # The research-link contract's one owner, and the "all four consumers" array shared by
 # every guard below.
 RL_CONTRACT="$ROOT_DIR/data/research-link.md"
+RH_SCRIPT="$ROOT_DIR/data/research-hash.mjs"
 RD_CONSUMERS=("$UNIKIT_PLAN_SKILL" "$UNIKIT_IMPROVE_SKILL" "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL")
 # RD-E asserts the marker pair is DECLARED by its owner. The owner is the manifest template
 # of /unikit-explore since the manifest layout left the ultra reference, so RD-E reads the
 # skill; declared here because `set -u` makes a forward reference fatal.
 RDE_OWNER="$ROOT_DIR/skills/unikit-explore/SKILL.md"
 
-# (RD-A) The recorded field and the normalization procedure, owned by RL_CONTRACT.
-# unikit-plan writes the hash; unikit-{improve,implement,verify} recompute it. If the
-# normalization diverges by a single rule, every consumer reports drift that did not
-# happen — and the failure reads as "the research changed", not as "the guard is
-# missing". The tokens are chosen, not sampled: `UTF-8 BOM` and `one final newline` are
-# the two rules whose divergence produces a FALSE drift on byte-identical content (and
-# the BOM rule exists because this project's primary platform is Windows);
-# `never a temp file` is the stdin rule; `RESEARCH.md` is the file the hashed region
-# lives in, and `unikit:active-summary:start` is rule 0 — the rule that makes the object
-# a REGION rather than the whole file. Rule 0 is asserted separately from the other five
-# for one measured reason: it is the only one that can vanish alone. Drop it and the five
-# survivors still describe a coherent procedure, over the wrong object — the whole
-# manifest, whose `## Sessions` grows on every save, so every append would report drift
-# that did not happen.
+# (RD-A) The recorded field and the one way to compute it, owned by RL_CONTRACT.
+# unikit-plan writes the hash; unikit-{improve,implement,verify} recompute it. The contract
+# names the field, the command and the region; the normalization itself lives in
+# data/research-hash.mjs, where scripts/test-research-hash.mjs pins it by behaviour. A script
+# that diverges by a single rule would report drift that did not happen, and the failure reads
+# as "the research changed", not as "the guard is missing".
+# `unikit:active-summary:start` is what makes the object a REGION rather than the whole file,
+# whose `## Sessions` grows on every save, so every append would report drift that did not happen.
 # The negative half is load-bearing: without it a half-applied edit leaves the retired
 # field standing somewhere it should not. That half is anchored on the FIELD form
 # `**Attached**`, never on the bare word: `Attached` is ordinary English and a sentence
@@ -4612,7 +4608,7 @@ RDA_WHY=""
 if [[ ! -s "$RL_CONTRACT" ]]; then
     RDA_WHY+=" contract-missing"
 else
-    for tok in 'Summary SHA256' 'UTF-8 BOM' 'one final newline' 'never a temp file' 'RESEARCH.md' 'unikit:active-summary:start'; do
+    for tok in 'Summary SHA256' 'research-hash.mjs' 'RESEARCH.md' 'unikit:active-summary:start'; do
         grep -qF "$tok" "$RL_CONTRACT" || RDA_WHY+=" contract:no-${tok// /-}"
     done
     # A spelled-out count next to a list rots the moment the list grows and nothing turns red
@@ -4634,32 +4630,50 @@ for f in "$RL_CONTRACT" "${RD_CONSUMERS[@]}"; do
     if grep -F 'Brief SHA256' "$f" | grep -vF "$RDA_BRIEF_ALLOW" | grep -q .; then RDA_WHY+=" $n-retired-field-survives"; fi
 done
 if [[ -z "$RDA_WHY" ]]; then
-    pass "RD-A Summary SHA256 + the one normalization procedure (incl. rule 0) present in the owner (retired fields gone everywhere)"
+    pass "RD-A Summary SHA256, the hash script and the region marker present in the owner (retired fields gone everywhere)"
 else
-    fail "RD-A research-drift procedure diverged:$RDA_WHY"
+    fail "RD-A the research-link contract lost its field, script or region:$RDA_WHY"
 fi
 
-# (RD-B) The grant that makes the procedure followable at all. Without it the
-# normalization text is an instruction the skill cannot carry out, and the skill degrades
-# to the WARN branch on every single plan — silently, because that WARN branch is a
-# legitimate state. Both names are required: `shasum` ships with perl (macOS, Git Bash),
-# `sha256sum` with GNU coreutils (Linux, Git Bash).
-# Rule 0 (extract the region between the markers) adds nothing here: it is performed on
-# text the skill has already read, not by a shell command, so the list of two names stays
-# complete and no `awk`/`sed` grant joins it.
-# Loops over RD_CONSUMERS, not RDA_ALL: the grant belongs to each SKILL regardless of
-# whether that skill still restates the procedure or only points at RL_CONTRACT, so this
-# check must keep covering all four after tasks 7-10 shrink RDA_ALL.
+# (RD-B) The grant that makes the command runnable at all. Without it the contract is an
+# instruction the skill cannot carry out without asking. Both shells are required: the mechanism
+# exists to work without Git Bash, where a `Bash(...)` grant means nothing. Each grant names the one
+# script, never all of `node`, so a skill that only checks a hash gains no general interpreter.
+# The digest utilities have no use left in these four skills: every hash they take goes through a
+# script, and a leftover grant reads as if a hash still depended on them.
 RDB_WHY=""
 for f in "${RD_CONSUMERS[@]}"; do
     n="$(basename "$(dirname "$f")")"
-    grep -qF 'Bash(shasum *)'    "$f" || RDB_WHY+=" $n-no-shasum"
-    grep -qF 'Bash(sha256sum *)' "$f" || RDB_WHY+=" $n-no-sha256sum"
+    grep -qF 'Bash(node .unikit/system/research-hash.mjs *)'       "$f" || RDB_WHY+=" $n-no-bash-grant"
+    grep -qF 'PowerShell(node .unikit/system/research-hash.mjs *)' "$f" || RDB_WHY+=" $n-no-powershell-grant"
+done
+for f in "${RD_CONSUMERS[@]}"; do
+    n="$(basename "$(dirname "$f")")"
+    if grep -qF 'Bash(shasum *)' "$f" || grep -qF 'Bash(sha256sum *)' "$f"; then
+        RDB_WHY+=" $n-keeps-a-digest-grant"
+    fi
 done
 if [[ -z "$RDB_WHY" ]]; then
-    pass "RD-B the hash grant follows the procedure into all four skills"
+    pass "RD-B the script grant is in all four skills for both shells, and none of them keeps a digest utility"
 else
-    fail "RD-B a skill carries the normalization procedure but not the grant:$RDB_WHY"
+    fail "RD-B a hash grant is missing or left over:$RDB_WHY"
+fi
+
+# (TH-1) The grant that makes the tree-hash command runnable, in both shells, for the same reason as
+# RD-B: the script exists to work without Git Bash, where a `Bash(...)` grant means nothing. What the
+# script computes is pinned by scripts/test-tree-hash.mjs (Part 7f10).
+TH_WHY=""
+TH_SKILLS=0
+for f in "$UNIKIT_PLAN_SKILL" "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL"; do
+    TH_SKILLS=$((TH_SKILLS + 1))
+    n="$(basename "$(dirname "$f")")"
+    grep -qF 'Bash(node .unikit/system/tree-hash.mjs *)'       "$f" || TH_WHY+=" $n-no-bash-grant"
+    grep -qF 'PowerShell(node .unikit/system/tree-hash.mjs *)' "$f" || TH_WHY+=" $n-no-powershell-grant"
+done
+if [[ -z "$TH_WHY" ]]; then
+    pass "TH-1 the tree-hash grant is in $TH_SKILLS skills for both shells"
+else
+    fail "TH-1 a tree-hash grant is missing:$TH_WHY"
 fi
 
 # (RD-C) One label for every drift branch, and the writer/reader split.
@@ -4715,6 +4729,10 @@ printf '%s' "$RLC_WRITING" | grep -qF 'WARN [research-drift]' && RDC_WHY+=" writ
 # retired) RDA_READERS label loop incidentally held both halves together; nothing else
 # in this family checks them.
 grep -qF 'reaches the Step 4 report' "$UNIKIT_VERIFY_SKILL" || RDC_WHY+=" verify-projection-lost"
+# A skipped check is printed as INFO so that it cannot raise the gate, and the report still has to
+# say the check did not run: a report silent about it would read as a passed check.
+grep -qF 'An `INFO [research-hash]` line reaches the Step 4 report too and raises nothing' "$UNIKIT_VERIFY_SKILL" || RDC_WHY+=" verify-loses-the-skipped-check"
+printf '%s' "$RLC_CHECKING" | grep -qF 'INFO [research-hash]' || RDC_WHY+=" contract-no-unavailable-outcome"
 grep -qE '\*\*Research drift\.\*\*.*raises' "$UNIKIT_VERIFY_SKILL" || RDC_WHY+=" verify-projection-lost"
 RDC_IMPL_S4="$(awk 'index($0,"### Step 4: Completion Summary")==1{f=1;next} index($0,"### Step 5")==1{f=0} f' "$UNIKIT_IMPLEMENT_SKILL")"
 printf '%s' "$RDC_IMPL_S4" | grep -qF 'Research drifted — consider /unikit-improve' || RDC_WHY+=" implement-summary-line-lost"
@@ -4830,11 +4848,13 @@ if [[ -z "$RLE_START_CONST" ]]; then
     RDE_WHY+=" constant-unreadable:RESEARCH_ACTIVE_SUMMARY_START"
 else
     grep -qF "$RLE_START_CONST" "$RL_CONTRACT" || RDE_WHY+=" marker-not-pinned:RESEARCH_ACTIVE_SUMMARY_START"
+    grep -qF "$RLE_START_CONST" "$RH_SCRIPT"   || RDE_WHY+=" script-marker-not-pinned:RESEARCH_ACTIVE_SUMMARY_START"
 fi
 if [[ -z "$RLE_END_CONST" ]]; then
     RDE_WHY+=" constant-unreadable:RESEARCH_ACTIVE_SUMMARY_END"
 else
     grep -qF "$RLE_END_CONST" "$RL_CONTRACT" || RDE_WHY+=" marker-not-pinned:RESEARCH_ACTIVE_SUMMARY_END"
+    grep -qF "$RLE_END_CONST" "$RH_SCRIPT"   || RDE_WHY+=" script-marker-not-pinned:RESEARCH_ACTIVE_SUMMARY_END"
 fi
 if [[ -z "$RDE_WHY" ]]; then
     pass "RD-E the hashed object is the Active Summary region in the owner; the file-split refusal is gone"
@@ -4891,18 +4911,15 @@ done < <(printf '%s\n%s' "$RDF_CHECKING" "$RDF_WRITING" | grep -oE '`WARN \[rese
 #     2026-08-22-14.05). Measured, not reasoned, exactly like T17: sizes 5-8 false-positive
 #     on short vocabulary this project shares legitimately everywhere — at 5, improve's own
 #     Re-links report template ("recorded against the retired brief") and the literal
-#     `shasum -a 256 | awk '{print $1}'` command both collide — it stood in implement/verify
-#     as the concrete digest step and still stands in the contract's `### Digest`; the
-#     tree-hash copies in implement/verify now end in `cut -d' ' -f1` (Kimi Code expands `$1`
-#     inside a SKILL.md body), which only removes a collision. The shasum command alone
-#     still collided through size 8. Size 9 is the smallest that gives ZERO windows on every
+#     `shasum -a 256 | awk '{print $1}'` command both collided while the contract still
+#     carried that command. The shasum command alone collided through size 8. Size 9 is the smallest that gives ZERO windows on every
 #     correct surface today, and it still catches a paraphrase with roughly a third of its
 #     words replaced (24-51 shared 9-word runs, measured by inserting the pre-migration
 #     verify ladder verbatim, and separately a reworded copy of it, into a copy of the
 #     migrated file). `## Who writes the field` measured 0 at sizes 8-10 and is included —
 #     no section is excluded.
 RDF_SHINGLE_WORDS=9
-RDF_SHINGLE_SECTIONS=('## The entry' '## Finding the folder' '## What is hashed' '## Computing the hash' '## Writing an entry' '## Checking an entry' '## Who writes the field')
+RDF_SHINGLE_SECTIONS=('## The entry' '## Finding the folder' '## Computing the hash' '## Writing an entry' '## Checking an entry' '## Who writes the field')
 rdf_normalize() { tr '[:upper:]' '[:lower:]' | tr -d '`*_' | tr '\n' ' ' | tr -s '[:space:]' ' '; }
 rdf_shingles() {
     awk -v n="$1" '{
@@ -4970,6 +4987,13 @@ fi
 # computed at the right TIME (decision 2). Mechanical form of a rule with no other
 # detector: nothing else greps for WHERE a line sits relative to two headings.
 RDH_WHY=""
+# The early window reads the index and links nothing, so a plan with no linked research reads no
+# contract: the contract is opened at the first link, in Step 2. An empty window would pass the
+# negative below, so its absence is a failure of its own.
+RDH_PLAN_EARLY="$(awk '/^### Step 0.2:/{f=1;next} f&&/^### Step /{f=0} f' "$UNIKIT_PLAN_SKILL")"
+[[ -n "$RDH_PLAN_EARLY" ]] || RDH_WHY+=" plan-no-step-0.2-body"
+printf '%s' "$RDH_PLAN_EARLY" | grep -qF '.unikit/system/research-link.md' \
+    && RDH_WHY+=" plan-reads-the-contract-for-the-index"
 rdh_location() {
     local skill="$1" step_start="$2" step_end="$3" boot_start="$4" boot_end="$5" label="$6"
     local step_win boot_win
@@ -5014,7 +5038,7 @@ RDI_SECTION="$(awk 'index($0,"## Finding the folder")==1{f=1;next} f&&/^## /{f=0
 rdi_line() { { grep -n "^$1\$" "$RL_CONTRACT" || true; } | head -1 | cut -d: -f1; }
 RDI_ENTRY_N="$(rdi_line '## The entry')"
 RDI_FIND_N="$(rdi_line '## Finding the folder')"
-RDI_HASHED_N="$(rdi_line '## What is hashed')"
+RDI_HASHED_N="$(rdi_line '## Computing the hash')"
 if [[ -z "$RDI_SECTION" ]]; then
     RDI_WHY+=" no-section"
 elif [[ -z "$RDI_ENTRY_N" || -z "$RDI_FIND_N" || -z "$RDI_HASHED_N" ]] \
@@ -5022,7 +5046,7 @@ elif [[ -z "$RDI_ENTRY_N" || -z "$RDI_FIND_N" || -z "$RDI_HASHED_N" ]] \
     RDI_WHY+=" section-out-of-place"
 fi
 for p in '.unikit/code/archive/researches/<slug>/' 'INFO [research] <slug> is archived' \
-    'exists in researches/ and in archive/researches/' 'reading researches/' 'Neither exists' 'never the archive'; do
+    'exists in researches/ and in archive/researches/' 'reading researches/' 'Neither exists' 'Ordinary discovery searches active research only'; do
     printf '%s' "$RDI_SECTION" | grep -qF "$p" || RDI_WHY+=" section-lacks:${p// /-}"
 done
 # The place alone is not a finding: INFO in the section, no WARN of any label.
@@ -5047,6 +5071,34 @@ if [[ -z "$RDI_WHY" ]]; then
     pass "RD-I a linked research is found by name, live folder first and archive second, in the contract only ($RDI_N consuming skills name no archive path)"
 else
     fail "RD-I research folder resolution broke:$RDI_WHY"
+fi
+
+# (RD-J) The contract stays small enough to be read whenever a plan links a research, and the rules
+# that made it large do not come back: the index rules live with their writer and in one sentence of
+# each reader, the digest in a script. The negatives also keep a hash procedure in shell from
+# returning, which is what a machine without Git Bash could not run.
+RDJ_MAX_BYTES=2300
+RDJ_WHY=""
+RDJ_BYTES="$(wc -c < "$RL_CONTRACT" | tr -d ' ')"
+(( RDJ_BYTES <= RDJ_MAX_BYTES )) || RDJ_WHY+=" contract-size=$RDJ_BYTES"
+grep -qF 'node .unikit/system/research-hash.mjs' "$RL_CONTRACT" || RDJ_WHY+=" contract-no-command"
+# Shrinking must not cost two rules. An entry without a hash stays unknown whatever the folder holds,
+# so it never reaches the script; and the two optional lines of an entry are conditions, not text to copy.
+grep -qF 'Without one nothing runs' "$RL_CONTRACT" || RDJ_WHY+=" contract-runs-the-script-for-an-entry-without-a-hash"
+RDJ_OPTIONAL="$({ grep -cF '(include only if the file exists)' "$RL_CONTRACT" || true; })"
+[[ "$RDJ_OPTIONAL" -eq 2 ]] || RDJ_WHY+=" contract-optional-lines=$RDJ_OPTIONAL"
+for tok in 'shasum' 'sha256sum' '## Reading an index' 'INDEX.cache' 'unikit:research-index'; do
+    if grep -qF "$tok" "$RL_CONTRACT"; then RDJ_WHY+=" contract-carries:${tok// /-}"; fi
+done
+# The retired section is named nowhere in the package. Counted first: an empty scan would pass.
+RDJ_FILES="$(find "$ROOT_DIR/skills" "$ROOT_DIR/subagents" "$ROOT_DIR/data" -type f | wc -l | tr -d ' ')"
+[[ "$RDJ_FILES" -gt 0 ]] || RDJ_WHY+=" scanned-nothing"
+if grep -rqF '## Reading an index' "$ROOT_DIR/skills" "$ROOT_DIR/subagents" "$ROOT_DIR/data"; then RDJ_WHY+=" retired-section-named"; fi
+if grep -rqF '### Digest' "$ROOT_DIR/skills" "$ROOT_DIR/subagents" "$ROOT_DIR/data"; then RDJ_WHY+=" retired-digest-section-named"; fi
+if [[ -z "$RDJ_WHY" ]]; then
+    pass "RD-J the contract is $RDJ_BYTES of at most $RDJ_MAX_BYTES bytes, computes the hash through the script, and $RDJ_FILES shipped files name no retired section"
+else
+    fail "RD-J the research-link contract grew back:$RDJ_WHY"
 fi
 
 # =============================================
@@ -7119,6 +7171,7 @@ fi
 # The test-run block of unikit-implement lives in a reference read only under `Testing: yes`
 # (DEC-012 b); every TC literal that moved with it is asserted against that file.
 TC_TESTRUNS="$ROOT_DIR/skills/unikit-implement/references/test-runs.md"
+TC_RUNWIDTH="$ROOT_DIR/data/test-run-width.md"
 
 # --- group 4: verify checks the executor's run and starts none of its own (tasks 5.1, 5.2; research 2026-10-01 G/H) ---
 TC_G4_WHY=""
@@ -7126,11 +7179,10 @@ for f in "$UNIKIT_VERIFY_SKILL" "$UNIKIT_IMPLEMENT_SKILL" "$TC_TESTRUNS" "$EM_FI
     [[ -s "$f" ]] || TC_G4_WHY+=" missing:${f##*/}"
 done
 if [[ -z "$TC_G4_WHY" ]]; then
-    # (TC-23) the four halves of the anchor check.
+    # (TC-23) the three halves of the anchor check.
     grep -qF 'Full run:'              "$UNIKIT_VERIFY_SKILL" || TC_G4_WHY+=" TC-23:no-anchor-read"
     grep -qF 'Test run: reused'       "$UNIKIT_VERIFY_SKILL" || TC_G4_WHY+=" TC-23:no-reused-outcome"
-    grep -qF 'git rev-parse HEAD'     "$UNIKIT_VERIFY_SKILL" || TC_G4_WHY+=" TC-23:no-head-command"
-    grep -qF 'git ls-files --others --exclude-standard --full-name' "$UNIKIT_VERIFY_SKILL" || TC_G4_WHY+=" TC-23:no-untracked-command"
+    grep -qF 'node .unikit/system/tree-hash.mjs' "$UNIKIT_VERIFY_SKILL" || TC_G4_WHY+=" TC-23:no-hash-command"
     # (TC-23) normal mode starts no test run; --strict asks once and is the only way verify runs
     # tests; an unresolved strict finding is the `verify-tests` blocker.
     grep -qF 'Normal mode starts no test run' "$UNIKIT_VERIFY_SKILL" || TC_G4_WHY+=" TC-23:verify-may-run-tests"
@@ -7147,7 +7199,7 @@ if [[ -z "$TC_G4_WHY" ]]; then
     # (TC-24) SHARED — ONE string applied to BOTH files. The digest must be produced by one
     # procedure named in two places, never by two procedures that merely agree today: drift
     # in either half makes the anchor stop matching for no visible reason.
-    TC24_SHARED='the same procedure as `Summary SHA256`'
+    TC24_SHARED='the one tree-hash command'
     for tc24_f in "$TC_TESTRUNS" "$UNIKIT_VERIFY_SKILL"; do
         grep -qF "$TC24_SHARED" "$tc24_f" || TC_G4_WHY+=" TC-24:${tc24_f##*/skills/}-restates-hash-procedure"
     done
@@ -7198,11 +7250,11 @@ if [[ -z "$TC_G5_WHY" ]]; then
     # the skill (the stub that recognises the task); the rest moved to the reference.
     grep -qF 'Test checkpoint: <coverage>'  "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-34:no-run-task-branch"
     grep -qF 'every test in the project'    "$TC_TESTRUNS" || TC_G5_WHY+=" TC-35:no-plan-width"
-    grep -qF 'without building a graph'     "$TC_TESTRUNS" || TC_G5_WHY+=" TC-36:no-graph-free-rule"
-    grep -qF 'Safety valve'                 "$TC_TESTRUNS" || TC_G5_WHY+=" TC-37:no-safety-valve"
-    grep -qF 'assigned, not measured'       "$TC_TESTRUNS" || TC_G5_WHY+=" TC-37:threshold-passed-off-as-measured"
-    grep -qF 'Reading every module manifest is forbidden' "$TC_TESTRUNS" || TC_G5_WHY+=" TC-38:no-manifest-read-ban"
-    grep -qF 'git rev-parse HEAD; { git diff HEAD --name-only' "$TC_TESTRUNS" || TC_G5_WHY+=" TC-39:no-hash-commands"
+    grep -qF 'without building a graph'     "$TC_RUNWIDTH" || TC_G5_WHY+=" TC-36:no-graph-free-rule"
+    grep -qF 'Safety valve'                 "$TC_RUNWIDTH" || TC_G5_WHY+=" TC-37:no-safety-valve"
+    grep -qF 'assigned, not measured'       "$TC_RUNWIDTH" || TC_G5_WHY+=" TC-37:threshold-passed-off-as-measured"
+    grep -qF 'Reading every module manifest is forbidden' "$TC_RUNWIDTH" || TC_G5_WHY+=" TC-38:no-manifest-read-ban"
+    grep -qF 'node .unikit/system/tree-hash.mjs' "$TC_TESTRUNS" || TC_G5_WHY+=" TC-39:no-hash-commands"
     grep -qF 'only WRITES tests and never runs them'      "$TC_TESTRUNS" || TC_G5_WHY+=" TC-40:step-3.8-may-still-run"
     # (TC-41) NEGATIVE — the policy is engine-neutral and the mechanism lives in testing.md.
     # The scope covers unikit-fix too, and the case is spelled out as classes: the plain
@@ -7391,6 +7443,26 @@ if [[ -s "$TS_FIX" ]]; then
     grep -qF -- "$TS_INFO_DEFER" "$TS_FIX" || TS4_WHY+=" TS-4:no-defer-line"
     grep -qF 'skip this step with the same single line' "$TS_FIX" || TS4_WHY+=" TS-4:step5-not-skipped-in-loop"
     grep -qF 'regression test' "$TS_FIX" || TS4_WHY+=" TS-4:no-regression-test"
+    # A run outside a review loop is asked for: the question names the scope, the recommended option
+    # follows its width, the answer's reach is stated, and a prototype plan with `Testing: no` is not asked.
+    for ts4 in \
+        "run-is-a-choice::a test run is the user's choice" \
+        'question-names-scope::Run the tests? Scope:' \
+        'whole-project-default::Do not run (recommended)' \
+        'answer-reach::What the answer covers' \
+        'refusal-note::not run — your choice' \
+        'prototype-plan::not part of this plan (Testing: no)' \
+        "prototype-keeps-the-word::the task's words do not ask for a run → no question"; do
+        grep -qF -- "${ts4#*::}" "$TS_FIX" || TS4_WHY+=" TS-4:${ts4%%::*}"
+    done
+    # The order of Step 4.2 is the behaviour: no bridge and a prototype plan both stop the step before it asks.
+    ts4_line() { # <literal>: the line of its first occurrence, 0 when there is none
+        { grep -nF -- "$1" "$TS_FIX" 2>/dev/null || echo 0; } | head -1 | cut -d: -f1
+    }
+    TS4_NO_BRIDGE=$(ts4_line 'If no engine bridge is available — skip and note: `Test run:')
+    TS4_PROTOTYPE=$(ts4_line 'not part of this plan (Testing: no)')
+    TS4_QUESTION=$(ts4_line '**The question.**')
+    [[ "$TS4_NO_BRIDGE" -gt 0 && "$TS4_NO_BRIDGE" -lt "$TS4_PROTOTYPE" && "$TS4_PROTOTYPE" -lt "$TS4_QUESTION" ]] || TS4_WHY+=" TS-4:step-4.2-order"
 else
     TS4_WHY+=" TS-4:fix-skill-missing"
 fi
@@ -7407,10 +7479,14 @@ for ts5 in \
     "$TS_TESTRUNS::phase-logic::Write tests for the logic created or modified in a phase" \
     "$TS_TESTRUNS::loop-exception::review loop" \
     "$TS_TESTRUNS::after-acceptance::after acceptance" \
+    "$TS_TESTRUNS::plan-with-no-manifest::Under \`Testing: yes\` with no manifest → one run, no record" \
     "$TS_IMPL::important-rule::Tests follow acceptance" \
     "$TS_IMPL::step-5.8-reminder::written and run once" \
     "$TS_REVIEW::checklist-line::Tests for new logic; none that pin tunable values or authored content" \
+    "$TS_REVIEW::choice-not-a-finding::no tests by the user's choice is not a finding" \
+    "$TS_REVIEW::waiting-not-a-finding::tests still waiting for acceptance" \
     "$TS_COMMIT::closed-line::$TS_INFO_CLOSED" \
+    "$TS_COMMIT::no-debt-line::No tests due" \
     "$TS_ULTRA::authored-content-literal::Not applicable — authored content; evidence is a read-back or a frame"; do
     ts5_file="${ts5%%::*}"; ts5_rest="${ts5#*::}"; ts5_key="${ts5_rest%%::*}"; ts5_anchor="${ts5_rest#*::}"
     ts5_rel="${ts5_file#"$ROOT_DIR"/}"
@@ -7497,6 +7573,35 @@ else
     fail "TS-7 registry snapshot versions:$TS7_WHY"
 fi
 
+# (TS-8) tests are a choice: the carrier says who decides, 5a binds only when tests are due and also
+# covers a task of /unikit-execute; the sentences that made writing and running a duty stay gone.
+TS8_WHY=""
+TS8_N=0
+if [[ -s "$TS_DEVPRIN" ]]; then
+    for ts8 in \
+        'choice::Whether tests are written and whether a run is started is a choice' \
+        'tests-due::This item applies when tests are due' \
+        'task-in-loop::a phase, a plan, a fix, a task'; do
+        TS8_N=$((TS8_N + 1))
+        grep -qF -- "${ts8#*::}" "$TS_DEVPRIN" || TS8_WHY+=" TS-8:${ts8%%::*}"
+    done
+    for ts8 in \
+        'duty-to-write::Write unit tests for the logic and the system values the code owns, and run them' \
+        'duty-to-have::the requirement to *have* tests stands' \
+        'acceptance-always-writes::unless the plan says `Testing: no`: write the tests'; do
+        TS8_N=$((TS8_N + 1))
+        grep -qF -- "${ts8#*::}" "$TS_DEVPRIN" && TS8_WHY+=" TS-8:returned:${ts8%%::*}"
+    done
+else
+    TS8_WHY+=" TS-8:dev-principles-missing"
+fi
+[[ "$TS8_N" -gt 0 ]] || TS8_WHY+=" TS-8:nothing-scanned"
+if [[ -z "$TS8_WHY" ]]; then
+    pass "TS-8 dev-principles.md makes writing and running tests a choice and keeps no duty to do either (scanned $TS8_N formulations)"
+else
+    fail "TS-8 tests as a choice:$TS8_WHY"
+fi
+
 # --- TR: the test-run block lives in a reference read only under `Testing: yes` (DEC-012 b) ---
 # Modelled on MX-3 / RD-H: present, not inline, and read at the right step. A body that exists
 # while no step reads it is a contract no run follows (RISK-010).
@@ -7538,8 +7643,8 @@ fi
 # default of 30; a run is one launch; a run over zero tests is not green; the final full run is
 # closed by reuse on an unchanged tree; /unikit-fix reads the same section; the coordinator
 # counts a reused final run apart from a performed one. Plan refinement 2026-10-01: the tree
-# hash sees file content and leaves `.unikit/` out, one command in implement and verify; the
-# executor carries a matching anchor over every commit it makes; a phase writes its tests before
+# hash sees file content and leaves `.unikit/` out, one command in implement and verify; a
+# commit that moves no file does not move it (2026-11-06); a phase writes its tests before
 # its run. Anchored on formulations, never on headings alone. The `## Run width` window runs to
 # the end of test-runs.md: it is the last section. A window is tested with a here-string, never
 # piped into `grep -q` — under pipefail a SIGPIPE hides the hit (the PX-2 note says the same).
@@ -7552,10 +7657,10 @@ for f in "$TC_TESTRUNS" "$EM_FIX_SKILL" "$TW_TASKFMT" "$TW_ULTRA_FMT" "$TW_CONFI
     [[ -s "$f" ]] || TW_WHY+=" missing:${f##*/}"
 done
 if [[ -z "$TW_WHY" ]]; then
-    TW_SEC="$(awk '/^## Run width/{f=1} f' "$TC_TESTRUNS")"
+    TW_SEC="$(awk '/^## Run width/{f=1} f' "$TC_RUNWIDTH")"
     [[ -n "$TW_SEC" ]] || TW_WHY+=" TW-1:no-run-width-section"
-    # (TW-1) /unikit-fix reads "that section alone" — from the heading to the end of the file.
-    [[ -z "$(awk '/^## Run width/{f=1;next} f&&/^## /{print; exit}' "$TC_TESTRUNS")" ]] || TW_WHY+=" TW-1:run-width-not-last"
+    # (TW-1) the system file is this one section — from the heading to the end of the file.
+    [[ -z "$(awk '/^## Run width/{f=1;next} f&&/^## /{print; exit}' "$TC_RUNWIDTH")" ]] || TW_WHY+=" TW-1:run-width-not-last"
     # (TW-1) both keys, the default threshold, and the floor rule.
     grep -qF '`testing.run.use_affected_modules`'      <<< "$TW_SEC" || TW_WHY+=" TW-1:no-affected-key"
     grep -qF '`testing.run.full_run_threshold_percent`' <<< "$TW_SEC" || TW_WHY+=" TW-1:no-threshold-key"
@@ -7574,14 +7679,16 @@ if [[ -z "$TW_WHY" ]]; then
     grep -qF 'the project has no tests yet'          <<< "$TW_SEC" || TW_WHY+=" TW-4:fix-fails-without-tests"
     # (TW-5) the valve reads the key, and the old literal threshold is gone from the whole file.
     grep -qF 'is ≥ `full_run_threshold_percent` % of all the project' <<< "$TW_SEC" || TW_WHY+=" TW-5:valve-not-keyed"
-    grep -qF '70%' "$TC_TESTRUNS" && TW_WHY+=" TW-5:hardcoded-threshold-returned"
+    grep -qF '70%' "$TC_RUNWIDTH" && TW_WHY+=" TW-5:hardcoded-threshold-returned"
     # (TW-6) the final run is reused on an unchanged tree, and every run of every test moves the anchor.
     grep -qF 'The final full run may be closed by reuse' "$TC_TESTRUNS" || TW_WHY+=" TW-6:no-final-reuse"
     grep -qF 'for every run that ran every test in the project, additionally' "$TC_TESTRUNS" || TW_WHY+=" TW-6:anchor-only-on-plan"
     # (TW-7) /unikit-fix reads the same section and no longer guesses one assembly.
-    grep -qF 'unikit-implement/references/test-runs.md' "$EM_FIX_SKILL" || TW_WHY+=" TW-7:fix-blind"
-    grep -qF '## Run width' "$EM_FIX_SKILL" || TW_WHY+=" TW-7:fix-reads-no-section"
+    grep -qF '.unikit/system/test-run-width.md' "$EM_FIX_SKILL" || TW_WHY+=" TW-7:fix-blind"
+    grep -qF 'test-run-width.md` → `### One scope, one launch`' "$EM_FIX_SKILL" || TW_WHY+=" TW-7:fix-reads-no-section"
     grep -qF 'Determine which test assembly covers the modified module' "$EM_FIX_SKILL" && TW_WHY+=" TW-7:fix-one-assembly-returned"
+    # /unikit-execute takes the width of a chosen run from the same section; the section says so.
+    grep -qF '`/unikit-execute` for a run the user chose' <<< "$TW_SEC" || TW_WHY+=" TW-7:execute-reader-unnamed"
     # (TW-8) the formats and the docs say "never narrower", not "not configurable", and the ultra
     # format no longer has the planner write a run's target into a phase file.
     grep -qF 'A run is never narrower than its coverage' "$TW_TASKFMT" || TW_WHY+=" TW-8:format-no-floor-rule"
@@ -7593,40 +7700,27 @@ if [[ -z "$TW_WHY" ]]; then
     # (TW-9) the coordinator does not count a reused final run as a performed one.
     grep -qF '<r> reused' "$TC_COORD" || TW_WHY+=" TW-9:coordinator-counts-reuse-as-run"
     # (TW-10) SHARED — the tree hash is ONE command, compared as a whole line between the two
-    # files (a fragment check stays green while one of the four `.unikit` excludes drifts in one
-    # copy). The line must be index-independent, top-relative and nested-repo safe: the review of
-    # 2026-10-01 measured `git status --porcelain` moving on `git add` (so no executor commit ever
-    # carried the anchor) and `--relative` + `hash-object` failing from a subdirectory, silently.
-    tw10_impl="$(awk '/git hash-object --stdin-paths/{n++; l=$0} END{if(n==1){sub(/^ +/,"",l); print l}}' "$TC_TESTRUNS")"
-    tw10_ver="$(awk '/git hash-object --stdin-paths/{n++; l=$0} END{if(n==1){sub(/^ +/,"",l); print l}}' "$UNIKIT_VERIFY_SKILL")"
+    # files; what it computes is pinned by behaviour in scripts/test-tree-hash.mjs. The pipeline it
+    # replaced must not come back: its Bash `{ … }` block reaching PowerShell hands its own text to
+    # `sha256sum`, so the digest stayed the same whatever the tree held (measured 2026-11-06) and
+    # read as "tree unchanged". `sort` made the digest depend on the locale as well.
+    tw10_impl="$(awk '/^ +node \.unikit\/system\/tree-hash\.mjs$/{n++; l=$0} END{if(n==1){sub(/^ +/,"",l); print l}}' "$TC_TESTRUNS")"
+    tw10_ver="$(awk '/^ +node \.unikit\/system\/tree-hash\.mjs$/{n++; l=$0} END{if(n==1){sub(/^ +/,"",l); print l}}' "$UNIKIT_VERIFY_SKILL")"
     [[ -n "$tw10_impl" ]] || TW_WHY+=" TW-10:not-one-hash-line:test-runs.md"
     [[ -n "$tw10_ver" ]]  || TW_WHY+=" TW-10:not-one-hash-line:SKILL.md"
     [[ -n "$tw10_impl" && "$tw10_impl" == "$tw10_ver" ]] || TW_WHY+=" TW-10:hash-drift-between-files"
-    tw10_i=0
-    for tw10_frag in 'git diff HEAD --name-only --no-renames --ignore-submodules -- .' \
-                     'git ls-files --others --exclude-standard --full-name -- .' \
-                     "| grep -v '/\$' | sort | git hash-object --stdin-paths; } | shasum -a 256"; do
-        tw10_i=$((tw10_i + 1))
-        grep -qF "$tw10_frag" <<< "$tw10_impl" || TW_WHY+=" TW-10:fragment-$tw10_i-missing"
-    done
-    tw10_ex="':(exclude).unikit'"
-    tw10_rest="${tw10_impl//"$tw10_ex"/}"
-    (( (${#tw10_impl} - ${#tw10_rest}) == 4 * ${#tw10_ex} )) || TW_WHY+=" TW-10:not-four-unikit-excludes"
-    # Markdown is documentation: the plan's documentation step writes it after the final run, and
-    # counting it made nearly every `Docs: yes` plan read as stale (user decision 2026-10-01).
-    tw10_md="':(exclude,icase)*.md'"
-    tw10_rest_md="${tw10_impl//"$tw10_md"/}"
-    (( (${#tw10_impl} - ${#tw10_rest_md}) == 4 * ${#tw10_md} )) || TW_WHY+=" TW-10:not-four-markdown-excludes"
-    grep -qF 'git status --porcelain' <<< "$tw10_impl" && TW_WHY+=" TW-10:index-sensitive-hash-returned"
-    grep -qF -- '--relative' <<< "$tw10_impl" && TW_WHY+=" TW-10:cwd-relative-paths-returned"
     for tw10_f in "$TC_TESTRUNS" "$UNIKIT_VERIFY_SKILL"; do
-        grep -qF 'Any `fatal:` line the command prints → git did not answer' "$tw10_f" || TW_WHY+=" TW-10:fatal-not-unavailable:${tw10_f##*/}"
+        grep -qF 'A non-zero exit, or no `node`' "$tw10_f" || TW_WHY+=" TW-10:failure-not-unavailable:${tw10_f##*/}"
+        for tw10_gone in 'git hash-object' 'shasum' 'sha256sum' 'Any `fatal:` line'; do
+            grep -qF "$tw10_gone" "$tw10_f" && TW_WHY+=" TW-10:pipeline-returned(${tw10_gone}):${tw10_f##*/}"
+        done
     done
-    # (TW-11) the executor carries a matching anchor over every commit — implement and the coordinator alike.
-    grep -qF '## Carrying the anchor across a commit' "$TC_TESTRUNS"            || TW_WHY+=" TW-11:no-carry-section"
-    grep -qF 'A commit moves no file'                 "$TC_TESTRUNS"            || TW_WHY+=" TW-11:no-carry-reason"
-    grep -qF 'Carrying the anchor across a commit'    "$UNIKIT_IMPLEMENT_SKILL" || TW_WHY+=" TW-11:implement-never-carries"
-    grep -qF 'Carrying the anchor across a commit'    "$TC_COORD"               || TW_WHY+=" TW-11:coordinator-never-carries"
+    # (TW-11) a commit does not move the hash, so nothing is carried over one: the section, the
+    # implement paragraph and the coordinator's bullet that did it must not come back.
+    grep -qF 'A commit that moves no file' "$TC_TESTRUNS" || TW_WHY+=" TW-11:no-commit-rule"
+    for tw11_f in "$TC_TESTRUNS" "$UNIKIT_IMPLEMENT_SKILL" "$TC_COORD"; do
+        grep -qF 'Carrying the anchor across a commit' "$tw11_f" && TW_WHY+=" TW-11:carry-returned:${tw11_f##*/}"
+    done
     # (TW-12) a phase writes its tests before its run, or the last phase's tests are never run.
     grep -qF 'A phase that has not run `## Step 3.8` yet writes its tests now' "$TC_TESTRUNS" || TW_WHY+=" TW-12:tests-written-after-run"
     # (TW-13…TW-15) one scope, one launch: the scope is closed whole before the first launch, and a
@@ -7653,7 +7747,7 @@ if [[ -z "$TW_WHY" ]]; then
     tw15_line="$( { grep -F 'After the fix the run is repeated' "$TC_TESTRUNS" || true; } | head -1)"
     [[ -n "$tw15_line" ]] || TW_WHY+=" TW-15:no-repeat-line"
     tw_has "TW-15:repeat-line-unlinked"  'One scope, one launch'                                   "$tw15_line"
-    tw_has "TW-15:search-looks-like-launch" 'no suite is started while it repeats'                 "$(cat "$TC_TESTRUNS")"
+    tw_has "TW-15:search-looks-like-launch" 'no suite is started while it repeats'                 "$(cat "$TC_RUNWIDTH")"
     tw_has "TW-15:fix-unlinked"          'One scope, one launch'                                   "$(cat "$EM_FIX_SKILL")"
     # (TW-16) a result that names a part still going is not green: a bridge can answer a run with a
     # success flag while one of its parts was only started in the background (measured 2026-10-27).
@@ -7668,10 +7762,32 @@ if [[ -z "$TW_WHY" ]]; then
     tw_has "TW-17:no-split-paragraph"    'splits it along its own boundary'                        "$TW_SEC"
     tw_has "TW-17:part-launched-twice"   'each part is launched once'                              "$TW_SEC"
     tw_has "TW-17:split-not-the-only-case" 'This is the only case in which a run is more than one launch' "$TW_SEC"
+    # (TW-18) unsaved editor state in the way of a run: neither a save nor a discard comes without an answer, the
+    # user is offered all three ways in this order (a save can write stale data over the file), and the rules of
+    # the bridges and the one run that does not go through this file point here instead of deciding on their own.
+    tw_has "TW-18:unasked-save-or-discard" 'Never do either without an answer'                  "$TW_SEC"
+    tw_has "TW-18:why-a-save-can-hurt"     'stale data'                                         "$TW_SEC"
+    tw_has "TW-18:nobody-to-ask"           'Test run: blocked — unsaved changes in'             "$TW_SEC"
+    tw_has "TW-18:option-self"             '`I will save them myself (recommended)`'            "$TW_SEC"
+    tw_has "TW-18:option-save"             '`Save and continue`'                                "$TW_SEC"
+    tw_has "TW-18:option-discard"          '`Discard all changes and continue`'                 "$TW_SEC"
+    tw_option_line() { # <literal>: its line in the section, 0 when absent
+        { grep -nF -- "$1" <<< "$TW_SEC" || echo 0; } | head -1 | cut -d: -f1
+    }
+    TW18_SELF=$(tw_option_line '`I will save them myself (recommended)`')
+    TW18_SAVE=$(tw_option_line '`Save and continue`')
+    TW18_DISCARD=$(tw_option_line '`Discard all changes and continue`')
+    [[ "$TW18_SELF" -gt 0 && "$TW18_SELF" -lt "$TW18_SAVE" && "$TW18_SAVE" -lt "$TW18_DISCARD" ]] || TW_WHY+=" TW-18:option-order"
+    grep -qF '### Unsaved editor state' "$ROOT_DIR/skills/unikit-verify/SKILL.md" || TW_WHY+=" TW-18:verify-pointer"
+    for tw18_f in unity-cli/INDEX.md unity-cli/verification.md unity-biome-mcp/verification.md; do
+        grep -qF "the user's answer" "$ROOT_DIR/engine-bridges/unity/rules/$tw18_f" || TW_WHY+=" TW-18:bridge-rule($tw18_f)"
+    done
+    grep -qF 'every open scene was saved: an unsaved scene makes the run' "$ROOT_DIR/engine-bridges/unity/rules/unity-cli/INDEX.md" && TW_WHY+=" TW-18:save-first-returned"
+    grep -qF 'every open scene saved first' "$ROOT_DIR/engine-bridges/unity/rules/unity-cli/verification.md" && TW_WHY+=" TW-18:save-first-returned"
     (( tw_chk > 0 )) || TW_WHY+=" TW-13:no-anchor-checked"
 fi
 if [[ -z "$TW_WHY" ]]; then
-    pass "TW-1…TW-17 run width: every test by default, affected runs and their threshold are keys, one launch, zero tests is not green, the final run reused on an unchanged tree, fix reads the same section; one content-aware, index-independent tree hash, carried over the executor's commits; tests written before the phase's run; one scope closed before its single launch, a repeat after red is one launch of the whole scope; a part still going is not green, a bridge that cannot run the scope in one launch splits it along its own boundary (${tw_chk:-0} new anchors)"
+    pass "TW-1…TW-18 run width: every test by default, affected runs and their threshold are keys, one launch, zero tests is not green, the final run reused on an unchanged tree, fix reads the same section; one content-only tree hash that a commit does not move; tests written before the phase's run; one scope closed before its single launch, a repeat after red is one launch of the whole scope; a part still going is not green, a bridge that cannot run the scope in one launch splits it along its own boundary (${tw_chk:-0} new anchors)"
 else
     fail "TW run-width contract:$TW_WHY"
 fi
@@ -9609,7 +9725,70 @@ if [[ -z "$AR_WHY" ]]; then
     ar_has "AR-26:destination-may-be-overwritten" 'already exists in researches/ — rename one of the two folders by hand' "$AR_RESEARCHES"
     ar_has "AR-26:no-list-without-slug" 'Restore all <n>' "$AR_RESEARCHES"
     ar_has "AR-26:empty-archive-unsaid" 'Archive is empty — no research has been archived yet.' "$AR_RESEARCHES"
-    ar_has "AR-26:index-after-restore" 'The index, as R4 item 6' "$AR_RESEARCHES"
+    ar_has "AR-26:index-after-restore" 'The indexes, as R4 item 6' "$AR_RESEARCHES"
+    # RI guards check instructions, not observed model behavior. Replay cases keep
+    # that distinction explicit; delivery is exercised by test-install.sh.
+    RI_RENDER="$ROOT_DIR/skills/unikit-explore/references/index-render.md"
+    RI_CASES="$ROOT_DIR/scripts/test-fixtures/research-indexes/README.md"
+    # The format and the writer: the table lives in the one reference that writes it, its Summary
+    # comes from Topic, and the writer reads neither the contract nor a whole manifest.
+    for anchor in 'scope: active | archive' 'header-only table' 'unikit:research-index:2' \
+        'INFO [research-index]' 'Summary` is the `Topic:` line' 'cut at 250' \
+        'No `Topic:` between the two markers → `—`' 'One search with line numbers' \
+        '`Topic:` counts only between' 'A line left out as too' \
+        'Never shorten or rewrite the manifest'; do
+        ar_has "RI:writer:$anchor" "$anchor" "$RI_RENDER"
+    done
+    ar_lacks 'RI:writer-reads-the-contract' 'research-link.md' "$RI_RENDER"
+    # One reading rule, word for word in every reader. The text is taken from unikit-plan on the
+    # RD-G precedent; a reader that restates it in other words drops out of the count.
+    RI_READER="$({ grep -oE '\*\*Research index\.\*\* .*and write nothing\.' "$UNIKIT_PLAN_SKILL" || true; } | head -1)"
+    RI_READER_N=0
+    if [[ -z "$RI_READER" ]]; then
+        AR_WHY+=" RI:reader-no-object"
+    else
+        for ri_f in "$UNIKIT_PLAN_SKILL" "$UNIKIT_IMPROVE_SKILL" "$UR_EXPLORE" "$AR_RESEARCHES" "$ROOT_DIR/skills/unikit-help/SKILL.md"; do
+            RI_READER_N=$((RI_READER_N + 1))
+            ri_count="$(grep -cF "$RI_READER" "$ri_f" || true)"
+            [[ "$ri_count" -eq 1 ]] || AR_WHY+=" RI:reader-count:${ri_f##*/skills/}=$ri_count"
+        done
+    fi
+    [[ "$RI_READER_N" -gt 0 ]] || AR_WHY+=" RI:reader-no-readers"
+    # The summary cache is gone from everything the package ships. Counted first: an empty scan
+    # would pass every negative below.
+    RI_NC_FILES="$(find "$ROOT_DIR/skills" "$ROOT_DIR/data" "$ROOT_DIR/docs" -type f | wc -l | tr -d ' ')"
+    [[ "$RI_NC_FILES" -gt 0 ]] || AR_WHY+=" RI:no-cache-scanned-nothing"
+    for tok in 'INDEX.cache' 'sourceSha256' 'summaryVersion' 'index-summary-cache'; do
+        if grep -rqF "$tok" "$ROOT_DIR/skills" "$ROOT_DIR/data" "$ROOT_DIR/docs"; then AR_WHY+=" RI:no-cache:$tok"; fi
+    done
+    [[ ! -e "$ROOT_DIR/skills/unikit-explore/references/index-summary-cache.md" ]] || AR_WHY+=" RI:no-cache:reference-returned"
+    # Archive and restore: one rebuild per batch, and a named restore goes to the folders.
+    for anchor in 'once each after the batch' 'No successful moves' \
+        'before exiting after a later batch error' 'Go straight to the folders' \
+        'active folder is a destination collision' 'Read-only list never generates'; do
+        ar_has "RI:archive:$anchor" "$anchor" "$AR_RESEARCHES"
+    done
+    # A gate repair that touches what the index shows re-renders it before the save is confirmed.
+    ar_lacks 'RI:final-sync-returned' '### Final index synchronization' "$UR_EXPLORE"
+    RI_GATE="$({ grep -nF 'A repair that changed a header field or the `Topic:` line' "$UR_EXPLORE" || true; } | head -1 | cut -d: -f1)"
+    RI_CONFIRM="$({ grep -n '^### Step 5: Confirm' "$UR_EXPLORE" || true; } | head -1 | cut -d: -f1)"
+    [[ -n "$RI_GATE" && -n "$RI_CONFIRM" && "$RI_GATE" -lt "$RI_CONFIRM" ]] \
+        || AR_WHY+=" RI:gate-rerender-missing-or-after-confirm"
+    # The grants the cache needed left with it; the frontmatter is read, not the whole file.
+    for skill in explore archive; do
+        RI_FM="$(awk 'NR==1&&/^---$/{f=1;next} f&&/^---$/{exit} f' "$ROOT_DIR/skills/unikit-$skill/SKILL.md")"
+        [[ -n "$RI_FM" ]] || AR_WHY+=" RI:$skill:no-frontmatter"
+        for grant in 'Bash(shasum *)' 'Bash(sha256sum *)' 'Bash(awk *)'; do
+            if printf '%s' "$RI_FM" | grep -qF "$grant"; then AR_WHY+=" RI:$skill:digest-grant"; fi
+        done
+    done
+    # The table has no Created, so the planner shows the column it does have.
+    ar_has 'RI:plan-shows-updated' '(<Updated>)' "$UNIKIT_PLAN_SKILL"
+    ar_lacks 'RI:plan-shows-created' '(<Created>)' "$UNIKIT_PLAN_SKILL"
+    for case_id in {1..13}; do
+        ar_has "RI:replay-case-C$case_id" "| C$case_id |" "$RI_CASES"
+    done
+    ar_lacks 'RI:replay-case-C14-returned' '| C14 |' "$RI_CASES"
     # (AR-27) the grants and the boundary: Write is granted (the index is rewritten whole) and rm
     # still is not; design researches stay untouched, the plan protocol no longer claims that code
     # researches are, and the router owns both archives. The ownership section is the router's only.
@@ -9860,7 +10039,12 @@ if [[ -z "$BX_WHY" ]]; then
     # 65830 -> 65950: the Bootstrap reads the order file and the routing file in one sentence (XE-2), as implement and execute do
     # 65950 -> 66690: architecture topics, 2026-10-28 — the Step 0.2 read of the topic files, the 3.4 table check and the 3.6 suggestions (AD-12); the numbers live in the contract
     # 66690 -> 66710: the Subagent arguments pointer moved out of the alias section into one of its own (AP-22), +14 bytes of heading
-    bx_max "BC-1:skill-size" 66710 "$UNIKIT_VERIFY_SKILL"
+    # 66710 -> 66860: the strict run points at the rule for unsaved editor state (TW-18), +154 bytes
+    # 66860 -> 66820: the pointer names the system file, the width left the skill folder
+    # 66820 -> 66880: research-link simplification, 2026-11-06 — the two grants of the hash script and the report line of a skipped check, less the pointer to the retired digest section
+    # 66880 -> 66450: the tree hash left the skill for a script, 2026-11-06 — one short command instead of the pipeline and its rules
+    # 66450 -> 66570: review of that change — a stale old record until the next full run, and a command that did not answer names no single cause
+    bx_max "BC-1:skill-size" 66570 "$UNIKIT_VERIFY_SKILL"
 
     # (BC-2) verify's branch: headings, the two level sentences, and the one place of suggested_next
     BX_CHK=$((BX_CHK + 1))
@@ -9913,7 +10097,8 @@ if [[ -z "$BX_WHY" ]]; then
     # 62000 -> 62560: architecture topics, 2026-10-28 — the Bootstrap read of the topic files and the topic-path slot in the recon prompts (AD-12)
     # 62560 -> 62580: the Subagent arguments pointer moved out of the alias section into one of its own (AP-22), +15 bytes of heading
     # 62580 -> 62720: research archive, 2026-10-28 — the linked research is read from the folder the contract's "Finding the folder" returns (+140 bytes)
-    bx_max "BS-3:skill-size" 62720 "$UNIKIT_IMPROVE_SKILL"
+    # 62720 -> 63100: research-link simplification, 2026-11-06 — the one reading rule of an index moved out of the contract into each reader, and the two grants of the hash script in place of the digest utilities
+    bx_max "BS-3:skill-size" 63100 "$UNIKIT_IMPROVE_SKILL"
 
     # (BX-1) the four branch files: no agent-filter markers, no engine words, all point at the contract
     for f in "$BP_REF" "$BM_REF" "$BC_REF" "$BS_REF"; do
@@ -9951,7 +10136,9 @@ if [[ -z "$BX_WHY" ]]; then
     # 53650 -> 53720: the bridge order moved from the config to .unikit/bridges.yaml and the routing file joined it in one Bootstrap sentence (XE-2)
     # 53720 -> 54520: architecture topics, 2026-10-28 — the Step 1 and Step 3.0 reads of the topic files and the 3.7 delta form (AD-12)
     # 54520 -> 54540: the Subagent arguments pointer moved out of the alias section into one of its own (AP-22), +14 bytes of heading
-    bx_max "BM-6:implement-skill-size" 54540 "$UNIKIT_IMPLEMENT_SKILL"
+    # 54540 -> 54640: research-link simplification, 2026-11-06 — the two grants of the hash script
+    # 54640 -> 54425: a commit no longer moves the tree hash, 2026-11-06 — the paragraph that wrapped every commit is gone
+    bx_max "BM-6:implement-skill-size" 54425 "$UNIKIT_IMPLEMENT_SKILL"
     # (BC-4) a measurement the user skipped is a skipped row, not a blocker
     bx_has "BC-4:skipped-measure-is-a-blocker" '⏭️ SKIPPED' "$BC_REF"
     # (BC-5) a name stated in ## Not measured is accounted for — a measurement the user skipped is not a blocker
@@ -10827,6 +11014,9 @@ if [[ -z "$UW_WHY" ]]; then
         grep -qF -- "$lit" "$UW_STATEFUL" || UW_WHY+=" UW-4:recon-missing(${lit:0:32})"
     done
     grep -qF 'answers condensed' "$UW_STATEFUL" && UW_WHY+=" UW-4:recon-condensed"
+    # The change guard goes through the script: a shell pipeline here needs Unix utilities the project may not have.
+    grep -qF 'node .unikit/system/tree-hash.mjs --all' "$UW_STATEFUL" || UW_WHY+=" UW-4:guard-not-the-script"
+    grep -qF 'shasum' "$UW_STATEFUL" && UW_WHY+=" UW-4:guard-pipeline-returned"
     # ...and where there is NO writing agent the SESSION is the writer, as an ordered procedure with a
     # gate, never a clause it can skip. A live run on a runtime without a writing agent: the read-only
     # recon agents finished and no recon/ folder existed — the exception had been one sentence,
@@ -11093,9 +11283,6 @@ for km_f in "$ROOT_DIR"/skills/*/SKILL.md; do
     fi
 done
 [[ "$KM_SKILL_SEEN" -gt 0 ]] || KM_WHY+=" KM-1:no-skills-scanned"
-for km_f in "$ROOT_DIR/skills/unikit-verify/SKILL.md" "$ROOT_DIR/skills/unikit-implement/references/test-runs.md"; do
-    grep -qF "| shasum -a 256 | cut -d' ' -f1" "$km_f" || KM_WHY+=" KM-1:hash-tail-not-cut:${km_f##*/}"
-done
 
 # (KM-2 was retired with the swap it guarded: the `general-purpose` → `coder` rewrite is gone,
 # and AP-1…AP-7 now forbid the literal in skills altogether.)
@@ -13091,6 +13278,43 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# Part 7f9: the research-hash script (scripts/test-research-hash.mjs)
+# The digests are constants from an independent pipeline; delivery is in test-install.sh / test-update.sh.
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 7f9: research-hash script behaviour${NC}"
+
+set +e
+RESEARCH_HASH_OUTPUT=$(node "$ROOT_DIR/scripts/test-research-hash.mjs" 2>&1)
+RESEARCH_HASH_EXIT=$?
+set -e
+
+if [[ $RESEARCH_HASH_EXIT -eq 0 ]]; then
+    pass "Research-hash script behaviour"
+    echo "$RESEARCH_HASH_OUTPUT" | tail -1 | sed 's/^/    /'
+else
+    fail "Research-hash script behaviour"
+    echo "$RESEARCH_HASH_OUTPUT" | sed 's/^/      /'
+fi
+
+# ─────────────────────────────────────────────
+# Part 7f10: the tree-hash script (scripts/test-tree-hash.mjs)
+# Real git repositories in a temporary directory; delivery is in test-install.sh / test-update.sh.
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 7f10: tree-hash script behaviour${NC}"
+
+child_wait treehash
+TREE_HASH_OUTPUT="$CHILD_OUTPUT"
+TREE_HASH_EXIT="$CHILD_EXIT"
+
+if [[ $TREE_HASH_EXIT -eq 0 ]]; then
+    pass "Tree-hash script behaviour"
+    echo "$TREE_HASH_OUTPUT" | tail -1 | sed 's/^/    /'
+else
+    fail "Tree-hash script behaviour"
+    echo "$TREE_HASH_OUTPUT" | sed 's/^/      /'
+fi
+
+# ─────────────────────────────────────────────
 # Part 7g: validate <!-- unikit:agents --> markers in skills/subagents
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Part 7g: agent-marker validation${NC}"
@@ -14048,15 +14272,15 @@ else
 fi
 
 # ─────────────────────────────────────────────
-# Part 7g7b: XE-1…XE-7 — /unikit-execute, the task skill that works with no plan
+# Part 7g7b: XE-1…XE-8 — /unikit-execute, the task skill that works with no plan
 # ─────────────────────────────────────────────
 # unikit-execute does one task from a description: no plan file, a card classified from the text, the bridges
 # in the order D3 gives, an end with a report and one question. EM, RT, LB, EXP-E, PRT-8, UQ, SK and EP reach
 # it by name or by its frontmatter, and EW-2 / EW-3 list it; these guards pin what no other family owns: its
 # rights (XE-1), the reads it shares with the plan executors (XE-2), the card that reads its vocabulary
 # instead of copying it (XE-3), the delegate marker and its three call sites (XE-4), the ban on plan files
-# and the list of skills it may invoke (XE-5), `direct` behind the plan executors' own gate (XE-6) and a
-# rename that leaves no trace (XE-7). Own accumulators XE_*; every grep inside $( … ) is wrapped in
+# and the list of skills it may invoke (XE-5), `direct` behind the plan executors' own gate (XE-6) a
+# rename that leaves no trace (XE-7) and tests as the user's choice (XE-8). Own accumulators XE_*; every grep inside $( … ) is wrapped in
 # { … || true; } — under `set -e` an empty match would abort the suite.
 echo -e "\n${BOLD}Part 7g7b: unikit-execute — the task skill with no plan (XE)${NC}"
 XE_WHY=""
@@ -14164,11 +14388,47 @@ for xe_a in "${XE_ALLOW_OLD[@]}"; do
     grep -qi -- "$XE_OLD" "$ROOT_DIR/$xe_a" || XE_WHY+=" XE-7:allowlist-stale($xe_a)"
 done
 
+# (XE-8) tests are the user's choice: the skill holds the rule and the pointer, the reference holds the question,
+# the width and the reach of an answer. The branch that let a project's rules order tests must not return.
+XE_TESTS="$ROOT_DIR/skills/unikit-execute/references/tests.md"
+[[ -s "$XE_TESTS" ]] || XE_WHY+=" XE-8:reference-missing"
+for xe_lit in "Tests are the user's choice" 'The one exception to the row rule' 'tests follow the hand-off' \
+              'Accept and write the tests (recommended)' 'the tests stay unwritten' \
+              '{{skills_dir}}/{{self_name}}/references/tests.md'; do
+    xe_has "XE-8:skill-lacks(${xe_lit:0:26})" "$xe_lit" "$XE_SKILL"
+done
+for xe_lit in 'plainly require' 'a rule demands coverage' 'None by default'; do
+    xe_lacks "XE-8:skill-returned(${xe_lit:0:26})" "$xe_lit" "$XE_SKILL"
+done
+for xe_lit in 'No tests (recommended)' 'Write them after you accept the result' 'Only run the existing tests' \
+              '.unikit/system/test-run-width.md' 'one repeat' 'is not an order' 'prototype plan' 'Not done' \
+              'says nothing about tests, in a session under a prototype plan' \
+              'No bridge offers a test run → no question' '`use_affected_modules: true`' \
+              '<written | not written>, not run — no bridge offers a test run' \
+              '<written | not written>, not run — the code does not compile'; do
+    xe_has "XE-8:reference-lacks(${xe_lit:0:26})" "$xe_lit" "$XE_TESTS"
+done
+xe_has "XE-8:skill-lacks(narrowing-reads-the-rule)" 'writes tests or narrows a run to affected test suites' "$XE_SKILL"
+xe_lacks "XE-8:rule-read-before-width" 'Before working out a scope, read the rule' "$XE_TESTS"
+xe_lacks "XE-8:width-from-a-skill-folder" 'unikit-implement/references/test-runs.md' "$XE_TESTS"
+# "The first row that fits decides", so the order is the behaviour: the wider order comes before the narrower one
+# it contains, and the prototype row after every row that names an order, because a word of the user still counts.
+xe_row() { # <literal>: the line of the first row that holds it, 0 when there is none
+    { grep -nF -- "$1" "$XE_TESTS" 2>/dev/null || echo 0; } | head -1 | cut -d: -f1
+}
+XE_ROW_BOTH=$(xe_row '| orders tests and a run')
+XE_ROW_TESTS=$(xe_row '| orders tests (')
+XE_ROW_RUN=$(xe_row '| orders a run only')
+XE_ROW_PROTO=$(xe_row '| says nothing about tests, in a session under a prototype plan')
+XE_CHK=$((XE_CHK + 2))
+[[ "$XE_ROW_BOTH" -gt 0 && "$XE_ROW_BOTH" -lt "$XE_ROW_TESTS" ]] || XE_WHY+=" XE-8:narrower-order-row-first"
+[[ "$XE_ROW_RUN" -gt 0 && "$XE_ROW_RUN" -lt "$XE_ROW_PROTO" ]] || XE_WHY+=" XE-8:prototype-row-beats-an-order"
+
 [[ "$XE_CHK" -gt 0 ]] || XE_WHY+=" XE-0:nothing-checked"
 if [[ -z "$XE_WHY" ]]; then
-    pass "XE-1…XE-7 unikit-execute: rights, shared reads, card, delegate marker at $XE_ALIAS_N call sites, no-plan ban, direct gate, rename with no trace ($XE_CHK checks, $XE_TARGET_N invoked skills)"
+    pass "XE-1…XE-8 unikit-execute: rights, shared reads, card, delegate marker at $XE_ALIAS_N call sites, no-plan ban, direct gate, rename with no trace, tests by the user's choice ($XE_CHK checks, $XE_TARGET_N invoked skills)"
 else
-    fail "XE-1…XE-7 unikit-execute:$XE_WHY"
+    fail "XE-1…XE-8 unikit-execute:$XE_WHY"
 fi
 
 # ─────────────────────────────────────────────

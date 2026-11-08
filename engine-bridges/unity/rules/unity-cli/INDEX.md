@@ -33,7 +33,7 @@ Creating a script file through the bridge starts an import and a domain reload b
 | scene-1 | scene | before a whole-scene read the nesting depth is below sixty-three: an answer that only calls the response format invalid is the depth, not the connection, and a chain several hundred deep hangs the command lane |
 | scene-2 | scene | before a scene is opened or created in place of the current one, every open scene was saved - the call neither asks nor warns |
 | scene-3 | scene | a path used as a target names one object across all open scenes: with the same path in two scenes the object of the inactive one may be taken without a word - address by instance id, or by global id when the scene is a saved asset |
-| scene-4 | scene | before a test run every open scene was saved: an unsaved scene makes the run hold the command lane for its whole timeout and end as a success with no tests |
+| scene-4 | scene | before a test run no open scene had unsaved changes, and what happened to any that had was the user's answer: an unsaved scene makes the run hold the command lane for its whole timeout and end as a success with no tests |
 | compile-1 | compile | after entering play mode the editor's play state says it is playing: a text of success with a stopped state means the entry was refused, and the reason is in the console |
 | compile-2 | compile | a compile failure is read from the failed flag and the error list, never from the compilation-failed field, which lags one compile behind; reads after a failed compile describe the last good build |
 | console-1 | console | a clean read of errors after a noisy run was checked against the dropped flag and the editor's own error counters: the buffer holds two thousand entries and a flood pushes an error out |

@@ -191,7 +191,7 @@ Where **test runs** are placed in a plan (`plan`), and how wide a run goes when 
 | `testing.plan.checkpoints.ultra` | Where `/unikit-plan` places a test-checkpoint task in an ultra bundle. Domain `task \| phase \| plan`; `task` is admissible only here, because only ultra has a per-task surface to put a run on. | `phase` |
 | `testing.plan.checkpoints.full` | The same for a full plan. Domain `phase \| plan`. | `phase` |
 | `testing.plan.checkpoints.fast` | The same for a fast plan. Domain `phase \| plan`. The default differs from full deliberately: a fast plan is short, and one full run at its end covers it whole. | `plan` |
-| `testing.run.use_affected_modules` | How a phase test checkpoint and a `/unikit-fix` test run choose their tests. `false` runs every test in the project; `true` runs only the test suites of the changed modules and of the modules that depend on them, found by name search, in one run — and every test when narrowing is not possible. `task N.M` checkpoints always run their own fixtures, and the plan's final checkpoint always runs everything. | `false` |
+| `testing.run.use_affected_modules` | How a phase test checkpoint and a `/unikit-fix` or `/unikit-execute` test run choose their tests. It sets the width only: without a plan a run starts on your words or your answer to the question that names the scope. `false` runs every test in the project; `true` runs only the test suites of the changed modules and of the modules that depend on them, found by name search, in one run — and every test when narrowing is not possible. `task N.M` checkpoints always run their own fixtures, and the plan's final checkpoint always runs everything. | `false` |
 | `testing.run.full_run_threshold_percent` | With `use_affected_modules: true`: when the affected suites reach this share of all the project's test suites, every test is run instead. An integer from 1 to 100; any other value falls back to the default with a `WARN [testing]` line. Assigned, not measured — tune it on your project. | `30` |
 
 **Merging runs is a question, not a key.** When a `/unikit-implement` call covers two or more test-checkpoint tasks that can be merged, it asks once, before the first task, whether to run the tests once at the last of them or at every point as planned; words in the call itself (`Phases 5-6, tests at the end of phase 6`) answer it in advance. The answer holds for that call only — on disk it survives as the `⏭️ MERGED` marks in the plan. The plan's final full run is never merged into another point; it is the point the others merge into, so a phase run plus the final run already counts as two. A config written by an earlier version may still carry the executor's old merge key; nothing reads it any more.
@@ -800,7 +800,8 @@ your-unity-project/
 │   │   ├── modules.yml            # Generated snapshot of MODULE_REGISTRY
 │   │   ├── gate-result-contract.md # Schema of the `unikit-gate-result` fenced JSON block
 │   │   ├── ultra-plan-read.md     # Reader contract for an ultra plan bundle
-│   │   ├── research-link.md       # The `## Based on` contract - entry, hashing, drift ladder
+│   │   ├── research-link.md       # The `## Based on` contract - entry, hash command, drift ladder
+│   │   ├── research-hash.mjs      # Computes `Summary SHA256` from a manifest - run by plan, improve, implement, verify
 │   │   ├── plan-boundaries.md     # Where a plan, a module and a push start and end - read by verify, implement, commit, pr
 │   │   ├── merge-analysis.md      # How to read a merge before it happens - read by explore and plan when asked to merge a branch
 │   │   ├── balance-handback.md    # The balance hand-back report contract - read by plan, implement, verify and unikit-gd-balance

@@ -23,8 +23,10 @@ allowed-tools:
   - Bash(wc *)
   - Bash(git *)
   - Bash(date *)
-  - Bash(shasum *)
-  - Bash(sha256sum *)
+  - Bash(node .unikit/system/research-hash.mjs *)
+  - PowerShell(node .unikit/system/research-hash.mjs *)
+  - Bash(node .unikit/system/tree-hash.mjs *)
+  - PowerShell(node .unikit/system/tree-hash.mjs *)
   - Agent
   - Skill
   - AskUserQuestion
@@ -235,7 +237,7 @@ Then reconcile plan state with reality:
 ### Step 1: Load Plan Context
 
 - Read the **plan manifest** — `.unikit/code/plans/<folder>/PLAN.md`, or the flat `.unikit/code/PLAN.md`. Its section list: `{{skills_dir}}/unikit-plan/references/TASK-FORMAT.md` → *Plan Manifest Template*. In an ultra bundle every task's detail lives in its phase file; the reading depth is set by `.unikit/system/ultra-plan-read.md`.
-- `## Based on` names a research → do **NOT** read its `RESEARCH.md` as a substitute for the plan's own context: the plan's `## Technical Context` supersedes it. The research is read for **one** purpose only — the drift check below.
+- `## Based on` names a research → do **NOT** read its `RESEARCH.md` as a substitute for the plan's own context: the plan's `## Technical Context` supersedes it. The drift check below runs a script over it and reads nothing itself.
 - Read **`.unikit/DESCRIPTION.md`** — project specification, tech stack, constraints
 - Read **`.unikit/ARCHITECTURE.md`** — project structure, tech stack, and pointers to detailed rules. **Architecture topics:** only the root here; the topic files its `## Topics` table lists load per phase in Step 3.0.
 
@@ -264,8 +266,6 @@ No `## Settings` at all → `Testing: no`, `Docs: no`, and `Editor tasks` by the
 **The manifest has `## Experiment Context`** → read `.unikit/system/prototype-profile.md` now, once, and follow its `## Role: execution` — the branch check at the end of Step 1, before Step 1.5, and Steps 3.2 (the note to a delegate), 3.7, 3.10, 5.1, 5.3 and 5.8 follow it. Missing or unreadable → `WARN [prototype] profile contract missing — treating the plan as ordinary; run unikit-ai update`, and carry on as for an ordinary plan.
 
 **While the checklist carries a `PR checkpoint:` line, every `unikit-commit` call of this run adds `no-push`.**
-
-**Under `Testing: yes`, every `unikit-commit` call of this run is wrapped by `references/test-runs.md` → `## Carrying the anchor across a commit`** — the tree hash before the call, the carried `Full run:` anchor after it — or every committed plan reads as stale to `/unikit-verify`.
 
 ### Step 1.5: Bootstrap Rules & Principles
 

@@ -90,7 +90,7 @@ Do **not** read file contents deeply; presence/absence is usually enough.
 - `.unikit/code/plans/` and `.unikit/code/PLAN.md` — is there a plan to implement? A folder
   plan whose checkboxes are all `[x]` is finished: route it to `/unikit-archive`, not
   `/unikit-implement`.
-- `.unikit/code/researches/INDEX.md` — is there research to plan from?
+- `.unikit/code/researches/INDEX.md` — is there research to plan from? **Research index.** The `INDEX.md` of a research root is a generated table (an older project has `### title` cards) and only navigates: take `<slug>` only from a link to a direct child of that root and read `<slug>/RESEARCH.md` before acting on a row. No readable index → print `INFO [research-index] <root>: no readable index — searching the folders`, search that root's `*/RESEARCH.md` for the title and header fields, and write nothing. Use `.unikit/code/archive/researches/INDEX.md` only for requested history; reading history does not restore it or propose new work.
 - `.unikit/gamedesign/GD-IDS.yaml` — does a game-design workspace exist?
 
 Use what you find to tailor the route (e.g. "you already have a plan → run

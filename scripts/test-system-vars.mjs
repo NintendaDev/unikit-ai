@@ -99,8 +99,8 @@ const VERBOSE_ENV = 'SV_VERBOSE';
 const PINNED_NAMES = [
     'system_dir', 'system_gamedesign_dir', 'system_genres_dir', 'system_engine_bridges_dir',
     'cli_contract', 'dev_principles', 'modules_yml', 'gate_result_contract', 'ultra_plan_read_contract',
-    'research_link_contract', 'plan_boundaries_contract', 'merge_analysis_contract', 'balance_handback_contract',
-    'prototype_profile_contract', 'subagent_arguments_contract', 'subagent_roles_contract', 'user_questions_contract',
+    'research_link_contract', 'research_hash_script', 'tree_hash_script', 'plan_boundaries_contract', 'merge_analysis_contract', 'balance_handback_contract',
+    'prototype_profile_contract', 'subagent_arguments_contract', 'subagent_roles_contract', 'user_questions_contract', 'test_run_width_contract',
     'gd_principles', 'gd_authoring', 'gd_lifecycle', 'gd_flow_axis', 'gd_content_axis', 'gd_provenance', 'gd_critique',
     'design_read_contract', 'engine_bridges_manifest', 'language_rules',
 ];

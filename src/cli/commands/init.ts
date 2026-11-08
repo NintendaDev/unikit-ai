@@ -9,7 +9,7 @@ import { injectMcpRules } from '../../core/installer/mcp-injection.js';
 import { collectManagedGrantPrefixes } from '../../core/bridges/grants.js';
 import { getBridgeSetupLines } from '../../core/bridges/summary.js';
 import { installEngineTemplates, installCliContract, installGateResultContract, installUltraPlanReadContract, installResearchLinkContract, installPlanBoundariesContract, installMergeAnalysisContract, installBalanceHandbackContract, installPrototypeProfileContract, installDevPrinciples, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
-import { installSubagentArgumentsContract, installSubagentRolesContract, installUserQuestionsContract } from '../../core/installer/system-contracts.js';
+import { installResearchHashScript, installSubagentArgumentsContract, installSubagentRolesContract, installTestRunWidthContract, installTreeHashScript, installUserQuestionsContract } from '../../core/installer/system-contracts.js';
 import { installKimiSubagentModelsTemplate } from '../../core/installer/kimi-subagent-models.js';
 import { memoryDir } from '../../core/constants.js';
 import {
@@ -307,6 +307,8 @@ export async function runInitCommand(projectDir: string, deps: { runWizard: type
 
     // Install the research-link contract (read by plan/improve/implement/verify when a plan links a research)
     await installResearchLinkContract(projectDir);
+    await installResearchHashScript(projectDir);
+    await installTreeHashScript(projectDir);
     await installPlanBoundariesContract(projectDir);
 
     // Install the merge-analysis protocol (read by explore and plan when asked to merge a branch)
@@ -320,6 +322,9 @@ export async function runInitCommand(projectDir: string, deps: { runWizard: type
 
     // Install the subagent-arguments contract (read by the skills that launch a model-carrying subagent: how its model and effort are settled)
     await installSubagentArgumentsContract(projectDir);
+
+    // Install the test-run-width contract (read by every skill that runs tests)
+    await installTestRunWidthContract(projectDir);
 
     // Install the subagent-roles table (read together with the contract above: which role each launch has)
     await installSubagentRolesContract(projectDir);

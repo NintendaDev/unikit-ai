@@ -377,7 +377,10 @@ findable.
 
 ### The registry and the gate
 
-- **The registry is generated** so that it cannot fall behind the folders.
+- **The registry is generated** from folders, with its description taken from the `Topic:`
+  line and an older, longer one cut in the row. No agent sentence and nothing to keep in step
+  with the source: the row only navigates, and full research content is unchanged
+  ([research-link rationale](research-link-rationale.md)).
 - **An unfinished exploration is a `NOTE`**, not a `WARN`: nothing in it is damaged.
 - **The skip rule did not change when the unfinished-exploration line arrived** — only the message
   now tells the two cases apart.
@@ -392,8 +395,11 @@ game-design. It stopped being a separate command, but it did **not** stop being 
 which is what step 7 is for.
 
 The cost is worth naming: the registry can no longer be repaired by a dedicated command. In
-exchange it can no longer fall behind, because it is rebuilt from the folders — the actual
-source of truth — before the coherence gate reads the same files from disk.
+exchange every authorized save rebuilds it from the folders before the coherence gate.
+The gate may repair Active Summary afterwards: the saving session compares final
+inputs and refreshes affected summaries and derived files before confirming. A change
+only in Sessions requires no second render; this check adds no gate pass. Archive
+move/restore rebuilds both scope indexes once per batch using the same writer.
 
 - **The gate's position works in both directions.** The gate re-reads the durable files from
   disk, so running it before the write has nothing to read; and confirming before it runs tells
