@@ -90,7 +90,7 @@ Select one or more during `unikit-ai init`. See [Agents](docs/agents.md) for age
 
 ```bash
 npm install -g unikit-ai    # install
-unikit-ai update            # later: reinstall only what changed in the project
+unikit-ai update            # later: reinstall only what changed
 ```
 
 ```bash
@@ -104,10 +104,26 @@ The wizard asks which AI agent you use and which game engine, configures the MCP
 Then open your AI agent and start working. Give `/unikit` a couple of sentences about your game - what it is and how it plays:
 
 ```
-/unikit A 2D top-down roguelike shooter for PC. The player clears procedurally generated dungeon floors, collects weapons and upgrades between runs, and fights a boss at the end of each floor.
+/unikit A 2D top-down roguelike shooter for PC. The player clears
+procedurally generated dungeon floors, collects weapons and upgrades
+between runs, and fights a boss at the end of each floor.
 ```
 
 Run without a description, `/unikit` asks for one. It then scans your game project, detects the full tech stack, asks targeted questions to fill in gaps, generates project description and architecture files, then bootstraps starter rules for every framework in your stack so the agent is ready to write idiomatic code from the first prompt.
+
+### How It Works
+
+```
+  explore ──▶ plan ──▶ improve ──▶ implement ──▶ review ──▶ verify ──▶ commit
+               │                       │                                 │
+         design brief         code + editor tasks      fix ──▶ patch ────┤
+                              through the engine bridges                 │
+                                                                         │
+                                     evolve ◀────────────────────────────┘
+                           distill patches into rules
+```
+
+The development loop runs through exploration, planning, implementation, and review. Plans pull a design brief from the game design when there is one, execute code and editor work through the same pipeline, and bug fixes along the way generate patches that feed into the evolution step - distilling real project experience into permanent rules.
 
 ### Example Workflow
 
@@ -116,7 +132,9 @@ Say you need a character controller and want to settle its architecture before a
 **1. Explore** - research the idea, analyze the codebase, find integration points:
 
 ```
-/unikit-explore We need a character controller. The character must run, jump, climb ladders and shoot weapons. Figure out which architecture to use for the controller and which technologies fit it.
+/unikit-explore We need a character controller. The character must run,
+jump, climb ladders and shoot weapons. Figure out which architecture to
+use for the controller and which technologies fit it.
 ```
 
 The agent produces a research document with diagrams, option comparisons, and architectural recommendations. Save it or feed it directly into the next step.
@@ -130,7 +148,8 @@ The agent produces a research document with diagrams, option comparisons, and ar
 Run without arguments, `/unikit-plan` offers the most recent research itself. You can also plan straight from a task description, with no research behind it:
 
 ```
-/unikit-plan Create an AI module for enemies based on a Behavior Tree and a State Machine
+/unikit-plan Create an AI module for enemies based on a Behavior Tree
+and a State Machine
 ```
 
 A plan built on a research usually comes out better: the research has already compared the architectural options and found where the feature meets the existing code, so the plan settles those questions instead of guessing them. Plan directly when the task is small or the approach is already clear.
@@ -160,20 +179,26 @@ Or go phase by phase and test in-game between the runs:
 **No plan needed for small tasks** - `/unikit-execute` lets you vibe-code the classic way: describe the task, and the skill loads the whole harness - the project rules, the engine bridges - and makes the change, code and editor work alike, then checks that it compiles. Recommended for small tasks; a multi-step feature still deserves a plan:
 
 ```
-/unikit-execute Let's rework the layout of the energy purchase window to the new spec
+/unikit-execute Let's rework the layout of the energy purchase window
+to the new spec
 ```
 
 **Fix bugs** - `/unikit-fix` takes a bug description or an error message, finds the cause and fixes it, and records a patch that later feeds the [self-learning](#self-learning) loop:
 
 ```
-/unikit-fix Levels in the game take a long time to load. Find the problem and the error.
+/unikit-fix Levels in the game take a long time to load.
+Find the problem and the error.
 ```
 
-**5. Review & Verify** - check code against project rules, verify completeness:
+**5. Review & Verify** (optional) - two different checks; run either, both, or skip them:
+
+- **Review** looks at the code itself: does it follow the project rules, and is it good code?
 
 ```
 /unikit-review
 ```
+
+- **Verify** looks at the plan: does the code do what the plan asked, and was every task of the plan carried out correctly?
 
 ```
 /unikit-verify
@@ -194,7 +219,8 @@ Or go phase by phase and test in-game between the runs:
 **Lost?** Ask the navigator. `/unikit-help` takes a question in plain words and points you to the skill or pipeline that fits:
 
 ```
-/unikit-help How do I work with the framework properly and how do I write plans? Where should I start?
+/unikit-help How do I work with the framework properly and how do I
+write plans? Where should I start?
 ```
 
 Run without a question, it starts a short diagnostic of where you are.
@@ -217,27 +243,31 @@ A rule decides only the steps of its own area; everything else keeps the order, 
 
 ---
 
-## How It Works
-
-```
-  explore ──▶ plan ──▶ improve ──▶ implement ──▶ review ──▶ verify ──▶ commit
-               │                       │                                 │
-         design brief         code + editor tasks      fix ──▶ patch ────┤
-                              through the engine bridges                 │
-                                                                         │
-                                     evolve ◀────────────────────────────┘
-                           distill patches into rules
-```
-
-The development loop runs through exploration, planning, implementation, and review. Plans pull a design brief from the game design when there is one, execute code and editor work through the same pipeline, and bug fixes along the way generate patches that feed into the evolution step - distilling real project experience into permanent rules.
-
-### Dynamic Memory and Remote Rules Registry
+## Dynamic Memory and Remote Rules Registry
 
 Every code task runs through a two-tier knowledge base: **core rules** are always loaded (code style, design principles, performance, testing), **stack rules** are loaded only when the task needs them (DI, async, reactive, UI, etc.). Rules come from the **[official remote registry](https://github.com/NintendaDev/unikit-ai-rules)**, versioned independently of the npm package, and you can connect your own private registry to carry your team's rule library across projects.
 
 → [Dynamic Memory](docs/dynamic-memory.md) · [Rules Registry](docs/rules-registry.md)
 
-### Game Design
+---
+
+## Self-Learning
+
+Every bug fix and code review creates a patch - a record of what went wrong and how it was fixed. When patches accumulate, `/unikit-evolve` analyzes them and distills patterns into project rules.
+
+```
+  bug found ──▶ /unikit-fix ──▶ patch created ──▶ /unikit-evolve ──▶ new rule
+                                                                        │
+                                                          next session uses it
+```
+
+The agent doesn't repeat the same mistakes: the more you fix and evolve, the smarter the framework becomes for your specific project.
+
+→ [Memory & Skill Evolution](docs/evolve.md)
+
+---
+
+## Game Design
 
 Beyond code, UniKit AI helps author the game design itself, so that planning starts from a written design instead of a prompt:
 
@@ -253,20 +283,6 @@ Beyond code, UniKit AI helps author the game design itself, so that planning sta
 The design feeds code plans, and code never edits it, with one exception: once `/unikit-verify` confirms a feature is done, the design is marked as implemented.
 
 → [Game-Design Module](docs/gamedesign.md)
-
-### Self-Learning
-
-Every bug fix and code review creates a patch - a record of what went wrong and how it was fixed. When patches accumulate, `/unikit-evolve` analyzes them and distills patterns into project rules.
-
-```
-  bug found ──▶ /unikit-fix ──▶ patch created ──▶ /unikit-evolve ──▶ new rule
-                                                                        │
-                                                          next session uses it
-```
-
-The agent doesn't repeat the same mistakes: the more you fix and evolve, the smarter the framework becomes for your specific project.
-
-→ [Memory & Skill Evolution](docs/evolve.md)
 
 UniKit AI works alongside any other AI framework - it uses its own config directory and never touches standard agent files like CLAUDE.md or .cursorrules.
 
