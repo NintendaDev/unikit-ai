@@ -15,13 +15,13 @@ Read the description by its meaning, in any language. The first row that fits de
 | says nothing, and logic or a system value changed (item 5) | `## The question` | `## The question` |
 | says nothing, and nothing of that kind changed: authored content, tunable data, a rename, a comment, formatting, a trivial accessor | none | none, no question |
 
-A rule of the project, or a test file beside the source, is not an order. A change that breaks the compilation of a test assembly is a compilation error: fix it in Step 4 without asking; that is not a run.
+A rule of the project, or a test file beside the source, is not an order. Nor is an option the user picked in a question about something else — the scope, the look, what comes next — even when it named tests. What the user writes later in their own words is read like the description. A change that breaks the compilation of a test assembly is a compilation error: fix it in Step 4 without asking; that is not a run.
 
 Tests that wait for acceptance print `INFO [testing] tests wait for acceptance: <logic>`, once. The wait lives in this session only: no file records it.
 
 ## The question
 
-Ask once, after the last step of Step 4 and before the report, with the scope already worked out (`## The width of a run`). Use the question tool of your agent (`AskUserQuestion`): `Changed logic: <what changed, in a few words>. Tests for it?`
+Ask once, as a question of its own, after the last step of Step 4 and before the report, with the scope already worked out (`## The width of a run`). Use the question tool of your agent (`AskUserQuestion`): `Changed logic: <what changed, in a few words>. Tests for it?`
 
 - `No tests (recommended)` — nothing is written and nothing is run. The report says `Tests: none`.
 - `Write them after you accept the result` — the tests wait for acceptance (`## After acceptance`).
@@ -53,7 +53,7 @@ An answer covers this run and one repeat after the cause of a red result is fixe
 Acceptance is the user's own words (`dev-principles.md` item 5a) or the option of Step 5.5. An edit asked for before it, and a loop that closes without it, follow item 5a.
 
 1. Read the rule of the `testing` row in `.unikit/memory/code/RULES_INDEX.md` (no such rule → go on with no warning), write the tests once for the final form of the logic by the classes of item 5, and add their files to the running list of Step 4.
-2. The task ordered the run too → `## The run`, no question. No bridge offers a test run → no question; the report line says `written, not run — no bridge offers a test run`. Otherwise ask once, with the question tool of your agent (`AskUserQuestion`): `Run the tests? Scope: <scope>`. A narrowed scope: `Run them (recommended)` · `Do not run`. The whole project: `Do not run (recommended)` · `Run them`.
+2. The task, or the user's own words, ordered the run too → `## The run`, no question; an acceptance orders no run, even when the option that accepted named one. No bridge offers a test run → no question; the report line says `written, not run — no bridge offers a test run`. Otherwise ask once, with the question tool of your agent (`AskUserQuestion`): `Run the tests? Scope: <scope>`. A narrowed scope: `Run them (recommended)` · `Do not run`. The whole project: `Do not run (recommended)` · `Run them`.
 3. Print the `Tests:` line again: the report of Step 5.3 is out of date by now.
 
 `What next?` was not asked (no `git`) → the last line of the report says that the tests wait for acceptance. A request to "write the tests now" ends the wait (item 5a).

@@ -467,7 +467,7 @@ Check that the project compiles after the fix, through the first available engin
 
 ### 4.2 {{engine_name}} Test Run
 
-**Inside a review loop** (`dev-principles.md` item 5a — tests are due, and this fix answers a defect in a result handed over in this session, which the user is reviewing) skip this step: print `INFO [testing] review loop: tests deferred until you accept` — once per loop, not again when an earlier edit of this loop already printed it — and go to Step 4.3. Outside a loop, a test run is the user's choice (`dev-principles.md` item 5): work out the scope as follows, ask, and run only on the answer.
+**Inside a review loop** (`dev-principles.md` item 5a — tests are due, and this fix answers a defect in a result handed over in this session, which the user is reviewing) skip this step: print `INFO [testing] review loop: tests deferred until you accept` — once per loop, not again when an earlier edit of this loop already printed it — and go to Step 4.3. Outside a loop, a test run is the user's choice (`dev-principles.md` item 5): work out the scope as follows, ask, and run only on the answer to that question — an option of a question about something else that named a run is not it.
 
 Run the tests through the first available engine bridge that offers a test run with a readable result (**D3**) at the width the shared run settings give — `.unikit/system/test-run-width.md`. Read it once per session, the first time this step runs: it resolves `testing.run.use_affected_modules` and `testing.run.full_run_threshold_percent` from `.unikit/config.yaml`, says how the affected test suites are found, requires one run, and says what counts as green. A fix has no coverage, so its run follows the file's `phase` row; its changed files are `git status --porcelain` plus the files this fix touched.
 - `use_affected_modules: false` (the default) → every test in the project, in one run
@@ -724,4 +724,4 @@ Suggest the user to free up context space if needed: `/clear` (full reset) or `/
 11. **Respond in the configured language** — use `language.ui` from `.unikit/config.yaml` (default: English)
 12. **Ownership boundary** — `/unikit-fix` owns `.unikit/code/FIX_PLAN.md` and `.unikit/code/patches/*.md`; all other `.unikit/` artifacts are read-only
 13. **Never modify third-party code** — `Assets/Third-Party Assets/` and `Assets/Plugins/` are off-limits
-14. **A test run is asked for** — outside a review loop no run starts without the task's words or an answer (Step 4.2)
+14. **A test run is asked for** — outside a review loop no run starts without the task's words or the answer to the question of Step 4.2
