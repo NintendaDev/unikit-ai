@@ -7602,6 +7602,52 @@ else
     fail "TS-8 tests as a choice:$TS8_WHY"
 fi
 
+# (TS-9) a decision about tests is a question of its own: the user's word is the task, the user's own
+# words, or the option picked in a question about tests alone — never an option of a question about
+# something else (the scope, the look, the next step), and such an option names no tests and no run.
+# 2026-11-08: "tests" rode at the end of a scope option and of an acceptance option, the user picked
+# both for their main subject, and a full suite started unasked. Carriers: the policy, the execute
+# skill and its test reference, the fix skill, the workflow page; the general rule is UQ-1's.
+TS9_WHY=""
+TS9_N=0
+TS_EXEC="$ROOT_DIR/skills/unikit-execute/SKILL.md"
+TS_EXEC_TESTS="$ROOT_DIR/skills/unikit-execute/references/tests.md"
+TS_WORKFLOW="$ROOT_DIR/docs/workflow.md"
+ts9_has() { # <key> <literal> <file>
+    TS9_N=$((TS9_N + 1))
+    if [[ ! -s "$3" ]]; then TS9_WHY+=" TS-9:missing(${3#"$ROOT_DIR"/})"; return; fi
+    grep -qF -- "$2" "$3" || TS9_WHY+=" TS-9:$1"
+}
+ts9_lacks() { # <key> <literal> <file>
+    TS9_N=$((TS9_N + 1))
+    if [[ ! -s "$3" ]]; then TS9_WHY+=" TS-9:missing(${3#"$ROOT_DIR"/})"; return; fi
+    ! grep -qF -- "$2" "$3" || TS9_WHY+=" TS-9:returned:$1"
+}
+ts9_has 'policy-word' 'or the option they pick in a question about tests and nothing else' "$TS_DEVPRIN"
+ts9_has 'policy-other-option' 'is never that word, so such an option does not mention tests or a run' "$TS_DEVPRIN"
+ts9_has 'policy-own-question' 'a decision about tests is a question of its own' "$TS_DEVPRIN"
+ts9_has 'loop-due' "in which the user's word of item 5 chose them" "$TS_DEVPRIN"
+ts9_has 'loop-acceptance-no-run' 'An acceptance is not that word' "$TS_DEVPRIN"
+ts9_lacks 'loop-any-answer' 'chose them in answer to a question.' "$TS_DEVPRIN"
+ts9_has 'execute-word' 'or their answer to a question about tests say so' "$TS_EXEC"
+ts9_has 'execute-other-option' 'no option of such a question you ask mentions tests or a run' "$TS_EXEC"
+ts9_has 'execute-rule' 'or an answer to a question about tests (`references/tests.md`)' "$TS_EXEC"
+ts9_lacks 'execute-any-answer' "unless the task's words or the user's answer say so" "$TS_EXEC"
+ts9_has 'reference-other-option' 'Nor is an option the user picked in a question about something else' "$TS_EXEC_TESTS"
+ts9_has 'reference-own-words' 'is read like the description' "$TS_EXEC_TESTS"
+ts9_has 'reference-own-question' 'Ask once, as a question of its own' "$TS_EXEC_TESTS"
+ts9_has 'reference-acceptance-no-run' 'an acceptance orders no run' "$TS_EXEC_TESTS"
+ts9_lacks 'reference-acceptance-ordered' 'The task ordered the run too →' "$TS_EXEC_TESTS"
+ts9_has 'fix-own-answer' 'run only on the answer to that question' "$TS_FIX"
+ts9_has 'fix-rule' 'or the answer to the question of Step 4.2' "$TS_FIX"
+ts9_has 'docs' 'tests are always asked about in a question of their own' "$TS_WORKFLOW"
+[[ "$TS9_N" -gt 0 ]] || TS9_WHY+=" TS-9:nothing-scanned"
+if [[ -z "$TS9_WHY" ]]; then
+    pass "TS-9 a decision about tests is a question of its own: no option of another question names tests or counts as consent (scanned $TS9_N formulations)"
+else
+    fail "TS-9 tests asked on their own:$TS9_WHY"
+fi
+
 # --- TR: the test-run block lives in a reference read only under `Testing: yes` (DEC-012 b) ---
 # Modelled on MX-3 / RD-H: present, not inline, and read at the right step. A body that exists
 # while no step reads it is a contract no run follows (RISK-010).
@@ -13877,6 +13923,7 @@ else
         'A turn never ends on an explanation, a summary or a recommendation' \
         'as a visible message of your own' \
         'each with its concrete consequence, the recommended option first' \
+        'it never carries a second decision the user has not taken yet' \
         'is printed in full in this message' \
         'Do not add a second list of the bare option names' \
         'with "(Recommended)" in its label, short labels without numbers' \

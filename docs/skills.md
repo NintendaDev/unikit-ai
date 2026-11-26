@@ -4,7 +4,7 @@
 
 ## How skills ask you questions
 
-Every skill that asks you a question follows `.unikit/system/user-questions.md`: what is being chosen and what each option changes is printed first as a numbered list, then the question goes through the question tool of your agent with the recommended option first, and the run waits in the same turn until you answer. A question you answer in your own words (a name, a description, a list of numbers) goes through the tool too, with likely answers to pick or replace - you write your own in the free-text answer. Numbered text and the end of the turn come only when your agent has no such tool.
+Every skill that asks you a question follows `.unikit/system/user-questions.md`: what is being chosen and what each option changes is printed first as a numbered list, then the question goes through the question tool of your agent with the recommended option first, and the run waits in the same turn until you answer. One question settles one thing: an option never carries a second decision you have not taken yet - whether tests are written or run, a commit, a push, a deletion - that one comes as a question of its own. A question you answer in your own words (a name, a description, a list of numbers) goes through the tool too, with likely answers to pick or replace - you write your own in the free-text answer. Numbered text and the end of the turn come only when your agent has no such tool.
 
 ## Help & Navigation
 

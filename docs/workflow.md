@@ -380,7 +380,7 @@ Post-completion, in order:
 
 #### Tests follow acceptance
 
-Tests are a choice, never a duty of the executor: under a plan its `Testing:` line decides, and without a plan your word decides. With no such word nothing is written and nothing is run.
+Tests are a choice, never a duty of the executor: under a plan its `Testing:` line decides, and without a plan your word decides. Your word is the task you give, what you write yourself later, or the option you pick in a question about tests alone. An option of a question about something else — how much to build, whether the look is right, what comes next — never is, and the agent does not put tests into such an option: tests are always asked about in a question of their own. With no such word nothing is written and nothing is run.
 
 A test is written for a target the code owns. Four classes decide it: **logic and system values** (calculations, state transitions, parsing, contracts between modules; identifiers, keys, format versions) get exact tests on inputs the test supplies; **tunable data** that game design owns (balance, costs, durations, probabilities) is never pinned — at most one validity check per data family, with bounds taken from the design source rather than from today's number; **authored content** (prefabs, scenes, materials, shaders, animation, UI layouts) gets no unit test — the evidence is a frame or a read-back; **lookup by name** gets at most one aggregate reference check per module. Everything else — the engine, trivial accessors, generated code — gets none. A quick smell check: if a designer changing a number, or a new catalog row, turns a test red while the system is intact, the test is pinned to the wrong thing.
 
